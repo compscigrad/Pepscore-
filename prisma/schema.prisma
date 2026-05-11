@@ -1,0 +1,238 @@
+// Pepscore database schema
+// Run: npx prisma db push   (to sync with Neon)
+//      npx prisma generate  (to regenerate the client)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── User & Auth ──────────────────────────────────────────────────────────────
+
+model User {
+  id          String    @id @default(cuid())
+  clerkId     String    @unique
+  email       String    @unique
+  name        String?
+  phone       String?
+  role        Role      @default(CUSTOMER)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  orders              Order[]
+  complianceLogs      ComplianceAcknowledgment[]
+
+  @@index([email])
+}
+
+enum Role {
+  CUSTOMER
+  ADMIN
+}
+
+// ─── Products ────────────────────────────────────────────────────────────────
+
+model Product {
+  id           String   @id @default(cuid())
+  slug         String   @unique
+  name         String
+  category     String
+  size         String
+  price        Float
+  bulkPrice5   Float?
+  bulkPrice10  Float?
+  description  String
+  imageUrl     String
+  badge        String?
+  inStock      Boolean  @default(true)
+  costOfGoods  Float    @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  orderItems OrderItem[]
+
+  @@index([slug])
+}
+
+// ─── Orders ──────────────────────────────────────────────────────────────────
+
+model Order {
+  id                    String            @id @default(cuid())
+  orderNumber           String            @unique
+  userId                String?
+  user                  User?             @relation(fields: [userId], references: [id])
+  customerEmail         String
+  customerName          String
+  shippingAddress       Json
+  status                OrderStatus       @default(PENDING)
+  fulfillmentStatus     FulfillmentStatus @default(UNFULFILLED)
+  stripeSessionId       String?           @unique
+  stripePaymentIntentId String?
+  subtotal              Float
+  shippingCost          Float             @default(0)
+  stripeFee             Float             @default(0)
+  tax                   Float             @default(0)
+  total                 Float
+  notes                 String?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  items          OrderItem[]
+  invoice        Invoice?
+  shippingLabel  ShippingLabel?
+  payments       Payment[]
+  complianceLogs ComplianceAcknowledgment[]
+
+  @@index([customerEmail])
+  @@index([stripeSessionId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum FulfillmentStatus {
+  UNFULFILLED
+  FULFILLED
+}
+
+model OrderItem {
+  id          String  @id @default(cuid())
+  orderId     String
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product @relation(fields: [productId], references: [id])
+  name        String
+  size        String
+  quantity    Int
+  unitPrice   Float
+  costOfGoods Float   @default(0)
+  total       Float
+}
+
+// ─── Invoices ────────────────────────────────────────────────────────────────
+
+model Invoice {
+  id              String        @id @default(cuid())
+  invoiceNumber   String        @unique
+  orderId         String        @unique
+  order           Order         @relation(fields: [orderId], references: [id])
+  stripeInvoiceId String?
+  pdfUrl          String?
+  status          InvoiceStatus @default(DRAFT)
+  notes           String?
+  issuedAt        DateTime      @default(now())
+  paidAt          DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PAID
+  VOID
+}
+
+// ─── Payments ────────────────────────────────────────────────────────────────
+
+model Payment {
+  id                    String        @id @default(cuid())
+  orderId               String
+  order                 Order         @relation(fields: [orderId], references: [id])
+  stripePaymentIntentId String        @unique
+  amount                Float
+  currency              String        @default("usd")
+  status                PaymentStatus
+  stripeFee             Float         @default(0)
+  netAmount             Float         @default(0)
+  createdAt             DateTime      @default(now())
+
+  @@index([orderId])
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+// ─── Shipping ────────────────────────────────────────────────────────────────
+
+model ShippingLabel {
+  id             String   @id @default(cuid())
+  orderId        String   @unique
+  order          Order    @relation(fields: [orderId], references: [id])
+  carrier        String
+  service        String
+  trackingNumber String
+  labelUrl       String
+  shippoLabelId  String?
+  cost           Float
+  createdAt      DateTime @default(now())
+}
+
+// ─── Compliance ──────────────────────────────────────────────────────────────
+
+model ComplianceAcknowledgment {
+  id        String   @id @default(cuid())
+  orderId   String?
+  order     Order?   @relation(fields: [orderId], references: [id])
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  sessionId String?
+  ipAddress String?
+  userAgent String?
+  // Full RUO text the customer agreed to
+  ruoText   String
+  agreedAt  DateTime @default(now())
+}
+
+// ─── Accounting ──────────────────────────────────────────────────────────────
+
+model Expense {
+  id          String      @id @default(cuid())
+  type        ExpenseType
+  amount      Float
+  description String?
+  orderId     String?
+  date        DateTime    @default(now())
+  createdAt   DateTime    @default(now())
+
+  @@index([type])
+  @@index([date])
+}
+
+enum ExpenseType {
+  SHIPPING
+  COGS
+  STRIPE_FEE
+  REFUND
+  OTHER
+}
+
+// ─── Admin Audit Log ─────────────────────────────────────────────────────────
+
+model AdminAuditLog {
+  id        String   @id @default(cuid())
+  action    String
+  entity    String
+  entityId  String?
+  adminId   String
+  details   Json?
+  createdAt DateTime @default(now())
+}
