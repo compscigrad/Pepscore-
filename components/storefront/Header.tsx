@@ -1,4 +1,3 @@
-// Sticky site header with nav, cart button, and Clerk auth controls
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -6,7 +5,19 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { ShoppingCart, Menu, X } from 'lucide-react'
 import { useCartStore } from '@/lib/cart-store'
-import { SignedIn, SignedOut, UserButton, SignInButton } from '@clerk/nextjs'
+
+const hasClerk = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+
+// Dynamically import Clerk components only when the key is present
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let SignedIn: any, SignedOut: any, UserButton: any, SignInButton: any
+if (hasClerk) {
+  const clerk = require('@clerk/nextjs')
+  SignedIn = clerk.SignedIn
+  SignedOut = clerk.SignedOut
+  UserButton = clerk.UserButton
+  SignInButton = clerk.SignInButton
+}
 
 export function Header() {
   const [scrolled, setScrolled] = useState(false)
@@ -78,17 +89,21 @@ export function Header() {
             )}
           </button>
 
-          {/* Auth */}
-          <SignedIn>
-            <UserButton afterSignOutUrl="/" />
-          </SignedIn>
-          <SignedOut>
-            <SignInButton mode="modal">
-              <button className="font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-dark hover:text-gold transition-colors">
-                Sign In
-              </button>
-            </SignInButton>
-          </SignedOut>
+          {/* Auth — only rendered when Clerk is configured */}
+          {hasClerk && (
+            <>
+              <SignedIn>
+                <UserButton afterSignOutUrl="/" />
+              </SignedIn>
+              <SignedOut>
+                <SignInButton mode="modal">
+                  <button className="font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-dark hover:text-gold transition-colors">
+                    Sign In
+                  </button>
+                </SignInButton>
+              </SignedOut>
+            </>
+          )}
 
           {/* Mobile hamburger */}
           <button
