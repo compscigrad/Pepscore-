@@ -1,4 +1,6 @@
-// Root layout — wraps all routes with Clerk auth provider and global styles
+// Root layout — wraps all routes with Clerk auth provider and global styles.
+// ClerkProvider is skipped when NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY is absent
+// so the site builds cleanly before Clerk is configured.
 import type { Metadata } from 'next'
 import { ClerkProvider } from '@clerk/nextjs'
 import { Toaster } from 'react-hot-toast'
@@ -17,25 +19,40 @@ export const metadata: Metadata = {
   },
 }
 
+const toasterProps = {
+  position: 'bottom-center' as const,
+  toastOptions: {
+    style: {
+      background: '#1A1A1A',
+      color: '#fff',
+      fontFamily: 'Montserrat, sans-serif',
+      fontSize: '13px',
+      fontWeight: 600,
+      borderRadius: '8px',
+    },
+  },
+}
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // Skip ClerkProvider at build time when credentials aren't set yet.
+  // Auth features (UserButton, sign-in) require a real key at runtime.
+  if (!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
+    return (
+      <html lang="en">
+        <body>
+          {children}
+          <Toaster {...toasterProps} />
+        </body>
+      </html>
+    )
+  }
+
   return (
     <ClerkProvider>
       <html lang="en">
         <body>
           {children}
-          <Toaster
-            position="bottom-center"
-            toastOptions={{
-              style: {
-                background: '#1A1A1A',
-                color: '#fff',
-                fontFamily: 'Montserrat, sans-serif',
-                fontSize: '13px',
-                fontWeight: 600,
-                borderRadius: '8px',
-              },
-            }}
-          />
+          <Toaster {...toasterProps} />
         </body>
       </html>
     </ClerkProvider>
