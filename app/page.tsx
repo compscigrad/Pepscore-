@@ -82,7 +82,7 @@ export default async function HomePage() {
             {/* Hero image */}
             <div className="flex justify-center items-center">
               <Image
-                src="/images/ALL.png"
+                src="/images/hero-vials.jpeg"
                 alt="Pepscore Research Peptide Collection"
                 width={540}
                 height={540}
