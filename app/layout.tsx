@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Pepscore — Holistic Research Peptides',
     description: 'Pharmaceutical-quality research peptides. ≥98% purity. For Research Use Only.',
-    images: [{ url: '/images/ALL.png' }],
+    images: [{ url: '/images/hero-vials.jpeg' }],
   },
 }
 

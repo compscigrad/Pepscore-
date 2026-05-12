@@ -7,7 +7,7 @@ import { useCartStore } from '@/lib/cart-store'
 import { SingleVialImage } from './SingleVialImage'
 
 // Any imageUrl pointing at this path triggers the dynamic SVG vial renderer.
-const GENERIC_PLACEHOLDER = '/images/vial-placeholder.png'
+const GENERIC_PLACEHOLDER = '/images/products/default-single-vial.png'
 
 export interface ProductVariant {
   id: string
