@@ -4,6 +4,10 @@ import { useState } from 'react'
 import Image from 'next/image'
 import toast from 'react-hot-toast'
 import { useCartStore } from '@/lib/cart-store'
+import { SingleVialImage } from './SingleVialImage'
+
+// Any imageUrl pointing at this path triggers the dynamic SVG vial renderer.
+const GENERIC_PLACEHOLDER = '/images/vial-placeholder.png'
 
 export interface ProductVariant {
   id: string
@@ -46,15 +50,24 @@ export function ProductCard({ name, category, description, imageUrl, badge, vari
 
       {/* Image — single-vial only, never the lineup */}
       <div className="bg-gradient-to-br from-cream to-[#F5EFE0] h-[200px] flex items-center justify-center p-5 shrink-0">
-        <div className="relative h-[150px] w-full">
-          <Image
-            src={imageUrl}
-            alt={name}
-            fill
-            className="object-contain drop-shadow-md transition-transform duration-300 group-hover:scale-[1.07] group-hover:-translate-y-1"
-            loading="lazy"
+        {imageUrl === GENERIC_PLACEHOLDER ? (
+          /* Dynamic SVG vial with product name on the label */
+          <SingleVialImage
+            productName={name}
+            className="h-[160px] w-auto drop-shadow-md transition-transform duration-300 group-hover:scale-[1.07] group-hover:-translate-y-1"
           />
-        </div>
+        ) : (
+          /* Product-specific photograph */
+          <div className="relative h-[150px] w-full">
+            <Image
+              src={imageUrl}
+              alt={name}
+              fill
+              className="object-contain drop-shadow-md transition-transform duration-300 group-hover:scale-[1.07] group-hover:-translate-y-1"
+              loading="lazy"
+            />
+          </div>
+        )}
       </div>
 
       {/* Card body — flex column so bottom section always aligns */}
