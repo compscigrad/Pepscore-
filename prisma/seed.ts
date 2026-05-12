@@ -209,77 +209,105 @@ const products = [
 ]
 
 const descriptions: Record<string, string> = {
-  'Semaglutide': 'Appetite control and steady fat loss support.',
-  'Tirzepatide': 'Supports appetite control, blood sugar balance, and fat loss.',
-  'Retatrutide': 'Next-generation triple-action compound for weight management research.',
-  'Cagrilintide': 'Amylin analog that may help reduce appetite.',
-  'Cagrilintide 2.5mg + Semaglutide 2.5mg': 'Enhanced fat loss and appetite control blend.',
-  'Cagrilintide 5mg + Semaglutide 5mg': 'Enhanced fat loss and appetite control blend.',
-  'Survodutide': 'Next-generation dual agonist researched for appetite regulation, metabolic health, and advanced weight management.',
-  'Mazdutide': 'Dual GIP/GLP-1 receptor agonist for weight management research.',
-  'GHK-Cu': 'Supports skin, hair, tissue repair, collagen production, and anti-inflammatory recovery.',
-  'NAD+': 'Supports cellular energy, DNA repair, immune function, and anti-aging.',
-  'Epithalon': 'Supports DNA repair, cellular regeneration, telomere support, and longevity.',
-  'Thymalin': 'Supports immune function, cellular health, and longevity.',
-  'Thymosin Alpha-1': 'Enhances immune response and recovery.',
-  'Pinealon': 'Supports brain function, memory, learning, neuroprotection, and healthy aging.',
-  'MOTS-c': 'Supports metabolic health and cellular energy.',
-  'SS-31': 'Supports mitochondrial protection and cellular energy.',
-  'Humanin': 'Supports neuroprotection and anti-aging research.',
-  'BPC 157': 'Accelerates tissue and tendon healing while reducing inflammation.',
-  'TB500': 'Promotes healing, flexibility, and tissue repair.',
-  'BPC5 + TB5': 'Enhanced healing and recovery blend.',
-  'BPC10 + TB10': 'Enhanced healing and recovery blend.',
+  // ── GLP-1 / Weight Management ─────────────────────────────────────────────
+  'Semaglutide': 'Semaglutide is a GLP-1 research peptide widely studied for appetite control, portion reduction, and steady body composition support. Many researchers utilize it for its ability to support satiety signaling and long-term metabolic optimization.',
+  'Tirzepatide': 'Tirzepatide is a dual GIP/GLP-1 receptor agonist researched for advanced appetite regulation, metabolic balance, and body recomposition support. It is commonly explored for enhanced fat loss potential and blood sugar regulation compared to traditional GLP-1 compounds.',
+  'Retatrutide': 'Retatrutide is a next-generation triple agonist researched for advanced metabolic enhancement, appetite suppression, and accelerated body composition support. Its multi-receptor mechanism has made it one of the most talked-about compounds in modern weight management research.',
+  'Cagrilintide': 'Cagrilintide is an amylin analog researched for appetite reduction, meal control, and satiety enhancement. It is frequently paired with GLP-1 compounds in advanced fat loss protocols.',
+  'Cagrilintide 2.5mg + Semaglutide 2.5mg': 'This advanced blend combines GLP-1 and amylin pathway support into a single research compound. Designed for enhanced appetite regulation and metabolic optimization, it is commonly explored in cutting-edge weight management protocols.',
+  'Cagrilintide 5mg + Semaglutide 5mg': 'This high-strength dual-action blend combines semaglutide with cagrilintide for advanced appetite suppression and metabolic support research. Frequently utilized for enhanced satiety and aggressive body recomposition strategies.',
+  'Survodutide': 'Survodutide is a next-generation dual agonist researched for appetite regulation, metabolic enhancement, and advanced body composition support.',
+  'Mazdutide': 'Mazdutide is a next-generation dual agonist researched for metabolic enhancement, appetite regulation, and body composition optimization. It has gained attention for its potential role in advanced fat loss and energy balance protocols.',
+
+  // ── Skin / Collagen / Cosmetic ────────────────────────────────────────────
+  'GHK-Cu': 'GHK-CU is a copper peptide researched for collagen production, skin rejuvenation, tissue repair, and hair support. It is highly regarded in cosmetic and regenerative research for its anti-inflammatory and restorative properties.',
+  'Snap-8': 'Snap-8 is a cosmetic peptide researched for reducing the appearance of fine lines and expression wrinkles. It is commonly explored in advanced skin rejuvenation and anti-aging formulations.',
+  'Lemon Bottle': 'Advanced cosmetic lipolytic solution researched for localized fat reduction and body contouring.',
+  'Botulinum Toxin': 'Botulinum toxin is researched for muscle relaxation, cosmetic wrinkle reduction, and neuromodulation applications. It is widely utilized in aesthetic and clinical research settings.',
+
+  // ── Longevity / Anti-Aging ────────────────────────────────────────────────
+  'NAD+': 'NAD+ is researched for mitochondrial energy production, cellular repair, recovery support, and healthy aging. It is commonly explored for cognitive function, energy metabolism, and overall vitality optimization.',
+  'Epithalon': 'Epithalon is widely researched for telomere support, cellular regeneration, DNA repair, and longevity enhancement. It remains one of the most recognized compounds in anti-aging and healthy lifespan research.',
+  'Thymalin': 'Thymalin is researched for immune support, longevity applications, and cellular health optimization. It has become increasingly popular in anti-aging and wellness-focused peptide research.',
+  'Thymosin Alpha-1': 'Thymosin Alpha-1 is researched for immune modulation, recovery enhancement, and cellular defense support. It is frequently utilized in protocols centered around resilience and immune optimization.',
+  'Pinealon': 'Pinealon is researched for cognitive support, memory enhancement, neuroprotection, and healthy aging applications. It is often utilized in brain optimization and longevity research.',
+
+  // ── Mitochondrial / Metabolic ─────────────────────────────────────────────
+  'MOTS-c': 'MOTS-c is a mitochondrial-derived peptide researched for metabolic efficiency, endurance, cellular energy production, and healthy aging support. It is commonly explored in performance and longevity-focused protocols.',
+  'SS-31': 'SS-31 is researched for mitochondrial protection, cellular energy production, and recovery optimization. It is frequently explored in anti-aging and performance-support applications.',
+  'Humanin': 'Humanin is a mitochondrial peptide researched for neuroprotection, cellular resilience, and healthy aging support. It is commonly explored in advanced longevity-focused protocols.',
+  'SLU-PP-332': 'SLU-PP-332 is an experimental metabolic compound researched for enhanced energy expenditure, endurance support, and body recomposition. It has gained attention for its potential role in muscle preservation and fat metabolism.',
+  '5-Amino-1MQ': '5-Amino-1MQ is an experimental metabolic compound researched for fat metabolism, body recomposition, and energy optimization support. It has gained attention in advanced physique-focused protocols.',
+  'AOD 9604': 'AOD-9604 is researched for targeted fat metabolism and body composition support without directly impacting muscle tissue. It is commonly utilized in cutting-edge fat loss protocols.',
+
+  // ── Healing / Recovery ────────────────────────────────────────────────────
+  'BPC 157': 'BPC-157 is widely researched for tissue repair, tendon recovery, inflammation reduction, and accelerated healing support. It remains one of the most popular recovery peptides for athletes and injury-focused protocols.',
+  'TB500': 'TB-500 is researched for flexibility, mobility, tissue regeneration, and recovery enhancement. It is commonly explored for systemic healing support and post-injury recovery applications.',
+  'BPC5 + TB5': 'This synergistic recovery blend combines BPC and TB pathways into a single advanced repair formula. Commonly researched for enhanced tissue healing, recovery speed, flexibility, and inflammation support.',
+  'BPC10 + TB10': 'A high-strength recovery blend designed for advanced healing and repair research. Frequently utilized for aggressive recovery protocols targeting tendons, muscles, connective tissue, and mobility.',
   'BPC 10mg + GHK-Cu 50mg + TB500 10mg': 'Advanced healing, collagen support, and tissue repair blend.',
-  'KPV (Lysine-Proline-Valine)': 'Reduces inflammation and supports gut and skin health.',
-  'LL37': 'Antimicrobial and immune support peptide.',
-  'AOD 9604': 'Targets fat loss without affecting muscle.',
+  'KPV (Lysine-Proline-Valine)': 'KPV is researched for gut support, inflammation modulation, and skin health applications. Its anti-inflammatory properties have made it increasingly popular in recovery and digestive wellness research.',
+  'LL37': 'LL-37 is an antimicrobial peptide researched for immune defense, inflammatory regulation, and advanced recovery support. It is frequently explored in protocols focused on immune resilience and cellular protection.',
   'GLOW50': 'Pre-formulated blend for enhanced collagen support, recovery, and tissue repair.',
   'KLOW': 'Pre-formulated recovery blend combining copper peptide, TB, BPC, and KPV support.',
-  'CJC-1295 No DAC': 'Short-acting growth hormone stimulation support.',
-  'CJC-1295 With DAC': 'Long-acting growth hormone stimulation support.',
-  'CJC-1295 without DAC 5mg + Ipamorelin 5mg': 'Synergistic growth hormone release blend.',
-  'Ipamorelin': 'Stimulates natural growth hormone release.',
-  'Sermorelin Acetate': 'Stimulates natural growth hormone for recovery and anti-aging support.',
-  'GHRP-6 Acetate': 'Stimulates growth hormone, appetite, and recovery.',
-  'Tesamorelin': 'Reduces visceral fat and improves body composition.',
-  'HGH': 'Human growth hormone for performance and recovery research.',
-  'IGF-ILR3': 'Supports muscle growth, recovery, and cell repair.',
-  'IGF-DES': 'Long-acting IGF-1 analog.',
-  'MT-2': 'Melanotan II; supports tanning, sexual function, and skin protection.',
+
+  // ── GH Axis ───────────────────────────────────────────────────────────────
+  'CJC-1295 No DAC': 'CJC-1295 without DAC is a shorter-acting GH peptide researched for natural growth hormone release, recovery enhancement, and physique support.',
+  'CJC-1295 With DAC': 'CJC-1295 with DAC is a long-acting growth hormone releasing peptide researched for recovery, lean mass support, sleep enhancement, and performance optimization.',
+  'CJC-1295 without DAC 5mg + Ipamorelin 5mg': 'This synergistic blend combines CJC-1295 without DAC and Ipamorelin for advanced growth hormone support research. Commonly explored for recovery, sleep quality, lean mass support, and healthy aging applications.',
+  'Ipamorelin': 'Ipamorelin is a selective growth hormone secretagogue researched for recovery, sleep quality, muscle support, and anti-aging applications. It is widely favored for promoting natural GH release without significant appetite stimulation.',
+  'Sermorelin Acetate': 'Sermorelin is researched for natural growth hormone stimulation, recovery support, sleep quality, and healthy aging optimization. It is commonly utilized in wellness and performance-focused protocols.',
+  'GHRP-6 Acetate': 'GHRP-6 is researched for natural growth hormone release, appetite stimulation, recovery enhancement, and performance support.',
+  'Tesamorelin': 'Tesamorelin is researched for visceral fat reduction, body recomposition, and growth hormone pathway support. It is commonly explored in protocols targeting abdominal fat and physique optimization.',
+  // HGH by name+size for variant-specific descriptions
+  'HGH 10iu': 'Research-grade human growth hormone studied for recovery enhancement, muscle support, performance optimization, and anti-aging applications.',
+  'HGH 15iu': 'Research-grade HGH formulated for advanced recovery, performance, body composition, and regenerative support applications.',
+  'HGH 24iu': 'High-potency HGH researched for advanced performance support, recovery optimization, and body recomposition applications.',
+  'IGF-ILR3': 'IGF-1 LR3 is researched for muscle recovery, lean mass support, cellular repair, and advanced performance enhancement applications.',
+  'IGF-DES': 'IGF-DES is a fast-acting IGF analog researched for localized growth support, muscle recovery, and regenerative applications.',
+
+  // ── Melanocortin ──────────────────────────────────────────────────────────
+  'MT-2': 'Melanotan II is researched for tanning support, pigmentation enhancement, libido support, and skin protection applications.',
   'MT1': 'Melanotan-1 peptide researched for tanning support, skin protection, and pigmentation enhancement.',
-  'PT-141': 'Supports libido and sexual performance.',
+  'PT-141': 'PT-141 is researched for libido enhancement, arousal support, and sexual wellness optimization. Unlike traditional compounds, it works through central nervous system pathways rather than vascular mechanisms.',
   'Dermorphin': 'Experimental peptide researched for endurance, performance, and recovery support.',
-  'KissPeptin-10': 'Enhances hormone release and fertility support.',
-  'Oxytocin': 'Supports bonding, libido, and overall well-being.',
-  'HCG': 'Supports testosterone production and fertility.',
-  'HMG': 'Supports sperm production and hormone balance.',
+
+  // ── Reproductive / Hormonal ───────────────────────────────────────────────
+  'KissPeptin-10': 'Kisspeptin-10 is researched for hormone signaling, fertility support, and reproductive health optimization. It is commonly explored in advanced hormonal balance protocols.',
+  'Oxytocin': 'Oxytocin is researched for mood support, bonding pathways, emotional wellness, and intimacy enhancement. It is commonly explored in behavioral and hormonal wellness applications.',
+  'HCG': 'HCG is researched for testosterone support, fertility enhancement, and hormone regulation applications. It is commonly utilized in hormone-focused wellness protocols.',
+  'HMG': 'HMG is researched for fertility support, reproductive hormone balance, and sperm production optimization. It is frequently explored in advanced hormonal health protocols.',
   'EPO 3000IU': 'Erythropoietin compound researched for red blood cell production, endurance, and recovery support.',
-  'Semax': 'Enhances focus, memory, and mental clarity.',
-  'Selank': 'Reduces anxiety and improves mood.',
-  'DSIP': 'Improves sleep quality and brain function.',
+
+  // ── Nootropic / Neuropeptide ──────────────────────────────────────────────
+  'Semax': 'Semax is researched for cognitive enhancement, mental clarity, focus support, and neuroprotection. It is frequently explored in productivity and nootropic-focused protocols.',
+  'Selank': 'Selank is researched for anxiety reduction, mood balance, relaxation support, and cognitive wellness applications. It is popular within stress-management and nootropic research.',
+  'DSIP': 'DSIP is researched for sleep quality, relaxation support, nervous system recovery, and mental restoration. It is commonly explored in recovery-focused wellness protocols.',
   'Cerebrolysin (6 vials)': 'Neuroprotective peptide blend for brain health.',
-  'VIP5': 'Vasoactive Intestinal Peptide researched for circulation, respiratory support, and immune modulation.',
-  'VIP10': 'Higher concentration Vasoactive Intestinal Peptide researched for circulation, respiratory support, and immune modulation.',
-  'Ara-290': 'Experimental peptide researched for nerve support, inflammation modulation, and tissue recovery.',
-  'Snap-8': 'Supports reduction of fine lines and expression wrinkles.',
-  'Lemon Bottle': 'Advanced cosmetic lipolytic solution researched for localized fat reduction and body contouring.',
-  'Botulinum Toxin': 'Neuromodulator researched for wrinkle reduction, muscle relaxation, and cosmetic applications.',
+  'VIP5': 'VIP5 is researched for respiratory support, circulation enhancement, immune modulation, and anti-inflammatory applications.',
+  'VIP10': 'VIP10 is a higher-concentration VIP compound researched for circulation support, respiratory wellness, and advanced immune modulation.',
+  'Ara-290': 'Ara-290 is researched for nerve support, inflammation modulation, tissue recovery, and neuropathy-focused applications.',
+
+  // ── Lipolytic / LC ────────────────────────────────────────────────────────
   'LC120': 'Research lipotropic blend formulated to support metabolism, energy, and body composition goals.',
   'LC216': 'Advanced lipotropic research blend designed for metabolic enhancement and fat metabolism support.',
   'LC Custom Ingredients': 'Custom peptide blend option for tailored research needs.',
-  'SLU-PP-332': 'Experimental compound for fat metabolism and muscle preservation.',
-  '5-Amino-1MQ': 'Experimental metabolic compound researched for fat metabolism, body recomposition, and energy support.',
-  'PNC 27': 'Experimental peptide researched for targeted cellular and oncology-related applications.',
-  'G610': 'Experimental research peptide investigated for metabolic, cellular, and performance-support applications.',
+
+  // ── Research Compounds ────────────────────────────────────────────────────
+  'PNC 27': 'PNC-27 is an experimental peptide researched for targeted cellular applications and advanced oncology-focused studies.',
+  'G610': 'G610 is an experimental research peptide explored for metabolic support, cellular performance, and advanced wellness applications.',
+
+  // ── Vitamins / Reconstitution ─────────────────────────────────────────────
   'B12 1mg/ml': 'Vitamin B12 injectable solution researched for energy production, metabolism, and wellness support.',
   'BAC Water': 'Bacteriostatic water designed for peptide reconstitution and research preparation.',
   'GA = AA Water': 'Research-grade sterile water solution formulated for peptide dilution and preparation.',
 }
 
+// Lookup by 'name size' first (for HGH variants), then by 'name', then generic fallback
 const productsWithDescriptions = products.map(p => ({
   ...p,
-  description: descriptions[p.name] ??
+  description: descriptions[`${p.name} ${p.size}`] ??
+    descriptions[p.name] ??
     `${p.name} ${p.size} — For Research Use Only. Independently verified purity ≥98%. Not for human use, consumption, or therapeutic application.`,
 }))
 
