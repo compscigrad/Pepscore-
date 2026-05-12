@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
 import { Header } from '@/components/storefront/Header'
 import { Footer } from '@/components/storefront/Footer'
-import { ProductCard } from '@/components/storefront/ProductCard'
+import { ProductCard, type ProductCardProps } from '@/components/storefront/ProductCard'
 import { CartSidebar } from '@/components/storefront/CartSidebar'
 
 // Revalidate every 60 s so product changes reflect quickly without a full deploy
@@ -19,9 +19,42 @@ async function getProducts() {
   })
 }
 
+type DbProduct = Awaited<ReturnType<typeof getProducts>>[number]
+
+// Groups flat product rows by name into consolidated cards with a variants array.
+// Preserves all pricing data — no rows are discarded.
+function groupByName(rows: DbProduct[]): ProductCardProps[] {
+  const map = new Map<string, ProductCardProps>()
+  for (const p of rows) {
+    const variant = {
+      id: p.id,
+      slug: p.slug,
+      size: p.size,
+      price: p.price,
+      bulkPrice5: p.bulkPrice5 ?? p.price,
+      bulkPrice10: p.bulkPrice10 ?? p.price,
+    }
+    const existing = map.get(p.name)
+    if (existing) {
+      existing.variants.push(variant)
+    } else {
+      map.set(p.name, {
+        name: p.name,
+        category: p.category,
+        description: p.description ?? '',
+        imageUrl: p.imageUrl ?? '/images/ALL.png',
+        badge: p.badge ?? null,
+        variants: [variant],
+      })
+    }
+  }
+  return Array.from(map.values())
+}
+
 export default async function HomePage() {
   // Gracefully fall back to empty array if DB isn't configured yet
-  const products = await getProducts().catch(() => [])
+  const rawProducts = await getProducts().catch(() => [])
+  const products = groupByName(rawProducts)
 
   return (
     <>
@@ -108,14 +141,14 @@ export default async function HomePage() {
             {products.length > 0 ? (
               <div className="grid grid-cols-[repeat(auto-fill,minmax(258px,1fr))] gap-6">
                 {products.map(p => (
-                  <ProductCard key={p.id} {...p} badge={p.badge} />
+                  <ProductCard key={p.name} {...p} />
                 ))}
               </div>
             ) : (
               /* Fallback static catalog — shown when DB isn't connected yet */
               <div className="grid grid-cols-[repeat(auto-fill,minmax(258px,1fr))] gap-6">
                 {STATIC_PRODUCTS.map(p => (
-                  <ProductCard key={p.id} {...p} />
+                  <ProductCard key={p.name} {...p} />
                 ))}
               </div>
             )}
@@ -283,16 +316,86 @@ export default async function HomePage() {
 }
 
 // ─── Static fallback data (used when DB isn't connected yet) ─────────────────
+// Already in consolidated format — each entry has a variants array.
 
-const STATIC_PRODUCTS = [
-  { id:'1', slug:'semaglutide-30mg', name:'Semaglutide', category:'GLP-1 Agonist', size:'30mg', price:125, description:'GLP-1 receptor agonist studied for metabolic regulation, glucose homeostasis, and appetite suppression research.', imageUrl:'/images/Semaglutide.png', badge:'Popular' },
-  { id:'2', slug:'tirzepatide-60mg', name:'Tirzepatide', category:'Dual GIP/GLP-1', size:'60mg', price:190, description:'Dual GIP/GLP-1 receptor agonist studied for superior metabolic outcomes and cardiometabolic research applications.', imageUrl:'/images/Tirzepatide.png', badge:'Best Seller' },
-  { id:'3', slug:'retatrutide-60mg', name:'Retatrutide', category:'Triple Agonist', size:'60mg', price:200, description:'Triple receptor agonist (GIP/GLP-1/Glucagon) — the next generation of metabolic research compounds.', imageUrl:'/images/Retatrutide.png', badge:'New' },
-  { id:'4', slug:'nad-plus-500mg', name:'NAD+', category:'Coenzyme', size:'500mg', price:56, description:'Essential coenzyme precursor critical for cellular energy metabolism, DNA repair, and longevity pathway research.', imageUrl:'/images/nad.png', badge:null },
-  { id:'5', slug:'epithalon-50mg', name:'Epithalon', category:'Longevity Peptide', size:'50mg', price:35, description:'Tetrapeptide studied for telomerase activation, circadian regulation, and anti-aging biological processes.', imageUrl:'/images/epithalon.png', badge:null },
-  { id:'6', slug:'cjc1295-ipamorelin-10mg', name:'CJC-1295 / Ipamorelin', category:'GH Secretagogue', size:'10mg', price:50, description:'Synergistic GHRH analog and selective ghrelin mimetic combination for growth hormone secretion research.', imageUrl:'/images/cjc1295.png', badge:null },
-  { id:'7', slug:'kisspeptin-10-10mg', name:'Kisspeptin-10', category:'Reproductive Peptide', size:'10mg', price:35, description:'Hypothalamic neuropeptide studied for reproductive endocrinology, LH/FSH regulation, and fertility research.', imageUrl:'/images/kisspeptin.png', badge:null },
-  { id:'8', slug:'ghk-cu-100mg', name:'GHK-Cu', category:'Copper Peptide', size:'100mg', price:35, description:'Copper-binding tripeptide widely researched for tissue remodeling, wound healing, and dermal regeneration.', imageUrl:'/images/ghk-cu.png', badge:null },
+const STATIC_PRODUCTS: ProductCardProps[] = [
+  {
+    name: 'Semaglutide', category: 'GLP-1 Agonist', badge: 'Popular',
+    imageUrl: '/images/Semaglutide.png',
+    description: 'GLP-1 receptor agonist studied for metabolic regulation, glucose homeostasis, and appetite suppression research.',
+    variants: [
+      { id:'1a', slug:'semaglutide-5mg',  size:'5mg',  price:138, bulkPrice5:117, bulkPrice10:108 },
+      { id:'1b', slug:'semaglutide-10mg', size:'10mg', price:165, bulkPrice5:144, bulkPrice10:135 },
+      { id:'1c', slug:'semaglutide-20mg', size:'20mg', price:258, bulkPrice5:237, bulkPrice10:228 },
+      { id:'1d', slug:'semaglutide-30mg', size:'30mg', price:318, bulkPrice5:297, bulkPrice10:288 },
+    ],
+  },
+  {
+    name: 'Tirzepatide', category: 'Dual GIP/GLP-1', badge: 'Best Seller',
+    imageUrl: '/images/Tirzepatide.png',
+    description: 'Dual GIP/GLP-1 receptor agonist studied for superior metabolic outcomes and cardiometabolic research applications.',
+    variants: [
+      { id:'2a', slug:'tirzepatide-5mg',  size:'5mg',  price:147, bulkPrice5:126, bulkPrice10:117 },
+      { id:'2b', slug:'tirzepatide-10mg', size:'10mg', price:183, bulkPrice5:162, bulkPrice10:153 },
+      { id:'2c', slug:'tirzepatide-20mg', size:'20mg', price:327, bulkPrice5:306, bulkPrice10:297 },
+      { id:'2d', slug:'tirzepatide-60mg', size:'60mg', price:696, bulkPrice5:675, bulkPrice10:666 },
+    ],
+  },
+  {
+    name: 'Retatrutide', category: 'Triple Agonist', badge: 'New',
+    imageUrl: '/images/Retatrutide.png',
+    description: 'Triple receptor agonist (GIP/GLP-1/Glucagon) — the next generation of metabolic research compounds.',
+    variants: [
+      { id:'3a', slug:'retatrutide-5mg',  size:'5mg',  price:240, bulkPrice5:219, bulkPrice10:210 },
+      { id:'3b', slug:'retatrutide-10mg', size:'10mg', price:327, bulkPrice5:306, bulkPrice10:297 },
+      { id:'3c', slug:'retatrutide-30mg', size:'30mg', price:642, bulkPrice5:621, bulkPrice10:612 },
+      { id:'3d', slug:'retatrutide-60mg', size:'60mg', price:978, bulkPrice5:957, bulkPrice10:948 },
+    ],
+  },
+  {
+    name: 'NAD+', category: 'Coenzyme', badge: null,
+    imageUrl: '/images/nad.png',
+    description: 'Essential coenzyme precursor critical for cellular energy metabolism, DNA repair, and longevity pathway research.',
+    variants: [
+      { id:'4a', slug:'nad-plus-100mg', size:'100mg', price:168, bulkPrice5:147, bulkPrice10:138 },
+      { id:'4b', slug:'nad-plus-500mg', size:'500mg', price:264, bulkPrice5:243, bulkPrice10:234 },
+    ],
+  },
+  {
+    name: 'Epithalon', category: 'Longevity Peptide', badge: null,
+    imageUrl: '/images/epithalon.png',
+    description: 'Tetrapeptide studied for telomerase activation, circadian regulation, and anti-aging biological processes.',
+    variants: [
+      { id:'5a', slug:'epithalon-10mg', size:'10mg', price:144, bulkPrice5:123, bulkPrice10:114 },
+      { id:'5b', slug:'epithalon-50mg', size:'50mg', price:369, bulkPrice5:348, bulkPrice10:339 },
+    ],
+  },
+  {
+    name: 'CJC-1295 / Ipamorelin', category: 'GH Secretagogue', badge: null,
+    imageUrl: '/images/cjc1295.png',
+    description: 'Synergistic GHRH analog and selective ghrelin mimetic combination for growth hormone secretion research.',
+    variants: [
+      { id:'6a', slug:'cjc1295-ipa-10mg', size:'10mg', price:297, bulkPrice5:276, bulkPrice10:267 },
+    ],
+  },
+  {
+    name: 'KissPeptin-10', category: 'Reproductive Peptide', badge: null,
+    imageUrl: '/images/kisspeptin.png',
+    description: 'Hypothalamic neuropeptide studied for reproductive endocrinology, LH/FSH regulation, and fertility research.',
+    variants: [
+      { id:'7a', slug:'kisspeptin-10-5mg',  size:'5mg',  price:186, bulkPrice5:165, bulkPrice10:156 },
+      { id:'7b', slug:'kisspeptin-10-10mg', size:'10mg', price:285, bulkPrice5:264, bulkPrice10:255 },
+    ],
+  },
+  {
+    name: 'GHK-Cu', category: 'Copper Peptide', badge: null,
+    imageUrl: '/images/ghk-cu.png',
+    description: 'Copper-binding tripeptide widely researched for tissue remodeling, wound healing, and dermal regeneration.',
+    variants: [
+      { id:'8a', slug:'ghk-cu-50mg',  size:'50mg',  price:108, bulkPrice5:87,  bulkPrice10:78  },
+      { id:'8b', slug:'ghk-cu-100mg', size:'100mg', price:174, bulkPrice5:153, bulkPrice10:144 },
+    ],
+  },
 ]
 
 const PRICING_TABLE = [
