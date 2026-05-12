@@ -21,6 +21,33 @@ async function getProducts() {
 
 type DbProduct = Awaited<ReturnType<typeof getProducts>>[number]
 
+// Hero section uses the lineup image; product cards must never use it.
+const HERO_IMAGE = '/images/hero-vials.jpeg'
+// Clean branded single-vial placeholder for products without a specific image.
+const PRODUCT_FALLBACK_IMAGE = '/images/vial-placeholder.png'
+// Images that must NOT appear on individual product cards.
+const LINEUP_IMAGES = new Set(['/images/ALL.png', HERO_IMAGE])
+
+// Explicit product name → single-vial image mapping.
+const PRODUCT_IMAGE_MAP: Record<string, string> = {
+  'Semaglutide':                                    '/images/Semaglutide.png',
+  'Tirzepatide':                                    '/images/Tirzepatide.png',
+  'Retatrutide':                                    '/images/Retatrutide.png',
+  'NAD+':                                           '/images/nad.png',
+  'Epithalon':                                      '/images/epithalon.png',
+  'GHK-Cu':                                         '/images/ghk-cu.png',
+  'KissPeptin-10':                                  '/images/kisspeptin.png',
+  'CJC-1295 No DAC':                                '/images/cjc1295.png',
+  'CJC-1295 With DAC':                              '/images/cjc1295.png',
+  'CJC-1295 without DAC 5mg + Ipamorelin 5mg':      '/images/cjc1295.png',
+}
+
+function resolveProductImage(name: string, dbUrl: string | null | undefined): string {
+  if (PRODUCT_IMAGE_MAP[name]) return PRODUCT_IMAGE_MAP[name]
+  if (dbUrl && !LINEUP_IMAGES.has(dbUrl)) return dbUrl
+  return PRODUCT_FALLBACK_IMAGE
+}
+
 // Groups flat product rows by name into consolidated cards with a variants array.
 // Preserves all pricing data — no rows are discarded.
 function groupByName(rows: DbProduct[]): ProductCardProps[] {
@@ -42,7 +69,7 @@ function groupByName(rows: DbProduct[]): ProductCardProps[] {
         name: p.name,
         category: p.category,
         description: p.description ?? '',
-        imageUrl: p.imageUrl ?? '/images/ALL.png',
+        imageUrl: resolveProductImage(p.name, p.imageUrl),
         badge: p.badge ?? null,
         variants: [variant],
       })
