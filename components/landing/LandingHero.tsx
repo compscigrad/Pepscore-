@@ -140,7 +140,7 @@ export default function LandingHero() {
           letterSpacing: '0.14em', color: '#D4AF37',
           textTransform: 'uppercase', zIndex: 20,
         }}>
-          🔬 Launching 2025
+          🔬 Launching Fall 2026
         </div>
 
         {/* ── Content ───────────────────────────────────────────────────────── */}

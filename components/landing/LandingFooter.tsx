@@ -29,7 +29,7 @@ export default function LandingFooter() {
         Science &nbsp;·&nbsp; Precision &nbsp;·&nbsp; Performance
       </p>
       <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.4)', marginBottom: '40px', fontWeight: 300, maxWidth: '400px', margin: '0 auto 40px', lineHeight: 1.65 }}>
-        Precision peptide packaging solutions. Launching 2025.
+        Precision peptide packaging solutions. Launching Fall 2026.
       </p>
 
       {/* Gold divider */}
