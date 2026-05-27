@@ -1,60 +1,31 @@
-// Root layout — wraps all routes with Clerk auth provider and global styles.
-// ClerkProvider is skipped when NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY is absent
-// so the site builds cleanly before Clerk is configured.
+// ============================================================
+// FILE: app/layout.tsx  (LANDING BRANCH OVERRIDE)
+// PURPOSE: Minimal layout — no Clerk/auth, no Toaster, pure static
+// BRANCH: landing — DO NOT MERGE to master
+// ============================================================
+
 import type { Metadata } from 'next'
-import { ClerkProvider } from '@clerk/nextjs'
-import { Toaster } from 'react-hot-toast'
 import './globals.css'
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'https://pepscore.com'),
-  title: 'Pepscore — Holistic Research Peptides',
+  metadataBase: new URL('https://pepscorelabs.com'),
+  title: 'Pepscore Labs — Launching Soon | Precision Peptide Solutions',
   description:
-    'Precision-grade research peptides with independently verified purity above 98%. For Research Use Only.',
-  keywords: ['research peptides', 'semaglutide', 'tirzepatide', 'NAD+', 'epithalon', 'RUO'],
-  openGraph: {
-    title: 'Pepscore — Holistic Research Peptides',
-    description: 'Pharmaceutical-quality research peptides. ≥98% purity. For Research Use Only.',
-    images: [{ url: '/images/hero-vials.jpeg' }],
-  },
-}
-
-const toasterProps = {
-  position: 'bottom-center' as const,
-  toastOptions: {
-    style: {
-      background: '#1A1A1A',
-      color: '#fff',
-      fontFamily: 'Montserrat, sans-serif',
-      fontSize: '13px',
-      fontWeight: 600,
-      borderRadius: '8px',
-    },
-  },
+    'Science. Precision. Performance. Wholesale & retail precision peptide packaging solutions. Launching 2025.',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  // Skip ClerkProvider at build time when credentials aren't set yet.
-  // Auth features (UserButton, sign-in) require a real key at runtime.
-  if (!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
-    return (
-      <html lang="en">
-        <body>
-          {children}
-          <Toaster {...toasterProps} />
-        </body>
-      </html>
-    )
-  }
-
   return (
-    <ClerkProvider>
-      <html lang="en">
-        <body>
-          {children}
-          <Toaster {...toasterProps} />
-        </body>
-      </html>
-    </ClerkProvider>
+    <html lang="en">
+      <head>
+        <link
+          href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body style={{ margin: 0, padding: 0, background: '#000', overflowX: 'hidden' }}>
+        {children}
+      </body>
+    </html>
   )
 }
