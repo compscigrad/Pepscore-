@@ -1,3 +1,4 @@
+'use client'
 // ── LandingCapabilities.tsx ──────────────────────────────────────────────────
 // Capabilities / features grid — luxury dark + gold
 

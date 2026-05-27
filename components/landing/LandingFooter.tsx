@@ -1,3 +1,4 @@
+'use client'
 // ── LandingFooter.tsx ────────────────────────────────────────────────────────
 // Luxury footer with RUO disclaimer
 

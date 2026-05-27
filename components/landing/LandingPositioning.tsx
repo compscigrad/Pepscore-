@@ -1,3 +1,4 @@
+'use client'
 // ── LandingPositioning.tsx ───────────────────────────────────────────────────
 // Brand positioning section — luxury black, gold accents
 
