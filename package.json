@@ -11,11 +11,13 @@
     "db:migrate": "prisma migrate dev",
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
+    "db:seed:invoices": "tsx prisma/seed-invoices.ts",
     "db:studio": "prisma studio"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.0.0",
     "@prisma/client": "^5.22.0",
+    "@react-pdf/renderer": "^4.5.1",
     "@stripe/stripe-js": "^4.0.0",
     "lucide-react": "^0.460.0",
     "next": "^16.2.6",
@@ -26,6 +28,7 @@
     "shippo": "^2.0.0",
     "stripe": "^16.0.0",
     "xlsx": "^0.18.5",
+    "zod": "^4.4.3",
     "zustand": "^5.0.0"
   },
   "devDependencies": {
