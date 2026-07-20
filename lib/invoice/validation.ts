@@ -32,6 +32,7 @@ const discountSchema = z.object({
 })
 
 export const invoicePayloadSchema = z.object({
+  orderId: z.string().optional().nullable(),
   customerName: z.string().min(1, 'Customer name is required'),
   customerCompany: z.string().optional(),
   customerEmail: z.string().email('Invalid email address').optional().or(z.literal('')),

@@ -87,7 +87,17 @@ export async function POST(req: NextRequest) {
           })),
         },
         invoice: {
-          create: { invoiceNumber, status: 'DRAFT' },
+          create: {
+            invoiceNumber,
+            status: 'DRAFT',
+            customerName,
+            customerEmail,
+            shippingAddress: JSON.parse(JSON.stringify(shippingAddress)),
+            subtotal,
+            total: subtotal + shippingCost,
+            balanceDue: subtotal + shippingCost,
+            shippingCost,
+          },
         },
       },
     })

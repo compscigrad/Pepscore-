@@ -5,7 +5,7 @@
 // without touching any route or component.
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
-import { calculateInvoiceTotals, type InvoiceDiscountInput, type InvoiceLineItemInput } from '@/lib/invoice/calculations'
+import { calculateInvoiceTotals, type InvoiceLineItemInput } from '@/lib/invoice/calculations'
 import { generateSequentialInvoiceNumber } from '@/lib/invoice/numbering'
 import { assertPaymentWithinBalance, type InvoicePayload, type PaymentPayload } from '@/lib/invoice/validation'
 
@@ -72,9 +72,16 @@ export async function getInvoice(id: string): Promise<InvoiceWithRelations | nul
   return prisma.invoice.findUnique({ where: { id }, ...invoiceWithRelations })
 }
 
+interface DiscountPayloadItem {
+  promotionId?: string | null
+  label: string
+  type: 'FIXED' | 'PERCENTAGE'
+  amount: number
+}
+
 // Resolves each payload discount (which may reference a reusable Promotion)
 // into a snapshot InvoiceDiscount row with its dollar amount already computed.
-function buildDiscountCreateInputs(discounts: InvoiceDiscountInput[] & { promotionId?: string | null; label: string }[], itemsTotalValue: number) {
+function buildDiscountCreateInputs(discounts: DiscountPayloadItem[], itemsTotalValue: number) {
   return discounts.map((d) => ({
     promotionId: d.promotionId ?? undefined,
     label: d.label,
@@ -93,7 +100,7 @@ export async function createInvoice(payload: InvoicePayload): Promise<InvoiceWit
   const invoiceNumber = await generateSequentialInvoiceNumber()
   const totals = calculateInvoiceTotals(
     payload.items as InvoiceLineItemInput[],
-    payload.discounts as InvoiceDiscountInput[],
+    payload.discounts,
     payload.shippingCost,
     0
   )
@@ -101,6 +108,7 @@ export async function createInvoice(payload: InvoicePayload): Promise<InvoiceWit
   const invoice = await prisma.invoice.create({
     data: {
       invoiceNumber,
+      orderId: payload.orderId || undefined,
       customerName: payload.customerName,
       customerCompany: payload.customerCompany || undefined,
       customerEmail: payload.customerEmail || undefined,
@@ -135,7 +143,7 @@ export async function createInvoice(payload: InvoicePayload): Promise<InvoiceWit
         })),
       },
       discounts: {
-        create: buildDiscountCreateInputs(payload.discounts as InvoiceDiscountInput[] & { promotionId?: string | null; label: string }[], totals.itemsTotal),
+        create: buildDiscountCreateInputs(payload.discounts, totals.itemsTotal),
       },
     },
     ...invoiceWithRelations,
@@ -148,7 +156,7 @@ export async function updateInvoice(id: string, payload: InvoicePayload): Promis
   const existing = await prisma.invoice.findUniqueOrThrow({ where: { id } })
   const totals = calculateInvoiceTotals(
     payload.items as InvoiceLineItemInput[],
-    payload.discounts as InvoiceDiscountInput[],
+    payload.discounts,
     payload.shippingCost,
     existing.amountPaid
   )
@@ -194,7 +202,7 @@ export async function updateInvoice(id: string, payload: InvoicePayload): Promis
       },
       discounts: {
         deleteMany: {},
-        create: buildDiscountCreateInputs(payload.discounts as InvoiceDiscountInput[] & { promotionId?: string | null; label: string }[], totals.itemsTotal),
+        create: buildDiscountCreateInputs(payload.discounts, totals.itemsTotal),
       },
     },
     ...invoiceWithRelations,
