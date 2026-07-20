@@ -80,9 +80,14 @@ export default async function AdminDashboard() {
             <h1 className="font-heading text-3xl font-bold text-dark">Pepscore Admin</h1>
             <p className="text-g500 text-sm mt-1">Owner dashboard · {stats.year} YTD</p>
           </div>
-          <a href="/" className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-g500 hover:text-gold transition-colors">
-            ← Storefront
-          </a>
+          <div className="flex items-center gap-6">
+            <a href="/admin/invoices" className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-g500 hover:text-gold transition-colors">
+              Invoices →
+            </a>
+            <a href="/" className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-g500 hover:text-gold transition-colors">
+              ← Storefront
+            </a>
+          </div>
         </div>
 
         {/* ── KPI Cards ────────────────────────────────────────────────────── */}
