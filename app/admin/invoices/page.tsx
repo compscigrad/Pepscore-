@@ -31,6 +31,12 @@ export default async function InvoicesDashboard() {
           </div>
           <div className="flex items-center gap-6">
             <Link
+              href="/admin/settings/invoices"
+              className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
+            >
+              Settings
+            </Link>
+            <Link
               href="/admin/invoices/trash"
               className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
             >

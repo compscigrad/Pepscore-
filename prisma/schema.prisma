@@ -477,3 +477,18 @@ model AdminAuditLog {
   details   Json?
   createdAt DateTime @default(now())
 }
+
+// ─── Invoice Settings ────────────────────────────────────────────────────────
+// Single-row table (always fetched/upserted by the fixed id below) rather than
+// a generic key-value settings table — there's exactly one invoice-related
+// setting today, and a dedicated typed column beats an untyped JSON blob for
+// the one value that exists.
+model InvoiceSettings {
+  id String @id @default("singleton")
+
+  // Days after paidAt before a PAID invoice auto-archives; null = never
+  // auto-archive. See docs/Decisions.md #21.
+  archiveAfterDays Int? @default(30)
+
+  updatedAt DateTime @updatedAt
+}

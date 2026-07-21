@@ -48,6 +48,7 @@ cp .env.local.example .env.local
 | `SHIPPO_API_KEY` | Shippo Dashboard → API → Token |
 | `RESEND_API_KEY` | Resend Dashboard → API Keys |
 | `RESEND_FROM_EMAIL` | Your verified sending domain (e.g. `orders@pepscore.com`) |
+| `CRON_SECRET` | Generate any random string; must also be set in Vercel's Project Settings → Environment Variables (Production + Preview) — authenticates the daily invoice auto-archive sweep at `/api/cron/archive-invoices` (see `vercel.json`) |
 | `NEXT_PUBLIC_APP_URL` | `http://localhost:3000` (local) or `https://pepscore.vercel.app` (prod) |
 
 ### Ship-From Address (used for Shippo label creation)
