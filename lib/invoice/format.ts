@@ -34,3 +34,15 @@ const CARRIER_LABELS: Record<string, string> = {
 export function formatCarrierLabel(carrier: string): string {
   return CARRIER_LABELS[carrier] ?? carrier.replace('_', ' ')
 }
+
+// Catalog products share names across strengths (e.g. "Tesamorelin" 5mg and
+// 10mg) — the raw name alone is ambiguous in a dropdown and, worse, was
+// previously the only thing carried onto the invoice line item, silently
+// dropping the strength. This composed label is used both for the
+// product-picker options and as the persisted line-item name, so the
+// dropdown, the live preview, and the PDF always show the same identifying
+// text. Every catalog product is priced and sold per box (see
+// prisma/seed.ts), so "1 Box" is a real unit, not a placeholder.
+export function formatProductLabel(product: { name: string; size: string }): string {
+  return `${product.name} — ${product.size} — 1 Box`
+}

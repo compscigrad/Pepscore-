@@ -5,7 +5,7 @@
 'use client'
 
 import { lineItemTotal } from '@/lib/invoice/calculations'
-import { formatMoney } from '@/lib/invoice/format'
+import { formatMoney, formatProductLabel } from '@/lib/invoice/format'
 import { makeKey } from './types'
 import { card, input, pillSecondary, sectionHeading } from './theme'
 import type { InvoiceItemDraft, Product } from './types'
@@ -50,13 +50,20 @@ export function InvoiceItemsTable({ items, onChange, products }: Props) {
     onChange(next)
   }
 
-  function pickProduct(key: string, productName: string) {
-    const product = products.find((p) => p.name === productName)
+  // Matches against the full "Name — Size — 1 Box" label, not just the bare
+  // product name — the catalog reuses names across strengths (e.g.
+  // "Tesamorelin" 5mg vs 10mg), so matching on name alone would silently
+  // resolve to whichever same-named row happened to come first, applying
+  // the wrong price. The composed label is also what gets saved as the
+  // line item's name, so the strength survives onto the invoice/PDF instead
+  // of being dropped at selection time.
+  function pickProduct(key: string, typedValue: string) {
+    const product = products.find((p) => formatProductLabel(p) === typedValue)
     if (!product) {
-      updateItem(key, { name: productName })
+      updateItem(key, { productId: null, name: typedValue })
       return
     }
-    updateItem(key, { productId: product.id, name: product.name, unitPrice: product.price })
+    updateItem(key, { productId: product.id, name: formatProductLabel(product), unitPrice: product.price })
   }
 
   return (
@@ -74,7 +81,7 @@ export function InvoiceItemsTable({ items, onChange, products }: Props) {
 
       <datalist id="product-catalog">
         {products.map((p) => (
-          <option key={p.id} value={p.name} />
+          <option key={p.id} value={formatProductLabel(p)} />
         ))}
       </datalist>
 

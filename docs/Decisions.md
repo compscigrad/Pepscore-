@@ -137,3 +137,25 @@
 **Benefits**: Consistent, restrained brand presence in the PDF; status is scannable at a glance without re-reading the totals block.
 
 **Drawbacks**: None identified.
+
+## 13. Product picker matches on a composed "Name — Size — 1 Box" label, not the bare product name
+
+**Decision**: `InvoiceItemsTable.tsx`'s product datalist now displays and matches against `formatProductLabel(product)` (`lib/invoice/format.ts`) — e.g. `Tesamorelin — 10mg — 1 Box` — instead of `product.name` alone. Selecting a product now also saves that full composed label as the invoice line item's `name`, not just the bare name.
+
+**Reason**: The catalog reuses the same `name` across multiple strengths (Tesamorelin 5mg/10mg, Semaglutide across five strengths, etc.) but the picker matched purely on `product.name`. With two products sharing a name, `products.find(p => p.name === typed)` always resolved to whichever row happened to come first — the dropdown couldn't actually distinguish strengths, and even when the right one was intended, only the bare name (no strength) was saved onto the invoice line item, PDF, and receipt. This was flagged directly: invoices were losing the mg strength, and duplicate-looking dropdown entries made it easy to pick the wrong price.
+
+**Alternatives considered**: Switch the picker to a real `<select>` keyed by product id (rejected — would drop the existing free-text/ad-hoc-item support the datalist provides, a real feature per the original spec's non-catalog sample items like "Glow70"); keep matching on name but disambiguate via a second field (rejected — more state to keep in sync for no benefit over just using an already-unique composed string).
+
+**Benefits**: Composed labels are unique across the full catalog (verified: zero collisions across 119 live products) so selection is unambiguous; the same string appears in the dropdown, the line item, the live preview, and the PDF, so there's never a mismatch between what was selected and what's shown; free-text ad-hoc items are untouched.
+
+**Drawbacks**: Existing saved invoices created before this change keep whatever bare name was captured at the time — unaffected, since `InvoiceItem.name` is a snapshot, not a live join. Going forward, the persisted item name is a few characters longer ("— 1 Box" suffix); judged acceptable since it's factually accurate (`price`/`bulkPrice5`/`bulkPrice10` are all defined per-box).
+
+## 14. Tesamorelin price correction + one stale duplicate product removed
+
+**Decision**: Corrected `prisma/seed.ts`'s Tesamorelin 1-box prices (5mg: $312 → $400, 10mg: $531 → $750; bulk tiers unchanged, not part of the correction) and reseeded the shared database. Cross-checked all other ~119 catalog products against the current master price sheet — every other price already matched exactly, so no further corrections were needed. Also deleted one unreferenced stale product row, `cjc1295-ipamorelin-10mg` ("CJC-1295 / Ipamorelin", $50, inverted bulk pricing) — a pre-reorganization leftover superseded by `cjc1295-ipa-10mg` ("CJC-1295 without DAC 5mg + Ipamorelin 5mg", $297), confirmed unreferenced by any Order/InvoiceItem before deleting.
+
+**Reason**: A full pricing audit was requested after Tesamorelin's 1-box prices were found to be stale in the live catalog.
+
+**Benefits**: `prisma.product` (via `prisma/seed.ts` as source of truth, re-run with `npm run db:seed`) remains the single place invoice pricing is edited — no parallel/hardcoded price table existed anywhere else in the codebase (verified via full-repo search).
+
+**Drawbacks**: None identified.
