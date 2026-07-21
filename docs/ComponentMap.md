@@ -73,6 +73,16 @@
 **Props**: `initialArchiveAfterDays: number | null`.
 **Dependencies**: `/api/admin/invoice-settings` PATCH.
 
+### `TrackingNotificationSettingsForm.tsx`
+**Purpose**: Per-`ShippingStatus` checkboxes (the 8 notifiable statuses) for enabling/disabling customer shipment emails, also on `app/admin/settings/invoices`. A status missing from the saved map defaults to checked/enabled, mirroring `lib/invoiceSettings.ts`'s `isNotificationEnabled` default.
+**Props**: `initialEnabled: Partial<Record<ShippingStatus, boolean>>`.
+**Dependencies**: `/api/admin/invoice-settings` PATCH.
+
+### `TrackingSection.tsx`
+**Purpose**: Carrier-agnostic shipment tracking, edit-mode only (same reasoning as `PaymentSection` — no invoice id to attach a shipment to on an unsaved draft). Shows an "Add Tracking" form when no `Shipment` exists yet; once one does, shows the normalized status badge, carrier/tracking#/link, shipped/delivered/ETA dates, admin controls (Refresh, Mark Delivered, Resend Last Email, Remove Tracking — two-click confirm, Override Status), and an expandable tracking history list.
+**Props**: `invoiceId: string`, `shipment: (Shipment & { events: TrackingEvent[] }) | null`, `onTrackingUpdated: () => void`.
+**Dependencies**: `/api/admin/invoices/[id]/tracking` (POST add, PATCH actions, DELETE remove).
+
 ### `InvoiceHeaderActions.tsx`
 **Purpose**: Duplicate / Archive-or-Restore / Delete actions on the invoice edit page header. Delete uses a two-click confirm (first click arms it for 4s, second click sends the request) rather than a native `confirm()` dialog, matching this UI's toast-driven conventions — moves the invoice to Trash (`deletedAt` set), it is not a hard delete.
 **Props**: `invoiceId: string`, `archived: boolean`.
@@ -100,6 +110,30 @@
 
 ### `lib/paymentArrangements.ts`
 **Purpose**: Data access for `PaymentArrangement`/`PaymentArrangementInstallment` — `createPaymentArrangement()` (derives "Initial Payment Amount/Date" from the invoice's own payment history, generates and persists the future schedule) and `matchPaymentToNextPendingInstallment()` (called from `lib/invoices.ts`'s `recordPayment()` — any payment on an invoice with an arrangement satisfies the earliest pending installment). Deliberately never touches `Invoice.amountPaid`/`balanceDue` itself — those stay owned by `lib/invoices.ts`.
+
+## `lib/tracking/` — carrier-agnostic shipment tracking
+
+### `lib/tracking/types.ts`
+**Purpose**: The `ShippingProvider` interface every carrier adapter implements (`registerTracking`, `getTrackingStatus`, `verifyWebhook`, `normalizeWebhookPayload`), `NormalizedTrackingEvent`/`TrackingResult` shapes, and `isTrackableCarrier()`/`TRACKABLE_CARRIERS` (USPS/UPS/FEDEX/DHL — PICKUP/HAND_DELIVERY/COURIER/OTHER have no automated tracking).
+
+### `lib/tracking/shippoProvider.ts`
+**Purpose**: The only `ShippingProvider` implementation today. Maps our `ShippingCarrier` enum to Shippo's carrier tokens, and Shippo's own coarse status vocabulary (`UNKNOWN/PRE_TRANSIT/TRANSIT/DELIVERED/RETURNED/FAILURE`) plus keyword heuristics on `status_details` into the full 16-value `ShippingStatus` enum. `verifyWebhook` checks a shared-secret query-param token (Shippo doesn't sign payloads like Stripe does).
+**Dependencies**: `SHIPPO_API_KEY`, `SHIPPO_WEBHOOK_SECRET` env vars.
+
+### `lib/tracking/registry.ts`
+**Purpose**: `getProviderForCarrier()` — the single place resolving which provider handles a given carrier. Adding a carrier via a different provider later means adding one adapter + one line here.
+
+### `lib/tracking/service.ts`
+**Purpose**: The only module that mutates `Shipment`/`TrackingEvent`/`InvoiceActivityLog` rows. `addTrackingToInvoice()` (the full 9-step tracking-number workflow), `processTrackingEvents()` (dedup via `(shipmentId, eventHash)`, recomputes current status from whichever event is chronologically latest — not last-in-array, since carrier events can arrive out of order — then cascades into the invoice, activity log, `computeOrderStatus()`, and a notification), `refreshShipmentTracking()` (polling/manual refresh entry point), `markDeliveredManually()`/`overrideShippingStatus()`/`removeTracking()` (admin overrides, all logged).
+
+### `lib/tracking/orderStatus.ts`
+**Purpose**: `computeOrderStatus()` — the spec's "paid + delivered = completed" rule as a pure function, callable from both the payment side (`lib/invoices.ts`) and the shipping side without either module depending on the other.
+
+### `lib/tracking/notifications.tsx`
+**Purpose**: `sendShipmentNotificationIfNeeded()` — gated by the notifiable-status list, the per-status settings toggle, and a dedup check against `ShipmentNotification` (never re-sends the same status twice for the same invoice); regenerates the Client Invoice PDF in-process and attaches it. Failures are recorded (`ShipmentNotification.status = 'FAILED'`), never thrown — a failed email never rolls back the tracking update that triggered it. `resendLastNotification()` is the admin manual-resend control.
+
+### `lib/tracking/validation.ts`, `eventHash.ts`, `sanitize.ts`, `carrierUrls.ts`
+**Purpose**: Small pure helpers — advisory (non-blocking) tracking-number format checks per carrier, the deterministic dedup hash for a tracking event, HTML/control-character stripping for carrier-provided text before it's stored or rendered, and the carrier tracking-page URL builder. All covered by unit tests (`*.test.ts` alongside each) — see `docs/ChangeLog.md`.
 
 ## Reuse from the existing codebase
 

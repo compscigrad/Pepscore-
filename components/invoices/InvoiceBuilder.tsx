@@ -15,6 +15,7 @@ import { ShippingSection } from './ShippingSection'
 import { InvoiceItemsTable } from './InvoiceItemsTable'
 import { DiscountsSection } from './DiscountsSection'
 import { PaymentSection } from './PaymentSection'
+import { TrackingSection } from './TrackingSection'
 import { TotalsSummary } from './TotalsSummary'
 import { InvoicePreview } from './InvoicePreview'
 import { PDFExportButtons } from './PDFExportButtons'
@@ -241,6 +242,10 @@ export function InvoiceBuilder({ mode, initialInvoice, products, promotions: ini
           itemsTotal={totals.itemsTotal}
         />
         <TotalsSummary totals={totals} shippingCost={draft.shipping.shippingCost} amountPaid={invoice?.amountPaid} />
+
+        {mode === 'edit' && invoice ? (
+          <TrackingSection invoiceId={invoice.id} shipment={invoice.shipment} onTrackingUpdated={refreshInvoice} />
+        ) : null}
 
         {mode === 'edit' && invoice ? (
           <PaymentSection

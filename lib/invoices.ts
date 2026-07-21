@@ -18,6 +18,10 @@ const invoiceWithRelations = Prisma.validator<Prisma.InvoiceDefaultArgs>()({
     paymentArrangement: {
       include: { installments: { orderBy: { installmentNumber: 'asc' } } },
     },
+    shipment: {
+      include: { events: { orderBy: { eventAt: 'desc' } } },
+    },
+    activityLog: { orderBy: { createdAt: 'desc' } },
   },
 })
 export type InvoiceWithRelations = Prisma.InvoiceGetPayload<typeof invoiceWithRelations>

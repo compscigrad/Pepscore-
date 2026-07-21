@@ -1,7 +1,7 @@
 // Layout pieces shared between MasterInvoiceDocument and RecipientReceiptDocument
 // so the two PDFs stay visually identical everywhere except the sections the
 // spec explicitly says to hide from the customer-facing copy.
-import { Text, View, Image, StyleSheet } from '@react-pdf/renderer'
+import { Text, View, Image, Link, StyleSheet } from '@react-pdf/renderer'
 import { BRAND } from './brand'
 import { formatMoney, formatDate, formatCarrierLabel } from '@/lib/invoice/format'
 import { INVOICE_LEGAL_SECTIONS } from '@/lib/invoice/legal'
@@ -60,6 +60,13 @@ export const styles = StyleSheet.create({
   },
   sectionRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8, gap: 16 },
   sectionCard: { flex: 1, backgroundColor: colors.g100, borderRadius: 8, padding: 7 },
+  // Same look as sectionCard but without flex: 1 — that property only makes
+  // sense as a sibling inside sectionRow's flex-row context. Used standalone
+  // (e.g. ShipmentTrackingSection below the Bill To/Ship To row), flex: 1
+  // gets a bogus height from Yoga with no row siblings to size against,
+  // which overlaps whatever renders next. Discovered by rendering an actual
+  // PDF, not guessed — see docs/Decisions.md.
+  standaloneCard: { backgroundColor: colors.g100, borderRadius: 8, padding: 7 },
   sectionLabel: {
     fontFamily: fonts.heading,
     fontSize: 8,
@@ -234,6 +241,48 @@ export function CustomerShippingSection({ invoice }: { invoice: InvoiceWithRelat
             ? ` ${formatDate(invoice.deliveredDate)}`
             : ''}
         </Text>
+      </View>
+    </View>
+  )
+}
+
+// Only rendered once a real carrier-agnostic Shipment exists (see
+// lib/tracking/) — the compact carrier/tracking line in the Ship To card
+// above still covers invoices that only ever set the legacy carrier/
+// trackingNumber fields directly, with no automated tracking behind them.
+// No wrap={false} on the outer block — a short section like this rarely
+// needs it, and the lesson from the legal footer overflow bug (see
+// docs/Decisions.md #18) is that wrapping a whole section atomically is
+// exactly what causes unnecessary page-2 jumps.
+export function ShipmentTrackingSection({ invoice }: { invoice: InvoiceWithRelations }) {
+  const shipment = invoice.shipment
+  if (!shipment) return null
+
+  return (
+    <View style={{ marginTop: 8 }}>
+      <Text style={styles.sectionLabel}>Shipment Tracking</Text>
+      <View style={[styles.standaloneCard, { marginTop: 3 }]}>
+        <Text style={styles.sectionText}>
+          {formatCarrierLabel(shipment.carrier)}
+          {shipment.service ? ` — ${shipment.service}` : ''}
+        </Text>
+        <Text style={[styles.sectionText, { marginTop: 2 }]}>
+          Tracking #: {shipment.trackingUrl ? <Link src={shipment.trackingUrl} style={{ color: colors.gold }}>{shipment.trackingNumber}</Link> : shipment.trackingNumber}
+        </Text>
+        <Text style={[styles.sectionText, { marginTop: 2, color: colors.gold }]}>
+          {formatEnumLabel(shipment.normalizedStatus)}
+        </Text>
+        {shipment.dateShipped ? (
+          <Text style={[styles.sectionText, { marginTop: 2 }]}>Shipped: {formatDate(shipment.dateShipped)}</Text>
+        ) : null}
+        {shipment.deliveredAt ? (
+          <Text style={[styles.sectionText, { marginTop: 2 }]}>Delivered: {formatDate(shipment.deliveredAt)}</Text>
+        ) : shipment.estimatedDeliveryAt ? (
+          <Text style={[styles.sectionText, { marginTop: 2 }]}>Est. Delivery: {formatDate(shipment.estimatedDeliveryAt)}</Text>
+        ) : null}
+        {shipment.carrierStatus ? (
+          <Text style={[styles.sectionText, { marginTop: 2, color: colors.g500 }]}>Latest update: {shipment.carrierStatus}</Text>
+        ) : null}
       </View>
     </View>
   )

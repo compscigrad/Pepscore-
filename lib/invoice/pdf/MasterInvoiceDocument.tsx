@@ -5,6 +5,7 @@ import {
   styles,
   DocumentHeader,
   CustomerShippingSection,
+  ShipmentTrackingSection,
   ItemsTable,
   TotalsBlock,
   PaymentArrangementSection,
@@ -22,6 +23,7 @@ export function MasterInvoiceDocument({ invoice }: { invoice: InvoiceWithRelatio
       <Page size="LETTER" style={styles.page}>
         <DocumentHeader title="Master Invoice" invoice={invoice} />
         <CustomerShippingSection invoice={invoice} />
+        <ShipmentTrackingSection invoice={invoice} />
         <ItemsTable invoice={invoice} />
         <TotalsBlock invoice={invoice} showBalance />
 
