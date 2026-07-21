@@ -9,6 +9,15 @@ export const card = 'bg-white/[0.03] border border-gold/10 rounded-[18px]'
 export const input =
   'w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold/30'
 
+// Native <option> elements don't inherit a <select>'s translucent
+// bg-white/5 into their popup panel — browsers render that panel with an
+// opaque default (usually white), so white option text became invisible
+// against it. `bg-dark` (#1A1A1A, the same dark-gray brand token used
+// elsewhere) is a solid color that actually renders in the native popup,
+// unlike a translucent utility class. Apply to every <option> under a
+// dark-themed <select>.
+export const selectOption = 'bg-dark text-white'
+
 export const label = 'block text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 mb-1.5'
 
 export const sectionHeading = 'font-heading text-[15px] font-bold text-white'

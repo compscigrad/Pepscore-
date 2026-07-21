@@ -10,7 +10,7 @@ import toast from 'react-hot-toast'
 import { formatCurrency } from '@/lib/orders'
 import { formatCarrierLabel } from '@/lib/invoice/format'
 import { StatusBadge } from './StatusBadge'
-import { card, input, pillPrimary } from './theme'
+import { card, input, pillPrimary, selectOption } from './theme'
 import type { InvoiceWithRelations } from '@/lib/invoices'
 
 type SortField = 'invoiceNumber' | 'customerName' | 'createdAt' | 'balanceDue' | 'status'
@@ -133,7 +133,7 @@ export function InvoiceTable({ initialInvoices, initialTotal }: Props) {
             aria-label="Filter by status"
           >
             {STATUS_FILTERS.map((f) => (
-              <option key={f.value} value={f.value}>
+              <option key={f.value} value={f.value} className={selectOption}>
                 {f.label}
               </option>
             ))}
