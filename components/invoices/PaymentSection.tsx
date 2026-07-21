@@ -6,7 +6,7 @@
 import { useState } from 'react'
 import toast from 'react-hot-toast'
 import { formatMoney } from '@/lib/invoice/format'
-import { card, input, label as labelClass, pillPrimary, sectionHeading } from './theme'
+import { card, input, label as labelClass, pillPrimary, sectionHeading, selectOption } from './theme'
 import type { InvoicePayment, PaymentMethod } from '@prisma/client'
 
 interface Props {
@@ -99,7 +99,7 @@ export function PaymentSection({ invoiceId, payments, balanceDue, onPaymentRecor
             </label>
             <select id="paymentMethod" className={input} value={method} onChange={(e) => setMethod(e.target.value as PaymentMethod)}>
               {METHODS.map((m) => (
-                <option key={m} value={m}>{m.replace('_', ' ')}</option>
+                <option key={m} value={m} className={selectOption}>{m.replace('_', ' ')}</option>
               ))}
             </select>
           </div>

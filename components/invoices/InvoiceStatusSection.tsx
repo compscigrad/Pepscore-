@@ -4,7 +4,7 @@
 // decides whether the PDF a client receives still reads "Draft".
 'use client'
 
-import { card, input, label as labelClass, sectionHeading } from './theme'
+import { card, input, label as labelClass, sectionHeading, selectOption } from './theme'
 import { INVOICE_STATUSES, formatStatusLabel } from './types'
 import type { InvoiceStatus } from '@prisma/client'
 
@@ -26,7 +26,7 @@ export function InvoiceStatusSection({ value, onChange }: Props) {
           onChange={(e) => onChange(e.target.value as InvoiceStatus)}
         >
           {INVOICE_STATUSES.map((s) => (
-            <option key={s} value={s}>{formatStatusLabel(s)}</option>
+            <option key={s} value={s} className={selectOption}>{formatStatusLabel(s)}</option>
           ))}
         </select>
       </div>

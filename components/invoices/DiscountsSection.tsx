@@ -8,7 +8,7 @@ import toast from 'react-hot-toast'
 import { resolveDiscountAmount } from '@/lib/invoice/calculations'
 import { formatMoney } from '@/lib/invoice/format'
 import { makeKey } from './types'
-import { card, input, pillPrimary, pillSecondary, sectionHeading } from './theme'
+import { card, input, pillPrimary, pillSecondary, sectionHeading, selectOption } from './theme'
 import type { InvoiceDiscountDraft, Promotion } from './types'
 
 interface Props {
@@ -103,9 +103,9 @@ export function DiscountsSection({ discounts, onChange, promotions, onPromotionC
               onChange={(e) => e.target.value && addPromotion(e.target.value)}
               aria-label="Apply a promotion"
             >
-              <option value="">+ Apply Promotion...</option>
+              <option value="" className={selectOption}>+ Apply Promotion...</option>
               {availablePromotions.map((p) => (
-                <option key={p.id} value={p.id}>
+                <option key={p.id} value={p.id} className={selectOption}>
                   {p.name} ({p.type === 'PERCENTAGE' ? `${p.amount}%` : formatMoney(p.amount)})
                 </option>
               ))}
@@ -152,8 +152,8 @@ export function DiscountsSection({ discounts, onChange, promotions, onPromotionC
               value={presetType}
               onChange={(e) => setPresetType(e.target.value as 'FIXED' | 'PERCENTAGE')}
             >
-              <option value="FIXED">$ Fixed</option>
-              <option value="PERCENTAGE">% Percent</option>
+              <option value="FIXED" className={selectOption}>$ Fixed</option>
+              <option value="PERCENTAGE" className={selectOption}>% Percent</option>
             </select>
           </div>
           <div>
@@ -202,8 +202,8 @@ export function DiscountsSection({ discounts, onChange, promotions, onPromotionC
                 onChange={(e) => updateDiscount(discount.key, { type: e.target.value as InvoiceDiscountDraft['type'] })}
                 disabled={!!discount.promotionId}
               >
-                <option value="FIXED">$ Fixed</option>
-                <option value="PERCENTAGE">% Percent</option>
+                <option value="FIXED" className={selectOption}>$ Fixed</option>
+                <option value="PERCENTAGE" className={selectOption}>% Percent</option>
               </select>
               <input
                 type="number"

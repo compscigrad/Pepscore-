@@ -1,6 +1,6 @@
 'use client'
 
-import { card, input, label as labelClass, sectionHeading } from './theme'
+import { card, input, label as labelClass, sectionHeading, selectOption } from './theme'
 import { formatCarrierLabel } from '@/lib/invoice/format'
 import type { ShippingFields, AddressDraft } from './types'
 import type { ShippingCarrier, DeliveryStatus } from '@prisma/client'
@@ -67,9 +67,9 @@ export function ShippingSection({ value, onChange }: Props) {
             value={value.carrier}
             onChange={(e) => set('carrier', e.target.value as ShippingFields['carrier'])}
           >
-            <option value="">Tracking Pending</option>
+            <option value="" className={selectOption}>Tracking Pending</option>
             {CARRIERS.map((c) => (
-              <option key={c} value={c}>{formatCarrierLabel(c)}</option>
+              <option key={c} value={c} className={selectOption}>{formatCarrierLabel(c)}</option>
             ))}
           </select>
         </div>
@@ -103,7 +103,7 @@ export function ShippingSection({ value, onChange }: Props) {
             onChange={(e) => set('deliveryStatus', e.target.value as ShippingFields['deliveryStatus'])}
           >
             {DELIVERY_STATUSES.map((s) => (
-              <option key={s} value={s}>{s.replace('_', ' ')}</option>
+              <option key={s} value={s} className={selectOption}>{s.replace('_', ' ')}</option>
             ))}
           </select>
         </div>
