@@ -2,6 +2,17 @@
 
 Notable changes to the invoice module. Ordinary commits don't all need an entry here — this tracks changes future engineers would want a summary of before digging into `git log`.
 
+## Unreleased — Payment arrangements (installment plans)
+
+- Extended `PaymentMethod` (schema + validation + the picker) with `NA` (new default), `DEBIT_CARD`, `PAYPAL`, `BANK_TRANSFER` — existing values kept, per the "at minimum" requirement.
+- Added a computed **Payment Status** (Pending/Partial/Paid) shown as a badge in `PaymentSection` — derived from `amountPaid`/`total`, never stored, and distinct from the existing `InvoiceStatus` workflow field (which is untouched). See `docs/Decisions.md` #17.
+- New `PaymentArrangement`/`PaymentArrangementInstallment` models (real relational rows, not JSON — see `docs/Decisions.md` #15) support setting up an installment plan once an invoice is Partial: `components/invoices/PaymentArrangementSection.tsx` shows a "+ Set Up Payment Arrangement" form (Number of Remaining Payments + Frequency, with a live schedule preview using the same `generateInstallmentSchedule()` the server uses) or, once created, the full schedule + summary stats.
+- `lib/invoice/paymentArrangement.ts` — pure schedule-generation math: splits the remaining balance evenly across the chosen frequency (Every Week / Every Two Weeks), with the final installment absorbing any rounding remainder so the schedule always sums to exactly the remaining balance.
+- `lib/paymentArrangements.ts` — `createPaymentArrangement()` derives the "initial payment" info from the invoice's existing payment history rather than recording a new transaction (see `docs/Decisions.md` #16); `matchPaymentToNextPendingInstallment()`, wired into `lib/invoices.ts`'s `recordPayment()`, marks the next pending installment paid whenever any payment is recorded on an invoice with an arrangement.
+- New `POST /api/admin/invoices/[id]/payment-arrangement` route.
+- PDF: `MasterInvoiceDocument` gets a full "Payment Arrangement" table (Payment #/Due Date/Amount/Status) plus a summary (Original Total/Payments Received/Remaining Balance/Next Payment Due/Frequency); `RecipientReceiptDocument` gets a customer-facing subset only (Remaining Balance, Next Payment Due, Upcoming Payment Schedule) — no internal notes or full payment history.
+- Verified: `npx tsc --noEmit`, `npx eslint`, `npm run build` all clean; scripted schedule generation against the spec's own example (July 20 initial → Aug 3/17/31 biweekly, all $250, matches exactly) and a rounding edge case ($100 / 3 → $33.33/$33.33/$33.34, sums to exactly $100.00); rendered both PDFs with a mock arrangement and confirmed the no-arrangement case still renders correctly.
+
 ## Unreleased — Product pricing audit + picker fix
 
 - Corrected Tesamorelin 1-box prices in `prisma/seed.ts` (5mg: $312 → $400, 10mg: $531 → $750) and reseeded the shared database. Audited all other ~119 catalog products against the current master price sheet — everything else already matched exactly.

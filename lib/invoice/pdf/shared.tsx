@@ -125,6 +125,17 @@ export const styles = StyleSheet.create({
     marginBottom: 3,
   },
   legalBody: { fontSize: 7, color: colors.g500, lineHeight: 1.5 },
+  arrangementSummaryRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12, gap: 16 },
+  arrangementStat: { minWidth: 90 },
+  arrangementStatLabel: {
+    fontFamily: fonts.heading,
+    fontSize: 7,
+    color: colors.g500,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    marginBottom: 2,
+  },
+  arrangementStatValue: { fontSize: 9.5, color: colors.dark, fontFamily: fonts.heading },
 })
 
 function formatEnumLabel(status: string): string {
@@ -283,6 +294,110 @@ export function TotalsBlock({ invoice, showBalance }: { invoice: InvoiceWithRela
           </View>
         </>
       ) : null}
+    </View>
+  )
+}
+
+// Shared between both PDFs, like everything else in this file — but the
+// two variants intentionally show different amounts of detail. `internal`
+// (Master Invoice) gets the full schedule table plus summary stats;
+// `recipient` gets only what the customer needs to know their remaining
+// obligation (no full history, no internal accounting framing).
+export function PaymentArrangementSection({
+  invoice,
+  variant,
+}: {
+  invoice: InvoiceWithRelations
+  variant: 'internal' | 'recipient'
+}) {
+  const arrangement = invoice.paymentArrangement
+  if (!arrangement) return null
+
+  const nextDue = arrangement.installments.find((i) => i.status === 'PENDING')
+
+  if (variant === 'recipient') {
+    const upcoming = arrangement.installments.filter((i) => i.status !== 'PAID')
+    return (
+      <View style={{ marginTop: 24 }} wrap={false}>
+        <Text style={styles.sectionLabel}>Payment Arrangement</Text>
+        <View style={styles.arrangementSummaryRow}>
+          <View style={styles.arrangementStat}>
+            <Text style={styles.arrangementStatLabel}>Remaining Balance</Text>
+            <Text style={styles.arrangementStatValue}>{formatMoney(invoice.balanceDue)}</Text>
+          </View>
+          <View style={styles.arrangementStat}>
+            <Text style={styles.arrangementStatLabel}>Next Payment Due</Text>
+            <Text style={styles.arrangementStatValue}>{nextDue ? formatDate(nextDue.dueDate) : '—'}</Text>
+          </View>
+        </View>
+        {upcoming.length > 0 ? (
+          <View style={styles.table}>
+            <View style={styles.tableHeaderRow}>
+              <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Payment #</Text>
+              <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Due Date</Text>
+              <Text style={[styles.tableHeaderCell, { flex: 1, textAlign: 'right' }]}>Amount</Text>
+            </View>
+            {upcoming.map((inst) => (
+              <View style={styles.tableRow} key={inst.id}>
+                <Text style={[styles.tableCell, { flex: 1 }]}>Payment {inst.installmentNumber}</Text>
+                <Text style={[styles.tableCell, { flex: 1 }]}>{formatDate(inst.dueDate)}</Text>
+                <Text style={[styles.tableCell, { flex: 1, textAlign: 'right' }]}>{formatMoney(inst.amount)}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+      </View>
+    )
+  }
+
+  return (
+    <View style={{ marginTop: 24 }} wrap={false}>
+      <Text style={styles.sectionLabel}>Payment Arrangement</Text>
+      <View style={styles.arrangementSummaryRow}>
+        <View style={styles.arrangementStat}>
+          <Text style={styles.arrangementStatLabel}>Original Invoice Total</Text>
+          <Text style={styles.arrangementStatValue}>{formatMoney(invoice.total)}</Text>
+        </View>
+        <View style={styles.arrangementStat}>
+          <Text style={styles.arrangementStatLabel}>Payments Received</Text>
+          <Text style={styles.arrangementStatValue}>{formatMoney(invoice.amountPaid)}</Text>
+        </View>
+        <View style={styles.arrangementStat}>
+          <Text style={styles.arrangementStatLabel}>Remaining Balance</Text>
+          <Text style={styles.arrangementStatValue}>{formatMoney(invoice.balanceDue)}</Text>
+        </View>
+        <View style={styles.arrangementStat}>
+          <Text style={styles.arrangementStatLabel}>Next Payment Due</Text>
+          <Text style={styles.arrangementStatValue}>{nextDue ? formatDate(nextDue.dueDate) : '—'}</Text>
+        </View>
+        <View style={styles.arrangementStat}>
+          <Text style={styles.arrangementStatLabel}>Payment Frequency</Text>
+          <Text style={styles.arrangementStatValue}>
+            {arrangement.frequency === 'WEEKLY' ? 'Every Week' : 'Every Two Weeks'}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.table}>
+        <View style={styles.tableHeaderRow}>
+          <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Payment #</Text>
+          <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Due Date</Text>
+          <Text style={[styles.tableHeaderCell, { flex: 1, textAlign: 'right' }]}>Amount</Text>
+          <Text style={[styles.tableHeaderCell, { flex: 1, textAlign: 'right' }]}>Status</Text>
+        </View>
+        {arrangement.installments.map((inst) => (
+          <View style={styles.tableRow} key={inst.id}>
+            <Text style={[styles.tableCell, { flex: 1 }]}>Payment {inst.installmentNumber}</Text>
+            <Text style={[styles.tableCell, { flex: 1 }]}>{formatDate(inst.dueDate)}</Text>
+            <Text style={[styles.tableCell, { flex: 1, textAlign: 'right' }]}>{formatMoney(inst.amount)}</Text>
+            <Text
+              style={[styles.tableCell, { flex: 1, textAlign: 'right', color: statusBadgeColor(inst.status) }]}
+            >
+              {formatEnumLabel(inst.status)}
+            </Text>
+          </View>
+        ))}
+      </View>
     </View>
   )
 }

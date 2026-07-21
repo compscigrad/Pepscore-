@@ -65,18 +65,36 @@ export const invoicePayloadSchema = z.object({
 
 export type InvoicePayload = z.infer<typeof invoicePayloadSchema>
 
+// NA is deliberately excluded here — it's the Method dropdown's placeholder
+// default for an invoice with no payment recorded yet, not a legal value for
+// an actual payment (money always changes hands via some real method).
+const REAL_PAYMENT_METHODS = [
+  'CASH', 'COD', 'CREDIT_CARD', 'DEBIT_CARD', 'APPLE_PAY', 'PAYPAL', 'BANK_TRANSFER',
+  'STRIPE', 'SQUARE', 'CASH_APP', 'VENMO', 'ZELLE', 'ACH', 'WIRE', 'CHECK', 'CRYPTO', 'OTHER',
+] as const
+
 export const paymentPayloadSchema = z.object({
   amount: z.number().positive('Payment amount must be greater than zero'),
-  method: z.enum([
-    'CASH', 'COD', 'CREDIT_CARD', 'APPLE_PAY', 'STRIPE', 'SQUARE', 'CASH_APP', 'VENMO',
-    'ZELLE', 'ACH', 'WIRE', 'CHECK', 'CRYPTO', 'OTHER',
-  ]),
+  method: z.enum(REAL_PAYMENT_METHODS),
   referenceNumber: z.string().optional(),
   paidAt: z.coerce.date().optional(),
   notes: z.string().optional(),
 })
 
 export type PaymentPayload = z.infer<typeof paymentPayloadSchema>
+
+// Deliberately just these two fields — unlike paymentPayloadSchema, this
+// isn't recording a new transaction (no method field, because no money
+// changes hands here). "Initial Payment Amount/Date" and "Remaining
+// Balance" are derived server-side from the invoice's existing payment
+// history in lib/paymentArrangements.ts, not client-supplied, so they can
+// never disagree with the invoice's actual amountPaid/balanceDue.
+export const paymentArrangementPayloadSchema = z.object({
+  remainingPayments: z.number().int().min(1, 'At least one remaining payment is required'),
+  frequency: z.enum(['WEEKLY', 'BIWEEKLY']),
+})
+
+export type PaymentArrangementPayload = z.infer<typeof paymentArrangementPayloadSchema>
 
 // Guards a payment against overpaying an invoice — checked against the
 // invoice's *current* balance, so partial payments accumulate correctly.

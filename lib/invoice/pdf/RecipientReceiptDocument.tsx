@@ -4,7 +4,7 @@
 // customer needs to know what they owe — only the internal tracking detail
 // behind that number is hidden).
 import { Document, Page, Text, View } from '@react-pdf/renderer'
-import { styles, DocumentHeader, CustomerShippingSection, ItemsTable, TotalsBlock, LegalFooter } from './shared'
+import { styles, DocumentHeader, CustomerShippingSection, ItemsTable, TotalsBlock, PaymentArrangementSection, LegalFooter } from './shared'
 import { BRAND } from './brand'
 import type { InvoiceWithRelations } from '@/lib/invoices'
 
@@ -16,6 +16,7 @@ export function RecipientReceiptDocument({ invoice }: { invoice: InvoiceWithRela
         <CustomerShippingSection invoice={invoice} />
         <ItemsTable invoice={invoice} />
         <TotalsBlock invoice={invoice} showBalance />
+        <PaymentArrangementSection invoice={invoice} variant="recipient" />
         {invoice.publicNotes ? (
           <View style={{ marginTop: 24 }}>
             <Text style={styles.sectionLabel}>Notes</Text>

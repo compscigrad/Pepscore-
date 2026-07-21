@@ -35,6 +35,13 @@ export function formatCarrierLabel(carrier: string): string {
   return CARRIER_LABELS[carrier] ?? carrier.replace('_', ' ')
 }
 
+// PaymentMethod's NA value can't be named "N/A" (enum identifiers can't
+// contain a slash) — restore the slash for display everywhere the method
+// is shown (dropdown, payment history, PDFs).
+export function formatPaymentMethodLabel(method: string): string {
+  return method === 'NA' ? 'N/A' : method.replace('_', ' ')
+}
+
 // Catalog products share names across strengths (e.g. "Tesamorelin" 5mg and
 // 10mg) — the raw name alone is ambiguous in a dropdown and, worse, was
 // previously the only thing carried onto the invoice line item, silently

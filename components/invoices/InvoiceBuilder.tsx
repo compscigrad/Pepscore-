@@ -215,7 +215,10 @@ export function InvoiceBuilder({ mode, initialInvoice, products, promotions: ini
           <PaymentSection
             invoiceId={invoice.id}
             payments={invoice.payments}
+            amountPaid={invoice.amountPaid}
+            total={invoice.total}
             balanceDue={invoice.balanceDue}
+            paymentArrangement={invoice.paymentArrangement}
             onPaymentRecorded={refreshInvoice}
           />
         ) : null}

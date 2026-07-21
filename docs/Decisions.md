@@ -159,3 +159,39 @@
 **Benefits**: `prisma.product` (via `prisma/seed.ts` as source of truth, re-run with `npm run db:seed`) remains the single place invoice pricing is edited — no parallel/hardcoded price table existed anywhere else in the codebase (verified via full-repo search).
 
 **Drawbacks**: None identified.
+
+## 15. Payment arrangements: real relational models, not JSON on Invoice
+
+**Decision**: Added `PaymentArrangement` (1:1 with `Invoice`) and `PaymentArrangementInstallment` (1:many, one row per scheduled payment including the initial one) as real Prisma models, plus `PaymentFrequency` (`WEEKLY`/`BIWEEKLY`) and `InstallmentStatus` (`PENDING`/`PAID`/`OVERDUE` — the last not yet set automatically) enums, rather than a JSON blob on `Invoice` or a set of ad-hoc form fields that don't persist a real schedule.
+
+**Reason**: The feature explicitly asked to be "a reusable data model rather than temporary form fields," naming future needs (overdue detection, reminders, a customer payment portal, partial payment history, audit logs, finance reporting) that all require querying/updating *individual* installments — a JSON blob would mean deserializing and rewriting the whole schedule for any single-row change, and couldn't be indexed or queried by due date across invoices for something like an overdue-detection job.
+
+**Alternatives considered**: `Json` column on `Invoice` holding the schedule array (rejected — exactly the future-features problem above); a single `PaymentArrangement` row with the schedule inline as JSON but installments as their own rows only for *paid* ones (rejected — inconsistent shape between paid/pending installments for no real benefit).
+
+**Benefits**: Each installment is independently queryable/updatable (`WHERE dueDate < now() AND status = 'PENDING'` already answers "what's overdue" the moment that feature is built — no migration needed then). Installment #1 is always the initial payment (generated alongside the arrangement, immediately `PAID`), so the schedule table is one uniform list, not "initial payment info" plus a separately-shaped "future schedule."
+
+**Drawbacks**: Two new tables instead of one JSON column — judged worth it given the explicit future-compatibility requirement.
+
+## 16. Setting up an arrangement doesn't record a new payment
+
+**Decision**: `createPaymentArrangement()` derives "Initial Payment Amount" and "Initial Payment Date" from the invoice's *existing* payment history (`amountPaid`, and the earliest payment's date) rather than accepting them as new input to record. It never touches `Invoice.amountPaid`/`balanceDue` — those were already set correctly by whatever payment(s) got the invoice to Partial status in the first place. Only `remainingPayments` and `frequency` are actually submitted by the admin.
+
+**Reason**: The Payment Arrangement section can only appear once an invoice is already Partial — meaning a payment already exists. The arrangement-setup form also doesn't ask for a payment method (unlike the real Record Payment form, which requires one) — a real hint that this isn't recording a new transaction, just describing the schedule for what's left. Deriving the initial-payment fields server-side (rather than letting the client submit its own numbers) also makes it impossible for the arrangement to ever disagree with the invoice's real financial state, satisfying "payment totals always equal the invoice total" by construction rather than by validation.
+
+**Alternatives considered**: Treat "Initial Payment Amount/Date" as a fresh payment to record at arrangement-creation time (rejected — would mean two separate payments before any installment plan even starts: the original ad-hoc payment that got the invoice to Partial, plus a second "initial" one for the arrangement, which is confusing and not what the field list's absence of a method field implies).
+
+**Benefits**: No double-counted payments; the arrangement can never drift from `Invoice.amountPaid`/`balanceDue` since it doesn't introduce competing numbers for the already-paid side of the ledger.
+
+**Drawbacks**: If an invoice received multiple separate payments before the arrangement was set up, "Initial Payment Date" is the *earliest* of them (not a specific single transaction) — judged acceptable since the summary is about the amount, and the schedule's dates all key off that one anchor date regardless.
+
+## 17. Payment Status (Pending/Partial/Paid) is computed, not stored
+
+**Decision**: `computePaymentStatus(amountPaid, total)` in `lib/invoice/paymentArrangement.ts` derives Pending/Partial/Paid from the invoice's existing `amountPaid`/`total` fields at render time — it isn't a new database column, and it's separate from (and doesn't touch) the existing `InvoiceStatus` enum (`DRAFT`/`PENDING`/.../`PAID`/`PARTIALLY_PAID`/etc.), which continues to drive the admin's own workflow state and what shows on generated PDFs.
+
+**Reason**: The three states' definitions ("no payment received," "one or more payments received but a balance remains," "balance satisfied") are objective facts already fully determined by existing fields — storing a second value for the same fact would be exactly the kind of value that could drift from reality. `InvoiceStatus` already has its own `PAID`/`PARTIALLY_PAID` values serving a different purpose (overall workflow/document state, manually set via `InvoiceStatusSection`) — collapsing it down to only these three values would delete `DRAFT`/`APPROVED`/`ISSUED`/`CANCELLED`/`REFUNDED`/`VOID`, breaking the just-built invoice-status workflow control for no reason connected to this feature.
+
+**Alternatives considered**: Repurpose `InvoiceStatus` itself to mean this (rejected — would destroy unrelated, already-working workflow-state functionality); add a stored `paymentStatus` column (rejected — redundant with data that already exists, risking drift).
+
+**Benefits**: Always accurate by construction; gates the Payment Arrangement section's "offer to create" state (`Partial` + no existing arrangement) without needing to keep a separate flag in sync.
+
+**Drawbacks**: None identified.
