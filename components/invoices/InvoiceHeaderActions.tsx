@@ -16,6 +16,33 @@ interface Props {
 export function InvoiceHeaderActions({ invoiceId, archived }: Props) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
+  // Two-click confirm rather than a native confirm() dialog, consistent with
+  // the rest of this dark-themed UI — first click arms it, a second click
+  // within the window actually sends the trash request.
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+
+  async function deleteInvoice() {
+    if (!confirmingDelete) {
+      setConfirmingDelete(true)
+      setTimeout(() => setConfirmingDelete(false), 4000)
+      return
+    }
+    setBusy(true)
+    try {
+      const res = await fetch(`/api/admin/invoices/${invoiceId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'trash' }),
+      })
+      if (!res.ok) throw new Error('Failed to delete invoice')
+      toast.success('Invoice moved to Trash')
+      router.push('/admin/invoices')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete invoice')
+      setBusy(false)
+      setConfirmingDelete(false)
+    }
+  }
 
   async function archiveOrRestore() {
     setBusy(true)
@@ -77,6 +104,14 @@ export function InvoiceHeaderActions({ invoiceId, archived }: Props) {
         className={`${pillOutline} px-4 py-2`}
       >
         {archived ? 'Restore' : 'Archive'}
+      </button>
+      <button
+        type="button"
+        onClick={deleteInvoice}
+        disabled={busy}
+        className={`${pillOutline} px-4 py-2 ${confirmingDelete ? 'border-red-400/40 text-red-300' : ''}`}
+      >
+        {confirmingDelete ? 'Click again to confirm' : 'Delete'}
       </button>
     </div>
   )
