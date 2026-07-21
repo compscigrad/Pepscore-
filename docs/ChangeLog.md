@@ -2,6 +2,12 @@
 
 Notable changes to the invoice module. Ordinary commits don't all need an entry here — this tracks changes future engineers would want a summary of before digging into `git log`.
 
+## Unreleased — Larger PDF header logo
+
+- Enlarged the header logo in `lib/invoice/pdf/shared.tsx` (`DocumentHeader`, shared by both `MasterInvoiceDocument` and `RecipientReceiptDocument`) from 140×94 to 306×204 — same 1.5 (3:2) aspect ratio as the 1536×1024 source image, so it's a pure scale-up with no distortion. Sized so its width now reads roughly level with the "MASTER INVOICE"/"CLIENT INVOICE" heading beneath it, rather than looking small above it.
+- No other spacing/margins/positioning touched — the header block is simply taller by the same amount the logo grew, which pushes the title down proportionally (an unavoidable, expected consequence of a taller logo in a vertical header stack), everything else is unchanged.
+- Verified: `tsc`/`eslint`/`next build` clean; rendered both PDF variants directly (bypassing HTTP/auth via a script calling the same `getInvoice`/`MasterInvoiceDocument`/`RecipientReceiptDocument` the route uses) against a typical invoice (Micaela Soto, single item) and the heaviest real one (Marvin Alexander, with a 4-installment payment arrangement) — both PDFs, both invoices, still exactly 1 page each; visually confirmed the enlarged logo isn't stretched and the legal footer stayed on page 1.
+
 ## Unreleased — Invoice Trash (soft-delete) with recoverable two-step permanent delete
 
 - Added `Invoice.deletedAt`, a new "Delete" button on the invoice edit page header (two-click confirm), and an `/admin/invoices/trash` page listing soft-deleted invoices with Restore and Delete Forever actions.
