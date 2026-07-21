@@ -83,15 +83,17 @@ export const paymentPayloadSchema = z.object({
 
 export type PaymentPayload = z.infer<typeof paymentPayloadSchema>
 
-// Deliberately just these two fields — unlike paymentPayloadSchema, this
-// isn't recording a new transaction (no method field, because no money
-// changes hands here). "Initial Payment Amount/Date" and "Remaining
-// Balance" are derived server-side from the invoice's existing payment
-// history in lib/paymentArrangements.ts, not client-supplied, so they can
-// never disagree with the invoice's actual amountPaid/balanceDue.
+// Unlike paymentPayloadSchema, this isn't recording a new transaction (no
+// method field, because no money changes hands here). `startDate` is only
+// required when the invoice has no payment recorded yet — with a prior
+// payment, "Initial Payment Amount/Date" and "Remaining Balance" are all
+// derived server-side from the invoice's existing history in
+// lib/paymentArrangements.ts, so they can never disagree with the invoice's
+// actual amountPaid/balanceDue.
 export const paymentArrangementPayloadSchema = z.object({
-  remainingPayments: z.number().int().min(1, 'At least one remaining payment is required'),
+  numberOfPayments: z.number().int().min(1, 'At least one payment is required'),
   frequency: z.enum(['WEEKLY', 'BIWEEKLY']),
+  startDate: z.coerce.date().optional(),
 })
 
 export type PaymentArrangementPayload = z.infer<typeof paymentArrangementPayloadSchema>

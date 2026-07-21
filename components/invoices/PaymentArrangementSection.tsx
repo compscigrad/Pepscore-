@@ -1,14 +1,15 @@
-// Installment-plan setup and display. Only rendered when it's relevant: the
-// setup form appears while the invoice is Partial and no arrangement exists
-// yet; once one exists, its schedule stays visible regardless of status
-// (including after it's fully paid off) since it's a permanent record worth
-// keeping visible, not something that should vanish the moment it's done.
+// Installment-plan setup and display. Available on any invoice with a
+// balance left to schedule — whether or not anything has been paid yet, so
+// it can be set up proactively "just in case it needs to be utilized," not
+// only once an invoice happens to already be Partial. Once an arrangement
+// exists, its schedule stays visible regardless of status (including after
+// it's fully paid off), since it's a permanent record worth keeping visible.
 'use client'
 
 import { useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 import { formatMoney, formatDate } from '@/lib/invoice/format'
-import { generateInstallmentSchedule } from '@/lib/invoice/paymentArrangement'
+import { generateInstallmentSchedule, addDaysUTC, frequencyIntervalDays } from '@/lib/invoice/paymentArrangement'
 import { StatusBadge } from './StatusBadge'
 import { card, input, label as labelClass, pillPrimary, sectionHeading, selectOption } from './theme'
 import type { PaymentArrangement, PaymentArrangementInstallment, PaymentFrequency, InvoicePayment } from '@prisma/client'
@@ -31,6 +32,10 @@ const FREQUENCY_LABELS: Record<PaymentFrequency, string> = {
   BIWEEKLY: 'Every Two Weeks',
 }
 
+function todayInputValue(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
 export function PaymentArrangementSection({
   invoiceId,
   arrangement,
@@ -42,35 +47,50 @@ export function PaymentArrangementSection({
   onArrangementCreated,
 }: Props) {
   const [creating, setCreating] = useState(false)
-  const [remainingPayments, setRemainingPayments] = useState('3')
+  const [numberOfPayments, setNumberOfPayments] = useState('3')
   const [frequency, setFrequency] = useState<PaymentFrequency>('BIWEEKLY')
+  const [startDate, setStartDate] = useState(todayInputValue())
   const [submitting, setSubmitting] = useState(false)
 
+  const hasExistingPayment = amountPaid > 0
+
   // What the server will treat as "installment #1" — the earliest payment
-  // on record. Computed the same way lib/paymentArrangements.ts does, so
-  // this preview never disagrees with what actually gets saved.
-  const initialPaymentDate =
-    payments.length > 0
+  // on record, if there is one. Computed the same way
+  // lib/paymentArrangements.ts does, so this preview never disagrees with
+  // what actually gets saved.
+  const earliestPaymentDate =
+    hasExistingPayment && payments.length > 0
       ? [...payments].sort((a, b) => new Date(a.paidAt).getTime() - new Date(b.paidAt).getTime())[0].paidAt
-      : new Date()
+      : null
 
   const previewSchedule = useMemo(() => {
-    const count = Number(remainingPayments)
+    const count = Number(numberOfPayments)
     if (!count || count < 1) return []
+
+    const intervalDays = frequencyIntervalDays(frequency)
+    const firstDueDate = hasExistingPayment
+      ? addDaysUTC(new Date(earliestPaymentDate!), intervalDays)
+      : new Date(startDate)
+
     return generateInstallmentSchedule({
-      initialPaymentDate: new Date(initialPaymentDate),
-      remainingBalance: balanceDue,
-      numberOfRemainingPayments: count,
+      firstDueDate,
+      totalAmount: balanceDue,
+      numberOfPayments: count,
       frequency,
+      startInstallmentNumber: hasExistingPayment ? 2 : 1,
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [remainingPayments, frequency, balanceDue])
+  }, [numberOfPayments, frequency, balanceDue, startDate, hasExistingPayment])
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
-    const count = Number(remainingPayments)
+    const count = Number(numberOfPayments)
     if (!count || count < 1) {
-      toast.error('Enter at least one remaining payment')
+      toast.error('Enter at least one payment')
+      return
+    }
+    if (!hasExistingPayment && !startDate) {
+      toast.error('Choose a start date')
       return
     }
 
@@ -79,7 +99,11 @@ export function PaymentArrangementSection({
       const res = await fetch(`/api/admin/invoices/${invoiceId}/payment-arrangement`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ remainingPayments: count, frequency }),
+        body: JSON.stringify({
+          numberOfPayments: count,
+          frequency,
+          startDate: hasExistingPayment ? undefined : startDate,
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Failed to set up payment arrangement')
@@ -146,27 +170,42 @@ export function PaymentArrangementSection({
       ) : creating ? (
         <form onSubmit={submit} className="space-y-4">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div>
-              <p className={labelClass}>Initial Payment Amount</p>
-              <p className="text-sm text-white/70 py-2">{formatMoney(amountPaid)}</p>
-            </div>
-            <div>
-              <p className={labelClass}>Initial Payment Date</p>
-              <p className="text-sm text-white/70 py-2">{formatDate(initialPaymentDate)}</p>
-            </div>
+            {hasExistingPayment ? (
+              <>
+                <div>
+                  <p className={labelClass}>Initial Payment Amount</p>
+                  <p className="text-sm text-white/70 py-2">{formatMoney(amountPaid)}</p>
+                </div>
+                <div>
+                  <p className={labelClass}>Initial Payment Date</p>
+                  <p className="text-sm text-white/70 py-2">{formatDate(earliestPaymentDate)}</p>
+                </div>
+              </>
+            ) : (
+              <div>
+                <label className={labelClass} htmlFor="arrangementStartDate">Start Date</label>
+                <input
+                  id="arrangementStartDate"
+                  type="date"
+                  className={input}
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+              </div>
+            )}
             <div>
               <p className={labelClass}>Remaining Balance</p>
               <p className="text-sm text-white/70 py-2">{formatMoney(balanceDue)}</p>
             </div>
             <div>
-              <label className={labelClass} htmlFor="remainingPayments">Number of Remaining Payments</label>
+              <label className={labelClass} htmlFor="numberOfPayments">Number of Remaining Payments</label>
               <input
-                id="remainingPayments"
+                id="numberOfPayments"
                 type="number"
                 min={1}
                 className={input}
-                value={remainingPayments}
-                onChange={(e) => setRemainingPayments(e.target.value)}
+                value={numberOfPayments}
+                onChange={(e) => setNumberOfPayments(e.target.value)}
               />
             </div>
           </div>
