@@ -4,6 +4,7 @@
 import { Text, View, Image, StyleSheet } from '@react-pdf/renderer'
 import { BRAND } from './brand'
 import { formatMoney, formatDate } from '@/lib/invoice/format'
+import { INVOICE_LEGAL_SECTIONS } from '@/lib/invoice/legal'
 import type { InvoiceWithRelations } from '@/lib/invoices'
 
 export { formatMoney, formatDate }
@@ -30,7 +31,24 @@ export const styles = StyleSheet.create({
     letterSpacing: 2,
     textTransform: 'uppercase',
   },
-  invoiceNumber: { fontSize: 9, color: colors.g500, marginTop: 6 },
+  // Small brand accent under the title — the one deliberate spot of color in
+  // an otherwise black-on-white header, echoing the landing page's gold
+  // without turning the header into a marketing banner.
+  headerAccent: { width: 40, height: 2, backgroundColor: colors.gold, marginTop: 8 },
+  invoiceNumber: { fontSize: 9, color: colors.g500, marginTop: 8 },
+  statusBadge: {
+    borderWidth: 0.8,
+    borderRadius: 10,
+    paddingVertical: 3,
+    paddingHorizontal: 10,
+    marginTop: 8,
+  },
+  statusBadgeText: {
+    fontFamily: fonts.heading,
+    fontSize: 7,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
   sectionRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24, gap: 24 },
   sectionCard: { flex: 1, backgroundColor: colors.g100, borderRadius: 8, padding: 12 },
   sectionLabel: {
@@ -40,6 +58,10 @@ export const styles = StyleSheet.create({
     letterSpacing: 1,
     marginBottom: 6,
     textTransform: 'uppercase',
+    alignSelf: 'flex-start',
+    borderBottomWidth: 1.5,
+    borderBottomColor: colors.gold,
+    paddingBottom: 3,
   },
   sectionText: { fontSize: 10, color: colors.dark, lineHeight: 1.5 },
   table: { marginBottom: 16 },
@@ -85,24 +107,44 @@ export const styles = StyleSheet.create({
   balanceRow: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: 6 },
   balanceLabel: { fontFamily: fonts.heading, fontSize: 10, color: colors.dark },
   balanceValue: { fontFamily: fonts.heading, fontSize: 10, color: colors.goldDark },
-  footer: {
-    position: 'absolute',
-    bottom: 32,
-    left: 48,
-    right: 48,
-    borderTopWidth: 0.5,
-    borderTopColor: colors.g300,
-    paddingTop: 8,
-    fontSize: 8,
+  // Legal footer sits in normal document flow (never `fixed`) — deliberately,
+  // so it can never overlap the totals/signature area above it: it simply
+  // renders after whatever content precedes it, wherever that ends up.
+  legalFooter: { marginTop: 28 },
+  legalDivider: { borderTopWidth: 0.5, borderTopColor: colors.g300, marginBottom: 10 },
+  legalTagline: { fontSize: 8, color: colors.g500, textAlign: 'center', marginBottom: 12 },
+  legalSection: { marginBottom: 8 },
+  legalHeading: {
+    fontFamily: fonts.heading,
+    fontSize: 7,
     color: colors.g500,
-    textAlign: 'center',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    marginBottom: 3,
   },
+  legalBody: { fontSize: 7, color: colors.g500, lineHeight: 1.5 },
 })
+
+function formatEnumLabel(status: string): string {
+  return status
+    .toLowerCase()
+    .split('_')
+    .map((word) => word[0].toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
+// Gold is reserved for PAID — the one outcome worth celebrating with the
+// brand accent. Every other status reads in neutral ink so the badge stays
+// legible (and doesn't waste toner) on a black-and-white printer.
+function statusBadgeColor(status: string): string {
+  return status === 'PAID' ? colors.gold : colors.g700
+}
 
 // Centered logo (the logo image already contains the "Pepscore Lab"
 // wordmark, so no separate company-name text is needed alongside it) above
 // the document title — matches the layout of the reference invoice.
 export function DocumentHeader({ title, invoice }: { title: string; invoice: InvoiceWithRelations }) {
+  const badgeColor = statusBadgeColor(invoice.status)
   return (
     <View style={styles.header}>
       {BRAND.logoPath ? (
@@ -114,19 +156,15 @@ export function DocumentHeader({ title, invoice }: { title: string; invoice: Inv
         <Text style={styles.companyName}>{BRAND.companyName}</Text>
       )}
       <Text style={styles.docTitle}>{title}</Text>
+      <View style={styles.headerAccent} />
       <Text style={styles.invoiceNumber}>
         {invoice.invoiceNumber} · {formatDate(invoice.issuedAt)}
       </Text>
+      <View style={[styles.statusBadge, { borderColor: badgeColor }]}>
+        <Text style={[styles.statusBadgeText, { color: badgeColor }]}>{formatEnumLabel(invoice.status)}</Text>
+      </View>
     </View>
   )
-}
-
-function formatDeliveryStatus(status: string): string {
-  return status
-    .toLowerCase()
-    .split('_')
-    .map((word) => word[0].toUpperCase() + word.slice(1))
-    .join(' ')
 }
 
 function formatAddress(address: unknown): string {
@@ -156,7 +194,7 @@ export function CustomerShippingSection({ invoice }: { invoice: InvoiceWithRelat
           </Text>
         ) : null}
         <Text style={[styles.sectionText, { marginTop: 4, color: colors.g500 }]}>
-          {formatDeliveryStatus(invoice.deliveryStatus)}
+          {formatEnumLabel(invoice.deliveryStatus)}
           {invoice.deliveryStatus === 'DELIVERED' && invoice.deliveredDate
             ? ` ${formatDate(invoice.deliveredDate)}`
             : ''}
@@ -232,10 +270,21 @@ export function TotalsBlock({ invoice, showBalance }: { invoice: InvoiceWithRela
   )
 }
 
-export function DocumentFooter({ text }: { text: string }) {
+// Shared between both PDFs so legal copy is edited in exactly one place
+// (`lib/invoice/legal.ts`). `wrap={false}` keeps each section intact if the
+// footer gets pushed to a fresh page on an unusually long invoice, rather
+// than splitting a paragraph awkwardly across the page break.
+export function LegalFooter({ tagline }: { tagline: string }) {
   return (
-    <View style={styles.footer} fixed>
-      <Text>{text}</Text>
+    <View style={styles.legalFooter} wrap={false}>
+      <View style={styles.legalDivider} />
+      <Text style={styles.legalTagline}>{tagline}</Text>
+      {INVOICE_LEGAL_SECTIONS.map((section) => (
+        <View style={styles.legalSection} key={section.heading}>
+          <Text style={styles.legalHeading}>{section.heading}</Text>
+          <Text style={styles.legalBody}>{section.body}</Text>
+        </View>
+      ))}
     </View>
   )
 }

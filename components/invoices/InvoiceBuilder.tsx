@@ -17,6 +17,7 @@ import { PaymentSection } from './PaymentSection'
 import { TotalsSummary } from './TotalsSummary'
 import { InvoicePreview } from './InvoicePreview'
 import { PDFExportButtons } from './PDFExportButtons'
+import { pillPrimary } from './theme'
 import { makeKey, EMPTY_DRAFT } from './types'
 import type { InvoiceDraft, AddressDraft, Product, Promotion } from './types'
 import type { InvoiceWithRelations } from '@/lib/invoices'
@@ -210,7 +211,7 @@ export function InvoiceBuilder({ mode, initialInvoice, products, promotions }: P
             type="button"
             onClick={save}
             disabled={saving}
-            className="rounded-full bg-gold text-white text-sm font-bold px-8 py-3 hover:bg-gold-dark transition-colors disabled:opacity-50"
+            className={`${pillPrimary} px-8 py-3`}
           >
             {saving ? 'Saving...' : mode === 'create' ? 'Create Invoice' : 'Save Changes'}
           </button>

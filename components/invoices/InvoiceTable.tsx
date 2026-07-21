@@ -9,6 +9,7 @@ import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { formatCurrency } from '@/lib/orders'
 import { StatusBadge } from './StatusBadge'
+import { card, input, pillPrimary } from './theme'
 import type { InvoiceWithRelations } from '@/lib/invoices'
 
 type SortField = 'invoiceNumber' | 'customerName' | 'createdAt' | 'balanceDue' | 'status'
@@ -109,16 +110,16 @@ export function InvoiceTable({ initialInvoices, initialTotal }: Props) {
   ]
 
   return (
-    <div className="bg-white rounded-2xl shadow-sh overflow-hidden">
-      <div className="p-6 border-b border-g100 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-        <h2 className="font-heading text-[17px] font-bold text-dark">All Invoices</h2>
+    <div className={`${card} overflow-hidden`}>
+      <div className="p-6 border-b border-white/10 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+        <h2 className="font-heading text-[17px] font-bold text-white">All Invoices</h2>
         <div className="flex flex-col sm:flex-row gap-3">
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search customer, invoice #, tracking, email..."
-            className="rounded-lg border border-g300 px-3 py-2 text-sm w-full sm:w-72 focus:outline-none focus:ring-2 focus:ring-gold/40"
+            className={`${input} sm:w-72`}
             aria-label="Search invoices"
           />
           <select
@@ -127,7 +128,7 @@ export function InvoiceTable({ initialInvoices, initialTotal }: Props) {
               setStatus(e.target.value)
               setPage(1)
             }}
-            className="rounded-lg border border-g300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40"
+            className={input}
             aria-label="Filter by status"
           >
             {STATUS_FILTERS.map((f) => (
@@ -138,7 +139,7 @@ export function InvoiceTable({ initialInvoices, initialTotal }: Props) {
           </select>
           <Link
             href="/admin/invoices/new"
-            className="rounded-full bg-gold text-white text-sm font-bold px-6 py-2.5 text-center hover:bg-gold-dark transition-colors"
+            className={`${pillPrimary} px-6 py-2.5 text-center`}
           >
             + New Invoice
           </Link>
@@ -147,18 +148,18 @@ export function InvoiceTable({ initialInvoices, initialTotal }: Props) {
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-g100">
+          <thead className="bg-white/[0.02]">
             <tr>
               {columns.map((col) => (
                 <th
                   key={col.field}
                   onClick={() => toggleSort(col.field)}
-                  className="text-left px-4 py-3 font-heading text-[11px] font-bold tracking-[0.1em] uppercase text-g500 cursor-pointer select-none whitespace-nowrap"
+                  className="text-left px-4 py-3 font-heading text-[11px] font-bold tracking-[0.1em] uppercase text-white/50 cursor-pointer select-none whitespace-nowrap"
                 >
                   {col.label} {sortBy === col.field ? (sortDir === 'asc' ? '↑' : '↓') : ''}
                 </th>
               ))}
-              <th className="text-left px-4 py-3 font-heading text-[11px] font-bold tracking-[0.1em] uppercase text-g500">
+              <th className="text-left px-4 py-3 font-heading text-[11px] font-bold tracking-[0.1em] uppercase text-white/50">
                 Carrier / Tracking
               </th>
               <th className="px-4 py-3" />
@@ -167,29 +168,29 @@ export function InvoiceTable({ initialInvoices, initialTotal }: Props) {
           <tbody>
             {invoices.length === 0 && !loading ? (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-g500 text-sm">
+                <td colSpan={7} className="px-4 py-10 text-center text-white/50 text-sm">
                   No invoices found.
                 </td>
               </tr>
             ) : (
               invoices.map((invoice) => (
-                <tr key={invoice.id} className="border-b border-g100 hover:bg-g100/50 transition-colors">
-                  <td className="px-4 py-3 font-medium text-dark whitespace-nowrap">{invoice.invoiceNumber}</td>
-                  <td className="px-4 py-3 text-g700">{invoice.customerName}</td>
-                  <td className="px-4 py-3 text-g500 whitespace-nowrap">
+                <tr key={invoice.id} className="border-b border-white/10 hover:bg-white/[0.04] transition-colors">
+                  <td className="px-4 py-3 font-medium text-white whitespace-nowrap">{invoice.invoiceNumber}</td>
+                  <td className="px-4 py-3 text-white/70">{invoice.customerName}</td>
+                  <td className="px-4 py-3 text-white/50 whitespace-nowrap">
                     {new Date(invoice.createdAt).toLocaleDateString('en-US', { timeZone: 'UTC' })}
                   </td>
-                  <td className="px-4 py-3 font-medium text-dark whitespace-nowrap">
+                  <td className="px-4 py-3 font-medium text-white whitespace-nowrap">
                     {formatCurrency(invoice.balanceDue)}
                   </td>
                   <td className="px-4 py-3">
                     <StatusBadge status={invoice.status} />
                   </td>
-                  <td className="px-4 py-3 text-g500 whitespace-nowrap">
+                  <td className="px-4 py-3 text-white/50 whitespace-nowrap">
                     {invoice.carrier ? `${invoice.carrier} — ${invoice.trackingNumber ?? 'pending'}` : '—'}
                   </td>
                   <td className="px-4 py-3 text-right whitespace-nowrap">
-                    <Link href={`/admin/invoices/${invoice.id}`} className="text-gold-dark font-bold text-sm hover:underline">
+                    <Link href={`/admin/invoices/${invoice.id}`} className="text-gold-light font-bold text-sm hover:underline">
                       View →
                     </Link>
                   </td>
@@ -200,7 +201,7 @@ export function InvoiceTable({ initialInvoices, initialTotal }: Props) {
         </table>
       </div>
 
-      <div className="flex items-center justify-between px-6 py-4 border-t border-g100 text-sm text-g500">
+      <div className="flex items-center justify-between px-6 py-4 border-t border-white/10 text-sm text-white/50">
         <span>
           Page {page} of {totalPages} · {total} invoice{total === 1 ? '' : 's'}
         </span>
@@ -208,14 +209,14 @@ export function InvoiceTable({ initialInvoices, initialTotal }: Props) {
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page <= 1 || loading}
-            className="px-3 py-1.5 rounded-full border border-g300 disabled:opacity-40 hover:bg-g100 transition-colors"
+            className="px-3 py-1.5 rounded-full border border-white/15 disabled:opacity-40 hover:bg-white/5 transition-colors"
           >
             Previous
           </button>
           <button
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page >= totalPages || loading}
-            className="px-3 py-1.5 rounded-full border border-g300 disabled:opacity-40 hover:bg-g100 transition-colors"
+            className="px-3 py-1.5 rounded-full border border-white/15 disabled:opacity-40 hover:bg-white/5 transition-colors"
           >
             Next
           </button>

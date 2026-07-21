@@ -3,16 +3,13 @@
 // source of truth so the live preview always reflects the current draft.
 'use client'
 
+import { card, input, label as labelClass, sectionHeading } from './theme'
 import type { CustomerFields, AddressDraft } from './types'
 
 interface Props {
   value: CustomerFields
   onChange: (value: CustomerFields) => void
 }
-
-const inputClass =
-  'w-full rounded-lg border border-g300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40'
-const labelClass = 'block text-[11px] font-bold tracking-[0.08em] uppercase text-g500 mb-1.5'
 
 export function CustomerInfoSection({ value, onChange }: Props) {
   function set<K extends keyof CustomerFields>(key: K, fieldValue: CustomerFields[K]) {
@@ -24,14 +21,14 @@ export function CustomerInfoSection({ value, onChange }: Props) {
   }
 
   return (
-    <div className="bg-white rounded-2xl p-6 shadow-sh">
-      <h3 className="font-heading text-[15px] font-bold text-dark mb-4">Customer Information</h3>
+    <div className={`${card} p-6`}>
+      <h3 className={`${sectionHeading} mb-4`}>Customer Information</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={labelClass} htmlFor="customerName">Customer Name *</label>
           <input
             id="customerName"
-            className={inputClass}
+            className={input}
             value={value.customerName}
             onChange={(e) => set('customerName', e.target.value)}
             required
@@ -41,7 +38,7 @@ export function CustomerInfoSection({ value, onChange }: Props) {
           <label className={labelClass} htmlFor="customerCompany">Company</label>
           <input
             id="customerCompany"
-            className={inputClass}
+            className={input}
             value={value.customerCompany}
             onChange={(e) => set('customerCompany', e.target.value)}
           />
@@ -51,7 +48,7 @@ export function CustomerInfoSection({ value, onChange }: Props) {
           <input
             id="customerEmail"
             type="email"
-            className={inputClass}
+            className={input}
             value={value.customerEmail}
             onChange={(e) => set('customerEmail', e.target.value)}
           />
@@ -61,7 +58,7 @@ export function CustomerInfoSection({ value, onChange }: Props) {
           <input
             id="customerPhone"
             type="tel"
-            className={inputClass}
+            className={input}
             value={value.customerPhone}
             onChange={(e) => set('customerPhone', e.target.value)}
           />
@@ -71,26 +68,26 @@ export function CustomerInfoSection({ value, onChange }: Props) {
       <p className={`${labelClass} mt-5`}>Billing Address</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <input
-          className={`${inputClass} sm:col-span-2`}
+          className={`${input} sm:col-span-2`}
           placeholder="Street address"
           value={value.billingAddress.street1}
           onChange={(e) => setAddress('street1', e.target.value)}
         />
         <input
-          className={inputClass}
+          className={input}
           placeholder="City"
           value={value.billingAddress.city}
           onChange={(e) => setAddress('city', e.target.value)}
         />
         <div className="grid grid-cols-2 gap-4">
           <input
-            className={inputClass}
+            className={input}
             placeholder="State"
             value={value.billingAddress.state}
             onChange={(e) => setAddress('state', e.target.value)}
           />
           <input
-            className={inputClass}
+            className={input}
             placeholder="ZIP"
             value={value.billingAddress.zip}
             onChange={(e) => setAddress('zip', e.target.value)}
@@ -103,7 +100,7 @@ export function CustomerInfoSection({ value, onChange }: Props) {
           <label className={labelClass} htmlFor="publicNotes">Public Notes (shown to customer)</label>
           <textarea
             id="publicNotes"
-            className={inputClass}
+            className={input}
             rows={2}
             value={value.publicNotes}
             onChange={(e) => set('publicNotes', e.target.value)}
@@ -113,7 +110,7 @@ export function CustomerInfoSection({ value, onChange }: Props) {
           <label className={labelClass} htmlFor="internalNotes">Internal Notes (admin only)</label>
           <textarea
             id="internalNotes"
-            className={inputClass}
+            className={input}
             rows={2}
             value={value.internalNotes}
             onChange={(e) => set('internalNotes', e.target.value)}

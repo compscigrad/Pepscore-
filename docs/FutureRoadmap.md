@@ -4,6 +4,7 @@ Modules and capabilities named in Part 1's "Future Expansion" section, not yet b
 
 ## Near-term (natural extensions of what exists)
 
+- **Dark-theme the rest of `/admin`** — the invoice dashboard/builder now matches the landing page's black/glass theme (see `docs/Decisions.md` #10), but the base admin dashboard and orders table are still on the older light `cream`/`g100` theme, leaving a visible seam at the `/admin` → `/admin/invoices` boundary. Extending `components/invoices/theme.ts`'s tokens (or promoting them to a shared, non-invoice-specific location) to the rest of `/admin` would close that gap.
 - **Packing Slips** — same `InvoiceItem` data, a third PDF document variant alongside Master/Recipient.
 - **Quotes** — an `InvoiceStatus` of `DRAFT`/`PENDING` already covers "not yet a real sale"; a Quote could literally be an unconverted Invoice, or a thin sibling model that converts into one.
 - **CSV / Excel export** — `xlsx` is already a project dependency (used by the CPA export); extending it to invoices is additive.

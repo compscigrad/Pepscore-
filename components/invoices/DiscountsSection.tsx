@@ -6,6 +6,7 @@
 import { resolveDiscountAmount } from '@/lib/invoice/calculations'
 import { formatMoney } from '@/lib/invoice/format'
 import { makeKey } from './types'
+import { card, input, pillSecondary, sectionHeading } from './theme'
 import type { InvoiceDiscountDraft, Promotion } from './types'
 
 interface Props {
@@ -14,8 +15,6 @@ interface Props {
   promotions: Promotion[]
   itemsTotal: number
 }
-
-const inputClass = 'w-full rounded-lg border border-g300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40'
 
 export function DiscountsSection({ discounts, onChange, promotions, itemsTotal }: Props) {
   function addPromotion(promotionId: string) {
@@ -42,13 +41,13 @@ export function DiscountsSection({ discounts, onChange, promotions, itemsTotal }
   const availablePromotions = promotions.filter((p) => !discounts.some((d) => d.promotionId === p.id))
 
   return (
-    <div className="bg-white rounded-2xl p-6 shadow-sh">
+    <div className={`${card} p-6`}>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-heading text-[15px] font-bold text-dark">Discounts &amp; Promotions</h3>
+        <h3 className={sectionHeading}>Discounts &amp; Promotions</h3>
         <div className="flex gap-2">
           {availablePromotions.length > 0 && (
             <select
-              className="rounded-full border border-g300 text-sm px-3 py-1.5"
+              className="rounded-full border border-white/15 bg-white/5 text-white text-sm px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-gold/40"
               value=""
               onChange={(e) => e.target.value && addPromotion(e.target.value)}
               aria-label="Apply a promotion"
@@ -64,7 +63,7 @@ export function DiscountsSection({ discounts, onChange, promotions, itemsTotal }
           <button
             type="button"
             onClick={addCustomDiscount}
-            className="rounded-full bg-g100 text-dark text-sm font-bold px-4 py-1.5 hover:bg-g300/50 transition-colors"
+            className={`${pillSecondary} px-4 py-1.5`}
           >
             + Custom Discount
           </button>
@@ -72,20 +71,20 @@ export function DiscountsSection({ discounts, onChange, promotions, itemsTotal }
       </div>
 
       {discounts.length === 0 ? (
-        <p className="text-sm text-g500">No discounts applied.</p>
+        <p className="text-sm text-white/50">No discounts applied.</p>
       ) : (
         <div className="space-y-2">
           {discounts.map((discount) => (
             <div key={discount.key} className="flex items-center gap-2">
               <input
-                className={`${inputClass} flex-1`}
+                className={`${input} flex-1`}
                 placeholder="Label"
                 value={discount.label}
                 onChange={(e) => updateDiscount(discount.key, { label: e.target.value })}
                 disabled={!!discount.promotionId}
               />
               <select
-                className={`${inputClass} w-32`}
+                className={`${input} w-32`}
                 value={discount.type}
                 onChange={(e) => updateDiscount(discount.key, { type: e.target.value as InvoiceDiscountDraft['type'] })}
                 disabled={!!discount.promotionId}
@@ -97,18 +96,18 @@ export function DiscountsSection({ discounts, onChange, promotions, itemsTotal }
                 type="number"
                 min={0}
                 step="0.01"
-                className={`${inputClass} w-24`}
+                className={`${input} w-24`}
                 value={discount.amount}
                 onChange={(e) => updateDiscount(discount.key, { amount: Number(e.target.value) })}
                 disabled={!!discount.promotionId}
               />
-              <span className="w-24 text-right text-sm font-medium text-dark whitespace-nowrap">
+              <span className="w-24 text-right text-sm font-medium text-white whitespace-nowrap">
                 -{formatMoney(resolveDiscountAmount(discount, itemsTotal))}
               </span>
               <button
                 type="button"
                 onClick={() => removeDiscount(discount.key)}
-                className="text-red-500 px-1"
+                className="text-red-400 px-1"
                 aria-label={`Remove ${discount.label || 'discount'}`}
               >
                 ✕
