@@ -34,10 +34,15 @@
 **Dependencies**: `lib/invoice/calculations.ts` (`resolveDiscountAmount`).
 
 ### `PaymentSection.tsx`
-**Purpose**: Shows payment history and lets the admin record a new payment against the balance.
-**Props**: `invoiceId: string`, `payments: InvoicePayment[]`, `balanceDue: number`, `onPaymentRecorded: (invoice) => void`.
-**Dependencies**: `/api/admin/invoices/[id]/payments` route.
-**Note**: only rendered in edit mode (an unsaved draft has no invoice ID to attach a payment to).
+**Purpose**: Shows payment history, a computed Payment Status badge (Pending/Partial/Paid — derived from `amountPaid`/`total`, never stored), lets the admin record a new payment against the balance, and renders `PaymentArrangementSection` beneath it.
+**Props**: `invoiceId: string`, `payments: InvoicePayment[]`, `amountPaid: number`, `total: number`, `balanceDue: number`, `paymentArrangement: (PaymentArrangement & { installments }) | null`, `onPaymentRecorded: () => void`.
+**Dependencies**: `/api/admin/invoices/[id]/payments` route, `lib/invoice/paymentArrangement.ts` (`computePaymentStatus`).
+**Note**: only rendered in edit mode (an unsaved draft has no invoice ID to attach a payment to). Method dropdown defaults to `NA` — submission is blocked while it's still selected.
+
+### `PaymentArrangementSection.tsx`
+**Purpose**: Installment-plan setup and display. Shows a "+ Set Up Payment Arrangement" form only when Payment Status is Partial and no arrangement exists yet (live-previews the generated schedule as the admin types); once an arrangement exists, shows its full schedule table + summary regardless of current status.
+**Props**: `invoiceId: string`, `arrangement`, `canCreate: boolean`, `invoiceTotal`, `amountPaid`, `balanceDue`, `payments: InvoicePayment[]`, `onArrangementCreated: () => void`.
+**Dependencies**: `/api/admin/invoices/[id]/payment-arrangement` route, `lib/invoice/paymentArrangement.ts` (`generateInstallmentSchedule`) for the live client-side preview — the exact same function the server uses, so the preview never disagrees with what actually gets saved.
 
 ### `TotalsSummary.tsx`
 **Purpose**: Read-only display of items total, subtotal, discount total, shipping, final total, amount paid, balance due.
@@ -68,6 +73,14 @@
 **Purpose**: KPI card row (total/paid/partial/outstanding/pending shipments/delivered/revenue).
 **Props**: `stats: InvoiceDashboardStats` (from `lib/invoices.ts getInvoiceDashboardStats`).
 **Dependencies**: none — pure presentational, follows the KPI card pattern already in `app/admin/page.tsx`.
+
+## `lib/` — payment arrangements
+
+### `lib/invoice/paymentArrangement.ts`
+**Purpose**: Pure, framework-agnostic business logic — `generateInstallmentSchedule()` (weekly/biweekly date math, final-installment rounding correction) and `computePaymentStatus()` (Pending/Partial/Paid, derived from `amountPaid`/`total`). Imported client-side (for the builder's live schedule preview) and server-side (`lib/paymentArrangements.ts`), so the preview and the persisted schedule are always the same calculation.
+
+### `lib/paymentArrangements.ts`
+**Purpose**: Data access for `PaymentArrangement`/`PaymentArrangementInstallment` — `createPaymentArrangement()` (derives "Initial Payment Amount/Date" from the invoice's own payment history, generates and persists the future schedule) and `matchPaymentToNextPendingInstallment()` (called from `lib/invoices.ts`'s `recordPayment()` — any payment on an invoice with an arrangement satisfies the earliest pending installment). Deliberately never touches `Invoice.amountPaid`/`balanceDue` itself — those stay owned by `lib/invoices.ts`.
 
 ## Reuse from the existing codebase
 

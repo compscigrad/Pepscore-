@@ -7,6 +7,7 @@ import {
   CustomerShippingSection,
   ItemsTable,
   TotalsBlock,
+  PaymentArrangementSection,
   LegalFooter,
   formatMoney,
   formatDate,
@@ -44,6 +45,8 @@ export function MasterInvoiceDocument({ invoice }: { invoice: InvoiceWithRelatio
             ))}
           </View>
         )}
+
+        <PaymentArrangementSection invoice={invoice} variant="internal" />
 
         {(invoice.internalNotes || invoice.publicNotes) && (
           <View style={{ marginTop: 24 }}>

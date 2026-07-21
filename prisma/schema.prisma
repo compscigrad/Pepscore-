@@ -175,9 +175,10 @@ model Invoice {
   pdfMasterUrl    String?
   pdfRecipientUrl String?
 
-  items     InvoiceItem[]
-  discounts InvoiceDiscount[]
-  payments  InvoicePayment[]
+  items              InvoiceItem[]
+  discounts          InvoiceDiscount[]
+  payments           InvoicePayment[]
+  paymentArrangement PaymentArrangement?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -286,14 +287,26 @@ model InvoicePayment {
   paidAt          DateTime      @default(now())
   notes           String?
 
+  // Set when this payment satisfies a scheduled installment (see
+  // PaymentArrangement below) — lets an installment's "Paid" status point
+  // back to the actual payment record that satisfied it.
+  installment PaymentArrangementInstallment?
+
   @@index([invoiceId])
 }
 
 enum PaymentMethod {
+  // NA is the default for invoices that haven't received a payment yet —
+  // named NA (not "N/A") since enum identifiers can't contain a slash;
+  // lib/invoice/format.ts formats it back to "N/A" for display.
+  NA
   CASH
   COD
   CREDIT_CARD
+  DEBIT_CARD
   APPLE_PAY
+  PAYPAL
+  BANK_TRANSFER
   STRIPE
   SQUARE
   CASH_APP
@@ -304,6 +317,68 @@ enum PaymentMethod {
   CHECK
   CRYPTO
   OTHER
+}
+
+// ─── Payment Arrangements (installment plans) ───────────────────────────────
+// A reusable data model, not one-off form fields — deliberately separate rows
+// per installment (not a JSON blob) so future features (overdue detection,
+// reminders, a customer payment portal, finance reporting) can query/update
+// individual installments without redesigning this layer. One arrangement
+// per invoice; installment #1 is always the initial payment itself (created
+// alongside the arrangement, immediately marked PAID and linked to its
+// InvoicePayment), installments #2+ are the generated future schedule.
+
+model PaymentArrangement {
+  id                   String           @id @default(cuid())
+  invoiceId            String           @unique
+  invoice              Invoice          @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  initialPaymentAmount Float
+  initialPaymentDate   DateTime
+  // Count of *future* installments after the initial payment (matches the
+  // "Number of Remaining Payments" field) — installment #1 is the initial
+  // payment, so an arrangement always has 1 + remainingPayments rows total.
+  remainingPayments Int
+  frequency         PaymentFrequency
+
+  installments PaymentArrangementInstallment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PaymentArrangementInstallment {
+  id            String             @id @default(cuid())
+  arrangementId String
+  arrangement   PaymentArrangement @relation(fields: [arrangementId], references: [id], onDelete: Cascade)
+  // 1-indexed; #1 is always the initial payment.
+  installmentNumber Int
+  dueDate           DateTime
+  amount            Float
+  status            InstallmentStatus @default(PENDING)
+  paidAt            DateTime?
+
+  // Links to the InvoicePayment that actually satisfied this installment
+  // (set immediately for #1, set by recordPayment() for later ones once
+  // matched to the next pending installment in order).
+  paymentId String?         @unique
+  payment   InvoicePayment? @relation(fields: [paymentId], references: [id])
+
+  @@unique([arrangementId, installmentNumber])
+  @@index([arrangementId])
+}
+
+enum PaymentFrequency {
+  WEEKLY
+  BIWEEKLY
+}
+
+enum InstallmentStatus {
+  PENDING
+  PAID
+  // Not set automatically yet (no scheduled job in this pass) — reserved
+  // for the "automatic overdue detection" future enhancement; the schema
+  // already supports it without another migration.
+  OVERDUE
 }
 
 // ─── Payments ────────────────────────────────────────────────────────────────

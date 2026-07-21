@@ -29,9 +29,19 @@ const DELIVERY_STATUS_COLORS: Record<string, string> = {
   DAMAGED: 'border-red-400/30 bg-red-400/10 text-red-300',
 }
 
+// Covers both the invoice-level Payment Status (Pending/Partial/Paid) and
+// individual installment statuses (Pending/Paid/Overdue) — same three core
+// states, same meaning, so one color map serves both.
+const PAYMENT_STATUS_COLORS: Record<string, string> = {
+  PENDING: 'border-white/15 bg-white/5 text-white/50',
+  PARTIAL: 'border-amber-400/30 bg-amber-400/10 text-amber-300',
+  PAID: 'border-gold/40 bg-gold/10 text-gold-light',
+  OVERDUE: 'border-red-400/30 bg-red-400/10 text-red-300',
+}
+
 interface StatusBadgeProps {
   status: string
-  variant?: 'invoice' | 'delivery'
+  variant?: 'invoice' | 'delivery' | 'payment'
 }
 
 function formatLabel(status: string): string {
@@ -42,9 +52,14 @@ function formatLabel(status: string): string {
     .join(' ')
 }
 
+const VARIANT_COLORS: Record<NonNullable<StatusBadgeProps['variant']>, Record<string, string>> = {
+  invoice: INVOICE_STATUS_COLORS,
+  delivery: DELIVERY_STATUS_COLORS,
+  payment: PAYMENT_STATUS_COLORS,
+}
+
 export function StatusBadge({ status, variant = 'invoice' }: StatusBadgeProps) {
-  const colors = variant === 'delivery' ? DELIVERY_STATUS_COLORS : INVOICE_STATUS_COLORS
-  const className = colors[status] ?? 'border-white/15 bg-white/5 text-white/50'
+  const className = VARIANT_COLORS[variant][status] ?? 'border-white/15 bg-white/5 text-white/50'
 
   return (
     <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-bold tracking-wide ${className}`}>

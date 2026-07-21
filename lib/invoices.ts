@@ -8,12 +8,16 @@ import { prisma } from '@/lib/prisma'
 import { calculateInvoiceTotals, type InvoiceLineItemInput } from '@/lib/invoice/calculations'
 import { generateSequentialInvoiceNumber } from '@/lib/invoice/numbering'
 import { assertPaymentWithinBalance, type InvoicePayload, type PaymentPayload } from '@/lib/invoice/validation'
+import { matchPaymentToNextPendingInstallment } from '@/lib/paymentArrangements'
 
 const invoiceWithRelations = Prisma.validator<Prisma.InvoiceDefaultArgs>()({
   include: {
     items: { orderBy: { sortOrder: 'asc' } },
     discounts: true,
     payments: { orderBy: { paidAt: 'desc' } },
+    paymentArrangement: {
+      include: { installments: { orderBy: { installmentNumber: 'asc' } } },
+    },
   },
 })
 export type InvoiceWithRelations = Prisma.InvoiceGetPayload<typeof invoiceWithRelations>
@@ -218,7 +222,7 @@ export async function recordPayment(invoiceId: string, payload: PaymentPayload):
   const newAmountPaid = round2(invoice.amountPaid + payload.amount)
   const newBalanceDue = round2(invoice.total - newAmountPaid)
 
-  await prisma.invoicePayment.create({
+  const payment = await prisma.invoicePayment.create({
     data: {
       invoiceId,
       amount: payload.amount,
@@ -229,7 +233,7 @@ export async function recordPayment(invoiceId: string, payload: PaymentPayload):
     },
   })
 
-  return prisma.invoice.update({
+  await prisma.invoice.update({
     where: { id: invoiceId },
     data: {
       amountPaid: newAmountPaid,
@@ -237,8 +241,15 @@ export async function recordPayment(invoiceId: string, payload: PaymentPayload):
       status: newBalanceDue <= 0 ? 'PAID' : 'PARTIALLY_PAID',
       paidAt: newBalanceDue <= 0 ? new Date() : invoice.paidAt,
     },
-    ...invoiceWithRelations,
   })
+
+  // If this invoice has a payment arrangement, this payment satisfies
+  // whichever installment is next in schedule order — a no-op otherwise.
+  // Done before the final fetch below so the returned invoice reflects the
+  // installment's updated status, not a stale pre-match snapshot.
+  await matchPaymentToNextPendingInstallment(invoiceId, payment)
+
+  return prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId }, ...invoiceWithRelations })
 }
 
 // Archive rather than hard-delete, per the spec's Archive/Restore requirement.
