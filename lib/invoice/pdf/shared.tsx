@@ -66,7 +66,7 @@ export const styles = StyleSheet.create({
   // gets a bogus height from Yoga with no row siblings to size against,
   // which overlaps whatever renders next. Discovered by rendering an actual
   // PDF, not guessed — see docs/Decisions.md.
-  standaloneCard: { backgroundColor: colors.g100, borderRadius: 8, padding: 7 },
+  standaloneCard: { backgroundColor: colors.g100, borderRadius: 8, padding: 6 },
   sectionLabel: {
     fontFamily: fonts.heading,
     fontSize: 8,
@@ -92,7 +92,7 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     borderBottomWidth: 0.5,
     borderBottomColor: colors.g300,
-    paddingVertical: 3,
+    paddingVertical: 2.5,
   },
   tableHeaderCell: {
     fontFamily: fonts.heading,
@@ -126,10 +126,10 @@ export const styles = StyleSheet.create({
   // Legal footer sits in normal document flow (never `fixed`) — deliberately,
   // so it can never overlap the totals/signature area above it: it simply
   // renders after whatever content precedes it, wherever that ends up.
-  legalFooter: { marginTop: 8 },
+  legalFooter: { marginTop: 6 },
   legalDivider: { borderTopWidth: 0.5, borderTopColor: colors.g300, marginBottom: 3 },
-  legalTagline: { fontSize: 7, color: colors.g500, textAlign: 'center', marginBottom: 5 },
-  legalSection: { marginBottom: 3 },
+  legalTagline: { fontSize: 7, color: colors.g500, textAlign: 'center', marginBottom: 4 },
+  legalSection: { marginBottom: 2 },
   legalHeading: {
     fontFamily: fonts.heading,
     fontSize: 6.25,
@@ -259,29 +259,29 @@ export function ShipmentTrackingSection({ invoice }: { invoice: InvoiceWithRelat
   if (!shipment) return null
 
   return (
-    <View style={{ marginTop: 8 }}>
+    <View style={{ marginTop: 6 }}>
       <Text style={styles.sectionLabel}>Shipment Tracking</Text>
       <View style={[styles.standaloneCard, { marginTop: 3 }]}>
         <Text style={styles.sectionText}>
           {formatCarrierLabel(shipment.carrier)}
           {shipment.service ? ` — ${shipment.service}` : ''}
         </Text>
-        <Text style={[styles.sectionText, { marginTop: 2 }]}>
+        <Text style={[styles.sectionText, { marginTop: 1.5 }]}>
           Tracking #: {shipment.trackingUrl ? <Link src={shipment.trackingUrl} style={{ color: colors.gold }}>{shipment.trackingNumber}</Link> : shipment.trackingNumber}
         </Text>
-        <Text style={[styles.sectionText, { marginTop: 2, color: colors.gold }]}>
+        <Text style={[styles.sectionText, { marginTop: 1.5, color: colors.gold }]}>
           {formatEnumLabel(shipment.normalizedStatus)}
         </Text>
         {shipment.dateShipped ? (
-          <Text style={[styles.sectionText, { marginTop: 2 }]}>Shipped: {formatDate(shipment.dateShipped)}</Text>
+          <Text style={[styles.sectionText, { marginTop: 1.5 }]}>Shipped: {formatDate(shipment.dateShipped)}</Text>
         ) : null}
         {shipment.deliveredAt ? (
-          <Text style={[styles.sectionText, { marginTop: 2 }]}>Delivered: {formatDate(shipment.deliveredAt)}</Text>
+          <Text style={[styles.sectionText, { marginTop: 1.5 }]}>Delivered: {formatDate(shipment.deliveredAt)}</Text>
         ) : shipment.estimatedDeliveryAt ? (
-          <Text style={[styles.sectionText, { marginTop: 2 }]}>Est. Delivery: {formatDate(shipment.estimatedDeliveryAt)}</Text>
+          <Text style={[styles.sectionText, { marginTop: 1.5 }]}>Est. Delivery: {formatDate(shipment.estimatedDeliveryAt)}</Text>
         ) : null}
         {shipment.carrierStatus ? (
-          <Text style={[styles.sectionText, { marginTop: 2, color: colors.g500 }]}>Latest update: {shipment.carrierStatus}</Text>
+          <Text style={[styles.sectionText, { marginTop: 1.5, color: colors.g500 }]}>Latest update: {shipment.carrierStatus}</Text>
         ) : null}
       </View>
     </View>

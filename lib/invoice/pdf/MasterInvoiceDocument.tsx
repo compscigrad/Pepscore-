@@ -32,7 +32,7 @@ export function MasterInvoiceDocument({ invoice }: { invoice: InvoiceWithRelatio
             "Payment N," so showing both would just repeat the same rows
             twice and cost a page's worth of room for nothing. */}
         {invoice.payments.length > 0 && !invoice.paymentArrangement && (
-          <View style={{ marginTop: 10 }}>
+          <View style={{ marginTop: 6 }}>
             <Text style={styles.sectionLabel}>Payment History</Text>
             <View style={styles.tableHeaderRow}>
               <Text style={[styles.tableHeaderCell, { flex: 2 }]}>Date</Text>
