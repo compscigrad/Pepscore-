@@ -10,15 +10,15 @@ import type { InvoiceWithRelations } from '@/lib/invoices'
 
 export function RecipientReceiptDocument({ invoice }: { invoice: InvoiceWithRelations }) {
   return (
-    <Document title={`${invoice.invoiceNumber} — Receipt`}>
+    <Document title={`${invoice.invoiceNumber} — Client Invoice`}>
       <Page size="LETTER" style={styles.page}>
-        <DocumentHeader title="Receipt" invoice={invoice} showStatus={false} />
+        <DocumentHeader title="Client Invoice" invoice={invoice} showStatus={false} />
         <CustomerShippingSection invoice={invoice} />
         <ItemsTable invoice={invoice} />
         <TotalsBlock invoice={invoice} showBalance />
         <PaymentArrangementSection invoice={invoice} variant="recipient" />
         {invoice.publicNotes ? (
-          <View style={{ marginTop: 24 }}>
+          <View style={{ marginTop: 10 }}>
             <Text style={styles.sectionLabel}>Notes</Text>
             <Text style={styles.sectionText}>{invoice.publicNotes}</Text>
           </View>

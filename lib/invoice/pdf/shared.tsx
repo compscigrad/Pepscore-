@@ -11,24 +11,28 @@ export { formatMoney, formatDate }
 
 const { colors, fonts } = BRAND
 
+// Every vertical measurement in here is deliberately tight — the goal is a
+// typical invoice (a handful of items, maybe a payment history/arrangement,
+// the legal footer) fitting on one LETTER page without looking cramped.
+// Only a genuinely long item list should push a second page.
 export const styles = StyleSheet.create({
   page: {
-    padding: 48,
+    padding: 28,
     fontFamily: fonts.body,
     fontSize: 10,
     color: colors.dark,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 28,
+    marginBottom: 8,
   },
-  // Sized to read as a real branding stamp anchoring the page, not a small
-  // corner mark — this is the one PDF a client actually holds onto.
-  logo: { width: 240, height: 161, marginBottom: 10, objectFit: 'contain' },
+  // A real branding stamp, not a small corner mark — but sized to leave
+  // room for the rest of the document, not dominate the page.
+  logo: { width: 140, height: 94, marginBottom: 4, objectFit: 'contain' },
   companyName: { fontFamily: fonts.heading, fontSize: 16, color: colors.dark },
   docTitle: {
     fontFamily: fonts.heading,
-    fontSize: 18,
+    fontSize: 16,
     color: colors.dark,
     letterSpacing: 2,
     textTransform: 'uppercase',
@@ -36,14 +40,14 @@ export const styles = StyleSheet.create({
   // Small brand accent under the title — the one deliberate spot of color in
   // an otherwise black-on-white header, echoing the landing page's gold
   // without turning the header into a marketing banner.
-  headerAccent: { width: 40, height: 2, backgroundColor: colors.gold, marginTop: 8 },
-  invoiceNumber: { fontSize: 9, color: colors.g500, marginTop: 8 },
+  headerAccent: { width: 32, height: 2, backgroundColor: colors.gold, marginTop: 5 },
+  invoiceNumber: { fontSize: 9, color: colors.g500, marginTop: 5 },
   statusBadge: {
     borderWidth: 0.8,
-    borderRadius: 10,
-    paddingVertical: 3,
-    paddingHorizontal: 10,
-    marginTop: 8,
+    borderRadius: 9,
+    paddingVertical: 2,
+    paddingHorizontal: 9,
+    marginTop: 5,
   },
   statusBadgeText: {
     fontFamily: fonts.heading,
@@ -51,34 +55,34 @@ export const styles = StyleSheet.create({
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
-  sectionRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24, gap: 24 },
-  sectionCard: { flex: 1, backgroundColor: colors.g100, borderRadius: 8, padding: 12 },
+  sectionRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8, gap: 16 },
+  sectionCard: { flex: 1, backgroundColor: colors.g100, borderRadius: 8, padding: 7 },
   sectionLabel: {
     fontFamily: fonts.heading,
     fontSize: 8,
     color: colors.g500,
     letterSpacing: 1,
-    marginBottom: 6,
+    marginBottom: 3,
     textTransform: 'uppercase',
     alignSelf: 'flex-start',
     borderBottomWidth: 1.5,
     borderBottomColor: colors.gold,
-    paddingBottom: 3,
+    paddingBottom: 2,
   },
-  sectionText: { fontSize: 10, color: colors.dark, lineHeight: 1.5 },
-  table: { marginBottom: 16 },
+  sectionText: { fontSize: 9.5, color: colors.dark, lineHeight: 1.3 },
+  table: { marginBottom: 8 },
   tableHeaderRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
     borderBottomColor: colors.dark,
-    paddingBottom: 6,
-    marginBottom: 6,
+    paddingBottom: 3,
+    marginBottom: 3,
   },
   tableRow: {
     flexDirection: 'row',
     borderBottomWidth: 0.5,
     borderBottomColor: colors.g300,
-    paddingVertical: 6,
+    paddingVertical: 3,
   },
   tableHeaderCell: {
     fontFamily: fonts.heading,
@@ -92,40 +96,40 @@ export const styles = StyleSheet.create({
   colQty: { flex: 1, textAlign: 'center' },
   colPrice: { flex: 1.2, textAlign: 'right' },
   colTotal: { flex: 1.2, textAlign: 'right' },
-  totalsBlock: { alignSelf: 'flex-end', width: 240, marginTop: 8 },
-  totalsRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 },
+  totalsBlock: { alignSelf: 'flex-end', width: 240, marginTop: 4 },
+  totalsRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 1.5 },
   totalsLabel: { fontSize: 9.5, color: colors.g700 },
   totalsValue: { fontSize: 9.5, color: colors.dark },
   grandTotalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingTop: 8,
-    marginTop: 4,
+    paddingTop: 5,
+    marginTop: 2,
     borderTopWidth: 1,
     borderTopColor: colors.dark,
   },
   grandTotalLabel: { fontFamily: fonts.heading, fontSize: 11, color: colors.dark },
   grandTotalValue: { fontFamily: fonts.heading, fontSize: 11, color: colors.gold },
-  balanceRow: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: 6 },
+  balanceRow: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: 3 },
   balanceLabel: { fontFamily: fonts.heading, fontSize: 10, color: colors.dark },
   balanceValue: { fontFamily: fonts.heading, fontSize: 10, color: colors.goldDark },
   // Legal footer sits in normal document flow (never `fixed`) — deliberately,
   // so it can never overlap the totals/signature area above it: it simply
   // renders after whatever content precedes it, wherever that ends up.
-  legalFooter: { marginTop: 28 },
-  legalDivider: { borderTopWidth: 0.5, borderTopColor: colors.g300, marginBottom: 10 },
-  legalTagline: { fontSize: 8, color: colors.g500, textAlign: 'center', marginBottom: 12 },
-  legalSection: { marginBottom: 8 },
+  legalFooter: { marginTop: 8 },
+  legalDivider: { borderTopWidth: 0.5, borderTopColor: colors.g300, marginBottom: 3 },
+  legalTagline: { fontSize: 7, color: colors.g500, textAlign: 'center', marginBottom: 5 },
+  legalSection: { marginBottom: 3 },
   legalHeading: {
     fontFamily: fonts.heading,
-    fontSize: 7,
+    fontSize: 6.25,
     color: colors.g500,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
-    marginBottom: 3,
+    marginBottom: 1,
   },
-  legalBody: { fontSize: 7, color: colors.g500, lineHeight: 1.5 },
-  arrangementSummaryRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12, gap: 16 },
+  legalBody: { fontSize: 6.25, color: colors.g500, lineHeight: 1.25 },
+  arrangementSummaryRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 4, gap: 14 },
   arrangementStat: { minWidth: 90 },
   arrangementStatLabel: {
     fontFamily: fonts.heading,
@@ -133,7 +137,7 @@ export const styles = StyleSheet.create({
     color: colors.g500,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
-    marginBottom: 2,
+    marginBottom: 1,
   },
   arrangementStatValue: { fontSize: 9.5, color: colors.dark, fontFamily: fonts.heading },
 })
@@ -318,7 +322,7 @@ export function PaymentArrangementSection({
   if (variant === 'recipient') {
     const upcoming = arrangement.installments.filter((i) => i.status !== 'PAID')
     return (
-      <View style={{ marginTop: 24 }} wrap={false}>
+      <View style={{ marginTop: 10 }} wrap={false}>
         <Text style={styles.sectionLabel}>Payment Arrangement</Text>
         <View style={styles.arrangementSummaryRow}>
           <View style={styles.arrangementStat}>
@@ -351,7 +355,7 @@ export function PaymentArrangementSection({
   }
 
   return (
-    <View style={{ marginTop: 24 }} wrap={false}>
+    <View style={{ marginTop: 10 }} wrap={false}>
       <Text style={styles.sectionLabel}>Payment Arrangement</Text>
       <View style={styles.arrangementSummaryRow}>
         <View style={styles.arrangementStat}>
@@ -408,11 +412,15 @@ export function PaymentArrangementSection({
 // than splitting a paragraph awkwardly across the page break.
 export function LegalFooter({ tagline }: { tagline: string }) {
   return (
-    <View style={styles.legalFooter} wrap={false}>
+    <View style={styles.legalFooter}>
       <View style={styles.legalDivider} />
       <Text style={styles.legalTagline}>{tagline}</Text>
+      {/* wrap={false} lives on each clause, not the outer footer — a clause
+          never splits mid-paragraph, but the footer as a whole still fills
+          whatever room is left on the current page instead of jumping in
+          its entirety to a fresh one over a few missing points. */}
       {INVOICE_LEGAL_SECTIONS.map((section) => (
-        <View style={styles.legalSection} key={section.heading}>
+        <View style={styles.legalSection} key={section.heading} wrap={false}>
           <Text style={styles.legalHeading}>{section.heading}</Text>
           <Text style={styles.legalBody}>{section.body}</Text>
         </View>

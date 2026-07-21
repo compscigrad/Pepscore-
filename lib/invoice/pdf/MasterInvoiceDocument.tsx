@@ -12,6 +12,7 @@ import {
   formatMoney,
   formatDate,
 } from './shared'
+import { formatPaymentMethodLabel } from '@/lib/invoice/format'
 import { BRAND } from './brand'
 import type { InvoiceWithRelations } from '@/lib/invoices'
 
@@ -24,8 +25,12 @@ export function MasterInvoiceDocument({ invoice }: { invoice: InvoiceWithRelatio
         <ItemsTable invoice={invoice} />
         <TotalsBlock invoice={invoice} showBalance />
 
-        {invoice.payments.length > 0 && (
-          <View style={{ marginTop: 24 }}>
+        {/* Skipped when an arrangement exists — its own schedule table
+            already lists every payment (including this history) as
+            "Payment N," so showing both would just repeat the same rows
+            twice and cost a page's worth of room for nothing. */}
+        {invoice.payments.length > 0 && !invoice.paymentArrangement && (
+          <View style={{ marginTop: 10 }}>
             <Text style={styles.sectionLabel}>Payment History</Text>
             <View style={styles.tableHeaderRow}>
               <Text style={[styles.tableHeaderCell, { flex: 2 }]}>Date</Text>
@@ -36,7 +41,7 @@ export function MasterInvoiceDocument({ invoice }: { invoice: InvoiceWithRelatio
             {invoice.payments.map((payment) => (
               <View style={styles.tableRow} key={payment.id}>
                 <Text style={[styles.tableCell, { flex: 2 }]}>{formatDate(payment.paidAt)}</Text>
-                <Text style={[styles.tableCell, { flex: 2 }]}>{payment.method}</Text>
+                <Text style={[styles.tableCell, { flex: 2 }]}>{formatPaymentMethodLabel(payment.method)}</Text>
                 <Text style={[styles.tableCell, { flex: 2 }]}>{payment.referenceNumber || '—'}</Text>
                 <Text style={[styles.tableCell, { flex: 1, textAlign: 'right' }]}>
                   {formatMoney(payment.amount)}
@@ -49,9 +54,9 @@ export function MasterInvoiceDocument({ invoice }: { invoice: InvoiceWithRelatio
         <PaymentArrangementSection invoice={invoice} variant="internal" />
 
         {(invoice.internalNotes || invoice.publicNotes) && (
-          <View style={{ marginTop: 24 }}>
+          <View style={{ marginTop: 10 }}>
             {invoice.publicNotes ? (
-              <View style={{ marginBottom: 10 }}>
+              <View style={{ marginBottom: 6 }}>
                 <Text style={styles.sectionLabel}>Notes to Customer</Text>
                 <Text style={styles.sectionText}>{invoice.publicNotes}</Text>
               </View>

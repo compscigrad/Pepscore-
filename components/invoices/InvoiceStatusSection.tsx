@@ -31,7 +31,7 @@ export function InvoiceStatusSection({ value, onChange }: Props) {
         </select>
       </div>
       <p className="text-[12px] text-white/40 mt-3">
-        The Recipient Receipt never shows this status to the customer — only the Master Invoice does, for your own reference. Set this to <strong className="text-white/60">Issued</strong> (or later) before sending a PDF to a client.
+        The Client Invoice never shows this status to the customer — only the Master Invoice does, for your own reference. Set this to <strong className="text-white/60">Issued</strong> (or later) before sending a PDF to a client.
       </p>
     </div>
   )
