@@ -3,7 +3,7 @@
 // spec explicitly says to hide from the customer-facing copy.
 import { Text, View, Image, StyleSheet } from '@react-pdf/renderer'
 import { BRAND } from './brand'
-import { formatMoney, formatDate } from '@/lib/invoice/format'
+import { formatMoney, formatDate, formatCarrierLabel } from '@/lib/invoice/format'
 import { INVOICE_LEGAL_SECTIONS } from '@/lib/invoice/legal'
 import type { InvoiceWithRelations } from '@/lib/invoices'
 
@@ -22,7 +22,9 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 28,
   },
-  logo: { width: 130, height: 87, marginBottom: 10, objectFit: 'contain' },
+  // Sized to read as a real branding stamp anchoring the page, not a small
+  // corner mark — this is the one PDF a client actually holds onto.
+  logo: { width: 240, height: 161, marginBottom: 10, objectFit: 'contain' },
   companyName: { fontFamily: fonts.heading, fontSize: 16, color: colors.dark },
   docTitle: {
     fontFamily: fonts.heading,
@@ -143,7 +145,20 @@ function statusBadgeColor(status: string): string {
 // Centered logo (the logo image already contains the "Pepscore Lab"
 // wordmark, so no separate company-name text is needed alongside it) above
 // the document title — matches the layout of the reference invoice.
-export function DocumentHeader({ title, invoice }: { title: string; invoice: InvoiceWithRelations }) {
+//
+// `showStatus` defaults to true (the Master Invoice's internal workflow
+// state — DRAFT/PENDING/etc. — is useful for the admin's own reference) but
+// the Recipient Receipt passes false: a customer should never see internal
+// pipeline language like "Draft" on the copy they're handed.
+export function DocumentHeader({
+  title,
+  invoice,
+  showStatus = true,
+}: {
+  title: string
+  invoice: InvoiceWithRelations
+  showStatus?: boolean
+}) {
   const badgeColor = statusBadgeColor(invoice.status)
   return (
     <View style={styles.header}>
@@ -160,9 +175,11 @@ export function DocumentHeader({ title, invoice }: { title: string; invoice: Inv
       <Text style={styles.invoiceNumber}>
         {invoice.invoiceNumber} · {formatDate(invoice.issuedAt)}
       </Text>
-      <View style={[styles.statusBadge, { borderColor: badgeColor }]}>
-        <Text style={[styles.statusBadgeText, { color: badgeColor }]}>{formatEnumLabel(invoice.status)}</Text>
-      </View>
+      {showStatus ? (
+        <View style={[styles.statusBadge, { borderColor: badgeColor }]}>
+          <Text style={[styles.statusBadgeText, { color: badgeColor }]}>{formatEnumLabel(invoice.status)}</Text>
+        </View>
+      ) : null}
     </View>
   )
 }
@@ -190,7 +207,7 @@ export function CustomerShippingSection({ invoice }: { invoice: InvoiceWithRelat
         <Text style={styles.sectionText}>{formatAddress(invoice.shippingAddress)}</Text>
         {invoice.carrier ? (
           <Text style={[styles.sectionText, { marginTop: 6 }]}>
-            {invoice.carrier} {invoice.trackingNumber ? `— ${invoice.trackingNumber}` : ''}
+            {formatCarrierLabel(invoice.carrier)} {invoice.trackingNumber ? `— ${invoice.trackingNumber}` : ''}
           </Text>
         ) : null}
         <Text style={[styles.sectionText, { marginTop: 4, color: colors.g500 }]}>

@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { formatCurrency } from '@/lib/orders'
+import { formatCarrierLabel } from '@/lib/invoice/format'
 import { StatusBadge } from './StatusBadge'
 import { card, input, pillPrimary } from './theme'
 import type { InvoiceWithRelations } from '@/lib/invoices'
@@ -187,7 +188,7 @@ export function InvoiceTable({ initialInvoices, initialTotal }: Props) {
                     <StatusBadge status={invoice.status} />
                   </td>
                   <td className="px-4 py-3 text-white/50 whitespace-nowrap">
-                    {invoice.carrier ? `${invoice.carrier} — ${invoice.trackingNumber ?? 'pending'}` : '—'}
+                    {invoice.carrier ? `${formatCarrierLabel(invoice.carrier)} — ${invoice.trackingNumber ?? 'pending'}` : '—'}
                   </td>
                   <td className="px-4 py-3 text-right whitespace-nowrap">
                     <Link href={`/admin/invoices/${invoice.id}`} className="text-gold-light font-bold text-sm hover:underline">

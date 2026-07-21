@@ -17,7 +17,7 @@ interface Props {
 }
 
 const METHODS: PaymentMethod[] = [
-  'CASH', 'CREDIT_CARD', 'STRIPE', 'SQUARE', 'CASH_APP', 'VENMO', 'ZELLE', 'ACH', 'WIRE', 'CHECK', 'CRYPTO', 'OTHER',
+  'CASH', 'COD', 'CHECK', 'CASH_APP', 'VENMO', 'APPLE_PAY', 'CREDIT_CARD', 'ACH', 'ZELLE', 'WIRE', 'STRIPE', 'SQUARE', 'CRYPTO', 'OTHER',
 ]
 
 export function PaymentSection({ invoiceId, payments, balanceDue, onPaymentRecorded }: Props) {

@@ -21,3 +21,16 @@ export function formatDate(value: Date | string | null | undefined): string {
     timeZone: 'UTC',
   })
 }
+
+// PICKUP/HAND_DELIVERY read as internal carrier-enum jargon ("HAND
+// DELIVERY") if just underscore-replaced — override with the wording the
+// business actually uses. Shared by the PDF documents, the live preview, and
+// the dashboard table so a client never sees the raw enum value.
+const CARRIER_LABELS: Record<string, string> = {
+  PICKUP: 'Scheduled Pickup',
+  HAND_DELIVERY: 'Self Delivery',
+}
+
+export function formatCarrierLabel(carrier: string): string {
+  return CARRIER_LABELS[carrier] ?? carrier.replace('_', ' ')
+}

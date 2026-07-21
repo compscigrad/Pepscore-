@@ -291,7 +291,9 @@ model InvoicePayment {
 
 enum PaymentMethod {
   CASH
+  COD
   CREDIT_CARD
+  APPLE_PAY
   STRIPE
   SQUARE
   CASH_APP

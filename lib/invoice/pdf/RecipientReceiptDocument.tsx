@@ -12,7 +12,7 @@ export function RecipientReceiptDocument({ invoice }: { invoice: InvoiceWithRela
   return (
     <Document title={`${invoice.invoiceNumber} — Receipt`}>
       <Page size="LETTER" style={styles.page}>
-        <DocumentHeader title="Receipt" invoice={invoice} />
+        <DocumentHeader title="Receipt" invoice={invoice} showStatus={false} />
         <CustomerShippingSection invoice={invoice} />
         <ItemsTable invoice={invoice} />
         <TotalsBlock invoice={invoice} showBalance />
