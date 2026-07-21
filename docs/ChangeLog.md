@@ -2,6 +2,14 @@
 
 Notable changes to the invoice module. Ordinary commits don't all need an entry here — this tracks changes future engineers would want a summary of before digging into `git log`.
 
+## Unreleased — PDF layout: fit a typical invoice on one page, rename Recipient Receipt to Client Invoice
+
+- Tightened page margins, header logo size, and section/table spacing throughout `lib/invoice/pdf/shared.tsx` so a typical invoice (a few items, a payment history or arrangement, the legal footer) renders on exactly one LETTER page instead of two.
+- Root-caused the actual overflow bug: `LegalFooter`'s `wrap={false}` was on the whole footer, so it jumped *entirely* to page 2 whenever even a few points short of fitting — moved `wrap={false}` down to each individual legal clause instead, so the footer fills remaining space on the current page and only a clause that doesn't fit (never split mid-paragraph) moves on. See `docs/Decisions.md` #18.
+- Master Invoice no longer shows a separate Payment History table when a payment arrangement exists — the arrangement's own schedule table already lists every payment as "Payment N," so both together just repeated the same rows.
+- Renamed the customer-facing PDF's visible header from "Receipt" to **"Client Invoice"** (document title, download button label, and the Invoice Status helper text all updated to match) — the underlying `RecipientReceiptDocument`/`variant=recipient` identifiers are unchanged, only user-visible text.
+- Verified empirically (rendering real and representative invoices, counting actual PDF page objects, not guessing): no-arrangement, single-payment, and payment-plus-4-installment-arrangement scenarios (matching the real Marvin Alexander sample) all now render as exactly 1 page for both PDFs; a deliberately extreme scenario (full contact info, two long notes, an arrangement) still uses 2 pages, but only because page 1 is already genuinely full — legitimate overflow, not a stranded footer.
+
 ## Unreleased — Payment arrangements available on any invoice, not just Partial ones
 
 - `PaymentArrangementSection` no longer requires an invoice to already have a payment before an arrangement can be set up — the "+ Set Up Payment Arrangement" option now shows on any invoice with `balanceDue > 0` (Draft/Pending included), so it's uniformly available "just in case" rather than only after a payment happens to already exist.

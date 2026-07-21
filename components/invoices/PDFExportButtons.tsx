@@ -23,7 +23,7 @@ export function PDFExportButtons({ invoiceId }: { invoiceId: string }) {
         rel="noopener noreferrer"
         className="rounded-full border border-white/15 bg-white/5 text-white/70 text-sm font-bold px-5 py-2.5 hover:bg-white/10 transition-colors"
       >
-        Download Recipient Receipt
+        Download Client Invoice
       </a>
     </div>
   )
