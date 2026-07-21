@@ -4,11 +4,11 @@ Tracked by priority. Move items here when a `// TODO` comment is added to the co
 
 ## HIGH
 
-- [ ] Build API routes (`app/api/admin/invoices/**`, `app/api/admin/promotions`)
-- [ ] Build invoice dashboard + searchable/sortable table
-- [ ] Build `InvoiceBuilder` + live preview + all form sections
-- [ ] Build Master Invoice and Recipient Receipt PDF documents
-- [ ] Walk the full create → pay → PDF → archive flow manually against the dev database before considering the module done
+- [x] Build API routes (`app/api/admin/invoices/**`, `app/api/admin/promotions`)
+- [x] Build invoice dashboard + searchable/sortable table
+- [x] Build `InvoiceBuilder` + live preview + all form sections
+- [x] Build Master Invoice and Recipient Receipt PDF documents
+- [ ] Walk the full create → pay → PDF → archive flow manually, signed in as the real Clerk admin user in a browser — everything below the auth gate has only been verified via `tsc`, the dev-server route smoke test, and direct PDF-generation testing, not a real click-through
 
 ## MEDIUM
 
