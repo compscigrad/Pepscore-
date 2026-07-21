@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic'
 
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
 import { formatCurrency } from '@/lib/orders'
 import { AdminOrdersTable } from '@/components/admin/AdminOrdersTable'
@@ -80,9 +81,14 @@ export default async function AdminDashboard() {
             <h1 className="font-heading text-3xl font-bold text-dark">Pepscore Admin</h1>
             <p className="text-g500 text-sm mt-1">Owner dashboard · {stats.year} YTD</p>
           </div>
-          <a href="/" className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-g500 hover:text-gold transition-colors">
-            ← Storefront
-          </a>
+          <div className="flex items-center gap-6">
+            <Link href="/admin/invoices" className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-g500 hover:text-gold transition-colors">
+              Invoices →
+            </Link>
+            <Link href="/" className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-g500 hover:text-gold transition-colors">
+              ← Storefront
+            </Link>
+          </div>
         </div>
 
         {/* ── KPI Cards ────────────────────────────────────────────────────── */}

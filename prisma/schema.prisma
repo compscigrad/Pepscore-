@@ -15,17 +15,17 @@ datasource db {
 // ─── User & Auth ──────────────────────────────────────────────────────────────
 
 model User {
-  id          String    @id @default(cuid())
-  clerkId     String    @unique
-  email       String    @unique
-  name        String?
-  phone       String?
-  role        Role      @default(CUSTOMER)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  email     String   @unique
+  name      String?
+  phone     String?
+  role      Role     @default(CUSTOMER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  orders              Order[]
-  complianceLogs      ComplianceAcknowledgment[]
+  orders         Order[]
+  complianceLogs ComplianceAcknowledgment[]
 
   @@index([email])
 }
@@ -38,23 +38,24 @@ enum Role {
 // ─── Products ────────────────────────────────────────────────────────────────
 
 model Product {
-  id           String   @id @default(cuid())
-  slug         String   @unique
-  name         String
-  category     String
-  size         String
-  price        Float
-  bulkPrice5   Float?
-  bulkPrice10  Float?
-  description  String
-  imageUrl     String
-  badge        String?
-  inStock      Boolean  @default(true)
-  costOfGoods  Float    @default(0)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  category    String
+  size        String
+  price       Float
+  bulkPrice5  Float?
+  bulkPrice10 Float?
+  description String
+  imageUrl    String
+  badge       String?
+  inStock     Boolean  @default(true)
+  costOfGoods Float    @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  orderItems OrderItem[]
+  orderItems   OrderItem[]
+  invoiceItems InvoiceItem[]
 
   @@index([slug])
 }
@@ -124,27 +125,183 @@ model OrderItem {
 }
 
 // ─── Invoices ────────────────────────────────────────────────────────────────
+// The invoice module stands on its own: orderId is optional so an invoice can
+// represent a Stripe-driven storefront sale (linked) OR a fully manual,
+// off-platform sale (unlinked) — e.g. a DM/cash sale with no Order record.
+// Customer/shipping fields are duplicated onto Invoice rather than requiring
+// a User/Order so a manual invoice is self-contained and never blocked on
+// those records existing.
 
 model Invoice {
-  id              String        @id @default(cuid())
-  invoiceNumber   String        @unique
-  orderId         String        @unique
-  order           Order         @relation(fields: [orderId], references: [id])
+  id              String  @id @default(cuid())
+  invoiceNumber   String  @unique
+  orderId         String? @unique
+  order           Order?  @relation(fields: [orderId], references: [id])
   stripeInvoiceId String?
-  pdfUrl          String?
-  status          InvoiceStatus @default(DRAFT)
-  notes           String?
-  issuedAt        DateTime      @default(now())
-  paidAt          DateTime?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+
+  // Customer (snapshotted at invoice time, independent of User/Order)
+  customerName    String
+  customerCompany String?
+  customerEmail   String?
+  customerPhone   String?
+  billingAddress  Json?
+  shippingAddress Json?
+  internalNotes   String?
+  publicNotes     String?
+
+  // Shipping / fulfillment
+  carrier        ShippingCarrier?
+  trackingNumber String?
+  shippingCost   Float            @default(0)
+  shipDate       DateTime?
+  deliveryDate   DateTime?
+  deliveredDate  DateTime?
+  deliveryStatus DeliveryStatus   @default(PREPARING)
+
+  // Financials — stored (not just derived) so history survives later price/promo edits
+  subtotal      Float @default(0)
+  discountTotal Float @default(0)
+  total         Float @default(0)
+  amountPaid    Float @default(0)
+  balanceDue    Float @default(0)
+
+  status     InvoiceStatus @default(DRAFT)
+  issuedAt   DateTime      @default(now())
+  paidAt     DateTime?
+  archivedAt DateTime?
+
+  // Generated on-demand (see lib/invoice/pdf); columns reserved for when
+  // persistent blob storage is added — see docs/Decisions.md
+  pdfMasterUrl    String?
+  pdfRecipientUrl String?
+
+  items     InvoiceItem[]
+  discounts InvoiceDiscount[]
+  payments  InvoicePayment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerEmail])
+  @@index([customerName])
+  @@index([status])
+  @@index([createdAt])
 }
 
 enum InvoiceStatus {
   DRAFT
+  PENDING
+  APPROVED
   ISSUED
   PAID
+  PARTIALLY_PAID
+  CANCELLED
+  REFUNDED
   VOID
+}
+
+enum ShippingCarrier {
+  USPS
+  UPS
+  FEDEX
+  DHL
+  PICKUP
+  HAND_DELIVERY
+  COURIER
+  OTHER
+}
+
+enum DeliveryStatus {
+  PREPARING
+  PACKED
+  SHIPPED
+  IN_TRANSIT
+  DELIVERED
+  RETURNED
+  LOST
+  DAMAGED
+}
+
+model InvoiceItem {
+  id           String   @id @default(cuid())
+  invoiceId    String
+  invoice      Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  productId    String?
+  product      Product? @relation(fields: [productId], references: [id])
+  name         String
+  description  String?
+  quantity     Int      @default(1)
+  unitPrice    Float
+  lineDiscount Float    @default(0)
+  total        Float
+  sortOrder    Int      @default(0)
+
+  @@index([invoiceId])
+}
+
+// Reusable discount templates (e.g. "FF", "Gift", "Holiday Sale") so the
+// same promo can be applied across many invoices without retyping terms.
+model Promotion {
+  id          String        @id @default(cuid())
+  name        String
+  description String?
+  type        PromotionType
+  amount      Float
+  active      Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  invoiceDiscounts InvoiceDiscount[]
+}
+
+enum PromotionType {
+  FIXED
+  PERCENTAGE
+}
+
+// Applied-discount snapshot. Stores its own label/type/amount independent of
+// Promotion so editing or deleting a Promotion later never rewrites history
+// on invoices that already used it.
+model InvoiceDiscount {
+  id            String        @id @default(cuid())
+  invoiceId     String
+  invoice       Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  promotionId   String?
+  promotion     Promotion?    @relation(fields: [promotionId], references: [id])
+  label         String
+  type          PromotionType
+  amount        Float
+  appliedAmount Float
+
+  @@index([invoiceId])
+}
+
+model InvoicePayment {
+  id              String        @id @default(cuid())
+  invoiceId       String
+  invoice         Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  amount          Float
+  method          PaymentMethod
+  referenceNumber String?
+  paidAt          DateTime      @default(now())
+  notes           String?
+
+  @@index([invoiceId])
+}
+
+enum PaymentMethod {
+  CASH
+  CREDIT_CARD
+  STRIPE
+  SQUARE
+  CASH_APP
+  VENMO
+  ZELLE
+  ACH
+  WIRE
+  CHECK
+  CRYPTO
+  OTHER
 }
 
 // ─── Payments ────────────────────────────────────────────────────────────────

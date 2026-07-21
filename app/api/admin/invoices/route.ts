@@ -1,10 +1,11 @@
-// POST /api/admin/invoices — manually create an invoice for a custom/bulk order
-// GET  /api/admin/invoices — list all invoices
-
+// GET  /api/admin/invoices — searchable/sortable/filterable invoice list (dashboard)
+// POST /api/admin/invoices — create a new invoice (Stripe-linked via orderId, or fully manual)
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
+import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
-import { generateInvoiceNumber } from '@/lib/orders'
+import { listInvoices, createInvoice, getInvoiceDashboardStats } from '@/lib/invoices'
+import { invoicePayloadSchema } from '@/lib/invoice/validation'
 
 function isAdmin(userId: string | null) {
   return userId === process.env.ADMIN_CLERK_USER_ID
@@ -14,30 +15,22 @@ export async function GET(req: NextRequest) {
   const { userId } = await auth()
   if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
-  const page = parseInt(req.nextUrl.searchParams.get('page') ?? '1')
-  const limit = parseInt(req.nextUrl.searchParams.get('limit') ?? '25')
+  const params = req.nextUrl.searchParams
+  const page = parseInt(params.get('page') ?? '1')
+  const limit = parseInt(params.get('limit') ?? '25')
+  const search = params.get('search') ?? undefined
+  const status = params.get('status') ?? undefined
+  const sortBy = (params.get('sortBy') as 'invoiceNumber' | 'customerName' | 'createdAt' | 'balanceDue' | 'status') ?? 'createdAt'
+  const sortDir = (params.get('sortDir') as 'asc' | 'desc') ?? 'desc'
+  const includeArchived = params.get('includeArchived') === 'true'
+  const withStats = params.get('withStats') === 'true'
 
-  const [invoices, total] = await Promise.all([
-    prisma.invoice.findMany({
-      include: {
-        order: {
-          select: {
-            orderNumber: true,
-            customerName: true,
-            customerEmail: true,
-            total: true,
-            status: true,
-          },
-        },
-      },
-      orderBy: { issuedAt: 'desc' },
-      skip: (page - 1) * limit,
-      take: limit,
-    }),
-    prisma.invoice.count(),
+  const [result, stats] = await Promise.all([
+    listInvoices({ search, status, sortBy, sortDir, includeArchived, page, limit }),
+    withStats ? getInvoiceDashboardStats() : Promise.resolve(undefined),
   ])
 
-  return NextResponse.json({ invoices, total, page, limit })
+  return NextResponse.json({ ...result, stats })
 }
 
 export async function POST(req: NextRequest) {
@@ -45,23 +38,9 @@ export async function POST(req: NextRequest) {
   if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   try {
-    const { orderId, notes } = await req.json()
-
-    // Check if invoice already exists for this order
-    const existing = await prisma.invoice.findUnique({ where: { orderId } })
-    if (existing) {
-      return NextResponse.json({ error: 'Invoice already exists for this order' }, { status: 400 })
-    }
-
-    const invoice = await prisma.invoice.create({
-      data: {
-        invoiceNumber: generateInvoiceNumber(),
-        orderId,
-        status: 'ISSUED',
-        notes: notes ?? undefined,
-        issuedAt: new Date(),
-      },
-    })
+    const body = await req.json()
+    const payload = invoicePayloadSchema.parse(body)
+    const invoice = await createInvoice(payload)
 
     await prisma.adminAuditLog.create({
       data: {
@@ -69,30 +48,17 @@ export async function POST(req: NextRequest) {
         entity: 'Invoice',
         entityId: invoice.id,
         adminId: userId!,
-        details: { orderId, invoiceNumber: invoice.invoiceNumber },
+        details: { invoiceNumber: invoice.invoiceNumber, orderId: payload.orderId ?? null },
       },
     })
 
-    return NextResponse.json(invoice)
+    return NextResponse.json(invoice, { status: 201 })
   } catch (err: unknown) {
-    console.error('[admin/invoices]', err)
+    if (err instanceof z.ZodError) {
+      return NextResponse.json({ error: 'Validation failed', issues: err.issues }, { status: 400 })
+    }
+    console.error('[admin/invoices POST]', err)
     const msg = err instanceof Error ? err.message : 'Failed to create invoice'
     return NextResponse.json({ error: msg }, { status: 500 })
   }
-}
-
-export async function PATCH(req: NextRequest) {
-  const { userId } = await auth()
-  if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
-
-  const { invoiceId, status, notes } = await req.json()
-  if (!invoiceId) return NextResponse.json({ error: 'invoiceId required' }, { status: 400 })
-
-  const update: Record<string, unknown> = {}
-  if (status) update.status = status
-  if (notes !== undefined) update.notes = notes
-  if (status === 'PAID') update.paidAt = new Date()
-
-  const invoice = await prisma.invoice.update({ where: { id: invoiceId }, data: update })
-  return NextResponse.json(invoice)
 }
