@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic'
 
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
 import { formatCurrency } from '@/lib/orders'
 import { AdminOrdersTable } from '@/components/admin/AdminOrdersTable'
@@ -81,12 +82,12 @@ export default async function AdminDashboard() {
             <p className="text-g500 text-sm mt-1">Owner dashboard · {stats.year} YTD</p>
           </div>
           <div className="flex items-center gap-6">
-            <a href="/admin/invoices" className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-g500 hover:text-gold transition-colors">
+            <Link href="/admin/invoices" className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-g500 hover:text-gold transition-colors">
               Invoices →
-            </a>
-            <a href="/" className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-g500 hover:text-gold transition-colors">
+            </Link>
+            <Link href="/" className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-g500 hover:text-gold transition-colors">
               ← Storefront
-            </a>
+            </Link>
           </div>
         </div>
 

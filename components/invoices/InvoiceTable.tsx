@@ -4,7 +4,7 @@
 // volume grows past what's comfortable to ship to the browser at once.
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { formatCurrency } from '@/lib/orders'
@@ -66,11 +66,12 @@ export function InvoiceTable({ initialInvoices, initialTotal }: Props) {
   }, [page, sortBy, sortDir, search, status])
 
   // Skip the redundant fetch on first mount — the server component already
-  // supplied initialInvoices/initialTotal for that render.
-  const [hasMounted, setHasMounted] = useState(false)
+  // supplied initialInvoices/initialTotal for that render. A ref (not state)
+  // because flipping this shouldn't itself trigger a re-render.
+  const hasMounted = useRef(false)
   useEffect(() => {
-    if (!hasMounted) {
-      setHasMounted(true)
+    if (!hasMounted.current) {
+      hasMounted.current = true
       return
     }
     fetchInvoices()
@@ -79,7 +80,7 @@ export function InvoiceTable({ initialInvoices, initialTotal }: Props) {
 
   // Debounce free-text search so every keystroke doesn't trigger a fetch.
   useEffect(() => {
-    if (!hasMounted) return
+    if (!hasMounted.current) return
     const timeout = setTimeout(() => {
       setPage(1)
       fetchInvoices()

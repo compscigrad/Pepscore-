@@ -89,3 +89,15 @@
 **Benefits**: Invoice PDFs/preview show the correct, current logo immediately; storefront header is untouched until its own redesign is scheduled.
 
 **Drawbacks**: Two logo files now exist in the project until the storefront catches up, at which point `logo.png` should likely be retired in favor of this one.
+
+## 9. Fixed `eslint.config.mjs` to import `eslint-config-next`'s flat config directly, not through `FlatCompat`
+
+**Decision**: Replaced `compat.extends('next/core-web-vitals', 'next/typescript')` with direct imports of `eslint-config-next/core-web-vitals` and `eslint-config-next/typescript`.
+
+**Reason**: `eslint-config-next@16.2.6` ships native ESLint 9 flat-config arrays (confirmed by reading its compiled `dist/*.js` — they're array spreads of real plugin objects, not legacy eslintrc strings). `FlatCompat.extends()` exists specifically to shim *legacy* eslintrc-style shareable configs into flat config; passing already-flat, self-referencing plugin objects through its legacy JSON-schema validator crashed with "Converting circular structure to JSON" the moment `eslint .` was run directly. This surfaced now (not earlier) because Next.js 16 removed the `next lint` subcommand entirely, so `eslint .` became the only way to lint this project — and that path had never actually been exercised before.
+
+**Alternatives considered**: Disabling lint / adding broad ignores (rejected — hides real errors); downgrading `eslint-config-next` (rejected — no reason to fight the version already required by Next 16).
+
+**Benefits**: `npx eslint .` now runs and reports real findings. Fixing it surfaced four genuine issues in code this PR touched — two `react-hooks/set-state-in-effect` violations (`InvoiceTable.tsx`, `ClerkAuthButtons.tsx`, both fixed), and a false-positive `jsx-a11y/alt-text` warning on `@react-pdf/renderer`'s `Image` (which renders into a PDF content stream, not the DOM — suppressed with a comment explaining why).
+
+**Drawbacks**: None — this is a straightforward compatibility fix, not a workaround.

@@ -12,10 +12,9 @@ function AdminLink() {
   const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
-    if (!isSignedIn) {
-      setIsAdmin(false)
-      return
-    }
+    // isAdmin already defaults to false, so signed-out just skips the fetch
+    // rather than setting state synchronously in the effect body.
+    if (!isSignedIn) return
     fetch('/api/admin/whoami')
       .then((res) => res.json())
       .then((data) => setIsAdmin(!!data.isAdmin))

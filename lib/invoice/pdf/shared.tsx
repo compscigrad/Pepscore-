@@ -106,6 +106,9 @@ export function DocumentHeader({ title, invoice }: { title: string; invoice: Inv
   return (
     <View style={styles.header}>
       {BRAND.logoPath ? (
+        // react-pdf's Image renders into a PDF content stream, not the DOM;
+        // there's no accessibility tree here for alt text to attach to.
+        // eslint-disable-next-line jsx-a11y/alt-text
         <Image src={BRAND.logoPath} style={styles.logo} />
       ) : (
         <Text style={styles.companyName}>{BRAND.companyName}</Text>
