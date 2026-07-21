@@ -84,6 +84,36 @@ interface ShippoTrackResponse {
   tracking_history?: ShippoTrackingHistoryEntry[]
 }
 
+// Shippo's raw error JSON (e.g. `{"detail":"..."}`) is an implementation
+// detail, not something an admin should see verbatim in a toast — it's
+// confusing at best (why is a carrier API talking about "detail"?) and at
+// worst looks like a broken error page. This maps the couple of error
+// conditions we've actually hit to a plain-English admin-facing message,
+// while the untouched raw response still goes to server logs (console.error
+// at the call site) for anyone who needs to debug further. Deliberately not
+// exhaustive — unrecognized errors fall back to a generic, still-readable
+// message rather than the raw payload.
+// Exported for unit testing (lib/tracking/shippoProvider.test.ts) — not used
+// outside this file otherwise.
+export function sanitizedShippoError(err: unknown, action: string): Error {
+  console.error(`[shippoProvider] Shippo API error while trying to ${action}:`, err)
+
+  const detail = typeof err === 'object' && err !== null && 'detail' in err ? String((err as { detail: unknown }).detail) : ''
+
+  if (/payment method/i.test(detail)) {
+    return new Error(
+      'Shippo requires a payment method on file for this account before it will register or look up live tracking numbers. Add a card at Shippo → Settings → Billing, then try again.'
+    )
+  }
+  if (/not a valid test tracking carrier/i.test(detail)) {
+    return new Error(
+      'This Shippo API key is in sandbox/test mode, which only accepts its fake test carrier for tracking — a live Shippo key is required for real USPS/UPS/FedEx/DHL tracking numbers.'
+    )
+  }
+
+  return new Error(`Shippo could not ${action} right now. Check the carrier and tracking number, then try again.`)
+}
+
 function formatLocation(loc?: ShippoTrackingHistoryEntry['location']): string | undefined {
   if (!loc) return undefined
   return [loc.city, loc.state, loc.country].filter(Boolean).join(', ') || undefined
@@ -123,7 +153,7 @@ export const shippoProvider: ShippingProvider = {
     })
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
-      throw new Error(`Shippo tracking registration failed: ${JSON.stringify(err)}`)
+      throw sanitizedShippoError(err, 'register tracking for this shipment')
     }
     const data: ShippoTrackResponse = await res.json()
     return {
@@ -138,7 +168,7 @@ export const shippoProvider: ShippingProvider = {
     })
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
-      throw new Error(`Shippo tracking lookup failed: ${JSON.stringify(err)}`)
+      throw sanitizedShippoError(err, 'look up tracking for this shipment')
     }
     const data: ShippoTrackResponse = await res.json()
     return toTrackingResult(data)

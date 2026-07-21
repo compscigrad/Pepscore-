@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { mapShippoStatus, shippoProvider } from './shippoProvider'
+import { mapShippoStatus, shippoProvider, sanitizedShippoError } from './shippoProvider'
 
 describe('mapShippoStatus', () => {
   it('maps a delivered status', () => {
@@ -36,6 +36,30 @@ describe('mapShippoStatus', () => {
 
   it('falls back to UNKNOWN for an unrecognized status', () => {
     expect(mapShippoStatus('', '')).toBe('UNKNOWN')
+  })
+})
+
+describe('sanitizedShippoError', () => {
+  it('gives a clear message for the missing-payment-method error', () => {
+    const err = sanitizedShippoError({ detail: 'Your account needs to have a valid payment method on file to use this service.' }, 'register tracking for this shipment')
+    expect(err.message).toMatch(/payment method on file/i)
+    expect(err.message).not.toMatch(/detail/i)
+  })
+
+  it('gives a clear message for the sandbox-carrier error', () => {
+    const err = sanitizedShippoError({ detail: "usps is not a valid test tracking carrier. Please use 'shippo'" }, 'register tracking for this shipment')
+    expect(err.message).toMatch(/sandbox\/test mode/i)
+  })
+
+  it('falls back to a generic message for an unrecognized error, never the raw payload', () => {
+    const err = sanitizedShippoError({ detail: 'Some brand-new Shippo error we have never seen' }, 'register tracking for this shipment')
+    expect(err.message).not.toContain('Some brand-new Shippo error')
+    expect(err.message).toMatch(/could not register tracking for this shipment/i)
+  })
+
+  it('never throws on a malformed error payload', () => {
+    expect(() => sanitizedShippoError(null, 'register tracking for this shipment')).not.toThrow()
+    expect(() => sanitizedShippoError('a string, not an object', 'register tracking for this shipment')).not.toThrow()
   })
 })
 
