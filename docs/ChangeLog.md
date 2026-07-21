@@ -2,6 +2,25 @@
 
 Notable changes to the invoice module. Ordinary commits don't all need an entry here — this tracks changes future engineers would want a summary of before digging into `git log`.
 
+## Unreleased — Product pricing audit + picker fix
+
+- Corrected Tesamorelin 1-box prices in `prisma/seed.ts` (5mg: $312 → $400, 10mg: $531 → $750) and reseeded the shared database. Audited all other ~119 catalog products against the current master price sheet — everything else already matched exactly.
+- Deleted one stale, unreferenced duplicate product (`cjc1295-ipamorelin-10mg`, $50 with inverted bulk pricing) superseded by the current `cjc1295-ipa-10mg` ($297).
+- Fixed a real bug in `InvoiceItemsTable.tsx`'s product picker: it matched (and saved) on the bare product `name`, which the catalog reuses across strengths (e.g. "Tesamorelin" 5mg/10mg) — selection could silently resolve to the wrong same-named row, and the mg strength was dropped from the saved line item regardless. Added `formatProductLabel()` (`lib/invoice/format.ts`) producing a unique `Name — Size — 1 Box` label used for both the dropdown options and the persisted line-item name, so the dropdown, live preview, and PDF always show the same, unambiguous text. See `docs/Decisions.md` #13, #14.
+- Verified: `npx tsc --noEmit`, `npx eslint`, `npm run build` all clean; scripted the picker's matching logic against the live database (confirmed zero duplicate composed labels across all 119 products, Tesamorelin 5mg/10mg resolve to $400/$750) and rendered a two-line-item Master Invoice PDF confirming both product names (with strength) and the $1,150 subtotal.
+
+## Unreleased — Branding refresh (`feature/invoice-branding-refresh`)
+
+UI/UX and PDF-presentation enhancement only — no changes to business logic, calculations, data model, routing, or auth. Scoped to `app/admin/invoices/**`, `components/invoices/**`, `lib/invoice/pdf/**`.
+
+- Added `lib/invoice/legal.ts` (`INVOICE_LEGAL_SECTIONS`) — centralized RUO and Customer-Responsibility-After-Delivery legal copy, previously not present in either PDF.
+- Added `LegalFooter` to `lib/invoice/pdf/shared.tsx`, shared by both `MasterInvoiceDocument.tsx` and `RecipientReceiptDocument.tsx`, replacing the old one-line `fixed` `DocumentFooter`. Renders in normal document flow (never `fixed`) so it can't overlap totals by construction. See `docs/Decisions.md` #11.
+- PDF accent polish: small gold accent bar under the document title, a bordered/tinted status badge under the invoice number (gold only for `PAID`), a thin gold underline on the Bill To / Ship To section labels. See `docs/Decisions.md` #12.
+- Added `components/invoices/theme.ts` — centralized Tailwind class tokens for the dashboard/builder's dark theme, removing the `inputClass`/`labelClass` duplication previously repeated across `CustomerInfoSection`, `ShippingSection`, `InvoiceItemsTable`, `DiscountsSection`, and `PaymentSection`.
+- Converted the invoice dashboard (`app/admin/invoices/page.tsx`, `InvoiceDashboardStats`, `InvoiceTable`) and builder (all section components, both page shells, `InvoiceHeaderActions`, `PDFExportButtons`) to the landing page's actual dark theme (black background, hairline-bordered glass cards) — see `docs/Decisions.md` #10. `InvoicePreview.tsx` deliberately stays a white card, since it represents the literal white PDF page.
+- Converted `StatusBadge.tsx` to an outline-plus-tint pill style suited to the dark background, in place of the old solid-fill light-theme chips.
+- Verified: `npx tsc --noEmit`, `npx eslint`, and `npm run build` all clean; both PDFs re-rendered locally against the seeded sample invoice data with no runtime errors.
+
 ## Unreleased — Initial build (`feature/invoice-system`)
 
 - Extended `Invoice` Prisma model to stand alone from `Order` (optional `orderId`), added customer/shipping/financial fields directly on the model.

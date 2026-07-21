@@ -4,7 +4,7 @@
 // customer needs to know what they owe — only the internal tracking detail
 // behind that number is hidden).
 import { Document, Page, Text, View } from '@react-pdf/renderer'
-import { styles, DocumentHeader, CustomerShippingSection, ItemsTable, TotalsBlock, DocumentFooter } from './shared'
+import { styles, DocumentHeader, CustomerShippingSection, ItemsTable, TotalsBlock, LegalFooter } from './shared'
 import { BRAND } from './brand'
 import type { InvoiceWithRelations } from '@/lib/invoices'
 
@@ -12,7 +12,7 @@ export function RecipientReceiptDocument({ invoice }: { invoice: InvoiceWithRela
   return (
     <Document title={`${invoice.invoiceNumber} — Receipt`}>
       <Page size="LETTER" style={styles.page}>
-        <DocumentHeader title="Receipt" invoice={invoice} />
+        <DocumentHeader title="Receipt" invoice={invoice} showStatus={false} />
         <CustomerShippingSection invoice={invoice} />
         <ItemsTable invoice={invoice} />
         <TotalsBlock invoice={invoice} showBalance />
@@ -22,7 +22,7 @@ export function RecipientReceiptDocument({ invoice }: { invoice: InvoiceWithRela
             <Text style={styles.sectionText}>{invoice.publicNotes}</Text>
           </View>
         ) : null}
-        <DocumentFooter text={`Thank you for choosing ${BRAND.companyName}.`} />
+        <LegalFooter tagline={`Thank you for choosing ${BRAND.companyName}.`} />
       </Page>
     </Document>
   )

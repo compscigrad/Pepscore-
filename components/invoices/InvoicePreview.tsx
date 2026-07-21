@@ -4,7 +4,7 @@
 // react-pdf's primitives. See docs/Decisions.md #3 for why this isn't
 // pixel-identical to the generated PDF.
 import Image from 'next/image'
-import { formatMoney } from '@/lib/invoice/format'
+import { formatMoney, formatCarrierLabel } from '@/lib/invoice/format'
 import { lineItemTotal, resolveDiscountAmount, type InvoiceTotals } from '@/lib/invoice/calculations'
 import type { InvoiceDraft } from './types'
 
@@ -23,7 +23,7 @@ export function InvoicePreview({ draft, totals, invoiceNumber }: Props) {
           already contains the "Pepscore Lab" wordmark, so no separate
           company-name text runs alongside it. */}
       <div className="flex flex-col items-center text-center mb-8">
-        <Image src="/images/invoice-logo.jpeg" alt="Pepscore Lab" width={140} height={93} className="object-contain mb-2" />
+        <Image src="/images/invoice-logo.jpeg" alt="Pepscore Lab" width={190} height={126} className="object-contain mb-2" />
         <p className="font-heading text-base font-bold text-dark tracking-[0.15em] uppercase">Invoice</p>
         <p className="text-[11px] text-g500 mt-1">{invoiceNumber || 'Draft — not yet saved'}</p>
       </div>
@@ -44,7 +44,7 @@ export function InvoicePreview({ draft, totals, invoiceNumber }: Props) {
           </p>
           {shipping.carrier ? (
             <p className="text-[11px] text-g500 mt-1">
-              {shipping.carrier}
+              {formatCarrierLabel(shipping.carrier)}
               {shipping.trackingNumber ? ` — ${shipping.trackingNumber}` : ''}
             </p>
           ) : null}

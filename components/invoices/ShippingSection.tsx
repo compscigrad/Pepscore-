@@ -1,5 +1,7 @@
 'use client'
 
+import { card, input, label as labelClass, sectionHeading } from './theme'
+import { formatCarrierLabel } from '@/lib/invoice/format'
 import type { ShippingFields, AddressDraft } from './types'
 import type { ShippingCarrier, DeliveryStatus } from '@prisma/client'
 
@@ -7,10 +9,6 @@ interface Props {
   value: ShippingFields
   onChange: (value: ShippingFields) => void
 }
-
-const inputClass =
-  'w-full rounded-lg border border-g300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40'
-const labelClass = 'block text-[11px] font-bold tracking-[0.08em] uppercase text-g500 mb-1.5'
 
 const CARRIERS: ShippingCarrier[] = ['USPS', 'UPS', 'FEDEX', 'DHL', 'PICKUP', 'HAND_DELIVERY', 'COURIER', 'OTHER']
 const DELIVERY_STATUSES: DeliveryStatus[] = [
@@ -27,32 +25,32 @@ export function ShippingSection({ value, onChange }: Props) {
   }
 
   return (
-    <div className="bg-white rounded-2xl p-6 shadow-sh">
-      <h3 className="font-heading text-[15px] font-bold text-dark mb-4">Shipping</h3>
+    <div className={`${card} p-6`}>
+      <h3 className={`${sectionHeading} mb-4`}>Shipping</h3>
 
       <p className={labelClass}>Ship To Address</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
         <input
-          className={`${inputClass} sm:col-span-2`}
+          className={`${input} sm:col-span-2`}
           placeholder="Street address"
           value={value.shippingAddress.street1}
           onChange={(e) => setAddress('street1', e.target.value)}
         />
         <input
-          className={inputClass}
+          className={input}
           placeholder="City"
           value={value.shippingAddress.city}
           onChange={(e) => setAddress('city', e.target.value)}
         />
         <div className="grid grid-cols-2 gap-4">
           <input
-            className={inputClass}
+            className={input}
             placeholder="State"
             value={value.shippingAddress.state}
             onChange={(e) => setAddress('state', e.target.value)}
           />
           <input
-            className={inputClass}
+            className={input}
             placeholder="ZIP"
             value={value.shippingAddress.zip}
             onChange={(e) => setAddress('zip', e.target.value)}
@@ -65,13 +63,13 @@ export function ShippingSection({ value, onChange }: Props) {
           <label className={labelClass} htmlFor="carrier">Carrier</label>
           <select
             id="carrier"
-            className={inputClass}
+            className={input}
             value={value.carrier}
             onChange={(e) => set('carrier', e.target.value as ShippingFields['carrier'])}
           >
             <option value="">Tracking Pending</option>
             {CARRIERS.map((c) => (
-              <option key={c} value={c}>{c.replace('_', ' ')}</option>
+              <option key={c} value={c}>{formatCarrierLabel(c)}</option>
             ))}
           </select>
         </div>
@@ -79,7 +77,7 @@ export function ShippingSection({ value, onChange }: Props) {
           <label className={labelClass} htmlFor="trackingNumber">Tracking #</label>
           <input
             id="trackingNumber"
-            className={inputClass}
+            className={input}
             value={value.trackingNumber}
             onChange={(e) => set('trackingNumber', e.target.value)}
           />
@@ -91,7 +89,7 @@ export function ShippingSection({ value, onChange }: Props) {
             type="number"
             min={0}
             step="0.01"
-            className={inputClass}
+            className={input}
             value={value.shippingCost}
             onChange={(e) => set('shippingCost', Number(e.target.value))}
           />
@@ -100,7 +98,7 @@ export function ShippingSection({ value, onChange }: Props) {
           <label className={labelClass} htmlFor="deliveryStatus">Delivery Status</label>
           <select
             id="deliveryStatus"
-            className={inputClass}
+            className={input}
             value={value.deliveryStatus}
             onChange={(e) => set('deliveryStatus', e.target.value as ShippingFields['deliveryStatus'])}
           >
@@ -117,7 +115,7 @@ export function ShippingSection({ value, onChange }: Props) {
           <input
             id="shipDate"
             type="date"
-            className={inputClass}
+            className={input}
             value={value.shipDate}
             onChange={(e) => set('shipDate', e.target.value)}
           />
@@ -127,7 +125,7 @@ export function ShippingSection({ value, onChange }: Props) {
           <input
             id="deliveryDate"
             type="date"
-            className={inputClass}
+            className={input}
             value={value.deliveryDate}
             onChange={(e) => set('deliveryDate', e.target.value)}
           />
@@ -137,7 +135,7 @@ export function ShippingSection({ value, onChange }: Props) {
           <input
             id="deliveredDate"
             type="date"
-            className={inputClass}
+            className={input}
             value={value.deliveredDate}
             onChange={(e) => set('deliveredDate', e.target.value)}
           />

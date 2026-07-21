@@ -21,3 +21,28 @@ export function formatDate(value: Date | string | null | undefined): string {
     timeZone: 'UTC',
   })
 }
+
+// PICKUP/HAND_DELIVERY read as internal carrier-enum jargon ("HAND
+// DELIVERY") if just underscore-replaced — override with the wording the
+// business actually uses. Shared by the PDF documents, the live preview, and
+// the dashboard table so a client never sees the raw enum value.
+const CARRIER_LABELS: Record<string, string> = {
+  PICKUP: 'Scheduled Pickup',
+  HAND_DELIVERY: 'Self Delivery',
+}
+
+export function formatCarrierLabel(carrier: string): string {
+  return CARRIER_LABELS[carrier] ?? carrier.replace('_', ' ')
+}
+
+// Catalog products share names across strengths (e.g. "Tesamorelin" 5mg and
+// 10mg) — the raw name alone is ambiguous in a dropdown and, worse, was
+// previously the only thing carried onto the invoice line item, silently
+// dropping the strength. This composed label is used both for the
+// product-picker options and as the persisted line-item name, so the
+// dropdown, the live preview, and the PDF always show the same identifying
+// text. Every catalog product is priced and sold per box (see
+// prisma/seed.ts), so "1 Box" is a real unit, not a placeholder.
+export function formatProductLabel(product: { name: string; size: string }): string {
+  return `${product.name} — ${product.size} — 1 Box`
+}

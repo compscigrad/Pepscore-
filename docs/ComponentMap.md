@@ -2,6 +2,10 @@
 
 ## `components/invoices/`
 
+### `theme.ts`
+**Purpose**: Shared Tailwind class-string tokens for the invoice dashboard/builder's dark theme (`card`, `input`, `label`, `sectionHeading`, `pillPrimary`, `pillSecondary`, `pillOutline`, `divider`, `mutedText`) — every form section and the dashboard/table import from here instead of redefining the same class strings locally. Not a component; exports plain strings. See `docs/UIUXGuidelines.md` and `docs/Decisions.md` #10.
+**Dependencies**: none.
+
 ### `InvoiceBuilder.tsx`
 **Purpose**: Composition root for creating/editing an invoice. Owns all form state in one place so the live preview always reflects the current draft.
 **Props**: `mode: 'create' | 'edit'`, `initialInvoice?: InvoiceWithRelations`, `products: Product[]`, `promotions: Promotion[]`.
@@ -46,9 +50,9 @@
 **Dependencies**: `StatusBadge`, `formatCurrency`.
 
 ### `StatusBadge.tsx`
-**Purpose**: Shared status pill for invoice status, payment status, and delivery status — one component, three color maps, so status styling never needs reinventing per table.
+**Purpose**: Shared status pill for invoice status and delivery status — one component, two color maps, so status styling never needs reinventing per table. Outline-plus-tint style (border + low-opacity fill, not a solid chip) to read clearly against the dashboard's black background; `PAID`/`DELIVERED` get the gold accent, every other status stays neutral gray-scale.
 **Props**: `status: string`, `variant: 'invoice' | 'delivery'`.
-**Dependencies**: none. Follows the existing `STATUS_COLORS` object pattern from `components/admin/AdminOrdersTable.tsx`.
+**Dependencies**: none. Follows the existing `STATUS_COLORS` object pattern from `components/admin/AdminOrdersTable.tsx`, adapted for a dark surface.
 
 ### `PDFExportButtons.tsx`
 **Purpose**: Two buttons ("Download Master Invoice", "Download Recipient Receipt") linking to the PDF API route.

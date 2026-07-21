@@ -6,6 +6,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
+import { pillOutline } from './theme'
 
 interface Props {
   invoiceId: string
@@ -65,7 +66,7 @@ export function InvoiceHeaderActions({ invoiceId, archived }: Props) {
         type="button"
         onClick={duplicate}
         disabled={busy}
-        className="rounded-full border border-g300 text-sm font-bold px-4 py-2 text-g700 hover:bg-g100 transition-colors disabled:opacity-50"
+        className={`${pillOutline} px-4 py-2`}
       >
         Duplicate
       </button>
@@ -73,7 +74,7 @@ export function InvoiceHeaderActions({ invoiceId, archived }: Props) {
         type="button"
         onClick={archiveOrRestore}
         disabled={busy}
-        className="rounded-full border border-g300 text-sm font-bold px-4 py-2 text-g700 hover:bg-g100 transition-colors disabled:opacity-50"
+        className={`${pillOutline} px-4 py-2`}
       >
         {archived ? 'Restore' : 'Archive'}
       </button>

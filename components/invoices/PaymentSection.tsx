@@ -6,6 +6,7 @@
 import { useState } from 'react'
 import toast from 'react-hot-toast'
 import { formatMoney } from '@/lib/invoice/format'
+import { card, input, label as labelClass, pillPrimary, sectionHeading } from './theme'
 import type { InvoicePayment, PaymentMethod } from '@prisma/client'
 
 interface Props {
@@ -16,10 +17,8 @@ interface Props {
 }
 
 const METHODS: PaymentMethod[] = [
-  'CASH', 'CREDIT_CARD', 'STRIPE', 'SQUARE', 'CASH_APP', 'VENMO', 'ZELLE', 'ACH', 'WIRE', 'CHECK', 'CRYPTO', 'OTHER',
+  'CASH', 'COD', 'CHECK', 'CASH_APP', 'VENMO', 'APPLE_PAY', 'CREDIT_CARD', 'ACH', 'ZELLE', 'WIRE', 'STRIPE', 'SQUARE', 'CRYPTO', 'OTHER',
 ]
-
-const inputClass = 'w-full rounded-lg border border-g300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40'
 
 export function PaymentSection({ invoiceId, payments, balanceDue, onPaymentRecorded }: Props) {
   const [amount, setAmount] = useState('')
@@ -60,18 +59,18 @@ export function PaymentSection({ invoiceId, payments, balanceDue, onPaymentRecor
   }
 
   return (
-    <div className="bg-white rounded-2xl p-6 shadow-sh">
-      <h3 className="font-heading text-[15px] font-bold text-dark mb-4">Payments</h3>
+    <div className={`${card} p-6`}>
+      <h3 className={`${sectionHeading} mb-4`}>Payments</h3>
 
       {payments.length > 0 && (
         <div className="mb-5 space-y-2">
           {payments.map((p) => (
-            <div key={p.id} className="flex items-center justify-between text-sm border-b border-g100 pb-2">
-              <span className="text-g700">
+            <div key={p.id} className="flex items-center justify-between text-sm border-b border-white/10 pb-2">
+              <span className="text-white/70">
                 {new Date(p.paidAt).toLocaleDateString('en-US', { timeZone: 'UTC' })} · {p.method.replace('_', ' ')}
                 {p.referenceNumber ? ` · ${p.referenceNumber}` : ''}
               </span>
-              <span className="font-medium text-dark">{formatMoney(p.amount)}</span>
+              <span className="font-medium text-white">{formatMoney(p.amount)}</span>
             </div>
           ))}
         </div>
@@ -80,7 +79,7 @@ export function PaymentSection({ invoiceId, payments, balanceDue, onPaymentRecor
       {balanceDue > 0 ? (
         <form onSubmit={submit} className="flex flex-wrap items-end gap-3">
           <div className="flex-1 min-w-[100px]">
-            <label className="block text-[11px] font-bold tracking-[0.08em] uppercase text-g500 mb-1.5" htmlFor="paymentAmount">
+            <label className={labelClass} htmlFor="paymentAmount">
               Amount
             </label>
             <input
@@ -88,29 +87,29 @@ export function PaymentSection({ invoiceId, payments, balanceDue, onPaymentRecor
               type="number"
               min={0}
               step="0.01"
-              className={inputClass}
+              className={input}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder={formatMoney(balanceDue)}
             />
           </div>
           <div>
-            <label className="block text-[11px] font-bold tracking-[0.08em] uppercase text-g500 mb-1.5" htmlFor="paymentMethod">
+            <label className={labelClass} htmlFor="paymentMethod">
               Method
             </label>
-            <select id="paymentMethod" className={inputClass} value={method} onChange={(e) => setMethod(e.target.value as PaymentMethod)}>
+            <select id="paymentMethod" className={input} value={method} onChange={(e) => setMethod(e.target.value as PaymentMethod)}>
               {METHODS.map((m) => (
                 <option key={m} value={m}>{m.replace('_', ' ')}</option>
               ))}
             </select>
           </div>
           <div className="flex-1 min-w-[100px]">
-            <label className="block text-[11px] font-bold tracking-[0.08em] uppercase text-g500 mb-1.5" htmlFor="paymentRef">
+            <label className={labelClass} htmlFor="paymentRef">
               Reference #
             </label>
             <input
               id="paymentRef"
-              className={inputClass}
+              className={input}
               value={referenceNumber}
               onChange={(e) => setReferenceNumber(e.target.value)}
             />
@@ -118,13 +117,13 @@ export function PaymentSection({ invoiceId, payments, balanceDue, onPaymentRecor
           <button
             type="submit"
             disabled={submitting}
-            className="rounded-full bg-gold text-white text-sm font-bold px-5 py-2 hover:bg-gold-dark transition-colors disabled:opacity-50"
+            className={`${pillPrimary} px-5 py-2`}
           >
             Record Payment
           </button>
         </form>
       ) : (
-        <p className="text-sm text-green-600 font-medium">Paid in full.</p>
+        <p className="text-sm text-green-400 font-medium">Paid in full.</p>
       )}
     </div>
   )

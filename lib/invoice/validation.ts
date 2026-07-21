@@ -68,7 +68,7 @@ export type InvoicePayload = z.infer<typeof invoicePayloadSchema>
 export const paymentPayloadSchema = z.object({
   amount: z.number().positive('Payment amount must be greater than zero'),
   method: z.enum([
-    'CASH', 'CREDIT_CARD', 'STRIPE', 'SQUARE', 'CASH_APP', 'VENMO',
+    'CASH', 'COD', 'CREDIT_CARD', 'APPLE_PAY', 'STRIPE', 'SQUARE', 'CASH_APP', 'VENMO',
     'ZELLE', 'ACH', 'WIRE', 'CHECK', 'CRYPTO', 'OTHER',
   ]),
   referenceNumber: z.string().optional(),

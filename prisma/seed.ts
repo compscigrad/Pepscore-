@@ -139,8 +139,12 @@ const products = [
   { slug: 'ghrp-6-5mg', name: 'GHRP-6 Acetate', category: 'GH Secretagogue', size: '5mg', price: 144, bulkPrice5: 123, bulkPrice10: 114, imageUrl: '/images/ALL.png', badge: null, costOfGoods: 43 },
 
   // ── Tesamorelin ───────────────────────────────────────────────────────────
-  { slug: 'tesamorelin-5mg', name: 'Tesamorelin', category: 'GH Secretagogue', size: '5mg', price: 312, bulkPrice5: 291, bulkPrice10: 282, imageUrl: '/images/ALL.png', badge: null, costOfGoods: 94 },
-  { slug: 'tesamorelin-10mg', name: 'Tesamorelin', category: 'GH Secretagogue', size: '10mg', price: 531, bulkPrice5: 510, bulkPrice10: 501, imageUrl: '/images/ALL.png', badge: null, costOfGoods: 159 },
+  // 1-box price corrected per the current master price sheet: 5mg was $312,
+  // now $400; 10mg was $531, now $750. Bulk (10-box/50-box) tiers weren't
+  // part of that correction and are left as-is — revisit if updated bulk
+  // pricing is provided.
+  { slug: 'tesamorelin-5mg', name: 'Tesamorelin', category: 'GH Secretagogue', size: '5mg', price: 400, bulkPrice5: 291, bulkPrice10: 282, imageUrl: '/images/ALL.png', badge: null, costOfGoods: 94 },
+  { slug: 'tesamorelin-10mg', name: 'Tesamorelin', category: 'GH Secretagogue', size: '10mg', price: 750, bulkPrice5: 510, bulkPrice10: 501, imageUrl: '/images/ALL.png', badge: null, costOfGoods: 159 },
 
   // ── HGH ───────────────────────────────────────────────────────────────────
   { slug: 'hgh-10iu', name: 'HGH', category: 'GH Secretagogue', size: '10iu', price: 186, bulkPrice5: 165, bulkPrice10: 156, imageUrl: '/images/ALL.png', badge: null, costOfGoods: 56 },

@@ -93,4 +93,20 @@ export function makeKey(): string {
   return Math.random().toString(36).slice(2)
 }
 
+// Every status the admin can manually select. PAID/PARTIALLY_PAID are also
+// set automatically by recordPayment() based on balance — leaving them
+// selectable here too covers payments tracked outside the system (e.g. a
+// wire confirmed by phone) without a matching payment record.
+export const INVOICE_STATUSES: InvoiceStatus[] = [
+  'DRAFT', 'PENDING', 'APPROVED', 'ISSUED', 'PAID', 'PARTIALLY_PAID', 'CANCELLED', 'REFUNDED', 'VOID',
+]
+
+export function formatStatusLabel(status: InvoiceStatus): string {
+  return status
+    .toLowerCase()
+    .split('_')
+    .map((word) => word[0].toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
 export type { Product, Promotion }

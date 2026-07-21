@@ -5,8 +5,9 @@
 'use client'
 
 import { lineItemTotal } from '@/lib/invoice/calculations'
-import { formatMoney } from '@/lib/invoice/format'
+import { formatMoney, formatProductLabel } from '@/lib/invoice/format'
 import { makeKey } from './types'
+import { card, input, pillSecondary, sectionHeading } from './theme'
 import type { InvoiceItemDraft, Product } from './types'
 
 interface Props {
@@ -14,8 +15,6 @@ interface Props {
   onChange: (items: InvoiceItemDraft[]) => void
   products: Product[]
 }
-
-const inputClass = 'w-full rounded-lg border border-g300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40'
 
 function emptyItem(): InvoiceItemDraft {
   return { key: makeKey(), productId: null, name: '', description: '', quantity: 1, unitPrice: 0, lineDiscount: 0 }
@@ -51,23 +50,30 @@ export function InvoiceItemsTable({ items, onChange, products }: Props) {
     onChange(next)
   }
 
-  function pickProduct(key: string, productName: string) {
-    const product = products.find((p) => p.name === productName)
+  // Matches against the full "Name — Size — 1 Box" label, not just the bare
+  // product name — the catalog reuses names across strengths (e.g.
+  // "Tesamorelin" 5mg vs 10mg), so matching on name alone would silently
+  // resolve to whichever same-named row happened to come first, applying
+  // the wrong price. The composed label is also what gets saved as the
+  // line item's name, so the strength survives onto the invoice/PDF instead
+  // of being dropped at selection time.
+  function pickProduct(key: string, typedValue: string) {
+    const product = products.find((p) => formatProductLabel(p) === typedValue)
     if (!product) {
-      updateItem(key, { name: productName })
+      updateItem(key, { productId: null, name: typedValue })
       return
     }
-    updateItem(key, { productId: product.id, name: product.name, unitPrice: product.price })
+    updateItem(key, { productId: product.id, name: formatProductLabel(product), unitPrice: product.price })
   }
 
   return (
-    <div className="bg-white rounded-2xl p-6 shadow-sh">
+    <div className={`${card} p-6`}>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-heading text-[15px] font-bold text-dark">Products</h3>
+        <h3 className={sectionHeading}>Products</h3>
         <button
           type="button"
           onClick={addItem}
-          className="rounded-full bg-g100 text-dark text-sm font-bold px-4 py-2 hover:bg-g300/50 transition-colors"
+          className={`${pillSecondary} px-4 py-2`}
         >
           + Add Product
         </button>
@@ -75,31 +81,31 @@ export function InvoiceItemsTable({ items, onChange, products }: Props) {
 
       <datalist id="product-catalog">
         {products.map((p) => (
-          <option key={p.id} value={p.name} />
+          <option key={p.id} value={formatProductLabel(p)} />
         ))}
       </datalist>
 
       {items.length === 0 ? (
-        <p className="text-sm text-g500 py-6 text-center">No products yet — add at least one to continue.</p>
+        <p className="text-sm text-white/50 py-6 text-center">No products yet — add at least one to continue.</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left border-b border-g100">
-                <th className="pb-2 font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-g500">Product</th>
-                <th className="pb-2 font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-g500 w-20">Qty</th>
-                <th className="pb-2 font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-g500 w-28">Unit Price</th>
-                <th className="pb-2 font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-g500 w-28">Discount</th>
-                <th className="pb-2 font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-g500 w-28 text-right">Total</th>
+              <tr className="text-left border-b border-white/10">
+                <th className="pb-2 font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50">Product</th>
+                <th className="pb-2 font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 w-20">Qty</th>
+                <th className="pb-2 font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 w-28">Unit Price</th>
+                <th className="pb-2 font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 w-28">Discount</th>
+                <th className="pb-2 font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 w-28 text-right">Total</th>
                 <th className="pb-2 w-32" />
               </tr>
             </thead>
             <tbody>
               {items.map((item, index) => (
-                <tr key={item.key} className="border-b border-g100">
+                <tr key={item.key} className="border-b border-white/10">
                   <td className="py-2 pr-2">
                     <input
-                      className={inputClass}
+                      className={input}
                       list="product-catalog"
                       value={item.name}
                       placeholder="Product name"
@@ -110,7 +116,7 @@ export function InvoiceItemsTable({ items, onChange, products }: Props) {
                     <input
                       type="number"
                       min={1}
-                      className={inputClass}
+                      className={input}
                       value={item.quantity}
                       onChange={(e) => updateItem(item.key, { quantity: Number(e.target.value) })}
                     />
@@ -120,7 +126,7 @@ export function InvoiceItemsTable({ items, onChange, products }: Props) {
                       type="number"
                       min={0}
                       step="0.01"
-                      className={inputClass}
+                      className={input}
                       value={item.unitPrice}
                       onChange={(e) => updateItem(item.key, { unitPrice: Number(e.target.value) })}
                     />
@@ -130,19 +136,19 @@ export function InvoiceItemsTable({ items, onChange, products }: Props) {
                       type="number"
                       min={0}
                       step="0.01"
-                      className={inputClass}
+                      className={input}
                       value={item.lineDiscount}
                       onChange={(e) => updateItem(item.key, { lineDiscount: Number(e.target.value) })}
                     />
                   </td>
-                  <td className="py-2 pr-2 text-right font-medium text-dark whitespace-nowrap">
+                  <td className="py-2 pr-2 text-right font-medium text-white whitespace-nowrap">
                     {formatMoney(lineItemTotal(item))}
                   </td>
                   <td className="py-2 whitespace-nowrap text-right">
-                    <button type="button" onClick={() => moveItem(item.key, -1)} disabled={index === 0} className="px-1 text-g500 disabled:opacity-30" aria-label="Move up">↑</button>
-                    <button type="button" onClick={() => moveItem(item.key, 1)} disabled={index === items.length - 1} className="px-1 text-g500 disabled:opacity-30" aria-label="Move down">↓</button>
-                    <button type="button" onClick={() => duplicateItem(item.key)} className="px-1 text-gold-dark" aria-label="Duplicate">⧉</button>
-                    <button type="button" onClick={() => deleteItem(item.key)} className="px-1 text-red-500" aria-label="Delete">✕</button>
+                    <button type="button" onClick={() => moveItem(item.key, -1)} disabled={index === 0} className="px-1 text-white/50 disabled:opacity-30" aria-label="Move up">↑</button>
+                    <button type="button" onClick={() => moveItem(item.key, 1)} disabled={index === items.length - 1} className="px-1 text-white/50 disabled:opacity-30" aria-label="Move down">↓</button>
+                    <button type="button" onClick={() => duplicateItem(item.key)} className="px-1 text-gold-light" aria-label="Duplicate">⧉</button>
+                    <button type="button" onClick={() => deleteItem(item.key)} className="px-1 text-red-400" aria-label="Delete">✕</button>
                   </td>
                 </tr>
               ))}

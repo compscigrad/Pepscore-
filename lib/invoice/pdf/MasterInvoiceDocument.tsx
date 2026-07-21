@@ -7,7 +7,7 @@ import {
   CustomerShippingSection,
   ItemsTable,
   TotalsBlock,
-  DocumentFooter,
+  LegalFooter,
   formatMoney,
   formatDate,
 } from './shared'
@@ -62,7 +62,7 @@ export function MasterInvoiceDocument({ invoice }: { invoice: InvoiceWithRelatio
           </View>
         )}
 
-        <DocumentFooter text={`${BRAND.companyName} · Internal record · Not for distribution to customer`} />
+        <LegalFooter tagline={`${BRAND.companyName} · Internal record · Not for distribution to customer`} />
       </Page>
     </Document>
   )

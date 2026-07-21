@@ -9,6 +9,7 @@ import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { calculateInvoiceTotals } from '@/lib/invoice/calculations'
+import { InvoiceStatusSection } from './InvoiceStatusSection'
 import { CustomerInfoSection } from './CustomerInfoSection'
 import { ShippingSection } from './ShippingSection'
 import { InvoiceItemsTable } from './InvoiceItemsTable'
@@ -17,6 +18,7 @@ import { PaymentSection } from './PaymentSection'
 import { TotalsSummary } from './TotalsSummary'
 import { InvoicePreview } from './InvoicePreview'
 import { PDFExportButtons } from './PDFExportButtons'
+import { pillPrimary } from './theme'
 import { makeKey, EMPTY_DRAFT } from './types'
 import type { InvoiceDraft, AddressDraft, Product, Promotion } from './types'
 import type { InvoiceWithRelations } from '@/lib/invoices'
@@ -88,11 +90,14 @@ function invoiceToDraft(invoice: InvoiceWithRelations): InvoiceDraft {
   }
 }
 
-export function InvoiceBuilder({ mode, initialInvoice, products, promotions }: Props) {
+export function InvoiceBuilder({ mode, initialInvoice, products, promotions: initialPromotions }: Props) {
   const router = useRouter()
   const [draft, setDraft] = useState<InvoiceDraft>(() => (initialInvoice ? invoiceToDraft(initialInvoice) : EMPTY_DRAFT))
   const [invoice, setInvoice] = useState(initialInvoice)
   const [saving, setSaving] = useState(false)
+  // Local copy so a newly-created reusable promotion (see DiscountsSection's
+  // "+ New Preset") shows up in the picker immediately, without a page reload.
+  const [promotions, setPromotions] = useState(initialPromotions)
 
   const totals = useMemo(
     () =>
@@ -174,13 +179,22 @@ export function InvoiceBuilder({ mode, initialInvoice, products, promotions }: P
   async function refreshInvoice() {
     if (!invoice) return
     const res = await fetch(`/api/admin/invoices/${invoice.id}`)
-    if (res.ok) setInvoice(await res.json())
+    if (res.ok) {
+      const fresh = await res.json()
+      setInvoice(fresh)
+      // recordPayment() can change status server-side (e.g. DRAFT -> PAID)
+      // without the draft's own status field knowing — keep them in sync so
+      // the next Save doesn't silently overwrite the payment-derived status
+      // with whatever was in the dropdown before the payment was recorded.
+      setDraft((d) => ({ ...d, status: fresh.status }))
+    }
     router.refresh()
   }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-6 items-start">
       <div className="space-y-6">
+        <InvoiceStatusSection value={draft.status} onChange={(status) => setDraft((d) => ({ ...d, status }))} />
         <CustomerInfoSection value={draft.customer} onChange={(customer) => setDraft((d) => ({ ...d, customer }))} />
         <ShippingSection value={draft.shipping} onChange={(shipping) => setDraft((d) => ({ ...d, shipping }))} />
         <InvoiceItemsTable
@@ -192,6 +206,7 @@ export function InvoiceBuilder({ mode, initialInvoice, products, promotions }: P
           discounts={draft.discounts}
           onChange={(discounts) => setDraft((d) => ({ ...d, discounts }))}
           promotions={promotions}
+          onPromotionCreated={(promotion) => setPromotions((prev) => [...prev, promotion])}
           itemsTotal={totals.itemsTotal}
         />
         <TotalsSummary totals={totals} shippingCost={draft.shipping.shippingCost} amountPaid={invoice?.amountPaid} />
@@ -210,7 +225,7 @@ export function InvoiceBuilder({ mode, initialInvoice, products, promotions }: P
             type="button"
             onClick={save}
             disabled={saving}
-            className="rounded-full bg-gold text-white text-sm font-bold px-8 py-3 hover:bg-gold-dark transition-colors disabled:opacity-50"
+            className={`${pillPrimary} px-8 py-3`}
           >
             {saving ? 'Saving...' : mode === 'create' ? 'Create Invoice' : 'Save Changes'}
           </button>

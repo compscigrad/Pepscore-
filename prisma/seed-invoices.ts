@@ -12,8 +12,8 @@ const prisma = new PrismaClient()
 // Reusable discount templates from the spec's example list.
 const promotions = [
   { name: 'FF', description: 'Friends & Family discount', type: 'FIXED' as const, amount: 50 },
-  { name: 'Birthday', description: 'Birthday month discount', type: 'PERCENTAGE' as const, amount: 10 },
-  { name: 'Holiday Sale', description: 'Seasonal promotion', type: 'PERCENTAGE' as const, amount: 15 },
+  { name: 'Birthday', description: 'Birthday month discount', type: 'PERCENTAGE' as const, amount: 13 },
+  { name: 'Holiday Sale', description: 'Seasonal promotion', type: 'PERCENTAGE' as const, amount: 10 },
   { name: 'Referral', description: 'Customer referral reward', type: 'FIXED' as const, amount: 25 },
   { name: 'Gift', description: 'Complimentary gift discount', type: 'FIXED' as const, amount: 89 },
   { name: 'Coupon', description: 'General coupon code redemption', type: 'FIXED' as const, amount: 20 },
