@@ -73,8 +73,18 @@
 **Props**: `initialArchiveAfterDays: number | null`.
 **Dependencies**: `/api/admin/invoice-settings` PATCH.
 
+### `InvoiceHeaderActions.tsx`
+**Purpose**: Duplicate / Archive-or-Restore / Delete actions on the invoice edit page header. Delete uses a two-click confirm (first click arms it for 4s, second click sends the request) rather than a native `confirm()` dialog, matching this UI's toast-driven conventions — moves the invoice to Trash (`deletedAt` set), it is not a hard delete.
+**Props**: `invoiceId: string`, `archived: boolean`.
+**Dependencies**: `/api/admin/invoices/[id]` PATCH (`action: 'trash' | 'restore' | 'duplicate'`), `/api/admin/invoices/[id]` DELETE (archive).
+
+### `TrashTable.tsx`
+**Purpose**: Lists soft-deleted invoices (`app/admin/invoices/trash`). Restore clears `deletedAt` and returns the invoice to the normal list. "Delete Forever" is a second, separately-confirmed two-click action that calls the permanent-delete route — genuinely unrecoverable, so it's the only action in the invoice module that removes a row rather than flipping a flag.
+**Props**: `initialInvoices: { id, invoiceNumber, customerName, total, status, deletedAt }[]`.
+**Dependencies**: `/api/admin/invoices/[id]` PATCH (`action: 'restore-from-trash'`), `/api/admin/invoices/[id]/permanent` DELETE.
+
 ### `InvoiceTable.tsx`
-**Purpose**: Dashboard list — search box, column-header sorting, status filter, pagination.
+**Purpose**: Dashboard list — search box, column-header sorting, All/Outstanding/Paid/Overdue/Archived filter, pagination. A search term ignores the selected filter and searches active + archived invoices together.
 **Props**: `initialInvoices`, `initialTotal`.
 **Dependencies**: `/api/admin/invoices` (GET) for search/sort/filter re-fetches, `StatusBadge`, `formatCurrency`.
 

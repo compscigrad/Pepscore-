@@ -5,7 +5,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
-import { getInvoice, updateInvoice, archiveInvoice, restoreInvoice, duplicateInvoice } from '@/lib/invoices'
+import {
+  getInvoice,
+  updateInvoice,
+  archiveInvoice,
+  restoreInvoice,
+  duplicateInvoice,
+  trashInvoice,
+  restoreFromTrash,
+} from '@/lib/invoices'
 import { invoicePayloadSchema } from '@/lib/invoice/validation'
 
 function isAdmin(userId: string | null) {
@@ -45,6 +53,32 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     }
     if (body?.action === 'restore') {
       const restored = await restoreInvoice(id)
+      return NextResponse.json(restored)
+    }
+    if (body?.action === 'trash') {
+      const trashed = await trashInvoice(id)
+      await prisma.adminAuditLog.create({
+        data: {
+          action: 'TRASH_INVOICE',
+          entity: 'Invoice',
+          entityId: id,
+          adminId: userId!,
+          details: { invoiceNumber: trashed.invoiceNumber },
+        },
+      })
+      return NextResponse.json(trashed)
+    }
+    if (body?.action === 'restore-from-trash') {
+      const restored = await restoreFromTrash(id)
+      await prisma.adminAuditLog.create({
+        data: {
+          action: 'RESTORE_INVOICE_FROM_TRASH',
+          entity: 'Invoice',
+          entityId: id,
+          adminId: userId!,
+          details: { invoiceNumber: restored.invoiceNumber },
+        },
+      })
       return NextResponse.json(restored)
     }
 

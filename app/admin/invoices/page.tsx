@@ -37,6 +37,12 @@ export default async function InvoicesDashboard() {
               Settings
             </Link>
             <Link
+              href="/admin/invoices/trash"
+              className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
+            >
+              Trash
+            </Link>
+            <Link
               href="/admin"
               className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
             >

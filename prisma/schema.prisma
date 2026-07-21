@@ -170,6 +170,12 @@ model Invoice {
   paidAt     DateTime?
   archivedAt DateTime?
 
+  // Soft-delete holding spot, distinct from archivedAt: Archive is for
+  // completed invoices you keep for records; this is for "get this out of my
+  // list" with a recovery window before the separate, explicit permanent-delete
+  // step actually removes the row. Never set alongside a restore of the other.
+  deletedAt DateTime?
+
   // Generated on-demand (see lib/invoice/pdf); columns reserved for when
   // persistent blob storage is added — see docs/Decisions.md
   pdfMasterUrl    String?
@@ -187,6 +193,7 @@ model Invoice {
   @@index([customerName])
   @@index([status])
   @@index([createdAt])
+  @@index([deletedAt])
 }
 
 enum InvoiceStatus {

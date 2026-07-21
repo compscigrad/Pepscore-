@@ -74,8 +74,11 @@ export async function listInvoices(params: ListInvoicesParams = {}) {
 
   // A search term looks across both active and archived invoices, ignoring
   // whichever filter tab is currently selected — finding an invoice you know
-  // exists shouldn't first require guessing which tab it's hiding in.
+  // exists shouldn't first require guessing which tab it's hiding in. Trashed
+  // invoices never appear here regardless — they only live in the dedicated
+  // Trash view (listTrashedInvoices).
   const where: Prisma.InvoiceWhereInput = {
+    deletedAt: null,
     ...(search ? {} : buildFilterClause(filter)),
     ...searchClause,
   }
@@ -306,12 +309,52 @@ export async function sweepAutoArchive(archiveAfterDays: number | null): Promise
     where: {
       status: 'PAID',
       archivedAt: null,
+      deletedAt: null,
       paidAt: { lte: cutoff },
     },
     data: { archivedAt: new Date() },
   })
 
   return { archivedCount: result.count }
+}
+
+// Soft-delete: moves an invoice into the Trash view. Recoverable via
+// restoreFromTrash until someone explicitly runs permanentlyDeleteInvoice.
+export async function trashInvoice(id: string): Promise<InvoiceWithRelations> {
+  return prisma.invoice.update({ where: { id }, data: { deletedAt: new Date() }, ...invoiceWithRelations })
+}
+
+export async function restoreFromTrash(id: string): Promise<InvoiceWithRelations> {
+  return prisma.invoice.update({ where: { id }, data: { deletedAt: null }, ...invoiceWithRelations })
+}
+
+// Lightweight fields only — the Trash list doesn't need items/discounts/
+// payments, just enough to identify what's there and let the admin decide.
+export async function listTrashedInvoices() {
+  return prisma.invoice.findMany({
+    where: { deletedAt: { not: null } },
+    orderBy: { deletedAt: 'desc' },
+    select: {
+      id: true,
+      invoiceNumber: true,
+      customerName: true,
+      total: true,
+      status: true,
+      deletedAt: true,
+    },
+  })
+}
+
+// Requires the invoice to already be in the trash — enforces the two-step
+// "trash first, then a separate final delete" flow at the data layer, not
+// just in the UI, so there's no shortcut straight to an unrecoverable delete.
+export async function permanentlyDeleteInvoice(id: string): Promise<{ invoiceNumber: string }> {
+  const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id } })
+  if (!invoice.deletedAt) {
+    throw new Error('Invoice must be moved to Trash before it can be permanently deleted')
+  }
+  await prisma.invoice.delete({ where: { id } })
+  return { invoiceNumber: invoice.invoiceNumber }
 }
 
 export async function duplicateInvoice(id: string): Promise<InvoiceWithRelations> {
@@ -377,22 +420,23 @@ export interface InvoiceDashboardStats {
 export async function getInvoiceDashboardStats(): Promise<InvoiceDashboardStats> {
   const [totalInvoices, paidInvoices, partiallyPaidInvoices, pendingShipments, deliveredOrders, activeInvoices, allInvoicesForRevenue] =
     await Promise.all([
-      prisma.invoice.count({ where: { archivedAt: null } }),
-      prisma.invoice.count({ where: { archivedAt: null, status: 'PAID' } }),
-      prisma.invoice.count({ where: { archivedAt: null, status: 'PARTIALLY_PAID' } }),
+      prisma.invoice.count({ where: { archivedAt: null, deletedAt: null } }),
+      prisma.invoice.count({ where: { archivedAt: null, deletedAt: null, status: 'PAID' } }),
+      prisma.invoice.count({ where: { archivedAt: null, deletedAt: null, status: 'PARTIALLY_PAID' } }),
       prisma.invoice.count({
-        where: { archivedAt: null, deliveryStatus: { in: ['PREPARING', 'PACKED'] } },
+        where: { archivedAt: null, deletedAt: null, deliveryStatus: { in: ['PREPARING', 'PACKED'] } },
       }),
-      prisma.invoice.count({ where: { archivedAt: null, deliveryStatus: 'DELIVERED' } }),
+      prisma.invoice.count({ where: { archivedAt: null, deletedAt: null, deliveryStatus: 'DELIVERED' } }),
       prisma.invoice.findMany({
-        where: { archivedAt: null, status: { notIn: ['CANCELLED', 'VOID'] } },
+        where: { archivedAt: null, deletedAt: null, status: { notIn: ['CANCELLED', 'VOID'] } },
         select: { balanceDue: true },
       }),
       // Revenue counts archived invoices too — an auto-archived invoice is
       // still a real, fully-paid sale, and organizing it out of the active
-      // list shouldn't organize it out of revenue reporting.
+      // list shouldn't organize it out of revenue reporting. Trashed
+      // invoices never count, though — those are "probably a mistake."
       prisma.invoice.findMany({
-        where: { status: { notIn: ['CANCELLED', 'VOID'] } },
+        where: { deletedAt: null, status: { notIn: ['CANCELLED', 'VOID'] } },
         select: { total: true },
       }),
     ])
