@@ -1,16 +1,23 @@
-// GET/PATCH /api/admin/invoice-settings — the invoice module's one setting
-// today: how many days after full payment a PAID invoice auto-archives.
+// GET/PATCH /api/admin/invoice-settings — the invoice module's settings:
+// auto-archive delay and per-status tracking notification toggles.
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { z } from 'zod'
-import { getInvoiceSettings, updateInvoiceSettings } from '@/lib/invoiceSettings'
+import {
+  getInvoiceSettings,
+  updateInvoiceSettings,
+  updateTrackingNotificationSettings,
+} from '@/lib/invoiceSettings'
 
 function isAdmin(userId: string | null) {
   return userId === process.env.ADMIN_CLERK_USER_ID
 }
 
 // null means "Never auto-archive" — the spec's fourth radio option.
-const patchSchema = z.object({ archiveAfterDays: z.number().int().positive().nullable() })
+const patchSchema = z.object({
+  archiveAfterDays: z.number().int().positive().nullable().optional(),
+  trackingNotificationsEnabled: z.record(z.string(), z.boolean()).optional(),
+})
 
 export async function GET() {
   const { userId } = await auth()
@@ -26,8 +33,17 @@ export async function PATCH(req: NextRequest) {
 
   try {
     const body = await req.json()
-    const { archiveAfterDays } = patchSchema.parse(body)
-    const settings = await updateInvoiceSettings(archiveAfterDays)
+    const parsed = patchSchema.parse(body)
+
+    if (parsed.trackingNotificationsEnabled) {
+      const settings = await updateTrackingNotificationSettings(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        parsed.trackingNotificationsEnabled as any
+      )
+      return NextResponse.json(settings)
+    }
+
+    const settings = await updateInvoiceSettings(parsed.archiveAfterDays ?? null)
     return NextResponse.json(settings)
   } catch (err: unknown) {
     if (err instanceof z.ZodError) {

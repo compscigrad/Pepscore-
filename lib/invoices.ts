@@ -9,6 +9,7 @@ import { calculateInvoiceTotals, type InvoiceLineItemInput } from '@/lib/invoice
 import { generateSequentialInvoiceNumber } from '@/lib/invoice/numbering'
 import { assertPaymentWithinBalance, type InvoicePayload, type PaymentPayload } from '@/lib/invoice/validation'
 import { matchPaymentToNextPendingInstallment } from '@/lib/paymentArrangements'
+import { computeOrderStatus } from '@/lib/tracking/orderStatus'
 
 const invoiceWithRelations = Prisma.validator<Prisma.InvoiceDefaultArgs>()({
   include: {
@@ -18,6 +19,10 @@ const invoiceWithRelations = Prisma.validator<Prisma.InvoiceDefaultArgs>()({
     paymentArrangement: {
       include: { installments: { orderBy: { installmentNumber: 'asc' } } },
     },
+    shipment: {
+      include: { events: { orderBy: { eventAt: 'desc' } } },
+    },
+    activityLog: { orderBy: { createdAt: 'desc' } },
   },
 })
 export type InvoiceWithRelations = Prisma.InvoiceGetPayload<typeof invoiceWithRelations>
@@ -224,6 +229,10 @@ export async function updateInvoice(id: string, payload: InvoicePayload): Promis
       // un-archives it rather than leaving a no-longer-paid invoice hidden.
       paidAt: isPaid ? new Date() : null,
       archivedAt: isPaid ? existing.archivedAt : null,
+      // The Status dropdown can set PAID/CANCELLED/etc. directly, bypassing
+      // recordPayment() — recompute here too so the completion rule always
+      // sees whichever side (payment or shipping) changed most recently.
+      orderStatus: computeOrderStatus(payload.status, existing.shippingStatus, existing.orderStatus),
       items: {
         deleteMany: {},
         create: payload.items.map((item, index) => ({
@@ -254,6 +263,7 @@ export async function recordPayment(invoiceId: string, payload: PaymentPayload):
 
   const newAmountPaid = round2(invoice.amountPaid + payload.amount)
   const newBalanceDue = round2(invoice.total - newAmountPaid)
+  const newStatus = newBalanceDue <= 0 ? 'PAID' : 'PARTIALLY_PAID'
 
   const payment = await prisma.invoicePayment.create({
     data: {
@@ -271,8 +281,12 @@ export async function recordPayment(invoiceId: string, payload: PaymentPayload):
     data: {
       amountPaid: newAmountPaid,
       balanceDue: newBalanceDue,
-      status: newBalanceDue <= 0 ? 'PAID' : 'PARTIALLY_PAID',
+      status: newStatus,
       paidAt: newBalanceDue <= 0 ? new Date() : invoice.paidAt,
+      // Payment is the other half of the "paid + delivered = completed" rule
+      // (lib/tracking/orderStatus.ts) — a shipment that was already delivered
+      // before the final payment landed would otherwise never recompute.
+      orderStatus: computeOrderStatus(newStatus, invoice.shippingStatus, invoice.orderStatus),
     },
   })
 

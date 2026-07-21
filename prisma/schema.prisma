@@ -158,6 +158,23 @@ model Invoice {
   deliveredDate  DateTime?
   deliveryStatus DeliveryStatus   @default(PREPARING)
 
+  // Carrier-agnostic tracking (see lib/tracking/) — deliveryStatus above is
+  // left untouched for back-compat with existing invoices/UI; these are the
+  // new normalized-status fields the tracking system actually drives.
+  shippingService    String?
+  trackingUrl        String?
+  shippingStatus     ShippingStatus      @default(NOT_SHIPPED)
+  lastTrackingUpdate DateTime?
+  orderStatus        InvoiceOrderStatus  @default(OPEN)
+
+  // Denormalized snapshot of the most recent shipment notification, for
+  // quick display without a join — full history lives in ShipmentNotification.
+  lastNotificationType          ShippingStatus?
+  lastNotificationStatus        String?
+  lastNotificationSentAt        DateTime?
+  lastNotificationRecipient     String?
+  lastNotificationFailureReason String?
+
   // Financials — stored (not just derived) so history survives later price/promo edits
   subtotal      Float @default(0)
   discountTotal Float @default(0)
@@ -185,6 +202,9 @@ model Invoice {
   discounts          InvoiceDiscount[]
   payments           InvoicePayment[]
   paymentArrangement PaymentArrangement?
+  shipment           Shipment?
+  notifications      ShipmentNotification[]
+  activityLog        InvoiceActivityLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -228,6 +248,49 @@ enum DeliveryStatus {
   RETURNED
   LOST
   DAMAGED
+}
+
+// Normalized, carrier-agnostic shipping status — every provider adapter in
+// lib/tracking/ maps its own carrier-specific status vocabulary onto this
+// fixed set, so nothing downstream (UI, PDF, email, reporting) needs to know
+// which carrier or provider is actually involved.
+enum ShippingStatus {
+  NOT_SHIPPED
+  TRACKING_ADDED
+  LABEL_CREATED
+  CARRIER_AWAITING_PACKAGE
+  ACCEPTED_BY_CARRIER
+  IN_TRANSIT
+  DELAYED
+  DELIVERY_EXCEPTION
+  AVAILABLE_FOR_PICKUP
+  OUT_FOR_DELIVERY
+  DELIVERED
+  RETURNED_TO_SENDER
+  DELIVERY_ATTEMPTED
+  LOST
+  CANCELLED
+  UNKNOWN
+}
+
+// The 4th status dimension the tracking spec calls for, kept independent of
+// InvoiceStatus (payment) and ShippingStatus/deliveryStatus (fulfillment) —
+// named InvoiceOrderStatus, not OrderStatus, since that name is already taken
+// by the separate Stripe Order model's status enum.
+enum InvoiceOrderStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+// Where a tracking/activity event originated — surfaced in the invoice
+// activity log per spec ("Source: Manual, Webhook, Polling, or System").
+enum TrackingEventSource {
+  MANUAL
+  WEBHOOK
+  POLLING
+  SYSTEM
 }
 
 model InvoiceItem {
@@ -427,6 +490,119 @@ model ShippingLabel {
   createdAt      DateTime @default(now())
 }
 
+// ─── Invoice Shipment Tracking ───────────────────────────────────────────────
+// Carrier-agnostic tracking for invoices (distinct from ShippingLabel above,
+// which is a one-time label-purchase snapshot for Stripe-driven Orders only).
+// See lib/tracking/ and docs/Decisions.md for the provider-abstraction design.
+
+model Shipment {
+  id        String  @id @default(cuid())
+  invoiceId String  @unique
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  carrier        ShippingCarrier
+  service        String?
+  trackingNumber String
+  trackingUrl    String?
+
+  normalizedStatus ShippingStatus @default(NOT_SHIPPED)
+  carrierStatus    String?
+
+  dateShipped         DateTime?
+  estimatedDeliveryAt DateTime?
+  deliveredAt         DateTime?
+
+  lastCheckedAt DateTime?
+  lastEventAt   DateTime?
+
+  // Polling fallback skips shipments where this is false — cleared once a
+  // shipment reaches a terminal status (delivered/returned/lost/cancelled).
+  monitoringActive Boolean @default(true)
+
+  // Which ShippingProvider adapter registered this, and its own tracking
+  // object id — kept so a provider swap later can still resolve history.
+  providerName       String?
+  providerTrackingId String?
+
+  events TrackingEvent[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([trackingNumber])
+  @@index([monitoringActive])
+}
+
+// One row per normalized carrier event, in provider-agnostic shape. Dedup is
+// enforced at the DB level via the (shipmentId, eventHash) unique constraint —
+// eventHash is the provider's own event id when available, otherwise a
+// deterministic hash of (status, description, eventAt) so an out-of-order or
+// re-delivered webhook/poll never creates a duplicate row.
+model TrackingEvent {
+  id         String   @id @default(cuid())
+  shipmentId String
+  shipment   Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  providerEventId  String?
+  normalizedStatus ShippingStatus
+  // Original carrier event text, preserved even though it's been mapped to a
+  // normalizedStatus above — per spec, never discard the raw description.
+  carrierStatus String?
+  description   String?
+  location      String?
+  eventAt       DateTime
+
+  source    TrackingEventSource
+  eventHash String
+
+  createdAt DateTime @default(now())
+
+  @@unique([shipmentId, eventHash])
+  @@index([shipmentId])
+}
+
+// Full history of customer-facing shipment emails (Invoice's
+// lastNotification* fields above are just a denormalized snapshot of the most
+// recent row here, for quick display without a join).
+model ShipmentNotification {
+  id        String  @id @default(cuid())
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  notificationType ShippingStatus
+  recipient        String
+  status           String
+  failureReason    String?
+
+  sentAt DateTime @default(now())
+
+  @@index([invoiceId])
+  @@index([invoiceId, notificationType])
+}
+
+// Dedicated activity log for shipment/tracking events on an invoice —
+// deliberately separate from AdminAuditLog (which is shaped for admin-
+// initiated CRUD actions like Archive/Trash and always requires an adminId).
+// This log covers automated sources too (webhook/polling/system), so
+// userId is optional.
+model InvoiceActivityLog {
+  id        String  @id @default(cuid())
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  eventType      String
+  previousValue  String?
+  newValue       String?
+  carrier        ShippingCarrier?
+  trackingNumber String?
+  source         TrackingEventSource
+  userId         String?
+
+  createdAt DateTime @default(now())
+
+  @@index([invoiceId])
+}
+
 // ─── Compliance ──────────────────────────────────────────────────────────────
 
 model ComplianceAcknowledgment {
@@ -489,6 +665,12 @@ model InvoiceSettings {
   // Days after paidAt before a PAID invoice auto-archives; null = never
   // auto-archive. See docs/Decisions.md #21.
   archiveAfterDays Int? @default(30)
+
+  // Per-ShippingStatus on/off toggle for customer notification emails, e.g.
+  // {"DELAYED": false}. A status missing from this map is treated as
+  // enabled — so the default (empty/null) is "everything on" without
+  // needing to seed every enum value. See lib/tracking/notifications.ts.
+  trackingNotificationsEnabled Json?
 
   updatedAt DateTime @updatedAt
 }

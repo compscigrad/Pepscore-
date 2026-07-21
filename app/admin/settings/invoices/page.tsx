@@ -1,4 +1,4 @@
-// Settings > Invoices — currently just the auto-archive delay.
+// Settings > Invoices — auto-archive delay and per-status tracking notifications.
 export const dynamic = 'force-dynamic'
 
 import { auth } from '@clerk/nextjs/server'
@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getInvoiceSettings } from '@/lib/invoiceSettings'
 import { InvoiceSettingsForm } from '@/components/invoices/InvoiceSettingsForm'
+import { TrackingNotificationSettingsForm } from '@/components/invoices/TrackingNotificationSettingsForm'
 
 export default async function InvoiceSettingsPage() {
   const { userId } = await auth()
@@ -31,7 +32,10 @@ export default async function InvoiceSettingsPage() {
           </Link>
         </div>
 
-        <InvoiceSettingsForm initialArchiveAfterDays={settings.archiveAfterDays} />
+        <div className="space-y-6">
+          <InvoiceSettingsForm initialArchiveAfterDays={settings.archiveAfterDays} />
+          <TrackingNotificationSettingsForm initialEnabled={settings.trackingNotificationsEnabled} />
+        </div>
       </div>
     </main>
   )

@@ -39,9 +39,31 @@ const PAYMENT_STATUS_COLORS: Record<string, string> = {
   OVERDUE: 'border-red-400/30 bg-red-400/10 text-red-300',
 }
 
+// The carrier-agnostic normalized ShippingStatus enum (lib/tracking/) — a
+// superset of the older, simpler DELIVERY_STATUS_COLORS above, which stays
+// untouched for back-compat with invoices/UI still reading deliveryStatus.
+const SHIPPING_STATUS_COLORS: Record<string, string> = {
+  NOT_SHIPPED: 'border-white/15 bg-white/5 text-white/50',
+  TRACKING_ADDED: 'border-amber-400/30 bg-amber-400/10 text-amber-300',
+  LABEL_CREATED: 'border-amber-400/30 bg-amber-400/10 text-amber-300',
+  CARRIER_AWAITING_PACKAGE: 'border-amber-400/30 bg-amber-400/10 text-amber-300',
+  ACCEPTED_BY_CARRIER: 'border-blue-400/30 bg-blue-400/10 text-blue-300',
+  IN_TRANSIT: 'border-purple-400/30 bg-purple-400/10 text-purple-300',
+  DELAYED: 'border-orange-400/30 bg-orange-400/10 text-orange-300',
+  DELIVERY_EXCEPTION: 'border-red-400/30 bg-red-400/10 text-red-300',
+  AVAILABLE_FOR_PICKUP: 'border-blue-400/30 bg-blue-400/10 text-blue-300',
+  OUT_FOR_DELIVERY: 'border-purple-400/30 bg-purple-400/10 text-purple-300',
+  DELIVERED: 'border-gold/40 bg-gold/10 text-gold-light',
+  RETURNED_TO_SENDER: 'border-orange-400/30 bg-orange-400/10 text-orange-300',
+  DELIVERY_ATTEMPTED: 'border-orange-400/30 bg-orange-400/10 text-orange-300',
+  LOST: 'border-red-400/30 bg-red-400/10 text-red-300',
+  CANCELLED: 'border-white/15 bg-white/5 text-white/40',
+  UNKNOWN: 'border-white/15 bg-white/5 text-white/40',
+}
+
 interface StatusBadgeProps {
   status: string
-  variant?: 'invoice' | 'delivery' | 'payment'
+  variant?: 'invoice' | 'delivery' | 'payment' | 'shipping'
 }
 
 function formatLabel(status: string): string {
@@ -56,6 +78,7 @@ const VARIANT_COLORS: Record<NonNullable<StatusBadgeProps['variant']>, Record<st
   invoice: INVOICE_STATUS_COLORS,
   delivery: DELIVERY_STATUS_COLORS,
   payment: PAYMENT_STATUS_COLORS,
+  shipping: SHIPPING_STATUS_COLORS,
 }
 
 export function StatusBadge({ status, variant = 'invoice' }: StatusBadgeProps) {
