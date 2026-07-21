@@ -2,6 +2,13 @@
 
 Notable changes to the invoice module. Ordinary commits don't all need an entry here — this tracks changes future engineers would want a summary of before digging into `git log`.
 
+## Unreleased — Payment arrangements available on any invoice, not just Partial ones
+
+- `PaymentArrangementSection` no longer requires an invoice to already have a payment before an arrangement can be set up — the "+ Set Up Payment Arrangement" option now shows on any invoice with `balanceDue > 0` (Draft/Pending included), so it's uniformly available "just in case" rather than only after a payment happens to already exist.
+- For invoices with no payment yet, the form asks for a **Start Date** (there's no history to derive one from) instead of showing read-only Initial Payment Amount/Date; the entire schedule is generated fresh from that date, with every installment created `PENDING` — the first real payment recorded through the normal Record Payment flow satisfies installment #1 automatically via the existing `matchPaymentToNextPendingInstallment()`.
+- `generateInstallmentSchedule()` generalized to take a `firstDueDate` (the due date of the first installment it generates) and a `startInstallmentNumber`, so the same function serves both the has-a-payment case (installments #2+, anchored one interval after the existing payment) and the no-payment-yet case (installments #1+, anchored on the chosen start date). See `docs/Decisions.md` #16 (updated).
+- Verified: `tsc`/`eslint` clean; live-tested both paths — a fresh Draft invoice with $0 paid (schedule correctly split the full total starting today) and the existing Partially Paid sample invoice (unchanged behavior, re-verified no regression).
+
 ## Unreleased — Payment arrangements (installment plans)
 
 - Extended `PaymentMethod` (schema + validation + the picker) with `NA` (new default), `DEBIT_CARD`, `PAYPAL`, `BANK_TRANSFER` — existing values kept, per the "at minimum" requirement.

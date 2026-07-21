@@ -34,7 +34,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         entityId: id,
         adminId: userId!,
         details: {
-          remainingPayments: payload.remainingPayments,
+          numberOfPayments: payload.numberOfPayments,
           frequency: payload.frequency,
           initialPaymentAmount: arrangement.initialPaymentAmount,
         },

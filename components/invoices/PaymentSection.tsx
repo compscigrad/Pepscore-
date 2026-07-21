@@ -160,7 +160,7 @@ export function PaymentSection({
       <PaymentArrangementSection
         invoiceId={invoiceId}
         arrangement={paymentArrangement}
-        canCreate={paymentStatus === 'PARTIAL' && !paymentArrangement}
+        canCreate={balanceDue > 0 && !paymentArrangement}
         invoiceTotal={total}
         amountPaid={amountPaid}
         balanceDue={balanceDue}

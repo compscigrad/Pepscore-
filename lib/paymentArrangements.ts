@@ -4,7 +4,7 @@
 // adds schedule/installment tracking on top, never re-derives money math
 // that already lives elsewhere.
 import { prisma } from '@/lib/prisma'
-import { generateInstallmentSchedule, type PaymentFrequency } from '@/lib/invoice/paymentArrangement'
+import { generateInstallmentSchedule, addDaysUTC, frequencyIntervalDays, type PaymentFrequency } from '@/lib/invoice/paymentArrangement'
 import type { InvoicePayment } from '@prisma/client'
 
 export async function getPaymentArrangement(invoiceId: string) {
@@ -15,19 +15,25 @@ export async function getPaymentArrangement(invoiceId: string) {
 }
 
 export interface CreatePaymentArrangementInput {
-  remainingPayments: number
+  numberOfPayments: number
   frequency: PaymentFrequency
+  // Required only when the invoice has no payment recorded yet — with a
+  // prior payment, the schedule anchors off that payment's date instead.
+  startDate?: Date
 }
 
-// Sets up an installment schedule for an invoice that already has at least
-// one payment recorded (status Partial). Deliberately does NOT record a new
-// payment or touch Invoice.amountPaid/balanceDue — "Initial Payment
-// Amount/Date" describe what has *already* been paid (derived from the
-// invoice's own payment history, not client input), and "Remaining Balance"
-// is simply the invoice's current balanceDue. This guarantees the
-// arrangement can never disagree with the invoice's real financial state —
-// there's nothing for it to disagree with, since it doesn't introduce any
-// new numbers of its own for the paid-so-far side of the ledger.
+// Sets up an installment schedule for the invoice's current balance —
+// available on any invoice with a balance left to schedule, whether or not
+// anything has been paid yet ("just in case it needs to be utilized").
+//
+// When the invoice already has a payment, installment #1 is that payment
+// itself (derived from history, immediately PAID — see docs/Decisions.md
+// #16 for why this doesn't record a second, redundant transaction) and the
+// generated schedule continues from there. When it doesn't, there's no
+// history to derive from, so the *entire* schedule is generated fresh
+// starting from the admin-provided start date, and nothing is pre-marked
+// paid — the first real payment recorded through the normal Record Payment
+// flow satisfies installment #1 via matchPaymentToNextPendingInstallment().
 export async function createPaymentArrangement(invoiceId: string, input: CreatePaymentArrangementInput) {
   const existing = await prisma.paymentArrangement.findUnique({ where: { invoiceId } })
   if (existing) throw new Error('This invoice already has a payment arrangement')
@@ -37,22 +43,54 @@ export async function createPaymentArrangement(invoiceId: string, input: CreateP
     include: { payments: { orderBy: { paidAt: 'asc' } } },
   })
 
-  if (invoice.amountPaid <= 0) {
-    throw new Error('Record at least one payment before setting up a payment arrangement')
-  }
   if (invoice.balanceDue <= 0) {
     throw new Error('This invoice has no remaining balance to schedule')
   }
 
-  const initialPaymentAmount = invoice.amountPaid
-  const initialPaymentDate = invoice.payments[0]?.paidAt ?? new Date()
-  const remainingBalance = invoice.balanceDue
+  const hasExistingPayment = invoice.amountPaid > 0
+  const intervalDays = frequencyIntervalDays(input.frequency)
 
-  const futureInstallments = generateInstallmentSchedule({
-    initialPaymentDate,
-    remainingBalance,
-    numberOfRemainingPayments: input.remainingPayments,
+  let initialInstallment: {
+    installmentNumber: number
+    dueDate: Date
+    amount: number
+    status: 'PAID'
+    paidAt: Date
+  } | null = null
+  let firstGeneratedDueDate: Date
+  let startInstallmentNumber: number
+  let initialPaymentAmount: number
+  let initialPaymentDate: Date
+
+  if (hasExistingPayment) {
+    const earliestPaymentDate = invoice.payments[0].paidAt
+    initialInstallment = {
+      installmentNumber: 1,
+      dueDate: earliestPaymentDate,
+      amount: invoice.amountPaid,
+      status: 'PAID',
+      paidAt: earliestPaymentDate,
+    }
+    firstGeneratedDueDate = addDaysUTC(earliestPaymentDate, intervalDays)
+    startInstallmentNumber = 2
+    initialPaymentAmount = invoice.amountPaid
+    initialPaymentDate = earliestPaymentDate
+  } else {
+    if (!input.startDate) {
+      throw new Error('A start date is required for an invoice with no payments recorded yet')
+    }
+    firstGeneratedDueDate = input.startDate
+    startInstallmentNumber = 1
+    initialPaymentAmount = 0
+    initialPaymentDate = input.startDate
+  }
+
+  const generated = generateInstallmentSchedule({
+    firstDueDate: firstGeneratedDueDate,
+    totalAmount: invoice.balanceDue,
+    numberOfPayments: input.numberOfPayments,
     frequency: input.frequency,
+    startInstallmentNumber,
   })
 
   return prisma.paymentArrangement.create({
@@ -60,18 +98,12 @@ export async function createPaymentArrangement(invoiceId: string, input: CreateP
       invoiceId,
       initialPaymentAmount,
       initialPaymentDate,
-      remainingPayments: input.remainingPayments,
+      remainingPayments: input.numberOfPayments,
       frequency: input.frequency,
       installments: {
         create: [
-          {
-            installmentNumber: 1,
-            dueDate: initialPaymentDate,
-            amount: initialPaymentAmount,
-            status: 'PAID',
-            paidAt: initialPaymentDate,
-          },
-          ...futureInstallments.map((s) => ({
+          ...(initialInstallment ? [initialInstallment] : []),
+          ...generated.map((s) => ({
             installmentNumber: s.installmentNumber,
             dueDate: s.dueDate,
             amount: s.amount,

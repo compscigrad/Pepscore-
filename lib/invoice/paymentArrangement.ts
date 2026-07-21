@@ -15,10 +15,14 @@ const FREQUENCY_INTERVAL_DAYS: Record<PaymentFrequency, number> = {
   BIWEEKLY: 14,
 }
 
+export function frequencyIntervalDays(frequency: PaymentFrequency): number {
+  return FREQUENCY_INTERVAL_DAYS[frequency]
+}
+
 // UTC-based day arithmetic — mirrors lib/invoice/format.ts's forced-UTC date
 // display so a schedule generated from a plain date input never drifts a day
 // depending on the server's local timezone.
-function addDaysUTC(date: Date, days: number): Date {
+export function addDaysUTC(date: Date, days: number): Date {
   const result = new Date(date)
   result.setUTCDate(result.getUTCDate() + days)
   return result
@@ -28,39 +32,50 @@ function round2(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100
 }
 
-// Generates installments #2 onward — installment #1 is always the initial
-// payment itself, created separately alongside the arrangement. Splits
-// remainingBalance evenly across numberOfRemainingPayments, with the final
+// Generates a run of installments — every invoice can have a payment
+// arrangement set up "just in case," whether or not anything has been paid
+// yet, so this doesn't assume a prior payment exists. The caller decides
+// what `firstDueDate` and `startInstallmentNumber` mean for their situation
+// (see lib/paymentArrangements.ts):
+//   - invoice already has a payment: firstDueDate is one interval after that
+//     payment's date, startInstallmentNumber is 2 (installment #1 is the
+//     payment itself, added separately by the caller).
+//   - invoice has no payment yet: firstDueDate is the admin-chosen start
+//     date, startInstallmentNumber is 1 (this call generates the *entire*
+//     schedule, including what becomes installment #1).
+// Splits totalAmount evenly across numberOfPayments, with the final
 // installment absorbing whatever rounding remainder is left so the schedule
-// always sums to exactly remainingBalance (the invoice balance lands on
-// exactly $0.00 once every installment is paid).
+// always sums to exactly totalAmount (the invoice balance lands on exactly
+// $0.00 once every installment is paid).
 export function generateInstallmentSchedule({
-  initialPaymentDate,
-  remainingBalance,
-  numberOfRemainingPayments,
+  firstDueDate,
+  totalAmount,
+  numberOfPayments,
   frequency,
+  startInstallmentNumber = 1,
 }: {
-  initialPaymentDate: Date
-  remainingBalance: number
-  numberOfRemainingPayments: number
+  firstDueDate: Date
+  totalAmount: number
+  numberOfPayments: number
   frequency: PaymentFrequency
+  startInstallmentNumber?: number
 }): ScheduledInstallment[] {
-  if (numberOfRemainingPayments < 1) return []
+  if (numberOfPayments < 1) return []
 
   const intervalDays = FREQUENCY_INTERVAL_DAYS[frequency]
-  const baseAmount = Math.floor((remainingBalance / numberOfRemainingPayments) * 100) / 100
+  const baseAmount = Math.floor((totalAmount / numberOfPayments) * 100) / 100
 
   const installments: ScheduledInstallment[] = []
   let runningTotal = 0
 
-  for (let i = 1; i <= numberOfRemainingPayments; i++) {
-    const isLast = i === numberOfRemainingPayments
-    const amount = isLast ? round2(remainingBalance - runningTotal) : baseAmount
+  for (let i = 0; i < numberOfPayments; i++) {
+    const isLast = i === numberOfPayments - 1
+    const amount = isLast ? round2(totalAmount - runningTotal) : baseAmount
     runningTotal = round2(runningTotal + amount)
 
     installments.push({
-      installmentNumber: i + 1, // #1 is the initial payment, not generated here
-      dueDate: addDaysUTC(initialPaymentDate, intervalDays * i),
+      installmentNumber: startInstallmentNumber + i,
+      dueDate: addDaysUTC(firstDueDate, intervalDays * i),
       amount,
     })
   }
