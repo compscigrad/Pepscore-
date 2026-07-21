@@ -13,14 +13,18 @@
 **Future improvements**: autosave drafts; multi-shipping-address support once that data model lands.
 
 ### `CustomerInfoSection.tsx`
-**Purpose**: Captures name, company, phone, email, billing address, internal/public notes.
+**Purpose**: Captures name, company, phone, email, billing address (including Address Line 2), internal/public notes. The billing ZIP field is wired through `useZipLookup` to auto-populate city/state.
 **Props**: `value: CustomerFields`, `onChange: (value: CustomerFields) => void`, `errors?: FieldErrors`.
-**Dependencies**: none beyond shared form primitives.
+**Dependencies**: `useZipLookup.ts`.
 
 ### `ShippingSection.tsx`
-**Purpose**: Captures shipping address, carrier, tracking number, cost, ship/delivery dates, delivery status.
-**Props**: `value: ShippingFields`, `onChange`, `errors?`.
-**Dependencies**: `ShippingCarrier` / `DeliveryStatus` enums from Prisma client.
+**Purpose**: Captures shipping address (including Address Line 2), carrier, tracking number, cost, ship/delivery dates, delivery status. Shipping ZIP is wired through `useZipLookup` the same way as billing. Renders the "Same as billing address" checkbox; while checked, the address sub-fields (street1/street2/city/state/zip) are disabled and driven by `InvoiceBuilder`'s cross-section sync — carrier/tracking/cost/dates/delivery status stay independently editable regardless.
+**Props**: `value: ShippingFields`, `onChange`, `sameAsBilling: boolean`, `onSameAsBillingChange: (checked: boolean) => void`, `errors?`.
+**Dependencies**: `ShippingCarrier` / `DeliveryStatus` enums from Prisma client, `useZipLookup.ts`.
+
+### `useZipLookup.ts`
+**Purpose**: Shared hook for ZIP → city/state auto-fill, used identically by `CustomerInfoSection` (billing) and `ShippingSection` (shipping). Debounces to the first complete 5-digit ZIP (tolerates a ZIP+4 suffix without re-fetching per keystroke), exposes `status`/`message` for a loading/error indicator near the field, and never clears existing address data on a failed lookup.
+**Dependencies**: `/api/admin/zip-lookup` route.
 
 ### `InvoiceItemsTable.tsx`
 **Purpose**: Unlimited-row line-item editor — add, duplicate, delete, reorder, inline-edit. Recalculates line totals as the user types.

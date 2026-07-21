@@ -3,7 +3,9 @@
 // source of truth so the live preview always reflects the current draft.
 'use client'
 
+import { useEffect, useRef } from 'react'
 import { card, input, label as labelClass, sectionHeading } from './theme'
+import { useZipLookup } from './useZipLookup'
 import type { CustomerFields, AddressDraft } from './types'
 
 interface Props {
@@ -12,6 +14,14 @@ interface Props {
 }
 
 export function CustomerInfoSection({ value, onChange }: Props) {
+  // Read by the ZIP lookup's async completion handler so it always merges
+  // onto the latest form state, not a stale snapshot from when the lookup
+  // was kicked off — see useZipLookup's own comment for why that matters.
+  const valueRef = useRef(value)
+  useEffect(() => {
+    valueRef.current = value
+  })
+
   function set<K extends keyof CustomerFields>(key: K, fieldValue: CustomerFields[K]) {
     onChange({ ...value, [key]: fieldValue })
   }
@@ -19,6 +29,11 @@ export function CustomerInfoSection({ value, onChange }: Props) {
   function setAddress(field: keyof AddressDraft, fieldValue: string) {
     onChange({ ...value, billingAddress: { ...value.billingAddress, [field]: fieldValue } })
   }
+
+  const { handleZipChange, status: zipStatus, message: zipMessage } = useZipLookup(({ city, state }) => {
+    const current = valueRef.current
+    onChange({ ...current, billingAddress: { ...current.billingAddress, city, state } })
+  })
 
   return (
     <div className={`${card} p-6`}>
@@ -74,6 +89,12 @@ export function CustomerInfoSection({ value, onChange }: Props) {
           onChange={(e) => setAddress('street1', e.target.value)}
         />
         <input
+          className={`${input} sm:col-span-2`}
+          placeholder="Apt, suite, unit (optional)"
+          value={value.billingAddress.street2 ?? ''}
+          onChange={(e) => setAddress('street2', e.target.value)}
+        />
+        <input
           className={input}
           placeholder="City"
           value={value.billingAddress.city}
@@ -86,12 +107,23 @@ export function CustomerInfoSection({ value, onChange }: Props) {
             value={value.billingAddress.state}
             onChange={(e) => setAddress('state', e.target.value)}
           />
-          <input
-            className={input}
-            placeholder="ZIP"
-            value={value.billingAddress.zip}
-            onChange={(e) => setAddress('zip', e.target.value)}
-          />
+          <div>
+            <input
+              className={input}
+              placeholder="ZIP"
+              value={value.billingAddress.zip}
+              onChange={(e) => {
+                setAddress('zip', e.target.value)
+                handleZipChange(e.target.value)
+              }}
+            />
+            {zipStatus === 'loading' ? (
+              <p className="text-[11px] text-white/40 mt-1">Looking up city/state…</p>
+            ) : null}
+            {zipStatus === 'error' && zipMessage ? (
+              <p className="text-[11px] text-red-400 mt-1">{zipMessage}</p>
+            ) : null}
+          </div>
         </div>
       </div>
 

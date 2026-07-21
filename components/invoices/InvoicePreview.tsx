@@ -38,7 +38,11 @@ export function InvoicePreview({ draft, totals, invoiceNumber }: Props) {
         <div className="bg-g100 rounded-lg p-3">
           <p className="text-[9px] font-bold tracking-[0.1em] uppercase text-g500 mb-1">Ship To</p>
           <p className="text-[13px] text-dark whitespace-pre-line">
-            {[shipping.shippingAddress.street1, [shipping.shippingAddress.city, shipping.shippingAddress.state, shipping.shippingAddress.zip].filter(Boolean).join(', ')]
+            {[
+              shipping.shippingAddress.street1,
+              shipping.shippingAddress.street2,
+              [shipping.shippingAddress.city, shipping.shippingAddress.state, shipping.shippingAddress.zip].filter(Boolean).join(', '),
+            ]
               .filter(Boolean)
               .join('\n') || '—'}
           </p>
