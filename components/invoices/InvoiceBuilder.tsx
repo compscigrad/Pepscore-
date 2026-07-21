@@ -95,6 +95,10 @@ export function InvoiceBuilder({ mode, initialInvoice, products, promotions: ini
   const [draft, setDraft] = useState<InvoiceDraft>(() => (initialInvoice ? invoiceToDraft(initialInvoice) : EMPTY_DRAFT))
   const [invoice, setInvoice] = useState(initialInvoice)
   const [saving, setSaving] = useState(false)
+  // Ephemeral UI convenience, not part of the draft/save payload — what's
+  // actually persisted is the shipping address values themselves, kept in
+  // sync below for as long as this stays checked.
+  const [shippingSameAsBilling, setShippingSameAsBilling] = useState(false)
   // Local copy so a newly-created reusable promotion (see DiscountsSection's
   // "+ New Preset") shows up in the picker immediately, without a page reload.
   const [promotions, setPromotions] = useState(initialPromotions)
@@ -195,8 +199,35 @@ export function InvoiceBuilder({ mode, initialInvoice, products, promotions: ini
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-6 items-start">
       <div className="space-y-6">
         <InvoiceStatusSection value={draft.status} onChange={(status) => setDraft((d) => ({ ...d, status }))} />
-        <CustomerInfoSection value={draft.customer} onChange={(customer) => setDraft((d) => ({ ...d, customer }))} />
-        <ShippingSection value={draft.shipping} onChange={(shipping) => setDraft((d) => ({ ...d, shipping }))} />
+        <CustomerInfoSection
+          value={draft.customer}
+          onChange={(customer) =>
+            setDraft((d) => ({
+              ...d,
+              customer,
+              // Keep shipping mirroring billing live while the checkbox is
+              // on, so editing billing after checking it doesn't require
+              // re-checking to re-sync.
+              shipping: shippingSameAsBilling
+                ? { ...d.shipping, shippingAddress: customer.billingAddress }
+                : d.shipping,
+            }))
+          }
+        />
+        <ShippingSection
+          value={draft.shipping}
+          onChange={(shipping) => setDraft((d) => ({ ...d, shipping }))}
+          sameAsBilling={shippingSameAsBilling}
+          onSameAsBillingChange={(checked) => {
+            setShippingSameAsBilling(checked)
+            if (checked) {
+              setDraft((d) => ({ ...d, shipping: { ...d.shipping, shippingAddress: d.customer.billingAddress } }))
+            }
+            // Unchecking intentionally leaves the last-synced address in
+            // place — it's now an independent starting point to edit, not
+            // cleared, since it may already be correct as-is.
+          }}
+        />
         <InvoiceItemsTable
           items={draft.items}
           onChange={(items) => setDraft((d) => ({ ...d, items }))}

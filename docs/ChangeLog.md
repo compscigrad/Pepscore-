@@ -2,6 +2,13 @@
 
 Notable changes to the invoice module. Ordinary commits don't all need an entry here — this tracks changes future engineers would want a summary of before digging into `git log`.
 
+## Unreleased — ZIP code auto-population and "same as billing" shipping address sync
+
+- Added `GET /api/admin/zip-lookup` (admin-gated proxy to the free/keyless Zippopotam.us API) and a shared `useZipLookup` client hook — entering a complete 5-digit ZIP in either the billing (`CustomerInfoSection`) or shipping (`ShippingSection`) address auto-fills city/state (both stay editable), tolerates a ZIP+4 suffix, shows a loading/error state inline, and never clears existing address data on a failed lookup.
+- Added an "Address Line 2" input to both billing and shipping address blocks — the `street2` field already existed in the data model/PDF/zod validation but had no UI input until now; `InvoicePreview`'s Ship To display line was also fixed to include it (it was already rendered in the PDF via `formatAddress`, just missing from the live preview).
+- Added a "Same as billing address" checkbox to `ShippingSection`. While checked, editing the billing address live-syncs into shipping and the shipping address sub-fields (street1/street2/city/state/zip) render disabled — carrier/tracking/cost/dates/delivery status stay independently editable. Unchecking preserves the last-synced values as an independent starting point rather than clearing them; re-checking replaces shipping with whatever billing currently holds. This flag is ephemeral `useState` in `InvoiceBuilder`, not part of the saved `InvoiceDraft` — see `docs/Decisions.md` #19.
+- Verified: `tsc`/`eslint`/`next build` clean; live-tested all 8 scenarios from the spec (valid/invalid ZIP lookups on both address blocks, checkbox copy/sync/lock, uncheck-preserves/recheck-replaces, save+reload of a new invoice with the synced address, and load of a pre-existing invoice created before this feature — no regression).
+
 ## Unreleased — PDF layout: fit a typical invoice on one page, rename Recipient Receipt to Client Invoice
 
 - Tightened page margins, header logo size, and section/table spacing throughout `lib/invoice/pdf/shared.tsx` so a typical invoice (a few items, a payment history or arrangement, the legal footer) renders on exactly one LETTER page instead of two.

@@ -1,13 +1,17 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
 import { card, input, label as labelClass, sectionHeading, selectOption } from './theme'
 import { formatCarrierLabel } from '@/lib/invoice/format'
+import { useZipLookup } from './useZipLookup'
 import type { ShippingFields, AddressDraft } from './types'
 import type { ShippingCarrier, DeliveryStatus } from '@prisma/client'
 
 interface Props {
   value: ShippingFields
   onChange: (value: ShippingFields) => void
+  sameAsBilling: boolean
+  onSameAsBillingChange: (checked: boolean) => void
 }
 
 const CARRIERS: ShippingCarrier[] = ['USPS', 'UPS', 'FEDEX', 'DHL', 'PICKUP', 'HAND_DELIVERY', 'COURIER', 'OTHER']
@@ -15,7 +19,12 @@ const DELIVERY_STATUSES: DeliveryStatus[] = [
   'PREPARING', 'PACKED', 'SHIPPED', 'IN_TRANSIT', 'DELIVERED', 'RETURNED', 'LOST', 'DAMAGED',
 ]
 
-export function ShippingSection({ value, onChange }: Props) {
+export function ShippingSection({ value, onChange, sameAsBilling, onSameAsBillingChange }: Props) {
+  const valueRef = useRef(value)
+  useEffect(() => {
+    valueRef.current = value
+  })
+
   function set<K extends keyof ShippingFields>(key: K, fieldValue: ShippingFields[K]) {
     onChange({ ...value, [key]: fieldValue })
   }
@@ -24,37 +33,81 @@ export function ShippingSection({ value, onChange }: Props) {
     onChange({ ...value, shippingAddress: { ...value.shippingAddress, [field]: fieldValue } })
   }
 
+  const { handleZipChange, status: zipStatus, message: zipMessage } = useZipLookup(({ city, state }) => {
+    const current = valueRef.current
+    onChange({ ...current, shippingAddress: { ...current.shippingAddress, city, state } })
+  })
+
+  // While synced, the address sub-fields are driven entirely by
+  // InvoiceBuilder copying billingAddress in — locking them here prevents
+  // an edit that would silently diverge from billing without unchecking first.
+  const addressFieldClass = sameAsBilling ? `${input} opacity-50 cursor-not-allowed` : input
+
   return (
     <div className={`${card} p-6`}>
       <h3 className={`${sectionHeading} mb-4`}>Shipping</h3>
 
-      <p className={labelClass}>Ship To Address</p>
+      <div className="flex items-center justify-between mb-3">
+        <p className={labelClass}>Ship To Address</p>
+        <label className="flex items-center gap-2 text-sm text-white/70 cursor-pointer">
+          <input
+            type="checkbox"
+            className="rounded border-white/20 bg-white/5 text-gold focus:ring-gold/40"
+            checked={sameAsBilling}
+            onChange={(e) => onSameAsBillingChange(e.target.checked)}
+          />
+          Same as billing address
+        </label>
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
         <input
-          className={`${input} sm:col-span-2`}
+          className={`${addressFieldClass} sm:col-span-2`}
           placeholder="Street address"
           value={value.shippingAddress.street1}
+          disabled={sameAsBilling}
           onChange={(e) => setAddress('street1', e.target.value)}
         />
         <input
-          className={input}
+          className={`${addressFieldClass} sm:col-span-2`}
+          placeholder="Apt, suite, unit (optional)"
+          value={value.shippingAddress.street2 ?? ''}
+          disabled={sameAsBilling}
+          onChange={(e) => setAddress('street2', e.target.value)}
+        />
+        <input
+          className={addressFieldClass}
           placeholder="City"
           value={value.shippingAddress.city}
+          disabled={sameAsBilling}
           onChange={(e) => setAddress('city', e.target.value)}
         />
         <div className="grid grid-cols-2 gap-4">
           <input
-            className={input}
+            className={addressFieldClass}
             placeholder="State"
             value={value.shippingAddress.state}
+            disabled={sameAsBilling}
             onChange={(e) => setAddress('state', e.target.value)}
           />
-          <input
-            className={input}
-            placeholder="ZIP"
-            value={value.shippingAddress.zip}
-            onChange={(e) => setAddress('zip', e.target.value)}
-          />
+          <div>
+            <input
+              className={addressFieldClass}
+              placeholder="ZIP"
+              value={value.shippingAddress.zip}
+              disabled={sameAsBilling}
+              onChange={(e) => {
+                setAddress('zip', e.target.value)
+                handleZipChange(e.target.value)
+              }}
+            />
+            {!sameAsBilling && zipStatus === 'loading' ? (
+              <p className="text-[11px] text-white/40 mt-1">Looking up city/state…</p>
+            ) : null}
+            {!sameAsBilling && zipStatus === 'error' && zipMessage ? (
+              <p className="text-[11px] text-red-400 mt-1">{zipMessage}</p>
+            ) : null}
+          </div>
         </div>
       </div>
 
