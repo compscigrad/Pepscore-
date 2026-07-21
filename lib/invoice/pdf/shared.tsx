@@ -26,9 +26,12 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
-  // A real branding stamp, not a small corner mark — but sized to leave
-  // room for the rest of the document, not dominate the page.
-  logo: { width: 140, height: 94, marginBottom: 4, objectFit: 'contain' },
+  // A real branding stamp, sized so its width reads roughly level with the
+  // "MASTER INVOICE" / "CLIENT INVOICE" heading beneath it. Source image is
+  // exactly 1536×1024 (3:2) — width/height below preserve that ratio exactly
+  // so the logo never stretches; only these two numbers should ever change
+  // to resize it (objectFit: 'contain' is the safety net, not the fix).
+  logo: { width: 306, height: 204, marginBottom: 4, objectFit: 'contain' },
   companyName: { fontFamily: fonts.heading, fontSize: 16, color: colors.dark },
   docTitle: {
     fontFamily: fonts.heading,
