@@ -15,7 +15,7 @@
     },
     {
       "path": "/api/cron/poll-tracking",
-      "schedule": "0 */4 * * *"
+      "schedule": "0 6 * * *"
     }
   ]
 }
