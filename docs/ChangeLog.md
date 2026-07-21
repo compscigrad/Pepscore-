@@ -2,6 +2,15 @@
 
 Notable changes to the invoice module. Ordinary commits don't all need an entry here — this tracks changes future engineers would want a summary of before digging into `git log`.
 
+## Unreleased — Invoice Trash (soft-delete) with recoverable two-step permanent delete
+
+- Added `Invoice.deletedAt`, a new "Delete" button on the invoice edit page header (two-click confirm), and an `/admin/invoices/trash` page listing soft-deleted invoices with Restore and Delete Forever actions.
+- New `lib/invoices.ts` functions: `trashInvoice`, `restoreFromTrash`, `listTrashedInvoices`, `permanentlyDeleteInvoice` — the last of which refuses to run unless the invoice is already trashed, enforcing the "delete, then a separate final delete" flow at the data layer.
+- New routes: PATCH `action: 'trash' | 'restore-from-trash'` on the existing `/api/admin/invoices/[id]` route; new `DELETE /api/admin/invoices/[id]/permanent`; new `GET /api/admin/invoices/trash`.
+- `listInvoices` and `getInvoiceDashboardStats` now exclude trashed invoices unconditionally (separate from the existing `includeArchived` toggle, which never applies to Trash).
+- Distinct from the existing Archive feature (`archivedAt`) — Archive keeps a completed invoice fully visible for records; Delete/Trash is for "I probably don't need this," hidden everywhere except the dedicated Trash page. See `docs/Decisions.md` #20.
+- Verified: `tsc`/`eslint`/`next build` clean.
+
 ## Unreleased — ZIP code auto-population and "same as billing" shipping address sync
 
 - Added `GET /api/admin/zip-lookup` (admin-gated proxy to the free/keyless Zippopotam.us API) and a shared `useZipLookup` client hook — entering a complete 5-digit ZIP in either the billing (`CustomerInfoSection`) or shipping (`ShippingSection`) address auto-fills city/state (both stay editable), tolerates a ZIP+4 suffix, shows a loading/error state inline, and never clears existing address data on a failed lookup.
