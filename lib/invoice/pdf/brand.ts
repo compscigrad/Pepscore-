@@ -40,13 +40,16 @@ export const BRAND = {
     body: 'Helvetica',
   },
   // INSERT PEPSCORE LOGO PATH HERE — replace to rebrand without touching
-  // MasterInvoiceDocument.tsx / RecipientReceiptDocument.tsx.
-  logoPath: loadLogoDataUri(path.join(process.cwd(), 'public', 'images', 'logo.png')),
+  // MasterInvoiceDocument.tsx / RecipientReceiptDocument.tsx. Deliberately a
+  // dedicated invoice-logo asset rather than the site-wide public/images/logo.png
+  // (an older mark) — see docs/Decisions.md.
+  logoPath: loadLogoDataUri(path.join(process.cwd(), 'public', 'images', 'invoice-logo.jpeg')),
 } as const
 
 function loadLogoDataUri(filePath: string): string | undefined {
   try {
-    return `data:image/png;base64,${fs.readFileSync(filePath).toString('base64')}`
+    const mimeType = filePath.endsWith('.png') ? 'image/png' : 'image/jpeg'
+    return `data:${mimeType};base64,${fs.readFileSync(filePath).toString('base64')}`
   } catch {
     // Missing logo shouldn't crash PDF generation — DocumentHeader skips
     // rendering the <Image> when this is undefined.

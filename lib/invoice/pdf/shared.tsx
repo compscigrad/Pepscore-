@@ -18,18 +18,19 @@ export const styles = StyleSheet.create({
     color: colors.dark,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 32,
+    alignItems: 'center',
+    marginBottom: 28,
   },
-  logo: { width: 56, height: 56 },
-  companyBlock: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  logo: { width: 130, height: 87, marginBottom: 10, objectFit: 'contain' },
   companyName: { fontFamily: fonts.heading, fontSize: 16, color: colors.dark },
-  tagline: { fontSize: 8, color: colors.g500, marginTop: 2 },
-  docTitleBlock: { alignItems: 'flex-end' },
-  docTitle: { fontFamily: fonts.heading, fontSize: 18, color: colors.gold, letterSpacing: 1 },
-  invoiceNumber: { fontSize: 9, color: colors.g500, marginTop: 4 },
+  docTitle: {
+    fontFamily: fonts.heading,
+    fontSize: 18,
+    color: colors.dark,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
+  invoiceNumber: { fontSize: 9, color: colors.g500, marginTop: 6 },
   sectionRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24, gap: 24 },
   sectionCard: { flex: 1, backgroundColor: colors.g100, borderRadius: 8, padding: 12 },
   sectionLabel: {
@@ -98,21 +99,21 @@ export const styles = StyleSheet.create({
   },
 })
 
+// Centered logo (the logo image already contains the "Pepscore Lab"
+// wordmark, so no separate company-name text is needed alongside it) above
+// the document title — matches the layout of the reference invoice.
 export function DocumentHeader({ title, invoice }: { title: string; invoice: InvoiceWithRelations }) {
   return (
     <View style={styles.header}>
-      <View style={styles.companyBlock}>
-        {BRAND.logoPath ? <Image src={BRAND.logoPath} style={styles.logo} /> : null}
-        <View>
-          <Text style={styles.companyName}>{BRAND.companyName}</Text>
-          <Text style={styles.tagline}>{BRAND.tagline}</Text>
-        </View>
-      </View>
-      <View style={styles.docTitleBlock}>
-        <Text style={styles.docTitle}>{title}</Text>
-        <Text style={styles.invoiceNumber}>{invoice.invoiceNumber}</Text>
-        <Text style={styles.invoiceNumber}>{formatDate(invoice.issuedAt)}</Text>
-      </View>
+      {BRAND.logoPath ? (
+        <Image src={BRAND.logoPath} style={styles.logo} />
+      ) : (
+        <Text style={styles.companyName}>{BRAND.companyName}</Text>
+      )}
+      <Text style={styles.docTitle}>{title}</Text>
+      <Text style={styles.invoiceNumber}>
+        {invoice.invoiceNumber} · {formatDate(invoice.issuedAt)}
+      </Text>
     </View>
   )
 }

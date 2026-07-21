@@ -19,18 +19,13 @@ export function InvoicePreview({ draft, totals, invoiceNumber }: Props) {
 
   return (
     <div className="bg-white rounded-2xl shadow-sl p-8 sticky top-8">
-      <div className="flex items-start justify-between mb-8">
-        <div className="flex items-center gap-3">
-          <Image src="/images/logo.png" alt="Pepscore Lab" width={44} height={44} className="rounded" />
-          <div>
-            <p className="font-heading text-base font-bold text-dark">Pepscore Lab</p>
-            <p className="text-[10px] text-g500">Precision Peptide Solutions</p>
-          </div>
-        </div>
-        <div className="text-right">
-          <p className="font-heading text-lg font-bold text-gold tracking-wide">Invoice</p>
-          <p className="text-[11px] text-g500">{invoiceNumber || 'Draft — not yet saved'}</p>
-        </div>
+      {/* Centered logo + title, matching the PDF layout — the logo image
+          already contains the "Pepscore Lab" wordmark, so no separate
+          company-name text runs alongside it. */}
+      <div className="flex flex-col items-center text-center mb-8">
+        <Image src="/images/invoice-logo.jpeg" alt="Pepscore Lab" width={140} height={93} className="object-contain mb-2" />
+        <p className="font-heading text-base font-bold text-dark tracking-[0.15em] uppercase">Invoice</p>
+        <p className="text-[11px] text-g500 mt-1">{invoiceNumber || 'Draft — not yet saved'}</p>
       </div>
 
       <div className="grid grid-cols-2 gap-4 mb-6">

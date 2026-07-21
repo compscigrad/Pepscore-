@@ -77,3 +77,15 @@
 **Reason**: The invoice system is an internal admin tool that depends on Prisma/Clerk/the admin dashboard, none of which exist on `landing`. `landing` is purely a marketing page's source — useful as a design reference, not a base to build on.
 
 **Benefits**: Design consistency without incorrectly coupling an internal tool's codebase to the marketing page's branch.
+
+## 8. Dedicated invoice logo (`public/images/invoice-logo.jpeg`), separate from the site-wide `logo.png`
+
+**Decision**: Both PDF documents and the live preview use a new `public/images/invoice-logo.jpeg` (gold "P" monogram + "Pepscore Lab" wordmark), not the existing `public/images/logo.png` used by the storefront header (an older molecular-icon mark with a different tagline/typeface).
+
+**Reason**: Part 1's placeholder comment named this exact asset (`Invoice Logo Pepscore.jpeg`) as the intended invoice logo — it's a real, newer brand asset the owner already had, not a hypothetical. The storefront's own visual refresh (matching `landing`'s look) is explicitly out of scope for this module ("that can be handled later"), so this stays scoped to the invoice system rather than swapping the site-wide logo.
+
+**Alternatives considered**: Replacing `public/images/logo.png` everywhere (rejected — out of scope, would touch the storefront header ahead of its own redesign).
+
+**Benefits**: Invoice PDFs/preview show the correct, current logo immediately; storefront header is untouched until its own redesign is scheduled.
+
+**Drawbacks**: Two logo files now exist in the project until the storefront catches up, at which point `logo.png` should likely be retired in favor of this one.
