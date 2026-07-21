@@ -68,6 +68,11 @@
 **Props**: `invoiceId: string`.
 **Dependencies**: none — plain links to `/api/admin/invoices/[id]/pdf?variant=...`.
 
+### `InvoiceSettingsForm.tsx`
+**Purpose**: Radio-button form (30/60/90 Days, Never) for the auto-archive delay, on `app/admin/settings/invoices`.
+**Props**: `initialArchiveAfterDays: number | null`.
+**Dependencies**: `/api/admin/invoice-settings` PATCH.
+
 ### `InvoiceTable.tsx`
 **Purpose**: Dashboard list — search box, column-header sorting, status filter, pagination.
 **Props**: `initialInvoices`, `initialTotal`.

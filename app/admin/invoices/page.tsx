@@ -29,12 +29,20 @@ export default async function InvoicesDashboard() {
             <h1 className="font-heading text-3xl font-bold text-white">Invoices</h1>
             <p className="text-white/50 text-sm mt-1">Manual and storefront invoicing · Pepscore</p>
           </div>
-          <Link
-            href="/admin"
-            className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
-          >
-            ← Admin Dashboard
-          </Link>
+          <div className="flex items-center gap-6">
+            <Link
+              href="/admin/settings/invoices"
+              className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
+            >
+              Settings
+            </Link>
+            <Link
+              href="/admin"
+              className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
+            >
+              ← Admin Dashboard
+            </Link>
+          </div>
         </div>
 
         <InvoiceDashboardStats stats={stats} />

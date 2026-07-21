@@ -2,6 +2,17 @@
 
 Notable changes to the invoice module. Ordinary commits don't all need an entry here — this tracks changes future engineers would want a summary of before digging into `git log`.
 
+## Unreleased — Automated invoice archival (Paid → Archived after a configurable delay)
+
+- Paid invoices now auto-archive a configurable number of days after `paidAt` (30/60/90/Never, default 30) via a daily Vercel Cron job (`GET /api/cron/archive-invoices`, `vercel.json` schedule `0 6 * * *`) that reuses the existing manual Archive (`archivedAt`) mechanism — no new archival code path for search/reporting/PDFs to keep in sync.
+- Added `Settings → Invoices` (`/admin/settings/invoices`) to configure the delay, backed by a new one-row `InvoiceSettings` table and `/api/admin/invoice-settings` route.
+- `paidAt` is now a live countdown anchor rather than a "set once" timestamp: `updateInvoice` refreshes it to now on every save that leaves the invoice fully paid (an edit resets the countdown) and clears it — un-archiving too, if applicable — the moment the invoice is reopened, its balance increases, or its status moves off `PAID`. `recordPayment` already refreshed it correctly on every transition into fully-paid.
+- Replaced the invoice list's raw status dropdown with `All / Outstanding / Paid / Overdue / Archived` filters (`lib/invoices.ts`'s new `buildFilterClause`); a search term now searches active *and* archived invoices together, ignoring whichever filter is selected.
+- Dashboard's Revenue KPI now includes archived (fully-paid) invoices — an auto-archived invoice's revenue is exactly as real as an active one's. Outstanding balance and the operational KPIs (pending shipments, delivered) stay scoped to active invoices.
+- **One real assumption**: "Overdue" has no true per-invoice due date to check in this data model (only `PaymentArrangementInstallment.dueDate`, for installment plans) — implemented as a pragmatic stand-in (unpaid + issued 30+ days ago). See `docs/Decisions.md` #20 if this needs to be replaced with a real due-date field later.
+- **Deployment note**: `CRON_SECRET` must be set in Vercel's Production and Preview environment variables for the deployed cron trigger to authenticate — this wasn't something this session could set on the project's behalf.
+- Verified: `tsc`/`eslint`/`next build` clean; the cron endpoint's auth (missing/wrong/correct `Authorization` header) and default 30-day setting were smoke-tested directly against the local dev server.
+
 ## Unreleased — ZIP code auto-population and "same as billing" shipping address sync
 
 - Added `GET /api/admin/zip-lookup` (admin-gated proxy to the free/keyless Zippopotam.us API) and a shared `useZipLookup` client hook — entering a complete 5-digit ZIP in either the billing (`CustomerInfoSection`) or shipping (`ShippingSection`) address auto-fills city/state (both stay editable), tolerates a ZIP+4 suffix, shows a loading/error state inline, and never clears existing address data on a failed lookup.

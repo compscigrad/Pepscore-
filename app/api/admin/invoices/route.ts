@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
-import { listInvoices, createInvoice, getInvoiceDashboardStats } from '@/lib/invoices'
+import { listInvoices, createInvoice, getInvoiceDashboardStats, type ListInvoicesParams } from '@/lib/invoices'
 import { invoicePayloadSchema } from '@/lib/invoice/validation'
 
 function isAdmin(userId: string | null) {
@@ -19,14 +19,13 @@ export async function GET(req: NextRequest) {
   const page = parseInt(params.get('page') ?? '1')
   const limit = parseInt(params.get('limit') ?? '25')
   const search = params.get('search') ?? undefined
-  const status = params.get('status') ?? undefined
+  const filter = (params.get('filter') as ListInvoicesParams['filter']) ?? 'all'
   const sortBy = (params.get('sortBy') as 'invoiceNumber' | 'customerName' | 'createdAt' | 'balanceDue' | 'status') ?? 'createdAt'
   const sortDir = (params.get('sortDir') as 'asc' | 'desc') ?? 'desc'
-  const includeArchived = params.get('includeArchived') === 'true'
   const withStats = params.get('withStats') === 'true'
 
   const [result, stats] = await Promise.all([
-    listInvoices({ search, status, sortBy, sortDir, includeArchived, page, limit }),
+    listInvoices({ search, filter, sortBy, sortDir, page, limit }),
     withStats ? getInvoiceDashboardStats() : Promise.resolve(undefined),
   ])
 

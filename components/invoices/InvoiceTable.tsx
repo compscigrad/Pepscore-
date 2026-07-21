@@ -11,7 +11,7 @@ import { formatCurrency } from '@/lib/orders'
 import { formatCarrierLabel } from '@/lib/invoice/format'
 import { StatusBadge } from './StatusBadge'
 import { card, input, pillPrimary, selectOption } from './theme'
-import type { InvoiceWithRelations } from '@/lib/invoices'
+import type { InvoiceWithRelations, InvoiceListFilter } from '@/lib/invoices'
 
 type SortField = 'invoiceNumber' | 'customerName' | 'createdAt' | 'balanceDue' | 'status'
 
@@ -20,16 +20,15 @@ interface Props {
   initialTotal: number
 }
 
-const STATUS_FILTERS = [
-  { value: '', label: 'All Statuses' },
-  { value: 'DRAFT', label: 'Draft' },
-  { value: 'PENDING', label: 'Pending' },
-  { value: 'APPROVED', label: 'Approved' },
-  { value: 'ISSUED', label: 'Issued' },
-  { value: 'PAID', label: 'Paid' },
-  { value: 'PARTIALLY_PAID', label: 'Partially Paid' },
-  { value: 'CANCELLED', label: 'Cancelled' },
-  { value: 'REFUNDED', label: 'Refunded' },
+// Replaces the old raw-InvoiceStatus dropdown — these map to
+// lib/invoices.ts's buildFilterClause, not 1:1 to the InvoiceStatus enum
+// (e.g. "Outstanding" spans several statuses with balanceDue > 0).
+const FILTERS: { value: InvoiceListFilter; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'outstanding', label: 'Outstanding' },
+  { value: 'paid', label: 'Paid' },
+  { value: 'overdue', label: 'Overdue' },
+  { value: 'archived', label: 'Archived' },
 ]
 
 const LIMIT = 25
@@ -38,7 +37,7 @@ export function InvoiceTable({ initialInvoices, initialTotal }: Props) {
   const [invoices, setInvoices] = useState(initialInvoices)
   const [total, setTotal] = useState(initialTotal)
   const [search, setSearch] = useState('')
-  const [status, setStatus] = useState('')
+  const [filter, setFilter] = useState<InvoiceListFilter>('all')
   const [sortBy, setSortBy] = useState<SortField>('createdAt')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const [page, setPage] = useState(1)
@@ -52,9 +51,9 @@ export function InvoiceTable({ initialInvoices, initialTotal }: Props) {
         limit: String(LIMIT),
         sortBy,
         sortDir,
+        filter,
       })
       if (search) params.set('search', search)
-      if (status) params.set('status', status)
 
       const res = await fetch(`/api/admin/invoices?${params.toString()}`)
       const data = await res.json()
@@ -65,7 +64,7 @@ export function InvoiceTable({ initialInvoices, initialTotal }: Props) {
     } finally {
       setLoading(false)
     }
-  }, [page, sortBy, sortDir, search, status])
+  }, [page, sortBy, sortDir, search, filter])
 
   // Skip the redundant fetch on first mount — the server component already
   // supplied initialInvoices/initialTotal for that render. A ref (not state)
@@ -78,7 +77,7 @@ export function InvoiceTable({ initialInvoices, initialTotal }: Props) {
     }
     fetchInvoices()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, sortBy, sortDir, status])
+  }, [page, sortBy, sortDir, filter])
 
   // Debounce free-text search so every keystroke doesn't trigger a fetch.
   useEffect(() => {
@@ -113,7 +112,9 @@ export function InvoiceTable({ initialInvoices, initialTotal }: Props) {
   return (
     <div className={`${card} overflow-hidden`}>
       <div className="p-6 border-b border-white/10 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-        <h2 className="font-heading text-[17px] font-bold text-white">All Invoices</h2>
+        <h2 className="font-heading text-[17px] font-bold text-white">
+          {filter === 'archived' ? 'Archived Invoices' : 'Active Invoices'}
+        </h2>
         <div className="flex flex-col sm:flex-row gap-3">
           <input
             type="text"
@@ -124,15 +125,15 @@ export function InvoiceTable({ initialInvoices, initialTotal }: Props) {
             aria-label="Search invoices"
           />
           <select
-            value={status}
+            value={filter}
             onChange={(e) => {
-              setStatus(e.target.value)
+              setFilter(e.target.value as InvoiceListFilter)
               setPage(1)
             }}
             className={input}
-            aria-label="Filter by status"
+            aria-label="Filter invoices"
           >
-            {STATUS_FILTERS.map((f) => (
+            {FILTERS.map((f) => (
               <option key={f.value} value={f.value} className={selectOption}>
                 {f.label}
               </option>

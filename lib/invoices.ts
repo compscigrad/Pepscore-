@@ -22,40 +22,62 @@ const invoiceWithRelations = Prisma.validator<Prisma.InvoiceDefaultArgs>()({
 })
 export type InvoiceWithRelations = Prisma.InvoiceGetPayload<typeof invoiceWithRelations>
 
+// 'overdue' has no true per-invoice due date to check against (only
+// PaymentArrangementInstallment.dueDate exists, for installment plans) — it's
+// approximated as "unpaid and issued more than 30 days ago." See
+// docs/Decisions.md #21.
+export type InvoiceListFilter = 'all' | 'outstanding' | 'paid' | 'overdue' | 'archived'
+
 export interface ListInvoicesParams {
   search?: string
-  status?: string
+  filter?: InvoiceListFilter
   sortBy?: 'invoiceNumber' | 'customerName' | 'createdAt' | 'balanceDue' | 'status'
   sortDir?: 'asc' | 'desc'
-  includeArchived?: boolean
   page?: number
   limit?: number
 }
 
-export async function listInvoices(params: ListInvoicesParams = {}) {
-  const {
-    search,
-    status,
-    sortBy = 'createdAt',
-    sortDir = 'desc',
-    includeArchived = false,
-    page = 1,
-    limit = 25,
-  } = params
+const OPEN_STATUSES: Prisma.EnumInvoiceStatusFilter = { notIn: ['CANCELLED', 'VOID'] }
 
+function buildFilterClause(filter: InvoiceListFilter): Prisma.InvoiceWhereInput {
+  switch (filter) {
+    case 'archived':
+      return { archivedAt: { not: null } }
+    case 'outstanding':
+      return { archivedAt: null, balanceDue: { gt: 0 }, status: OPEN_STATUSES }
+    case 'paid':
+      return { archivedAt: null, status: 'PAID' }
+    case 'overdue': {
+      const cutoff = new Date()
+      cutoff.setUTCDate(cutoff.getUTCDate() - 30)
+      return { archivedAt: null, balanceDue: { gt: 0 }, status: OPEN_STATUSES, issuedAt: { lte: cutoff } }
+    }
+    case 'all':
+    default:
+      return { archivedAt: null }
+  }
+}
+
+export async function listInvoices(params: ListInvoicesParams = {}) {
+  const { search, filter = 'all', sortBy = 'createdAt', sortDir = 'desc', page = 1, limit = 25 } = params
+
+  const searchClause: Prisma.InvoiceWhereInput = search
+    ? {
+        OR: [
+          { invoiceNumber: { contains: search, mode: 'insensitive' } },
+          { customerName: { contains: search, mode: 'insensitive' } },
+          { customerEmail: { contains: search, mode: 'insensitive' } },
+          { trackingNumber: { contains: search, mode: 'insensitive' } },
+        ],
+      }
+    : {}
+
+  // A search term looks across both active and archived invoices, ignoring
+  // whichever filter tab is currently selected — finding an invoice you know
+  // exists shouldn't first require guessing which tab it's hiding in.
   const where: Prisma.InvoiceWhereInput = {
-    ...(includeArchived ? {} : { archivedAt: null }),
-    ...(status ? { status: status as Prisma.EnumInvoiceStatusFilter['equals'] } : {}),
-    ...(search
-      ? {
-          OR: [
-            { invoiceNumber: { contains: search, mode: 'insensitive' } },
-            { customerName: { contains: search, mode: 'insensitive' } },
-            { customerEmail: { contains: search, mode: 'insensitive' } },
-            { trackingNumber: { contains: search, mode: 'insensitive' } },
-          ],
-        }
-      : {}),
+    ...(search ? {} : buildFilterClause(filter)),
+    ...searchClause,
   }
 
   const [invoices, total] = await Promise.all([
@@ -164,6 +186,7 @@ export async function updateInvoice(id: string, payload: InvoicePayload): Promis
     payload.shippingCost,
     existing.amountPaid
   )
+  const isPaid = payload.status === 'PAID' && totals.balanceDue <= 0
 
   // Replace items/discounts wholesale — simpler and safer than diffing rows,
   // and invoice edits are low-frequency admin actions, not high-throughput.
@@ -190,7 +213,14 @@ export async function updateInvoice(id: string, payload: InvoicePayload): Promis
       discountTotal: totals.discountTotal,
       total: totals.total,
       balanceDue: totals.balanceDue,
-      paidAt: totals.balanceDue <= 0 && !existing.paidAt ? new Date() : existing.paidAt,
+      // paidAt is the auto-archive countdown's anchor (see docs/Decisions.md
+      // #21), not just a historical "first paid" timestamp — it's refreshed
+      // to now on every save that leaves the invoice fully paid (an edit
+      // resets the countdown, per spec) and cleared the moment it no longer
+      // is (reopened, balance increased, status moved off PAID), which also
+      // un-archives it rather than leaving a no-longer-paid invoice hidden.
+      paidAt: isPaid ? new Date() : null,
+      archivedAt: isPaid ? existing.archivedAt : null,
       items: {
         deleteMany: {},
         create: payload.items.map((item, index) => ({
@@ -261,6 +291,29 @@ export async function restoreInvoice(id: string): Promise<InvoiceWithRelations> 
   return prisma.invoice.update({ where: { id }, data: { archivedAt: null }, ...invoiceWithRelations })
 }
 
+// Auto-archive sweep: archives every PAID, not-yet-archived invoice whose
+// paidAt countdown has elapsed. Run daily by the Vercel Cron-triggered route
+// (app/api/cron/archive-invoices) — see docs/Decisions.md #21 for why paidAt
+// itself (not a separately-stored "archive on" date) is the single source of
+// truth this compares against.
+export async function sweepAutoArchive(archiveAfterDays: number | null): Promise<{ archivedCount: number }> {
+  if (archiveAfterDays === null) return { archivedCount: 0 }
+
+  const cutoff = new Date()
+  cutoff.setUTCDate(cutoff.getUTCDate() - archiveAfterDays)
+
+  const result = await prisma.invoice.updateMany({
+    where: {
+      status: 'PAID',
+      archivedAt: null,
+      paidAt: { lte: cutoff },
+    },
+    data: { archivedAt: new Date() },
+  })
+
+  return { archivedCount: result.count }
+}
+
 export async function duplicateInvoice(id: string): Promise<InvoiceWithRelations> {
   const source = await getInvoice(id)
   if (!source) throw new Error('Invoice not found')
@@ -322,7 +375,7 @@ export interface InvoiceDashboardStats {
 }
 
 export async function getInvoiceDashboardStats(): Promise<InvoiceDashboardStats> {
-  const [totalInvoices, paidInvoices, partiallyPaidInvoices, pendingShipments, deliveredOrders, activeInvoices] =
+  const [totalInvoices, paidInvoices, partiallyPaidInvoices, pendingShipments, deliveredOrders, activeInvoices, allInvoicesForRevenue] =
     await Promise.all([
       prisma.invoice.count({ where: { archivedAt: null } }),
       prisma.invoice.count({ where: { archivedAt: null, status: 'PAID' } }),
@@ -333,12 +386,19 @@ export async function getInvoiceDashboardStats(): Promise<InvoiceDashboardStats>
       prisma.invoice.count({ where: { archivedAt: null, deliveryStatus: 'DELIVERED' } }),
       prisma.invoice.findMany({
         where: { archivedAt: null, status: { notIn: ['CANCELLED', 'VOID'] } },
-        select: { total: true, balanceDue: true },
+        select: { balanceDue: true },
+      }),
+      // Revenue counts archived invoices too — an auto-archived invoice is
+      // still a real, fully-paid sale, and organizing it out of the active
+      // list shouldn't organize it out of revenue reporting.
+      prisma.invoice.findMany({
+        where: { status: { notIn: ['CANCELLED', 'VOID'] } },
+        select: { total: true },
       }),
     ])
 
   const outstandingBalance = round2(activeInvoices.reduce((sum, i) => sum + i.balanceDue, 0))
-  const revenue = round2(activeInvoices.reduce((sum, i) => sum + i.total, 0))
+  const revenue = round2(allInvoicesForRevenue.reduce((sum, i) => sum + i.total, 0))
 
   return {
     totalInvoices,
