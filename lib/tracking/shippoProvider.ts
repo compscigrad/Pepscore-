@@ -4,6 +4,7 @@
 // the tracking spec's "prefer a multi-carrier API" guidance — this repo
 // already depends on Shippo for label purchases (lib/shippo.ts), so no new
 // vendor/credential is introduced.
+import { timingSafeEqual } from 'crypto'
 import type { ShippingCarrier, ShippingStatus } from '@prisma/client'
 import type {
   ShippingProvider,
@@ -12,6 +13,16 @@ import type {
   NormalizedTrackingEvent,
 } from './types'
 import { buildCarrierTrackingUrl } from './carrierUrls'
+
+// timingSafeEqual throws on mismatched buffer lengths rather than returning
+// false, so the length check has to happen first — this is the standard,
+// widely-used shape for a constant-time string comparison.
+function safeCompare(a: string, b: string): boolean {
+  const bufA = Buffer.from(a)
+  const bufB = Buffer.from(b)
+  if (bufA.length !== bufB.length) return false
+  return timingSafeEqual(bufA, bufB)
+}
 
 const SHIPPO_BASE = 'https://api.goshippo.com'
 
@@ -184,7 +195,9 @@ export const shippoProvider: ShippingProvider = {
     const secret = process.env.SHIPPO_WEBHOOK_SECRET
     if (!secret) return false
     const url = new URL(req.url)
-    return url.searchParams.get('token') === secret
+    const token = url.searchParams.get('token')
+    if (!token) return false
+    return safeCompare(token, secret)
   },
 
   normalizeWebhookPayload(payload: unknown): NormalizedTrackingEvent[] {
