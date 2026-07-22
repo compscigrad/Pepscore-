@@ -3,7 +3,7 @@
 // UI call these functions; nothing else touches lib/tracking's internals or
 // Prisma tables directly.
 import { Prisma } from '@prisma/client'
-import type { ShippingCarrier, ShippingStatus, TrackingEventSource, DeliveryStatus } from '@prisma/client'
+import type { ShippingCarrier, ShippingStatus, TrackingEventSource, DeliveryStatus, ShipmentOrigin, Shipment } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { getProviderForCarrier } from './registry'
 import { isTrackableCarrier } from './types'
@@ -15,6 +15,7 @@ import { sanitizeCarrierText } from './sanitize'
 import { computeOrderStatus } from './orderStatus'
 import { sendShipmentNotificationIfNeeded } from './notifications'
 import { syncCustomerFromInvoiceEvent } from '@/lib/customers'
+import { getPrimaryShipment } from '@/lib/shipments/primary'
 
 const TERMINAL_STATUSES: ShippingStatus[] = ['DELIVERED', 'RETURNED_TO_SENDER', 'LOST', 'CANCELLED']
 
@@ -54,6 +55,7 @@ async function logActivity(params: {
   newValue?: string | null
   carrier?: ShippingCarrier | null
   trackingNumber?: string | null
+  shipmentId?: string | null
   actor: ActorContext
 }): Promise<void> {
   await prisma.invoiceActivityLog.create({
@@ -64,10 +66,87 @@ async function logActivity(params: {
       newValue: params.newValue ?? undefined,
       carrier: params.carrier ?? undefined,
       trackingNumber: params.trackingNumber ?? undefined,
+      shipmentId: params.shipmentId ?? undefined,
       source: params.actor.source,
       userId: params.actor.userId ?? undefined,
     },
   })
+}
+
+// Fetches every shipment for the invoice and derives which one is primary —
+// used by the admin single-shipment actions below (mark delivered, override
+// status, remove tracking) so they keep acting on "the" shipment for an
+// invoice exactly as they did before multi-shipment support existed. Once
+// the UI lists individual shipments (see the Fulfillment Workflow plan's
+// later stage), these actions can take a specific shipmentId instead.
+async function getPrimaryShipmentForInvoice(invoiceId: string): Promise<Shipment | null> {
+  const shipments = await prisma.shipment.findMany({ where: { invoiceId } })
+  return getPrimaryShipment(shipments)
+}
+
+export interface RegisterShipmentInput {
+  invoiceId: string
+  carrier: ShippingCarrier
+  service?: string
+  trackingNumber: string
+  trackingUrl: string
+  providerName?: string
+  providerTrackingId?: string
+  origin: ShipmentOrigin
+  // Populated only for LABEL_PURCHASE shipments — see lib/fulfillment/labels.ts.
+  labelFields?: {
+    shippoShipmentId?: string
+    shippoTransactionId?: string
+    postageAmount?: number
+    shippingCost?: number
+    labelUrl?: string
+    labelPdfUrl?: string
+    weightOz?: number
+    lengthIn?: number
+    widthIn?: number
+    heightIn?: number
+    purchasedAt: Date
+    purchasedBy: string
+  }
+}
+
+// Creates a brand-new Shipment row and denormalizes it onto the parent
+// Invoice as the current primary (it always is, being the shipment that was
+// just created — see lib/shipments/primary.ts). Shared by the manual
+// "Add Tracking" flow below and the label-purchase flow (Fulfillment
+// Workflow plan) — there is exactly one implementation of "register a
+// shipment for webhook/polling monitoring."
+export async function registerShipmentForMonitoring(input: RegisterShipmentInput): Promise<Shipment> {
+  const shipment = await prisma.shipment.create({
+    data: {
+      invoiceId: input.invoiceId,
+      carrier: input.carrier,
+      service: input.service,
+      trackingNumber: input.trackingNumber,
+      trackingUrl: input.trackingUrl,
+      normalizedStatus: 'TRACKING_ADDED',
+      monitoringActive: true,
+      providerName: input.providerName,
+      providerTrackingId: input.providerTrackingId,
+      origin: input.origin,
+      ...input.labelFields,
+    },
+  })
+
+  await prisma.invoice.update({
+    where: { id: input.invoiceId },
+    data: {
+      carrier: input.carrier,
+      trackingNumber: input.trackingNumber,
+      shippingService: input.service ?? undefined,
+      trackingUrl: input.trackingUrl,
+      shippingStatus: 'TRACKING_ADDED',
+      deliveryStatus: LEGACY_DELIVERY_STATUS.TRACKING_ADDED,
+      lastTrackingUpdate: new Date(),
+    },
+  })
+
+  return shipment
 }
 
 export interface AddTrackingInput {
@@ -81,25 +160,22 @@ export interface AddTrackingResult {
   customerNotified: boolean
 }
 
-// Steps 1-9 of the spec's "Tracking Number Workflow": validate, save,
-// register with the provider, generate a URL, set the initial status, log
-// activity, begin monitoring (monitoringActive defaults true), and notify
-// the customer. A previously-tracked invoice replacing its tracking number
-// is treated as a fresh registration — the old Shipment row is reused
-// in-place (never a second row per invoice; the unique invoiceId constraint
-// on Shipment already prevents that), its event history is cleared since
-// it belongs to a different physical package.
+// Manual "Add Tracking" workflow: validate, register with the provider,
+// generate a URL, and start monitoring — always as a brand-new Shipment row
+// (an invoice can have several; nothing is ever overwritten or cleared).
+// Still the right entry point for a hand-written label, PICKUP/HAND_DELIVERY,
+// or any tracking number the admin already has from outside this app.
 export async function addTrackingToInvoice(
   invoiceId: string,
   input: AddTrackingInput,
   actor: ActorContext
 ): Promise<AddTrackingResult> {
-  const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId }, include: { shipment: true } })
+  const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId }, include: { shipments: true } })
   const trackingNumber = input.trackingNumber.trim()
   if (!trackingNumber) throw new Error('Tracking number is required')
 
   const formatCheck = checkTrackingNumberFormat(input.carrier, trackingNumber)
-  const isReplacement = !!invoice.shipment && invoice.shipment.trackingNumber !== trackingNumber
+  const existingPrimary = getPrimaryShipment(invoice.shipments)
 
   let providerTrackingId: string | undefined
   let trackingUrl = buildCarrierTrackingUrl(input.carrier, trackingNumber)
@@ -110,65 +186,31 @@ export async function addTrackingToInvoice(
     trackingUrl = registered.trackingUrl
   }
 
-  if (invoice.shipment && isReplacement) {
-    // A new physical package — old event history no longer applies.
-    await prisma.trackingEvent.deleteMany({ where: { shipmentId: invoice.shipment.id } })
-  }
-
-  await prisma.shipment.upsert({
-    where: { invoiceId },
-    update: {
-      carrier: input.carrier,
-      service: input.service ?? undefined,
-      trackingNumber,
-      trackingUrl,
-      normalizedStatus: 'TRACKING_ADDED',
-      carrierStatus: null,
-      lastCheckedAt: new Date(),
-      lastEventAt: null,
-      monitoringActive: true,
-      providerName: provider?.name,
-      providerTrackingId,
-      deliveredAt: null,
-    },
-    create: {
-      invoiceId,
-      carrier: input.carrier,
-      service: input.service,
-      trackingNumber,
-      trackingUrl,
-      normalizedStatus: 'TRACKING_ADDED',
-      monitoringActive: true,
-      providerName: provider?.name,
-      providerTrackingId,
-    },
-  })
-
-  await prisma.invoice.update({
-    where: { id: invoiceId },
-    data: {
-      carrier: input.carrier,
-      trackingNumber,
-      shippingService: input.service ?? undefined,
-      trackingUrl,
-      shippingStatus: 'TRACKING_ADDED',
-      deliveryStatus: LEGACY_DELIVERY_STATUS.TRACKING_ADDED,
-      lastTrackingUpdate: new Date(),
-    },
+  const shipment = await registerShipmentForMonitoring({
+    invoiceId,
+    carrier: input.carrier,
+    service: input.service,
+    trackingNumber,
+    trackingUrl,
+    providerName: provider?.name,
+    providerTrackingId,
+    origin: 'MANUAL_ENTRY',
   })
 
   await logActivity({
     invoiceId,
-    eventType: isReplacement ? 'TRACKING_NUMBER_REPLACED' : 'TRACKING_ADDED',
-    previousValue: invoice.shipment?.trackingNumber,
+    eventType: 'TRACKING_ADDED',
+    previousValue: existingPrimary?.trackingNumber,
     newValue: trackingNumber,
     carrier: input.carrier,
     trackingNumber,
+    shipmentId: shipment.id,
     actor,
   })
 
   const customerNotified = await sendShipmentNotificationIfNeeded({
     invoiceId,
+    shipmentId: shipment.id,
     status: 'TRACKING_ADDED',
     latestMessage: 'Tracking number added',
   })
@@ -177,8 +219,8 @@ export async function addTrackingToInvoice(
     await syncCustomerFromInvoiceEvent({
       customerId: invoice.customerId,
       invoiceId,
-      eventType: isReplacement ? 'TRACKING_NUMBER_REPLACED' : 'TRACKING_ADDED',
-      previousValue: invoice.shipment?.trackingNumber,
+      eventType: 'TRACKING_ADDED',
+      previousValue: existingPrimary?.trackingNumber,
       newValue: trackingNumber,
       source: actor.source,
       userId: actor.userId,
@@ -263,19 +305,29 @@ export async function processTrackingEvents(
   })
 
   const invoice = shipment.invoice
-  const newOrderStatus = computeOrderStatus(invoice.status, latest.normalizedStatus, invoice.orderStatus)
 
-  await prisma.invoice.update({
-    where: { id: invoice.id },
-    data: {
-      shippingStatus: latest.normalizedStatus,
-      deliveryStatus: LEGACY_DELIVERY_STATUS[latest.normalizedStatus],
-      lastTrackingUpdate: new Date(),
-      deliveredDate: isDelivered ? latest.eventAt : invoice.deliveredDate,
-      shipDate: dateShipped ?? invoice.shipDate,
-      orderStatus: newOrderStatus,
-    },
-  })
+  // This shipment's own status just changed — but the invoice's
+  // denormalized fields (Decision 2) should only move if this is still the
+  // primary shipment. A status update landing late on a superseded/voided
+  // shipment must not overwrite what the invoice shows for its current one.
+  const allShipments = await prisma.shipment.findMany({ where: { invoiceId: invoice.id } })
+  const primary = getPrimaryShipment(allShipments)
+  const isPrimary = primary?.id === shipmentId
+
+  if (isPrimary) {
+    const newOrderStatus = computeOrderStatus(invoice.status, latest.normalizedStatus, invoice.orderStatus)
+    await prisma.invoice.update({
+      where: { id: invoice.id },
+      data: {
+        shippingStatus: latest.normalizedStatus,
+        deliveryStatus: LEGACY_DELIVERY_STATUS[latest.normalizedStatus],
+        lastTrackingUpdate: new Date(),
+        deliveredDate: isDelivered ? latest.eventAt : invoice.deliveredDate,
+        shipDate: dateShipped ?? invoice.shipDate,
+        orderStatus: newOrderStatus,
+      },
+    })
+  }
 
   await logActivity({
     invoiceId: invoice.id,
@@ -284,11 +336,13 @@ export async function processTrackingEvents(
     newValue: latest.normalizedStatus,
     carrier: shipment.carrier,
     trackingNumber: shipment.trackingNumber,
+    shipmentId: shipment.id,
     actor: { source, userId: undefined },
   })
 
   await sendShipmentNotificationIfNeeded({
     invoiceId: invoice.id,
+    shipmentId: shipment.id,
     status: latest.normalizedStatus,
     latestMessage: latest.carrierStatus ?? 'Status update',
   })
@@ -323,8 +377,9 @@ export async function refreshShipmentTracking(shipmentId: string, source: Tracki
 // Admin "Mark as delivered manually" override — recorded as a synthetic
 // MANUAL event so it flows through the exact same cascade (invoice fields,
 // activity log, completion rule, notification) as a real carrier event.
+// Acts on the invoice's primary shipment (see getPrimaryShipmentForInvoice).
 export async function markDeliveredManually(invoiceId: string, userId: string): Promise<void> {
-  const shipment = await prisma.shipment.findUnique({ where: { invoiceId } })
+  const shipment = await getPrimaryShipmentForInvoice(invoiceId)
   if (!shipment) throw new Error('No shipment to mark delivered')
 
   await processTrackingEvents(
@@ -332,12 +387,13 @@ export async function markDeliveredManually(invoiceId: string, userId: string): 
     [{ normalizedStatus: 'DELIVERED', carrierStatus: 'Marked delivered by admin', description: 'Marked delivered by admin', eventAt: new Date() }],
     'MANUAL'
   )
-  await logActivity({ invoiceId, eventType: 'MARKED_DELIVERED_MANUALLY', newValue: 'DELIVERED', actor: { source: 'MANUAL', userId } })
+  await logActivity({ invoiceId, eventType: 'MARKED_DELIVERED_MANUALLY', newValue: 'DELIVERED', shipmentId: shipment.id, actor: { source: 'MANUAL', userId } })
 }
 
-// Admin "Override an incorrect shipping status" control.
+// Admin "Override an incorrect shipping status" control. Acts on the
+// invoice's primary shipment (see getPrimaryShipmentForInvoice).
 export async function overrideShippingStatus(invoiceId: string, status: ShippingStatus, userId: string): Promise<void> {
-  const shipment = await prisma.shipment.findUnique({ where: { invoiceId } })
+  const shipment = await getPrimaryShipmentForInvoice(invoiceId)
   if (!shipment) throw new Error('No shipment to override')
 
   await processTrackingEvents(
@@ -345,18 +401,26 @@ export async function overrideShippingStatus(invoiceId: string, status: Shipping
     [{ normalizedStatus: status, carrierStatus: 'Status manually overridden by admin', description: 'Status manually overridden by admin', eventAt: new Date() }],
     'MANUAL'
   )
-  await logActivity({ invoiceId, eventType: 'STATUS_OVERRIDDEN', previousValue: shipment.normalizedStatus, newValue: status, actor: { source: 'MANUAL', userId } })
+  await logActivity({
+    invoiceId,
+    eventType: 'STATUS_OVERRIDDEN',
+    previousValue: shipment.normalizedStatus,
+    newValue: status,
+    shipmentId: shipment.id,
+    actor: { source: 'MANUAL', userId },
+  })
 }
 
 // Admin "Remove an invalid tracking number" control. Shippo has no
 // unregister endpoint, so this just stops monitoring — the Shipment row and
 // its event history stay for the record, but polling/webhooks for it are
-// ignored going forward (a subsequent Add Tracking call replaces it anyway).
+// ignored going forward (a subsequent Add Tracking call creates a fresh
+// shipment anyway). Acts on the invoice's primary shipment.
 export async function removeTracking(invoiceId: string, userId: string): Promise<void> {
-  const shipment = await prisma.shipment.findUnique({ where: { invoiceId } })
+  const shipment = await getPrimaryShipmentForInvoice(invoiceId)
   if (!shipment) return
 
-  await prisma.shipment.update({ where: { invoiceId }, data: { monitoringActive: false } })
+  await prisma.shipment.update({ where: { id: shipment.id }, data: { monitoringActive: false } })
   await prisma.invoice.update({
     where: { id: invoiceId },
     data: { trackingNumber: null, trackingUrl: null, shippingStatus: 'NOT_SHIPPED', carrier: null },
@@ -366,6 +430,7 @@ export async function removeTracking(invoiceId: string, userId: string): Promise
     eventType: 'TRACKING_REMOVED',
     previousValue: shipment.trackingNumber,
     carrier: shipment.carrier,
+    shipmentId: shipment.id,
     actor: { source: 'MANUAL', userId },
   })
 }

@@ -21,8 +21,13 @@ const invoiceWithRelations = Prisma.validator<Prisma.InvoiceDefaultArgs>()({
     paymentArrangement: {
       include: { installments: { orderBy: { installmentNumber: 'asc' } } },
     },
-    shipment: {
+    // All shipments ever created for this invoice, newest first — an
+    // invoice can have several (split packages, a replaced tracking
+    // number, a voided label). The "primary" one for display is derived,
+    // never stored — see lib/shipments/primary.ts.
+    shipments: {
       include: { events: { orderBy: { eventAt: 'desc' } } },
+      orderBy: { createdAt: 'desc' },
     },
     activityLog: { orderBy: { createdAt: 'desc' } },
   },

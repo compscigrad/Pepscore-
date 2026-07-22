@@ -225,7 +225,11 @@ model Invoice {
   discounts          InvoiceDiscount[]
   payments           InvoicePayment[]
   paymentArrangement PaymentArrangement?
-  shipment           Shipment?
+  // One-to-many (not the historical 1:1) — every shipment ever created for
+  // this invoice, including voided/replaced ones, is preserved forever. The
+  // "primary/current" shipment is always derived (see lib/shipments/primary.ts),
+  // never a stored pointer. See docs/Decisions.md.
+  shipments          Shipment[]
   notifications      ShipmentNotification[]
   activityLog        InvoiceActivityLog[]
 
@@ -530,10 +534,17 @@ model ShippingLabel {
 // Carrier-agnostic tracking for invoices (distinct from ShippingLabel above,
 // which is a one-time label-purchase snapshot for Stripe-driven Orders only).
 // See lib/tracking/ and docs/Decisions.md for the provider-abstraction design.
+//
+// One row per physical shipment — an invoice can have many (multiple
+// packages, a replaced/corrected tracking number, a voided label that was
+// never used). None are ever deleted. The "primary" shipment shown in the
+// UI/PDF is always derived (most recent non-voided row, see
+// lib/shipments/primary.ts) rather than a separate pointer field, so it can
+// never drift out of sync with the real collection.
 
 model Shipment {
   id        String  @id @default(cuid())
-  invoiceId String  @unique
+  invoiceId String
   invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
   carrier        ShippingCarrier
@@ -560,13 +571,50 @@ model Shipment {
   providerName       String?
   providerTrackingId String?
 
-  events TrackingEvent[]
+  // Distinguishes a real in-app Shippo label purchase from a manually-typed
+  // tracking number (e.g. a hand-written label, or PICKUP/HAND_DELIVERY).
+  // The fields below are only ever populated for LABEL_PURCHASE shipments.
+  origin ShipmentOrigin @default(MANUAL_ENTRY)
+
+  shippoShipmentId    String?
+  shippoTransactionId String?
+  postageAmount       Float?
+  // What's actually attributed/charged on the invoice for this shipment —
+  // may differ from postageAmount (markup, rounding), same concept as the
+  // existing Invoice.shippingCost field, but per-shipment.
+  shippingCost        Float?
+  labelUrl            String?
+  labelPdfUrl         String?
+
+  // Package details as entered/measured for this specific purchase — kept
+  // as their own fields (not folded into a form-only value) so a future
+  // scale integration only needs to produce the same shape.
+  weightOz Float?
+  lengthIn Float?
+  widthIn  Float?
+  heightIn Float?
+
+  purchasedAt DateTime?
+  purchasedBy String?
+  // Shippo supports refunding/voiding a label within a window — set instead
+  // of deleting, so the row (and its cost) stays in the permanent record.
+  voidedAt    DateTime?
+  voidedBy    String?
+
+  events        TrackingEvent[]
+  notifications ShipmentNotification[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([invoiceId])
   @@index([trackingNumber])
   @@index([monitoringActive])
+}
+
+enum ShipmentOrigin {
+  MANUAL_ENTRY
+  LABEL_PURCHASE
 }
 
 // One row per normalized carrier event, in provider-agnostic shape. Dedup is
@@ -605,6 +653,13 @@ model ShipmentNotification {
   invoiceId String
   invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
+  // Which specific shipment this notification is about — required for
+  // correct dedup now that an invoice can have multiple shipments (a second
+  // shipment reaching DELIVERED must not be treated as "already notified"
+  // just because a different, earlier shipment on the same invoice was).
+  shipmentId String?
+  shipment   Shipment? @relation(fields: [shipmentId], references: [id])
+
   notificationType ShippingStatus
   recipient        String
   status           String
@@ -614,6 +669,7 @@ model ShipmentNotification {
 
   @@index([invoiceId])
   @@index([invoiceId, notificationType])
+  @@index([shipmentId, notificationType])
 }
 
 // Dedicated activity log for shipment/tracking events on an invoice —
@@ -633,6 +689,11 @@ model InvoiceActivityLog {
   trackingNumber String?
   source         TrackingEventSource
   userId         String?
+
+  // Which shipment this entry refers to, when relevant — plain id, no FK
+  // relation (informational only, avoids yet another back-relation array on
+  // Shipment for what's just a display detail).
+  shipmentId String?
 
   createdAt DateTime @default(now())
 
@@ -721,6 +782,10 @@ model CustomerActivityLog {
   newValue      String?
   source        TrackingEventSource
   userId        String?
+
+  // Which shipment this entry refers to, when relevant — plain id, same
+  // rationale as InvoiceActivityLog.shipmentId above.
+  shipmentId String?
 
   createdAt DateTime @default(now())
 

@@ -1,14 +1,16 @@
-// Customer-facing shipment emails — deduped per (invoice, status), gated by
-// the per-status settings toggle, and never fatal to the tracking update
-// that triggered them (an email failure is recorded, not thrown).
+// Customer-facing shipment emails — deduped per (shipment, status) since an
+// invoice can have multiple shipments (Decision 4), gated by the per-status
+// settings toggle, and never fatal to the tracking update that triggered
+// them (an email failure is recorded, not thrown).
 import { prisma } from '@/lib/prisma'
 import { renderToBuffer } from '@react-pdf/renderer'
 import { resend, FROM_EMAIL } from '@/lib/resend'
 import { getInvoice } from '@/lib/invoices'
+import { getPrimaryShipment } from '@/lib/shipments/primary'
 import { RecipientReceiptDocument } from '@/lib/invoice/pdf/RecipientReceiptDocument'
 import { buildInvoiceShipmentUpdateHtml, shipmentUpdateSubject } from '@/emails/InvoiceShipmentUpdate'
 import { getInvoiceSettings, isNotificationEnabled } from '@/lib/invoiceSettings'
-import type { ShippingStatus } from '@prisma/client'
+import type { ShippingStatus, Shipment } from '@prisma/client'
 import type { InvoiceWithRelations } from '@/lib/invoices'
 
 // Only these statuses ever trigger a customer email — matches the spec's
@@ -31,34 +33,49 @@ export function isNotifiableStatus(status: ShippingStatus): boolean {
 
 interface NotifyParams {
   invoiceId: string
+  shipmentId: string
   status: ShippingStatus
   latestMessage: string
 }
 
 // Returns true if an email was actually attempted (sent or failed) — false
 // if it was skipped (not a notifiable status, no customer email on file,
-// disabled in settings, or already sent for this exact status).
-export async function sendShipmentNotificationIfNeeded({ invoiceId, status, latestMessage }: NotifyParams): Promise<boolean> {
+// disabled in settings, or already sent for this exact shipment+status).
+export async function sendShipmentNotificationIfNeeded({
+  invoiceId,
+  shipmentId,
+  status,
+  latestMessage,
+}: NotifyParams): Promise<boolean> {
   if (!isNotifiableStatus(status)) return false
 
-  const invoice = await getInvoice(invoiceId)
-  if (!invoice || !invoice.customerEmail || !invoice.shipment) return false
+  const [invoice, shipment] = await Promise.all([
+    getInvoice(invoiceId),
+    prisma.shipment.findUnique({ where: { id: shipmentId } }),
+  ])
+  if (!invoice || !invoice.customerEmail || !shipment) return false
 
   const settings = await getInvoiceSettings()
   if (!isNotificationEnabled(settings.trackingNotificationsEnabled, status)) return false
 
-  // Dedup: never send the same status twice for the same invoice.
+  // Dedup: never send the same status twice for the same shipment — a
+  // second shipment on the same invoice reaching this status independently
+  // still gets its own notification.
   const alreadySent = await prisma.shipmentNotification.findFirst({
-    where: { invoiceId, notificationType: status, status: 'SENT' },
+    where: { shipmentId, notificationType: status, status: 'SENT' },
   })
   if (alreadySent) return false
 
-  await sendShipmentEmail(invoice, status, latestMessage)
+  await sendShipmentEmail(invoice, shipment, status, latestMessage)
   return true
 }
 
-async function sendShipmentEmail(invoice: InvoiceWithRelations, status: ShippingStatus, latestMessage: string): Promise<void> {
-  const shipment = invoice.shipment!
+async function sendShipmentEmail(
+  invoice: InvoiceWithRelations,
+  shipment: Shipment,
+  status: ShippingStatus,
+  latestMessage: string
+): Promise<void> {
   const recipient = invoice.customerEmail!
 
   try {
@@ -88,23 +105,24 @@ async function sendShipmentEmail(invoice: InvoiceWithRelations, status: Shipping
       ],
     })
 
-    await recordNotification(invoice.id, status, recipient, 'SENT', null)
+    await recordNotification(invoice.id, shipment.id, status, recipient, 'SENT', null)
   } catch (err) {
     console.error('[tracking notifications] send failed:', err)
     const message = err instanceof Error ? err.message : 'Unknown error'
-    await recordNotification(invoice.id, status, recipient, 'FAILED', message)
+    await recordNotification(invoice.id, shipment.id, status, recipient, 'FAILED', message)
   }
 }
 
 async function recordNotification(
   invoiceId: string,
+  shipmentId: string,
   status: ShippingStatus,
   recipient: string,
   result: 'SENT' | 'FAILED',
   failureReason: string | null
 ): Promise<void> {
   await prisma.shipmentNotification.create({
-    data: { invoiceId, notificationType: status, recipient, status: result, failureReason: failureReason ?? undefined },
+    data: { invoiceId, shipmentId, notificationType: status, recipient, status: result, failureReason: failureReason ?? undefined },
   })
   await prisma.invoice.update({
     where: { id: invoiceId },
@@ -119,11 +137,15 @@ async function recordNotification(
 }
 
 // Admin-triggered manual resend of the most recent notification — per spec's
-// "Resend the latest customer email" admin control.
+// "Resend the latest customer email" admin control. Resends using the
+// invoice's primary shipment (Decision 2) and its most recent carrier status.
 export async function resendLastNotification(invoiceId: string): Promise<boolean> {
   const invoice = await getInvoice(invoiceId)
-  if (!invoice || !invoice.customerEmail || !invoice.shipment || !invoice.lastNotificationType) return false
+  if (!invoice || !invoice.customerEmail || !invoice.lastNotificationType) return false
 
-  await sendShipmentEmail(invoice, invoice.lastNotificationType, invoice.shipment.carrierStatus ?? 'Status update')
+  const shipment = getPrimaryShipment(invoice.shipments)
+  if (!shipment) return false
+
+  await sendShipmentEmail(invoice, shipment, invoice.lastNotificationType, shipment.carrierStatus ?? 'Status update')
   return true
 }
