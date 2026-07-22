@@ -7,6 +7,7 @@ import type { Customer, CustomerStatus, TrackingEventSource, InvoicePriority, Pa
 import { prisma } from '@/lib/prisma'
 import { computeCustomerStatus } from '@/lib/customers/status'
 import { generateSequentialInvoiceNumber } from '@/lib/invoice/numbering'
+import { hasActivePaymentArrangement } from '@/lib/paymentArrangements'
 
 export interface CustomerInput {
   firstName: string
@@ -230,7 +231,7 @@ export async function recomputeAndSaveCustomerStatus(customerId: string): Promis
     prisma.invoice.findFirst({
       where: { customerId, deletedAt: null },
       orderBy: { createdAt: 'desc' },
-      select: { status: true, shippingStatus: true, archivedAt: true },
+      select: { id: true, status: true, shippingStatus: true, archivedAt: true, fulfillmentOverrideAt: true },
     }),
     prisma.intakeLink.findFirst({
       where: { customerId },
@@ -242,6 +243,7 @@ export async function recomputeAndSaveCustomerStatus(customerId: string): Promis
   const status = computeCustomerStatus({
     hasIntakeLinkSent: !!latestIntakeLink,
     hasIntakeSubmitted: !!latestIntakeLink?.submittedAt,
+    hasActivePaymentArrangement: latestInvoice ? await hasActivePaymentArrangement(latestInvoice.id) : false,
     latestInvoice,
     currentStatus: customer.status,
   })
