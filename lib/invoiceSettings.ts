@@ -11,6 +11,7 @@ export interface InvoiceSettingsData {
   archiveAfterDays: number | null
   trackingNotificationsEnabled: Partial<Record<ShippingStatus, boolean>>
   autoEmailInvoiceOnIssue: boolean
+  defaultIntakeLinkExpiryHours: number
 }
 
 function parseNotificationMap(value: Prisma.JsonValue | null): Partial<Record<ShippingStatus, boolean>> {
@@ -28,6 +29,7 @@ export async function getInvoiceSettings(): Promise<InvoiceSettingsData> {
     archiveAfterDays: row.archiveAfterDays,
     trackingNotificationsEnabled: parseNotificationMap(row.trackingNotificationsEnabled),
     autoEmailInvoiceOnIssue: row.autoEmailInvoiceOnIssue,
+    defaultIntakeLinkExpiryHours: row.defaultIntakeLinkExpiryHours,
   }
 }
 
@@ -41,6 +43,7 @@ export async function updateInvoiceSettings(archiveAfterDays: number | null): Pr
     archiveAfterDays: row.archiveAfterDays,
     trackingNotificationsEnabled: parseNotificationMap(row.trackingNotificationsEnabled),
     autoEmailInvoiceOnIssue: row.autoEmailInvoiceOnIssue,
+    defaultIntakeLinkExpiryHours: row.defaultIntakeLinkExpiryHours,
   }
 }
 
@@ -56,6 +59,7 @@ export async function updateTrackingNotificationSettings(
     archiveAfterDays: row.archiveAfterDays,
     trackingNotificationsEnabled: parseNotificationMap(row.trackingNotificationsEnabled),
     autoEmailInvoiceOnIssue: row.autoEmailInvoiceOnIssue,
+    defaultIntakeLinkExpiryHours: row.defaultIntakeLinkExpiryHours,
   }
 }
 
@@ -69,6 +73,21 @@ export async function updateAutoEmailInvoiceOnIssue(enabled: boolean): Promise<I
     archiveAfterDays: row.archiveAfterDays,
     trackingNotificationsEnabled: parseNotificationMap(row.trackingNotificationsEnabled),
     autoEmailInvoiceOnIssue: row.autoEmailInvoiceOnIssue,
+    defaultIntakeLinkExpiryHours: row.defaultIntakeLinkExpiryHours,
+  }
+}
+
+export async function updateDefaultIntakeLinkExpiryHours(hours: number): Promise<InvoiceSettingsData> {
+  const row = await prisma.invoiceSettings.upsert({
+    where: { id: SETTINGS_ID },
+    update: { defaultIntakeLinkExpiryHours: hours },
+    create: { id: SETTINGS_ID, defaultIntakeLinkExpiryHours: hours },
+  })
+  return {
+    archiveAfterDays: row.archiveAfterDays,
+    trackingNotificationsEnabled: parseNotificationMap(row.trackingNotificationsEnabled),
+    autoEmailInvoiceOnIssue: row.autoEmailInvoiceOnIssue,
+    defaultIntakeLinkExpiryHours: row.defaultIntakeLinkExpiryHours,
   }
 }
 

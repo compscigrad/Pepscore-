@@ -8,6 +8,7 @@ import {
   updateInvoiceSettings,
   updateTrackingNotificationSettings,
   updateAutoEmailInvoiceOnIssue,
+  updateDefaultIntakeLinkExpiryHours,
 } from '@/lib/invoiceSettings'
 
 function isAdmin(userId: string | null) {
@@ -19,6 +20,7 @@ const patchSchema = z.object({
   archiveAfterDays: z.number().int().positive().nullable().optional(),
   trackingNotificationsEnabled: z.record(z.string(), z.boolean()).optional(),
   autoEmailInvoiceOnIssue: z.boolean().optional(),
+  defaultIntakeLinkExpiryHours: z.number().int().positive().optional(),
 })
 
 export async function GET() {
@@ -47,6 +49,11 @@ export async function PATCH(req: NextRequest) {
 
     if (parsed.autoEmailInvoiceOnIssue !== undefined) {
       const settings = await updateAutoEmailInvoiceOnIssue(parsed.autoEmailInvoiceOnIssue)
+      return NextResponse.json(settings)
+    }
+
+    if (parsed.defaultIntakeLinkExpiryHours !== undefined) {
+      const settings = await updateDefaultIntakeLinkExpiryHours(parsed.defaultIntakeLinkExpiryHours)
       return NextResponse.json(settings)
     }
 
