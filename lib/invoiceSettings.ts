@@ -12,6 +12,7 @@ export interface InvoiceSettingsData {
   trackingNotificationsEnabled: Partial<Record<ShippingStatus, boolean>>
   autoEmailInvoiceOnIssue: boolean
   defaultIntakeLinkExpiryHours: number
+  autoEmailPaymentReceived: boolean
 }
 
 function parseNotificationMap(value: Prisma.JsonValue | null): Partial<Record<ShippingStatus, boolean>> {
@@ -30,6 +31,7 @@ export async function getInvoiceSettings(): Promise<InvoiceSettingsData> {
     trackingNotificationsEnabled: parseNotificationMap(row.trackingNotificationsEnabled),
     autoEmailInvoiceOnIssue: row.autoEmailInvoiceOnIssue,
     defaultIntakeLinkExpiryHours: row.defaultIntakeLinkExpiryHours,
+    autoEmailPaymentReceived: row.autoEmailPaymentReceived,
   }
 }
 
@@ -44,6 +46,7 @@ export async function updateInvoiceSettings(archiveAfterDays: number | null): Pr
     trackingNotificationsEnabled: parseNotificationMap(row.trackingNotificationsEnabled),
     autoEmailInvoiceOnIssue: row.autoEmailInvoiceOnIssue,
     defaultIntakeLinkExpiryHours: row.defaultIntakeLinkExpiryHours,
+    autoEmailPaymentReceived: row.autoEmailPaymentReceived,
   }
 }
 
@@ -60,6 +63,7 @@ export async function updateTrackingNotificationSettings(
     trackingNotificationsEnabled: parseNotificationMap(row.trackingNotificationsEnabled),
     autoEmailInvoiceOnIssue: row.autoEmailInvoiceOnIssue,
     defaultIntakeLinkExpiryHours: row.defaultIntakeLinkExpiryHours,
+    autoEmailPaymentReceived: row.autoEmailPaymentReceived,
   }
 }
 
@@ -74,6 +78,7 @@ export async function updateAutoEmailInvoiceOnIssue(enabled: boolean): Promise<I
     trackingNotificationsEnabled: parseNotificationMap(row.trackingNotificationsEnabled),
     autoEmailInvoiceOnIssue: row.autoEmailInvoiceOnIssue,
     defaultIntakeLinkExpiryHours: row.defaultIntakeLinkExpiryHours,
+    autoEmailPaymentReceived: row.autoEmailPaymentReceived,
   }
 }
 
@@ -88,6 +93,22 @@ export async function updateDefaultIntakeLinkExpiryHours(hours: number): Promise
     trackingNotificationsEnabled: parseNotificationMap(row.trackingNotificationsEnabled),
     autoEmailInvoiceOnIssue: row.autoEmailInvoiceOnIssue,
     defaultIntakeLinkExpiryHours: row.defaultIntakeLinkExpiryHours,
+    autoEmailPaymentReceived: row.autoEmailPaymentReceived,
+  }
+}
+
+export async function updateAutoEmailPaymentReceived(enabled: boolean): Promise<InvoiceSettingsData> {
+  const row = await prisma.invoiceSettings.upsert({
+    where: { id: SETTINGS_ID },
+    update: { autoEmailPaymentReceived: enabled },
+    create: { id: SETTINGS_ID, autoEmailPaymentReceived: enabled },
+  })
+  return {
+    archiveAfterDays: row.archiveAfterDays,
+    trackingNotificationsEnabled: parseNotificationMap(row.trackingNotificationsEnabled),
+    autoEmailInvoiceOnIssue: row.autoEmailInvoiceOnIssue,
+    defaultIntakeLinkExpiryHours: row.defaultIntakeLinkExpiryHours,
+    autoEmailPaymentReceived: row.autoEmailPaymentReceived,
   }
 }
 
