@@ -3,6 +3,8 @@
 // InvoiceShipmentUpdate.tsx. Recipients are whoever is configured under
 // Settings -> Admin Notifications with emailEnabled, never a hardcoded
 // address.
+import { SUPPORT_EMAIL } from '@/lib/resend'
+
 interface AdminIntakeNotificationProps {
   customerName: string
   invoiceNumber: string
@@ -53,7 +55,7 @@ export function buildAdminIntakeNotificationHtml({
       </p>
     </div>
     <div style="background:#1A1A1A;padding:20px 36px;text-align:center">
-      <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0">© ${year} Pepscore · contact@pepscore.com</p>
+      <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0">© ${year} Pepscore · ${SUPPORT_EMAIL}</p>
     </div>
   </div>
 </body>

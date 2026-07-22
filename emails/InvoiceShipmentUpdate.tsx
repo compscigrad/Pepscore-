@@ -2,6 +2,7 @@
 // emails/TrackingUpdate.tsx (the Order-flow equivalent), generalized to cover
 // every notification-triggering ShippingStatus rather than just "shipped".
 import type { ShippingStatus } from '@prisma/client'
+import { SUPPORT_EMAIL } from '@/lib/resend'
 
 interface InvoiceShipmentUpdateProps {
   customerName: string
@@ -68,11 +69,11 @@ export function buildInvoiceShipmentUpdateHtml(props: InvoiceShipmentUpdateProps
     </div>
     <div style="background:#F5F5F0;padding:18px 36px;border-top:1px solid #E0DDD4">
       <p style="font-size:11px;color:#757575;line-height:1.7;margin:0">
-        Your updated invoice is attached to this email. Questions? Reply to this message or contact contact@pepscore.com.
+        Your updated invoice is attached to this email. Questions? Reply to this message or contact ${SUPPORT_EMAIL}.
       </p>
     </div>
     <div style="background:#1A1A1A;padding:20px 36px;text-align:center">
-      <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0">© ${year} Pepscore · contact@pepscore.com</p>
+      <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0">© ${year} Pepscore · ${SUPPORT_EMAIL}</p>
     </div>
   </div>
 </body>

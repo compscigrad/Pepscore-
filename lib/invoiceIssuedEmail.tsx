@@ -7,7 +7,7 @@
 // happened.
 import { prisma } from '@/lib/prisma'
 import { renderToBuffer } from '@react-pdf/renderer'
-import { resend, FROM_EMAIL } from '@/lib/resend'
+import { resend, FROM_EMAIL, SUPPORT_EMAIL } from '@/lib/resend'
 import { RecipientReceiptDocument } from '@/lib/invoice/pdf/RecipientReceiptDocument'
 import { buildInvoiceIssuedHtml, invoiceIssuedSubject } from '@/emails/InvoiceIssued'
 import { getInvoiceSettings } from '@/lib/invoiceSettings'
@@ -47,6 +47,7 @@ async function sendInvoiceEmail(invoice: InvoiceWithRelations, source: 'SYSTEM' 
     await resend.emails.send({
       from: FROM_EMAIL,
       to: recipient,
+      replyTo: SUPPORT_EMAIL,
       subject: invoiceIssuedSubject(invoice.invoiceNumber),
       html,
       attachments: [{ filename: `${invoice.invoiceNumber}-invoice.pdf`, content: pdfBuffer }],

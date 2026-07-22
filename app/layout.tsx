@@ -7,7 +7,7 @@ import { Toaster } from 'react-hot-toast'
 import './globals.css'
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'https://pepscore.com'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'https://pepscorelab.com'),
   title: 'Pepscore — Holistic Research Peptides',
   description:
     'Precision-grade research peptides with independently verified purity above 98%. For Research Use Only.',

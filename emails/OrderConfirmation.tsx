@@ -1,5 +1,6 @@
 // Order confirmation email HTML builder
 // Returns a plain HTML string — no React rendering dependency required
+import { SUPPORT_EMAIL } from '@/lib/resend'
 
 interface OrderItem {
   name: string
@@ -75,7 +76,7 @@ export function buildOrderConfirmationHtml(props: OrderConfirmationProps): strin
       </p>
     </div>
     <div style="background:#1A1A1A;padding:20px 36px;text-align:center">
-      <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0">© ${year} Pepscore · contact@pepscore.com · For research purposes only.</p>
+      <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0">© ${year} Pepscore · ${SUPPORT_EMAIL} · For research purposes only.</p>
     </div>
   </div>
 </body>
