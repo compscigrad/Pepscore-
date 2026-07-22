@@ -7,11 +7,20 @@ import { stripe, estimateStripeFee } from '@/lib/stripe'
 import { prisma } from '@/lib/prisma'
 import { resend, FROM_EMAIL } from '@/lib/resend'
 import { buildOrderConfirmationHtml } from '@/emails/OrderConfirmation'
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
 
 // Required: raw body for Stripe signature verification
 export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
+  // Generous limit — Stripe's own webhook-sending infrastructure is shared
+  // across many merchants/customers behind a smaller set of IPs, so this
+  // exists to cap abuse of the public URL, not to throttle real deliveries.
+  const rateLimit = checkRateLimit(`stripe-webhook:${getClientIp(req)}`, 120, 60_000)
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+  }
+
   const sig = req.headers.get('stripe-signature')
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
 

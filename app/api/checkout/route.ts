@@ -7,10 +7,19 @@ import { auth } from '@clerk/nextjs/server'
 import { stripe } from '@/lib/stripe'
 import { prisma } from '@/lib/prisma'
 import { generateOrderNumber, generateInvoiceNumber } from '@/lib/orders'
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
 import type { CheckoutLineItem, ShippingAddress } from '@/types'
 
 export async function POST(req: NextRequest) {
   try {
+    const rateLimit = checkRateLimit(`checkout:${getClientIp(req)}`, 10, 60_000)
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: 'Too many checkout attempts — please wait a moment and try again.' },
+        { status: 429, headers: rateLimit.retryAfterSeconds ? { 'Retry-After': String(rateLimit.retryAfterSeconds) } : undefined }
+      )
+    }
+
     const { userId } = await auth()
     const body = await req.json()
 
