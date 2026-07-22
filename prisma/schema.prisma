@@ -765,7 +765,18 @@ enum CustomerStatus {
   INVOICE_ISSUED
   AWAITING_PAYMENT
   PARTIALLY_PAID
+  // A payment plan is on record with at least one installment still owed —
+  // distinct from (and takes priority over) plain AWAITING_PAYMENT/
+  // PARTIALLY_PAID, since it means fulfillment is already unlocked (see
+  // lib/fulfillment/gate.ts) even though the invoice isn't paid off yet.
+  PAYMENT_ARRANGEMENT
   PAID
+  // Fulfillment Gate has passed (paid in full, or a manual override) but no
+  // shipment has been created yet.
+  ELIGIBLE_FOR_FULFILLMENT
+  // A label has been purchased/registered but the carrier hasn't scanned it
+  // yet — split out from PREPARING_SHIPMENT for more specific visibility.
+  LABEL_CREATED
   PREPARING_SHIPMENT
   SHIPPED
   DELIVERED

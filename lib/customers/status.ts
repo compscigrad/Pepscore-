@@ -7,18 +7,38 @@ import type { InvoiceStatus, ShippingStatus, CustomerStatus } from '@prisma/clie
 export interface CustomerStatusInput {
   hasIntakeLinkSent: boolean
   hasIntakeSubmitted: boolean
+  // Whether the customer's most recent invoice has an active payment
+  // arrangement (a schedule with at least one installment still owed) — see
+  // lib/paymentArrangements.ts's hasActivePaymentArrangement().
+  hasActivePaymentArrangement: boolean
   // The customer's most recent (non-cancelled/refunded/void) invoice, or
   // null if they don't have one yet (pre-intake-submission).
   latestInvoice: {
     status: InvoiceStatus
     shippingStatus: ShippingStatus
     archivedAt: Date | null
+    // See lib/fulfillment/gate.ts — set when an admin bypassed the normal
+    // payment gate to allow shipping anyway.
+    fulfillmentOverrideAt: Date | null
   } | null
   currentStatus: CustomerStatus
 }
 
+const SHIPPED_STATUSES: ShippingStatus[] = [
+  'IN_TRANSIT',
+  'OUT_FOR_DELIVERY',
+  'DELAYED',
+  'DELIVERY_EXCEPTION',
+  'AVAILABLE_FOR_PICKUP',
+  'DELIVERY_ATTEMPTED',
+  'RETURNED_TO_SENDER',
+  'LOST',
+]
+
+const PREPARING_STATUSES: ShippingStatus[] = ['TRACKING_ADDED', 'CARRIER_AWAITING_PACKAGE', 'ACCEPTED_BY_CARRIER']
+
 export function computeCustomerStatus(input: CustomerStatusInput): CustomerStatus {
-  const { hasIntakeLinkSent, hasIntakeSubmitted, latestInvoice, currentStatus } = input
+  const { hasIntakeLinkSent, hasIntakeSubmitted, hasActivePaymentArrangement, latestInvoice, currentStatus } = input
 
   // Never move a customer out of ARCHIVED automatically — that's an
   // explicit admin action, same "no silent downgrade" principle as
@@ -33,7 +53,7 @@ export function computeCustomerStatus(input: CustomerStatusInput): CustomerStatu
 
   if (latestInvoice.archivedAt) return 'ARCHIVED'
 
-  const { status, shippingStatus } = latestInvoice
+  const { status, shippingStatus, fulfillmentOverrideAt } = latestInvoice
 
   // Terminal invoice states the enum has no direct equivalent for — hold at
   // whatever the customer's status already was rather than guessing.
@@ -45,34 +65,23 @@ export function computeCustomerStatus(input: CustomerStatusInput): CustomerStatu
     return 'AWAITING_FULFILLMENT'
   }
 
-  if (status === 'PARTIALLY_PAID') return 'PARTIALLY_PAID'
+  // Once a shipment genuinely exists, shipping progress is always the most
+  // useful signal — regardless of payment tier, matching how a shipment
+  // created under an active arrangement or a manual override should read
+  // the same way a fully-paid one does.
+  if (shippingStatus !== 'NOT_SHIPPED') {
+    if (shippingStatus === 'DELIVERED') return 'DELIVERED'
+    if (SHIPPED_STATUSES.includes(shippingStatus)) return 'SHIPPED'
+    if (shippingStatus === 'LABEL_CREATED') return 'LABEL_CREATED'
+    if (PREPARING_STATUSES.includes(shippingStatus)) return 'PREPARING_SHIPMENT'
+  }
 
-  // ISSUED: sent to the customer, nothing paid yet — "awaiting payment" is
-  // the meaningful steady state (no time-based recompute exists to
-  // distinguish a freshly-issued invoice from one that's been sitting).
+  // No shipment yet — where they sit depends on whether the Fulfillment
+  // Gate (lib/fulfillment/gate.ts) has actually passed.
+  if (status === 'PAID' || fulfillmentOverrideAt) return 'ELIGIBLE_FOR_FULFILLMENT'
+  if (hasActivePaymentArrangement) return 'PAYMENT_ARRANGEMENT'
+  if (status === 'PARTIALLY_PAID') return 'PARTIALLY_PAID'
   if (status === 'ISSUED') return 'AWAITING_PAYMENT'
 
-  // status === 'PAID' — where they are next depends on shipping progress.
-  if (shippingStatus === 'DELIVERED') return 'DELIVERED'
-  if (
-    shippingStatus === 'IN_TRANSIT' ||
-    shippingStatus === 'OUT_FOR_DELIVERY' ||
-    shippingStatus === 'DELAYED' ||
-    shippingStatus === 'DELIVERY_EXCEPTION' ||
-    shippingStatus === 'AVAILABLE_FOR_PICKUP' ||
-    shippingStatus === 'DELIVERY_ATTEMPTED' ||
-    shippingStatus === 'RETURNED_TO_SENDER' ||
-    shippingStatus === 'LOST'
-  ) {
-    return 'SHIPPED'
-  }
-  if (
-    shippingStatus === 'TRACKING_ADDED' ||
-    shippingStatus === 'LABEL_CREATED' ||
-    shippingStatus === 'CARRIER_AWAITING_PACKAGE' ||
-    shippingStatus === 'ACCEPTED_BY_CARRIER'
-  ) {
-    return 'PREPARING_SHIPMENT'
-  }
-  return 'PAID'
+  return currentStatus
 }
