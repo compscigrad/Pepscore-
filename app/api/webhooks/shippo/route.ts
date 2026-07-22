@@ -8,8 +8,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { shippoProvider } from '@/lib/tracking/shippoProvider'
 import { processTrackingEvents } from '@/lib/tracking/service'
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
 
 export async function POST(req: NextRequest) {
+  // Generous limit — same reasoning as the Stripe webhook: caps abuse of the
+  // public URL without risking real Shippo tracking-update deliveries.
+  const rateLimit = checkRateLimit(`shippo-webhook:${getClientIp(req)}`, 120, 60_000)
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+  }
+
   const authorized = await shippoProvider.verifyWebhook(req)
   if (!authorized) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

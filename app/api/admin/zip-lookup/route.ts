@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { lookupZip, ZipLookupError } from '@/lib/zipLookup'
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
 
 function isAdmin(userId: string | null) {
   return userId === process.env.ADMIN_CLERK_USER_ID
@@ -19,6 +20,13 @@ function isAdmin(userId: string | null) {
 export async function GET(req: NextRequest) {
   const { userId } = await auth()
   if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+
+  // Already behind admin auth — this just caps a runaway client-side loop
+  // from hammering the third-party lookup service, not malicious abuse.
+  const rateLimit = checkRateLimit(`zip-lookup:${getClientIp(req)}`, 30, 60_000)
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: 'Too many requests — please slow down.' }, { status: 429 })
+  }
 
   try {
     const result = await lookupZip(req.nextUrl.searchParams.get('zip') ?? '')
