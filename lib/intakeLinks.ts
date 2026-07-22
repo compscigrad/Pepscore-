@@ -8,10 +8,14 @@ import type { IntakeLink } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { getInvoiceSettings } from '@/lib/invoiceSettings'
 import { recordCustomerActivity } from '@/lib/customers'
+import { MAX_SUBMISSION_ATTEMPTS, getIntakeLinkState } from '@/lib/intakeLinkState'
+import type { IntakeLinkState } from '@/lib/intakeLinkState'
 
-// The token itself (unguessable, 48 hex chars) is the primary spam defense
-// (Decision 12); this just caps brute-force attempts against a single link.
-const MAX_SUBMISSION_ATTEMPTS = 20
+// Re-exported so existing server-side importers of this file keep working —
+// but a client component must import these from '@/lib/intakeLinkState'
+// directly, never from this file (which pulls in crypto/prisma).
+export { getIntakeLinkState }
+export type { IntakeLinkState }
 
 export interface GenerateIntakeLinkInput {
   customerId?: string | null
@@ -51,25 +55,6 @@ export async function generateIntakeLink(input: GenerateIntakeLinkInput): Promis
   }
 
   return link
-}
-
-// Every distinct state a link can be in, for admin display and the public
-// page's routing decision. Priority answers "can this link still be used,
-// and if not why" first, then whether it's already been submitted — a link
-// is multi-use, not single-use (see this file's own top comment), so a
-// SUBMITTED link still accepts further submissions unless it's also
-// expired/invalidated/attempt-limited.
-export type IntakeLinkState = 'ACTIVE' | 'VIEWED' | 'SUBMITTED' | 'EXPIRED' | 'INVALIDATED' | 'ATTEMPT_LIMIT_REACHED'
-
-export function getIntakeLinkState(
-  link: Pick<IntakeLink, 'expiresAt' | 'viewedAt' | 'invalidatedAt' | 'submittedAt' | 'submissionAttempts'>
-): IntakeLinkState {
-  if (link.invalidatedAt) return 'INVALIDATED'
-  if (link.expiresAt < new Date()) return 'EXPIRED'
-  if (link.submissionAttempts >= MAX_SUBMISSION_ATTEMPTS) return 'ATTEMPT_LIMIT_REACHED'
-  if (link.submittedAt) return 'SUBMITTED'
-  if (link.viewedAt) return 'VIEWED'
-  return 'ACTIVE'
 }
 
 const USABLE_STATES: IntakeLinkState[] = ['ACTIVE', 'VIEWED', 'SUBMITTED']

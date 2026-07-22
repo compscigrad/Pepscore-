@@ -31,6 +31,9 @@ const invoiceWithRelations = Prisma.validator<Prisma.InvoiceDefaultArgs>()({
       orderBy: { createdAt: 'desc' },
     },
     activityLog: { orderBy: { createdAt: 'desc' } },
+    // Every intake link ever generated for this invoice, newest first — the
+    // admin UI only surfaces the most recent one, but nothing is deleted.
+    intakeLinks: { orderBy: { createdAt: 'desc' } },
   },
 })
 export type InvoiceWithRelations = Prisma.InvoiceGetPayload<typeof invoiceWithRelations>
