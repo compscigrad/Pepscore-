@@ -69,16 +69,29 @@ Neither of these came up while the operational core was being built, because not
 
 *Recommendation*: keep the existing `Order`+`Invoice` pairing for Stripe-paid self-checkout (it already works, is tested in production, and the Fulfillment Gate/tracking system already key off `Invoice`) — don't introduce a third sale-record shape. Reserve "skip `Order`" for a true zero-payment-processor path if one is ever needed.
 
+## How completion is defined
+
+A phase or feature is only **Complete** once both of the following are true — "all code written" is not the bar:
+
+- **Code Complete** — implementation finished, tests passing, build clean.
+- **Production Validated** — successfully exercised end-to-end with a real workflow in production, not a test script or a safe test-domain send.
+- **Complete** = both of the above.
+
+This distinction exists because merged PRs measure implementation, not customer readiness — a phase can be 100% code complete and still not be something a real customer has successfully gone through.
+
 ## Phase 2A — Customer Intake Workflow (Highest Priority)
+
+**Status: Code Complete — Pending Production Validation.** Every stage below shipped and was individually live-verified this session (real link generation, real form submission, real customer/invoice/timeline creation, real admin-notification-recipient UI). What's still open is the *single continuous* real-customer acceptance test — one real customer going intake → customer record → draft invoice → issued invoice → delivered email → payment → shipment → tracking → timeline, with confirmed real-inbox delivery, not just a database "SENT" status. Phase 2A converts to **Complete** the moment that one real run finishes clean. See "Current Milestone" tracking for the exact checklist.
 
 **Why first**: this is the direct blocker on using the invoice workflow with real clients today — there's no way for a client to supply their own information; every draft invoice starts from scratch, typed in by an admin. Investigating turned up more than expected: the backend for this (`lib/intakeLinks.ts`'s secure token lifecycle, `lib/intake/validation.ts`'s submission schema, `lib/customers.ts`'s duplicate-detection/customer-upsert/draft-invoice-creation pipeline, `lib/notifications/dispatch.ts`'s admin notification) is already fully built. This phase is almost entirely a UI/wiring exercise, not new architecture — which is exactly why it can run first, ahead of the storefront and identity-model decisions below.
 
 **Scope**:
-- Admin "Request Customer Information" action on a draft invoice — generates a secure, expiring, single-purpose link, with copy-to-clipboard for sending however you already reach clients.
+- Admin "Request Customer Information" action on a draft invoice — generates a secure, expiring, single-purpose link, with copy-to-clipboard, email, and SMS (once Twilio is configured) for sending however you already reach clients.
 - A public, unauthenticated, branded intake form: billing/shipping address capture (ZIP autofill, "same as billing" checkbox), honeypot and rate-limit spam defenses, clear states for expired/invalidated/already-submitted/attempt-limit-reached links.
 - A submission endpoint that runs the existing duplicate-detection → customer-upsert → draft-invoice-creation pipeline and fires the existing admin notification (dashboard + email).
 - An admin Intake Queue page listing every intake-originated draft, using the already-built `getFulfillmentQueue()`.
 - Full link lifecycle (active/viewed/submitted/expired/invalidated/attempt-limit-reached) with regenerate/invalidate admin controls, and timeline entries on the customer/invoice activity log for each step.
+- Admin Notification Recipients settings page — without this, "fires the existing admin notification" had nowhere to send to; zero recipients existed in production until this shipped.
 
 **Explicitly deferred within 2A**: no product browsing, no self-checkout (that's 2B), no CRM expansion beyond what the intake pipeline already writes to the customer timeline (that's 2C) — this phase is the front door, not the storefront or the back-office.
 
