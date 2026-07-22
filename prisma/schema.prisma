@@ -139,6 +139,18 @@ model Invoice {
   order           Order?  @relation(fields: [orderId], references: [id])
   stripeInvoiceId String?
 
+  // The canonical, cross-invoice Customer record this invoice belongs to
+  // (nullable — every invoice created before the CRM feature has no link).
+  // Fields below stay a point-in-time snapshot even when this is set, since
+  // an issued invoice must remain accurate to what was true when issued.
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
+  // Set when this invoice/draft originated from a customer intake-link
+  // submission — see docs/Decisions.md.
+  intakeSubmittedAt DateTime?
+  priority          InvoicePriority @default(NORMAL)
+
   // Customer (snapshotted at invoice time, independent of User/Order)
   customerName    String
   customerCompany String?
@@ -163,9 +175,9 @@ model Invoice {
   // new normalized-status fields the tracking system actually drives.
   shippingService    String?
   trackingUrl        String?
-  shippingStatus     ShippingStatus      @default(NOT_SHIPPED)
+  shippingStatus     ShippingStatus     @default(NOT_SHIPPED)
   lastTrackingUpdate DateTime?
-  orderStatus        InvoiceOrderStatus  @default(OPEN)
+  orderStatus        InvoiceOrderStatus @default(OPEN)
 
   // Denormalized snapshot of the most recent shipment notification, for
   // quick display without a join — full history lives in ShipmentNotification.
@@ -216,6 +228,11 @@ model Invoice {
   shipment           Shipment?
   notifications      ShipmentNotification[]
   activityLog        InvoiceActivityLog[]
+
+  // CRM/intake back-relations — see Customer/IntakeLink/Notification models below.
+  customerActivityLog CustomerActivityLog[]
+  intakeLinks         IntakeLink[]
+  adminNotifications  Notification[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -293,6 +310,14 @@ enum InvoiceOrderStatus {
   IN_PROGRESS
   COMPLETED
   CANCELLED
+}
+
+// Manual triage priority for the Awaiting Fulfillment queue — bumped inline,
+// no separate assignment/triage system.
+enum InvoicePriority {
+  LOW
+  NORMAL
+  HIGH
 }
 
 // Where a tracking/activity event originated — surfaced in the invoice
@@ -418,8 +443,8 @@ model PaymentArrangement {
   // Count of *future* installments after the initial payment (matches the
   // "Number of Remaining Payments" field) — installment #1 is the initial
   // payment, so an arrangement always has 1 + remainingPayments rows total.
-  remainingPayments Int
-  frequency         PaymentFrequency
+  remainingPayments    Int
+  frequency            PaymentFrequency
 
   installments PaymentArrangementInstallment[]
 
@@ -428,14 +453,14 @@ model PaymentArrangement {
 }
 
 model PaymentArrangementInstallment {
-  id            String             @id @default(cuid())
-  arrangementId String
-  arrangement   PaymentArrangement @relation(fields: [arrangementId], references: [id], onDelete: Cascade)
+  id                String             @id @default(cuid())
+  arrangementId     String
+  arrangement       PaymentArrangement @relation(fields: [arrangementId], references: [id], onDelete: Cascade)
   // 1-indexed; #1 is always the initial payment.
   installmentNumber Int
   dueDate           DateTime
   amount            Float
-  status            InstallmentStatus @default(PENDING)
+  status            InstallmentStatus  @default(PENDING)
   paidAt            DateTime?
 
   // Links to the InvoicePayment that actually satisfied this installment
@@ -558,10 +583,10 @@ model TrackingEvent {
   normalizedStatus ShippingStatus
   // Original carrier event text, preserved even though it's been mapped to a
   // normalizedStatus above — per spec, never discard the raw description.
-  carrierStatus String?
-  description   String?
-  location      String?
-  eventAt       DateTime
+  carrierStatus    String?
+  description      String?
+  location         String?
+  eventAt          DateTime
 
   source    TrackingEventSource
   eventHash String
@@ -612,6 +637,183 @@ model InvoiceActivityLog {
   createdAt DateTime @default(now())
 
   @@index([invoiceId])
+}
+
+// ─── Customers (CRM) ─────────────────────────────────────────────────────────
+// Customer is the primary record intake links, notifications, and the
+// timeline all hang off of — see docs/Decisions.md. Invoice keeps its own
+// snapshotted name/company/email/phone/addresses (unchanged, above) since an
+// issued invoice must stay accurate to what was true when it was issued even
+// if the customer's info changes later; Customer is the current, canonical,
+// cross-invoice record.
+
+model Customer {
+  id        String  @id @default(cuid())
+  firstName String
+  lastName  String
+  company   String?
+  email     String?
+  phone     String?
+
+  billingAddress  Json?
+  shippingAddress Json?
+
+  preferredContactMethod PreferredContactMethod?
+  preferredPaymentMethod PaymentMethod?
+  notes                  String?
+
+  // Recomputed at the same touchpoints that write CustomerActivityLog below
+  // (mirrors the existing computeOrderStatus pattern) — see
+  // lib/customers.ts's computeCustomerStatus(). Never derived at read time,
+  // so filtering/sorting by status is a plain indexed column.
+  status CustomerStatus @default(LEAD)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  invoices      Invoice[]
+  intakeLinks   IntakeLink[]
+  activityLog   CustomerActivityLog[]
+  notifications Notification[]
+
+  @@index([email])
+  @@index([phone])
+  @@index([status])
+}
+
+enum PreferredContactMethod {
+  SMS
+  EMAIL
+  PHONE
+}
+
+enum CustomerStatus {
+  LEAD
+  INTAKE_SENT
+  INTAKE_COMPLETED
+  AWAITING_FULFILLMENT
+  INVOICE_ISSUED
+  AWAITING_PAYMENT
+  PARTIALLY_PAID
+  PAID
+  PREPARING_SHIPMENT
+  SHIPPED
+  DELIVERED
+  ARCHIVED
+}
+
+// Permanent, append-only history for a customer — both lifecycle events
+// (intake generated/viewed/submitted, invoice issued, payment received,
+// shipment created/delivered, ...) and every outbound communication (intake/
+// invoice/shipment emails, future SMS/calls). One unified table rather than
+// two, since "what happened" and "what we sent" are the same timeline from
+// the customer's point of view. Mirrors InvoiceActivityLog's shape (above)
+// so it renders the same way in the UI. Nothing here is ever deleted.
+model CustomerActivityLog {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  invoiceId  String?
+  invoice    Invoice? @relation(fields: [invoiceId], references: [id])
+
+  eventType     String
+  previousValue String?
+  newValue      String?
+  source        TrackingEventSource
+  userId        String?
+
+  createdAt DateTime @default(now())
+
+  @@index([customerId, createdAt])
+}
+
+// ─── Customer Intake Links ───────────────────────────────────────────────────
+// Public, token-authenticated links a customer fills in themselves — see
+// docs/Decisions.md. The token (not this row's id) is the entire security
+// boundary, same pattern as the Shippo webhook's ?token= and CRON_SECRET.
+// Multi-use until expiry/invalidation, not single-use, so a customer who
+// doesn't finish — or an admin re-requesting info on an open draft — can
+// reuse the same link.
+
+model IntakeLink {
+  id         String    @id @default(cuid())
+  token      String    @unique
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+  invoiceId  String?
+  invoice    Invoice?  @relation(fields: [invoiceId], references: [id])
+
+  createdBy String
+
+  expiresAt     DateTime
+  // Set on the first GET — feeds the "Intake Viewed" timeline event and
+  // intake analytics (completion rate, avg completion time).
+  viewedAt      DateTime?
+  invalidatedAt DateTime?
+  submittedAt   DateTime?
+
+  // Rejected past a small threshold — the primary spam defense is the
+  // unguessable token itself; this just caps brute-force guessing attempts.
+  submissionAttempts Int @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([customerId])
+  @@index([invoiceId])
+}
+
+// ─── Admin Notifications ─────────────────────────────────────────────────────
+// Pluggable NotificationChannel abstraction (lib/notifications/) — dashboard
+// delivery is this row itself, email/SMS fan out to enabled
+// AdminNotificationRecipient rows. See docs/Decisions.md.
+
+model Notification {
+  id         String    @id @default(cuid())
+  type       String
+  invoiceId  String?
+  invoice    Invoice?  @relation(fields: [invoiceId], references: [id])
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
+  isNewCustomer Boolean
+
+  // Set when the widened duplicate-detection check (name/company/address
+  // similarity, short of an exact email/phone match) flags a possible match
+  // for admin review — never auto-merged, just surfaced. Holds the id of the
+  // existing Customer it might duplicate.
+  possibleDuplicateOf String?
+
+  read      Boolean   @default(false)
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([read, createdAt])
+}
+
+// A list, not a singleton — supports multiple administrators from day one.
+// Configured entirely through Settings -> Admin Notifications; phone/email
+// values are data entered through that form, never literals in code.
+model AdminNotificationRecipient {
+  id           String  @id @default(cuid())
+  name         String?
+  email        String?
+  phone        String?
+  emailEnabled Boolean @default(true)
+  smsEnabled   Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Invoice Numbering ───────────────────────────────────────────────────────
+// Replaces the previous count()-derived numbering in lib/invoice/numbering.ts,
+// which silently reused a number if the invoice holding it was ever
+// permanently deleted (the count simply dropped). One row per year,
+// incremented atomically so concurrent creates can't race, and a delete can
+// never free up a number for reuse.
+model InvoiceNumberCounter {
+  year         Int @id
+  lastSequence Int @default(0)
 }
 
 // ─── Compliance ──────────────────────────────────────────────────────────────
@@ -687,6 +889,10 @@ model InvoiceSettings {
   // invoice reaches ISSUED/PAID/PARTIALLY_PAID. Off doesn't touch the manual
   // "Email Invoice to Customer" button — that always works regardless.
   autoEmailInvoiceOnIssue Boolean @default(true)
+
+  // Default lifespan of a generated customer intake link before it stops
+  // accepting submissions (still regenerable). See docs/Decisions.md.
+  defaultIntakeLinkExpiryHours Int @default(48)
 
   updatedAt DateTime @updatedAt
 }
