@@ -10,6 +10,9 @@ interface Props {
   invoiceId: string
   intakeLinks: IntakeLink[]
   onLinkUpdated: () => void
+  customerEmail: string | null
+  customerPhone: string | null
+  smsConfigured: boolean
 }
 
 const STATE_LABEL: Record<string, string> = {
@@ -23,9 +26,17 @@ const STATE_LABEL: Record<string, string> = {
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? ''
 
-export function IntakeLinkSection({ invoiceId, intakeLinks, onLinkUpdated }: Props) {
+export function IntakeLinkSection({
+  invoiceId,
+  intakeLinks,
+  onLinkUpdated,
+  customerEmail,
+  customerPhone,
+  smsConfigured,
+}: Props) {
   const [busy, setBusy] = useState(false)
   const [confirmingInvalidate, setConfirmingInvalidate] = useState(false)
+  const [sendingChannel, setSendingChannel] = useState<'email' | 'sms' | null>(null)
 
   // intakeLinks is already ordered newest-first by lib/invoices.ts.
   const current = intakeLinks[0] ?? null
@@ -45,6 +56,25 @@ export function IntakeLinkSection({ invoiceId, intakeLinks, onLinkUpdated }: Pro
       toast.error(err instanceof Error ? err.message : 'Failed to generate intake link')
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function send(channel: 'email' | 'sms') {
+    setSendingChannel(channel)
+    try {
+      const res = await fetch(`/api/admin/invoices/${invoiceId}/intake-link`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'send', channel }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? `Failed to send via ${channel}`)
+      toast.success(channel === 'email' ? 'Intake link emailed' : 'Intake link texted')
+      onLinkUpdated()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : `Failed to send via ${channel}`)
+    } finally {
+      setSendingChannel(null)
     }
   }
 
@@ -125,6 +155,35 @@ export function IntakeLinkSection({ invoiceId, intakeLinks, onLinkUpdated }: Pro
               Copy Link
             </button>
           </div>
+          {customerEmail || customerPhone ? (
+            <div className="flex flex-wrap gap-2">
+              {customerPhone ? (
+                <button
+                  type="button"
+                  onClick={() => send('sms')}
+                  disabled={busy || sendingChannel !== null || !smsConfigured}
+                  title={smsConfigured ? undefined : 'Add TWILIO_* environment variables to enable SMS'}
+                  className={`${pillPrimary} px-4 py-2`}
+                >
+                  {sendingChannel === 'sms' ? 'Sending...' : smsConfigured ? 'Send via SMS' : 'SMS not configured'}
+                </button>
+              ) : null}
+              {customerEmail ? (
+                <button
+                  type="button"
+                  onClick={() => send('email')}
+                  disabled={busy || sendingChannel !== null}
+                  className={customerPhone ? `${pillOutline} px-4 py-2` : `${pillPrimary} px-4 py-2`}
+                >
+                  {sendingChannel === 'email' ? 'Sending...' : 'Send via Email'}
+                </button>
+              ) : null}
+            </div>
+          ) : (
+            <p className={`${mutedText} text-xs`}>
+              No email or phone on file yet — copy the link above and share it manually.
+            </p>
+          )}
           <div className="flex gap-2">
             <button type="button" onClick={regenerate} disabled={busy} className={`${pillOutline} px-4 py-2`}>
               Regenerate

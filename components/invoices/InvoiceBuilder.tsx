@@ -30,6 +30,7 @@ interface Props {
   initialInvoice?: InvoiceWithRelations
   products: Product[]
   promotions: Promotion[]
+  smsConfigured?: boolean
 }
 
 function toDateInputValue(date: Date | string | null | undefined): string {
@@ -92,7 +93,7 @@ function invoiceToDraft(invoice: InvoiceWithRelations): InvoiceDraft {
   }
 }
 
-export function InvoiceBuilder({ mode, initialInvoice, products, promotions: initialPromotions }: Props) {
+export function InvoiceBuilder({ mode, initialInvoice, products, promotions: initialPromotions, smsConfigured = false }: Props) {
   const router = useRouter()
   const [draft, setDraft] = useState<InvoiceDraft>(() => (initialInvoice ? invoiceToDraft(initialInvoice) : EMPTY_DRAFT))
   const [invoice, setInvoice] = useState(initialInvoice)
@@ -245,7 +246,14 @@ export function InvoiceBuilder({ mode, initialInvoice, products, promotions: ini
         <TotalsSummary totals={totals} shippingCost={draft.shipping.shippingCost} amountPaid={invoice?.amountPaid} />
 
         {mode === 'edit' && invoice ? (
-          <IntakeLinkSection invoiceId={invoice.id} intakeLinks={invoice.intakeLinks} onLinkUpdated={refreshInvoice} />
+          <IntakeLinkSection
+            invoiceId={invoice.id}
+            intakeLinks={invoice.intakeLinks}
+            onLinkUpdated={refreshInvoice}
+            customerEmail={invoice.customerEmail}
+            customerPhone={invoice.customerPhone}
+            smsConfigured={smsConfigured}
+          />
         ) : null}
 
         {mode === 'edit' && invoice ? (
