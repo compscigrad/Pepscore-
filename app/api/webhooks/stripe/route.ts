@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe, estimateStripeFee } from '@/lib/stripe'
 import { prisma } from '@/lib/prisma'
-import { resend, FROM_EMAIL } from '@/lib/resend'
+import { resend, FROM_EMAIL, SUPPORT_EMAIL } from '@/lib/resend'
 import { buildOrderConfirmationHtml } from '@/emails/OrderConfirmation'
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
 
@@ -131,6 +131,7 @@ export async function POST(req: NextRequest) {
       await resend.emails.send({
         from: FROM_EMAIL,
         to: order.customerEmail,
+        replyTo: SUPPORT_EMAIL,
         subject: `Order Confirmed — ${order.orderNumber} | Pepscore`,
         html,
       })

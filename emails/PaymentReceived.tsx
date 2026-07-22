@@ -3,6 +3,8 @@
 // InvoicePayment is created, so unlike the one-time invoice-issued email,
 // no dedup guard is needed here: each call already corresponds to exactly
 // one real payment event). Same branding pattern as InvoiceIssued.tsx.
+import { SUPPORT_EMAIL } from '@/lib/resend'
+
 interface PaymentReceivedProps {
   customerName: string
   invoiceNumber: string
@@ -52,11 +54,11 @@ export function buildPaymentReceivedHtml({ customerName, invoiceNumber, amountPa
     </div>
     <div style="background:#F5F5F0;padding:18px 36px;border-top:1px solid #E0DDD4">
       <p style="font-size:11px;color:#757575;line-height:1.7;margin:0">
-        Questions about this payment? Reply to this message or contact contact@pepscore.com.
+        Questions about this payment? Reply to this message or contact ${SUPPORT_EMAIL}.
       </p>
     </div>
     <div style="background:#1A1A1A;padding:20px 36px;text-align:center">
-      <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0">© ${year} Pepscore · contact@pepscore.com</p>
+      <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0">© ${year} Pepscore · ${SUPPORT_EMAIL}</p>
     </div>
   </div>
 </body>

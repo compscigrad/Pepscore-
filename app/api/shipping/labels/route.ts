@@ -7,7 +7,7 @@ import { auth } from '@clerk/nextjs/server'
 import { prisma } from '@/lib/prisma'
 import { purchaseLabel, getRates } from '@/lib/shippo'
 import { getFulfillmentSettings } from '@/lib/fulfillment/settings'
-import { resend, FROM_EMAIL } from '@/lib/resend'
+import { resend, FROM_EMAIL, SUPPORT_EMAIL } from '@/lib/resend'
 import { buildTrackingUpdateHtml } from '@/emails/TrackingUpdate'
 import type { ShippingAddress } from '@/types'
 
@@ -85,6 +85,7 @@ export async function POST(req: NextRequest) {
       await resend.emails.send({
         from: FROM_EMAIL,
         to: order.customerEmail,
+        replyTo: SUPPORT_EMAIL,
         subject: `Your Pepscore Order Has Shipped — ${order.orderNumber}`,
         html,
       })
