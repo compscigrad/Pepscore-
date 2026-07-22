@@ -31,6 +31,12 @@ export default async function InvoicesDashboard() {
           </div>
           <div className="flex items-center gap-6">
             <Link
+              href="/admin/intake-queue"
+              className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
+            >
+              Intake Queue
+            </Link>
+            <Link
               href="/admin/settings/invoices"
               className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
             >
