@@ -1,5 +1,7 @@
 # Future Roadmap
 
+> **Superseded by [`docs/ProductRoadmap.md`](./ProductRoadmap.md)** as the live planning document (written at the close of Fulfillment Workflow v1). This file is kept for its historical decision context — several items below (Customer CRM, analytics dashboard seam, email integration) have since shipped or been re-scoped into that document's phases.
+
 Modules and capabilities named in Part 1's "Future Expansion" section, not yet built. None of the current invoice-system architecture should require a rewrite to add these — that constraint drove several of the decisions in [Decisions.md](./Decisions.md) (e.g. the `lib/invoices.ts` service seam, additive-only enums).
 
 ## Near-term (natural extensions of what exists)
