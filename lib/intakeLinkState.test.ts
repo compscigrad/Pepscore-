@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getIntakeLinkState } from './intakeLinks'
+import { getIntakeLinkState } from './intakeLinkState'
 
 const future = new Date(Date.now() + 60 * 60 * 1000)
 const past = new Date(Date.now() - 60 * 60 * 1000)
