@@ -150,10 +150,20 @@ export async function findPossibleDuplicateCustomers(input: {
 // Auto-merge path (Decision 8): fills only fields the existing customer is
 // missing — an address already on file always wins over a new submission,
 // the difference is surfaced to the admin by the caller instead.
+//
+// existingCustomerId: when the intake link was generated against a known
+// customer (an admin's "Request Customer Information" on an existing
+// record), pass their id here to update that exact customer rather than
+// re-deriving one via email/phone match — the submitted email could differ
+// from what's on file, and re-matching could route the update to the wrong
+// person or spuriously create a duplicate.
 export async function upsertCustomerFromIntake(
-  input: CustomerInput
+  input: CustomerInput,
+  existingCustomerId?: string | null
 ): Promise<{ customer: Customer; isNewCustomer: boolean }> {
-  const existing = await findCustomerByEmailOrPhone(input.email, input.phone)
+  const existing = existingCustomerId
+    ? await prisma.customer.findUnique({ where: { id: existingCustomerId } })
+    : await findCustomerByEmailOrPhone(input.email, input.phone)
   if (!existing) {
     const customer = await createCustomer(input)
     return { customer, isNewCustomer: true }
