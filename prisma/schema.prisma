@@ -151,6 +151,15 @@ model Invoice {
   intakeSubmittedAt DateTime?
   priority          InvoicePriority @default(NORMAL)
 
+  // Permanent record of an admin bypassing the normal Fulfillment Gate
+  // (paid in full / active payment arrangement) to ship anyway — set only
+  // through lib/fulfillment/gate.ts's overrideFulfillmentEligibility(),
+  // never a plain boolean, so who/when/why is never lost. See
+  // docs/Decisions.md.
+  fulfillmentOverrideAt   DateTime?
+  fulfillmentOverrideBy   String?
+  fulfillmentOverrideNote String?
+
   // Customer (snapshotted at invoice time, independent of User/Order)
   customerName    String
   customerCompany String?
