@@ -15,7 +15,7 @@ import { ShippingSection } from './ShippingSection'
 import { InvoiceItemsTable } from './InvoiceItemsTable'
 import { DiscountsSection } from './DiscountsSection'
 import { PaymentSection } from './PaymentSection'
-import { TrackingSection } from './TrackingSection'
+import { ShipmentsSection } from './ShipmentsSection'
 import { TotalsSummary } from './TotalsSummary'
 import { InvoicePreview } from './InvoicePreview'
 import { PDFExportButtons } from './PDFExportButtons'
@@ -23,7 +23,6 @@ import { pillPrimary } from './theme'
 import { makeKey, EMPTY_DRAFT } from './types'
 import type { InvoiceDraft, AddressDraft, Product, Promotion } from './types'
 import type { InvoiceWithRelations } from '@/lib/invoices'
-import { getPrimaryShipment } from '@/lib/shipments/primary'
 
 interface Props {
   mode: 'create' | 'edit'
@@ -245,7 +244,7 @@ export function InvoiceBuilder({ mode, initialInvoice, products, promotions: ini
         <TotalsSummary totals={totals} shippingCost={draft.shipping.shippingCost} amountPaid={invoice?.amountPaid} />
 
         {mode === 'edit' && invoice ? (
-          <TrackingSection invoiceId={invoice.id} shipment={getPrimaryShipment(invoice.shipments)} onTrackingUpdated={refreshInvoice} />
+          <ShipmentsSection invoiceId={invoice.id} shipments={invoice.shipments} onTrackingUpdated={refreshInvoice} />
         ) : null}
 
         {mode === 'edit' && invoice ? (

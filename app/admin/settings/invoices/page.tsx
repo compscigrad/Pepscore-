@@ -26,12 +26,20 @@ export default async function InvoiceSettingsPage() {
             <h1 className="font-heading text-3xl font-bold text-white">Invoice Settings</h1>
             <p className="text-white/50 text-sm mt-1">Settings · Invoices · Pepscore</p>
           </div>
-          <Link
-            href="/admin/invoices"
-            className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
-          >
-            ← Invoices
-          </Link>
+          <div className="flex items-center gap-6">
+            <Link
+              href="/admin/settings/fulfillment"
+              className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
+            >
+              Fulfillment Settings →
+            </Link>
+            <Link
+              href="/admin/invoices"
+              className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
+            >
+              ← Invoices
+            </Link>
+          </div>
         </div>
 
         <div className="space-y-6">
