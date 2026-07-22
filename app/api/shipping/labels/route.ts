@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { prisma } from '@/lib/prisma'
 import { purchaseLabel, getRates } from '@/lib/shippo'
+import { getFulfillmentSettings } from '@/lib/fulfillment/settings'
 import { resend, FROM_EMAIL } from '@/lib/resend'
 import { buildTrackingUpdateHtml } from '@/emails/TrackingUpdate'
 import type { ShippingAddress } from '@/types'
@@ -118,17 +119,20 @@ export async function GET(req: NextRequest) {
   const order = await prisma.order.findUnique({ where: { id: orderId } })
   if (!order) return NextResponse.json({ error: 'Order not found' }, { status: 404 })
 
-  const addr = order.shippingAddress as unknown as ShippingAddress
-
-  const addressFrom = {
-    name: process.env.SHIP_FROM_NAME ?? 'Pepscore Research',
-    street1: process.env.SHIP_FROM_STREET ?? '',
-    city: process.env.SHIP_FROM_CITY ?? '',
-    state: process.env.SHIP_FROM_STATE ?? '',
-    zip: process.env.SHIP_FROM_ZIP ?? '',
-    country: process.env.SHIP_FROM_COUNTRY ?? 'US',
-    phone: process.env.SHIP_FROM_PHONE ?? '',
+  // Return address now comes from the same admin-editable FulfillmentSettings
+  // row the Invoice fulfillment flow uses (lib/fulfillment/labels.ts) rather
+  // than separate SHIP_FROM_* env vars — one return address to configure and
+  // keep current, not two independent sources of truth that can drift.
+  const { returnAddress } = await getFulfillmentSettings()
+  if (!returnAddress) {
+    return NextResponse.json(
+      { error: 'Configure a return address under Settings → Fulfillment before requesting rates.' },
+      { status: 400 }
+    )
   }
+
+  const addr = order.shippingAddress as unknown as ShippingAddress
+  const addressFrom = returnAddress
 
   const addressTo = {
     name: addr.name,
