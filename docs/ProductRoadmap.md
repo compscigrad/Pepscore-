@@ -10,6 +10,32 @@ Pepscore started as a way to stop losing track of manual sales (DMs, cash, Cash 
 
 That operational core is now the foundation, not the frontier. **Phase 2's job is to make the customer experience progressively self-service, so the operational core spends less time being operated by hand and more time just running.** Every feature below exists to either (a) remove a manual step you currently perform, or (b) give you visibility you currently have to go looking for.
 
+## Landing Page & Domain Migration Strategy
+
+This is foundational context for every phase below, not a phase of its own — it governs how the storefront (2B) and any future public-facing work gets built.
+
+### Current Architecture
+
+The public-facing **PepscoreLab.com** landing page is already complete and serves as the live marketing website for the business.
+
+The application currently under active development on the Vercel project (this repo) is the future production platform. It contains the administrative infrastructure, invoice system, customer management, fulfillment workflow, intake system, authentication, and all core business functionality.
+
+The Vercel application is expected to eventually replace the current landing page entirely. When development reaches production readiness, the PepscoreLab.com domain will be pointed directly to this application, and the existing landing page will be retired. This migration should require little more than updating DNS and routing rather than changing application logic or business workflows.
+
+### Interim Integration Strategy
+
+While this application continues to be developed, the existing PepscoreLab.com landing page should begin acting as an entry point into it. Administrative functionality should become accessible from the landing page without duplicating any business logic — for example, "Admin Sign In," "Dashboard," "Invoices," "Customer Management," "Intake Management" should all authenticate into and operate directly against this same Vercel application.
+
+The landing page should not contain a separate admin system. It should simply provide navigation into the application already hosted here.
+
+### Single Source of Truth
+
+During this transition period there must remain only one authentication system, database, API, customer database, invoice system, intake workflow, fulfillment workflow, notification system, and administrative dashboard. Whether accessed through the existing PepscoreLab.com landing page or this Vercel application directly, it should be the exact same backend and the exact same data — never duplicate administrative functionality or separate databases.
+
+### Long-Term Objective
+
+As more application features are completed, they should be exposed through the existing landing page where appropriate. Once this application reaches production readiness, the domain simply moves from the landing page to the application, and the landing page can be retired entirely without requiring changes to the backend, authentication, customer records, invoices, fulfillment, notifications, or any other business system. Every feature built here should keep that transition seamless and nearly transparent to both administrators and customers — a reason, alongside the identity/checkout decisions below, to avoid building anything that would only make sense under a second, separate frontend.
+
 ## Foundation Assessment — is it stable enough to build on?
 
 Per the completion audit, the three modules that make up the operational backbone score:
