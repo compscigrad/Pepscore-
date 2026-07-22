@@ -116,6 +116,19 @@ export async function createPaymentArrangement(invoiceId: string, input: CreateP
   })
 }
 
+// "Active" means there's a schedule with at least one payment still owed —
+// used by the Fulfillment Gate (lib/fulfillment/gate.ts) to allow shipping
+// before an invoice is fully paid off, as long as a plan is in place.
+export async function hasActivePaymentArrangement(invoiceId: string): Promise<boolean> {
+  const arrangement = await prisma.paymentArrangement.findUnique({ where: { invoiceId } })
+  if (!arrangement) return false
+
+  const pending = await prisma.paymentArrangementInstallment.findFirst({
+    where: { arrangementId: arrangement.id, status: 'PENDING' },
+  })
+  return !!pending
+}
+
 // Called from lib/invoices.ts's recordPayment() after any payment is
 // recorded — if the invoice has an arrangement with a pending installment,
 // the new payment satisfies the earliest one in schedule order. A no-op for
