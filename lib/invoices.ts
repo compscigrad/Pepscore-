@@ -11,6 +11,7 @@ import { assertPaymentWithinBalance, type InvoicePayload, type PaymentPayload } 
 import { matchPaymentToNextPendingInstallment } from '@/lib/paymentArrangements'
 import { computeOrderStatus } from '@/lib/tracking/orderStatus'
 import { sendInvoiceIssuedEmailIfNeeded } from '@/lib/invoiceIssuedEmail'
+import { sendPaymentReceivedEmailIfNeeded } from '@/lib/paymentReceivedEmail'
 import { syncCustomerFromInvoiceEvent } from '@/lib/customers'
 
 const invoiceWithRelations = Prisma.validator<Prisma.InvoiceDefaultArgs>()({
@@ -326,6 +327,7 @@ export async function recordPayment(invoiceId: string, payload: PaymentPayload):
 
   const updated = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId }, ...invoiceWithRelations })
   await sendInvoiceIssuedEmailIfNeeded(updated)
+  await sendPaymentReceivedEmailIfNeeded(updated, payment)
   if (updated.customerId) {
     await syncCustomerFromInvoiceEvent({
       customerId: updated.customerId,

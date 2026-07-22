@@ -9,6 +9,7 @@ import { getInvoiceSettings } from '@/lib/invoiceSettings'
 import { InvoiceSettingsForm } from '@/components/invoices/InvoiceSettingsForm'
 import { TrackingNotificationSettingsForm } from '@/components/invoices/TrackingNotificationSettingsForm'
 import { InvoiceEmailSettingsForm } from '@/components/invoices/InvoiceEmailSettingsForm'
+import { PaymentReceivedEmailSettingsForm } from '@/components/invoices/PaymentReceivedEmailSettingsForm'
 
 export default async function InvoiceSettingsPage() {
   const { userId } = await auth()
@@ -45,6 +46,7 @@ export default async function InvoiceSettingsPage() {
         <div className="space-y-6">
           <InvoiceSettingsForm initialArchiveAfterDays={settings.archiveAfterDays} />
           <InvoiceEmailSettingsForm initialEnabled={settings.autoEmailInvoiceOnIssue} />
+          <PaymentReceivedEmailSettingsForm initialEnabled={settings.autoEmailPaymentReceived} />
           <TrackingNotificationSettingsForm initialEnabled={settings.trackingNotificationsEnabled} />
         </div>
       </div>
