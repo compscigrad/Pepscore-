@@ -1,7 +1,7 @@
 // Customer-facing email — delivers the intake link itself (distinct from
 // AdminIntakeNotification.tsx, which alerts the admin *after* a submission).
 // Same branding pattern as InvoiceIssued.tsx.
-import { SUPPORT_EMAIL } from '@/lib/resend'
+import { CONTACT_EMAIL } from '@/lib/resend'
 
 interface IntakeLinkRequestProps {
   customerName: string
@@ -41,7 +41,7 @@ export function buildIntakeLinkRequestHtml({ customerName, link }: IntakeLinkReq
       </p>
     </div>
     <div style="background:#1A1A1A;padding:20px 36px;text-align:center">
-      <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0">© ${year} Pepscore · ${SUPPORT_EMAIL}</p>
+      <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0">© ${year} Pepscore · ${CONTACT_EMAIL}</p>
     </div>
   </div>
 </body>

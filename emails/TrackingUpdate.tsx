@@ -1,5 +1,5 @@
 // Tracking update email HTML builder
-import { SUPPORT_EMAIL } from '@/lib/resend'
+import { ORDERS_EMAIL } from '@/lib/resend'
 
 interface TrackingUpdateProps {
   customerName: string
@@ -42,7 +42,7 @@ export function buildTrackingUpdateHtml(props: TrackingUpdateProps): string {
       </p>
     </div>
     <div style="background:#1A1A1A;padding:20px 36px;text-align:center">
-      <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0">© ${year} Pepscore · ${SUPPORT_EMAIL}</p>
+      <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0">© ${year} Pepscore · ${ORDERS_EMAIL}</p>
     </div>
   </div>
 </body>

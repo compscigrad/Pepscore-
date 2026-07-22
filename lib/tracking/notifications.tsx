@@ -4,7 +4,7 @@
 // them (an email failure is recorded, not thrown).
 import { prisma } from '@/lib/prisma'
 import { renderToBuffer } from '@react-pdf/renderer'
-import { resend, FROM_EMAIL, SUPPORT_EMAIL } from '@/lib/resend'
+import { resend, FROM_EMAIL, ORDERS_EMAIL } from '@/lib/resend'
 import { getInvoice } from '@/lib/invoices'
 import { getPrimaryShipment } from '@/lib/shipments/primary'
 import { RecipientReceiptDocument } from '@/lib/invoice/pdf/RecipientReceiptDocument'
@@ -95,7 +95,7 @@ async function sendShipmentEmail(
     await resend.emails.send({
       from: FROM_EMAIL,
       to: recipient,
-      replyTo: SUPPORT_EMAIL,
+      replyTo: ORDERS_EMAIL,
       subject: shipmentUpdateSubject(status, invoice.invoiceNumber),
       html,
       attachments: [

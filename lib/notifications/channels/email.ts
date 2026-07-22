@@ -3,7 +3,7 @@
 // Never throws: a failed send is logged, not fatal to the intake submission
 // that triggered it (same "notification failure never blocks the customer
 // flow" principle as lib/tracking/notifications.tsx).
-import { resend, FROM_EMAIL } from '@/lib/resend'
+import { resend, ADMIN_EMAIL } from '@/lib/resend'
 import { buildAdminIntakeNotificationHtml, adminIntakeNotificationSubject } from '@/emails/AdminIntakeNotification'
 import type { NotificationChannel, IntakeNotificationPayload, AdminNotificationRecipientLike } from '../types'
 
@@ -18,7 +18,7 @@ export const emailChannel: NotificationChannel = {
 
     await Promise.all(
       targets.map((r) =>
-        resend.emails.send({ from: FROM_EMAIL, to: r.email!, subject, html }).catch((err) => {
+        resend.emails.send({ from: ADMIN_EMAIL, to: r.email!, subject, html }).catch((err) => {
           console.error('[notifications/email] send failed:', err)
         })
       )
