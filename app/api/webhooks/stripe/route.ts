@@ -38,6 +38,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ received: true })
     }
 
+    // Idempotency guard: Stripe redelivers an event on any non-2xx response
+    // and can occasionally send true duplicates — a retry of this event must
+    // be a safe no-op. Without this check, a redelivery hits the unique
+    // stripePaymentIntentId constraint on Payment below, throws unhandled,
+    // and Stripe retries again — an infinite loop until Stripe gives up.
+    const paymentIntentId = session.payment_intent as string
+    const existingPayment = await prisma.payment.findUnique({ where: { stripePaymentIntentId: paymentIntentId } })
+    if (existingPayment) {
+      return NextResponse.json({ received: true, alreadyProcessed: true })
+    }
+
     const amountTotal = (session.amount_total ?? 0) / 100
     const stripeFee = estimateStripeFee(amountTotal)
     const netAmount = amountTotal - stripeFee
