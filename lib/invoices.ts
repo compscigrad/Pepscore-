@@ -10,6 +10,7 @@ import { generateSequentialInvoiceNumber } from '@/lib/invoice/numbering'
 import { assertPaymentWithinBalance, type InvoicePayload, type PaymentPayload } from '@/lib/invoice/validation'
 import { matchPaymentToNextPendingInstallment } from '@/lib/paymentArrangements'
 import { computeOrderStatus } from '@/lib/tracking/orderStatus'
+import { sendInvoiceIssuedEmailIfNeeded } from '@/lib/invoiceIssuedEmail'
 
 const invoiceWithRelations = Prisma.validator<Prisma.InvoiceDefaultArgs>()({
   include: {
@@ -183,6 +184,7 @@ export async function createInvoice(payload: InvoicePayload): Promise<InvoiceWit
     ...invoiceWithRelations,
   })
 
+  await sendInvoiceIssuedEmailIfNeeded(invoice)
   return invoice
 }
 
@@ -254,6 +256,7 @@ export async function updateInvoice(id: string, payload: InvoicePayload): Promis
     ...invoiceWithRelations,
   })
 
+  await sendInvoiceIssuedEmailIfNeeded(invoice)
   return invoice
 }
 
@@ -296,7 +299,9 @@ export async function recordPayment(invoiceId: string, payload: PaymentPayload):
   // installment's updated status, not a stale pre-match snapshot.
   await matchPaymentToNextPendingInstallment(invoiceId, payment)
 
-  return prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId }, ...invoiceWithRelations })
+  const updated = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId }, ...invoiceWithRelations })
+  await sendInvoiceIssuedEmailIfNeeded(updated)
+  return updated
 }
 
 // Archive rather than hard-delete, per the spec's Archive/Restore requirement.

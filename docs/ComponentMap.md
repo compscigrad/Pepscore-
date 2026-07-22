@@ -64,13 +64,18 @@
 **Dependencies**: none. Follows the existing `STATUS_COLORS` object pattern from `components/admin/AdminOrdersTable.tsx`, adapted for a dark surface.
 
 ### `PDFExportButtons.tsx`
-**Purpose**: Two buttons ("Download Master Invoice", "Download Recipient Receipt") linking to the PDF API route.
-**Props**: `invoiceId: string`.
-**Dependencies**: none — plain links to `/api/admin/invoices/[id]/pdf?variant=...`.
+**Purpose**: Two download links ("Download Master Invoice", "Download Client Invoice") plus a manual "Email Invoice to Customer" button — always sends/resends the Client Invoice PDF regardless of whether the automatic one-time send already fired. Disabled with a tooltip when there's no `customerEmail` on file.
+**Props**: `invoiceId: string`, `customerEmail?: string | null`.
+**Dependencies**: plain links to `/api/admin/invoices/[id]/pdf?variant=...`; the email button calls `POST /api/admin/invoices/[id]/email`.
 
 ### `InvoiceSettingsForm.tsx`
 **Purpose**: Radio-button form (30/60/90 Days, Never) for the auto-archive delay, on `app/admin/settings/invoices`.
 **Props**: `initialArchiveAfterDays: number | null`.
+**Dependencies**: `/api/admin/invoice-settings` PATCH.
+
+### `InvoiceEmailSettingsForm.tsx`
+**Purpose**: Single on/off toggle for automatically emailing the Client Invoice PDF the first time an invoice reaches Issued/Paid/Partially Paid, also on `app/admin/settings/invoices`. Off only disables the automatic trigger — the manual "Email Invoice to Customer" button always works.
+**Props**: `initialEnabled: boolean`.
 **Dependencies**: `/api/admin/invoice-settings` PATCH.
 
 ### `TrackingNotificationSettingsForm.tsx`
@@ -102,6 +107,11 @@
 **Purpose**: KPI card row (total/paid/partial/outstanding/pending shipments/delivered/revenue).
 **Props**: `stats: InvoiceDashboardStats` (from `lib/invoices.ts getInvoiceDashboardStats`).
 **Dependencies**: none — pure presentational, follows the KPI card pattern already in `app/admin/page.tsx`.
+
+## `lib/invoiceIssuedEmail.tsx` — automatic "invoice issued" customer email
+
+**Purpose**: `sendInvoiceIssuedEmailIfNeeded(invoice)` — called from `createInvoice`/`updateInvoice`/`recordPayment` in `lib/invoices.ts` — emails the Client Invoice PDF to `customerEmail` the first time an invoice reaches Issued/Paid/Partially Paid, gated by `InvoiceSettings.autoEmailInvoiceOnIssue` and by whether an `INVOICE_ISSUED_EMAIL_SENT` row already exists in `InvoiceActivityLog` for that invoice (not a boolean flag — see `docs/Decisions.md` #23). `sendInvoiceEmailManually(invoice, userId)` is the separate always-sends path behind the "Email Invoice to Customer" button, regardless of whether the auto-send already fired. `isInvoiceEmailTriggerStatus()` is the pure, unit-tested predicate for which `InvoiceStatus` values count as "issued or beyond."
+**Dependencies**: `emails/InvoiceIssued.tsx` (template), `lib/invoice/pdf/RecipientReceiptDocument.tsx` (attached PDF), `lib/resend.ts`.
 
 ## `lib/` — payment arrangements
 

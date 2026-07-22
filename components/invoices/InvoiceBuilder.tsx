@@ -268,7 +268,9 @@ export function InvoiceBuilder({ mode, initialInvoice, products, promotions: ini
           >
             {saving ? 'Saving...' : mode === 'create' ? 'Create Invoice' : 'Save Changes'}
           </button>
-          {mode === 'edit' && invoice ? <PDFExportButtons invoiceId={invoice.id} /> : null}
+          {mode === 'edit' && invoice ? (
+            <PDFExportButtons invoiceId={invoice.id} customerEmail={invoice.customerEmail} />
+          ) : null}
         </div>
       </div>
 

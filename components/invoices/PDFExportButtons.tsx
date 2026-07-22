@@ -1,12 +1,35 @@
-// Download links for the two generated PDF variants. No client-side PDF
-// logic here — the API route (app/api/admin/invoices/[id]/pdf) does the
-// generation; these are just links.
+'use client'
+
+// Download links for the two generated PDF variants, plus a manual
+// "Email Invoice to Customer" action — always sends/resends the Client
+// Invoice PDF regardless of whether the one-time auto-send on first ISSUED
+// already fired (see lib/invoiceIssuedEmail.tsx).
 //
 // Two distinct outline-pill styles (gold-tinted for the internal record,
 // neutral for the customer copy) rather than the old solid bg-dark button —
 // a near-black fill was nearly invisible against this page's black
 // background.
-export function PDFExportButtons({ invoiceId }: { invoiceId: string }) {
+import { useState } from 'react'
+import toast from 'react-hot-toast'
+import { pillOutline } from './theme'
+
+export function PDFExportButtons({ invoiceId, customerEmail }: { invoiceId: string; customerEmail?: string | null }) {
+  const [sending, setSending] = useState(false)
+
+  async function emailInvoice() {
+    setSending(true)
+    try {
+      const res = await fetch(`/api/admin/invoices/${invoiceId}/email`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to send invoice email')
+      toast.success(`Invoice emailed to ${customerEmail}`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to send invoice email')
+    } finally {
+      setSending(false)
+    }
+  }
+
   return (
     <div className="flex flex-wrap gap-3">
       <a
@@ -25,6 +48,15 @@ export function PDFExportButtons({ invoiceId }: { invoiceId: string }) {
       >
         Download Client Invoice
       </a>
+      <button
+        type="button"
+        onClick={emailInvoice}
+        disabled={sending || !customerEmail}
+        title={customerEmail ? undefined : 'No customer email on file'}
+        className={`${pillOutline} px-5 py-2.5 disabled:opacity-40 disabled:cursor-not-allowed`}
+      >
+        {sending ? 'Sending...' : 'Email Invoice to Customer'}
+      </button>
     </div>
   )
 }

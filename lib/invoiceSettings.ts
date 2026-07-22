@@ -10,6 +10,7 @@ const SETTINGS_ID = 'singleton'
 export interface InvoiceSettingsData {
   archiveAfterDays: number | null
   trackingNotificationsEnabled: Partial<Record<ShippingStatus, boolean>>
+  autoEmailInvoiceOnIssue: boolean
 }
 
 function parseNotificationMap(value: Prisma.JsonValue | null): Partial<Record<ShippingStatus, boolean>> {
@@ -26,6 +27,7 @@ export async function getInvoiceSettings(): Promise<InvoiceSettingsData> {
   return {
     archiveAfterDays: row.archiveAfterDays,
     trackingNotificationsEnabled: parseNotificationMap(row.trackingNotificationsEnabled),
+    autoEmailInvoiceOnIssue: row.autoEmailInvoiceOnIssue,
   }
 }
 
@@ -38,6 +40,7 @@ export async function updateInvoiceSettings(archiveAfterDays: number | null): Pr
   return {
     archiveAfterDays: row.archiveAfterDays,
     trackingNotificationsEnabled: parseNotificationMap(row.trackingNotificationsEnabled),
+    autoEmailInvoiceOnIssue: row.autoEmailInvoiceOnIssue,
   }
 }
 
@@ -52,6 +55,20 @@ export async function updateTrackingNotificationSettings(
   return {
     archiveAfterDays: row.archiveAfterDays,
     trackingNotificationsEnabled: parseNotificationMap(row.trackingNotificationsEnabled),
+    autoEmailInvoiceOnIssue: row.autoEmailInvoiceOnIssue,
+  }
+}
+
+export async function updateAutoEmailInvoiceOnIssue(enabled: boolean): Promise<InvoiceSettingsData> {
+  const row = await prisma.invoiceSettings.upsert({
+    where: { id: SETTINGS_ID },
+    update: { autoEmailInvoiceOnIssue: enabled },
+    create: { id: SETTINGS_ID, autoEmailInvoiceOnIssue: enabled },
+  })
+  return {
+    archiveAfterDays: row.archiveAfterDays,
+    trackingNotificationsEnabled: parseNotificationMap(row.trackingNotificationsEnabled),
+    autoEmailInvoiceOnIssue: row.autoEmailInvoiceOnIssue,
   }
 }
 
