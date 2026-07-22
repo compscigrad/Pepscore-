@@ -3,7 +3,7 @@
 // manually anytime via the "Email Invoice to Customer" button. Same branding
 // as emails/InvoiceShipmentUpdate.tsx; the full line-item/payment/tracking
 // detail lives in the attached Client Invoice PDF, not duplicated here.
-import { SUPPORT_EMAIL } from '@/lib/resend'
+import { BILLING_EMAIL } from '@/lib/resend'
 
 interface InvoiceIssuedProps {
   customerName: string
@@ -55,11 +55,11 @@ export function buildInvoiceIssuedHtml({ customerName, invoiceNumber, total, amo
     </div>
     <div style="background:#F5F5F0;padding:18px 36px;border-top:1px solid #E0DDD4">
       <p style="font-size:11px;color:#757575;line-height:1.7;margin:0">
-        Questions about this invoice? Reply to this message or contact ${SUPPORT_EMAIL}.
+        Questions about this invoice? Reply to this message or contact ${BILLING_EMAIL}.
       </p>
     </div>
     <div style="background:#1A1A1A;padding:20px 36px;text-align:center">
-      <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0">© ${year} Pepscore · ${SUPPORT_EMAIL}</p>
+      <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0">© ${year} Pepscore · ${BILLING_EMAIL}</p>
     </div>
   </div>
 </body>

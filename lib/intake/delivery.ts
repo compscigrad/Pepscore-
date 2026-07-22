@@ -3,7 +3,7 @@
 // SMS stays inert (isSmsConfigured() false, callers hide/disable the button)
 // until real Twilio credentials are added as env vars; no code change is
 // needed to activate it once they are — see .env.local.example.
-import { resend, FROM_EMAIL, SUPPORT_EMAIL } from '@/lib/resend'
+import { resend, FROM_EMAIL, CONTACT_EMAIL } from '@/lib/resend'
 import { buildIntakeLinkRequestHtml, intakeLinkRequestSubject } from '@/emails/IntakeLinkRequest'
 import { recordCustomerActivity } from '@/lib/customers'
 import { prisma } from '@/lib/prisma'
@@ -53,7 +53,7 @@ export async function sendIntakeLinkEmail(input: SendIntakeLinkInput): Promise<v
   await resend.emails.send({
     from: FROM_EMAIL,
     to: input.email,
-    replyTo: SUPPORT_EMAIL,
+    replyTo: CONTACT_EMAIL,
     subject: intakeLinkRequestSubject(),
     html: buildIntakeLinkRequestHtml({ customerName: input.customerName, link: input.link }),
   })

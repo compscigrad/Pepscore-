@@ -48,8 +48,9 @@ cp .env.local.example .env.local
 | `SHIPPO_API_KEY` | Shippo Dashboard → API → Token |
 | `SHIPPO_WEBHOOK_SECRET` | Generate any random string yourself — see "Invoice Shipment Tracking" below for how it's used |
 | `RESEND_API_KEY` | Resend Dashboard → API Keys |
-| `RESEND_FROM_EMAIL` | Your verified sending domain (e.g. `orders@pepscorelab.com`) — until pepscorelab.com is verified in Resend, leave unset; falls back to Resend's own sandbox address |
-| `SUPPORT_EMAIL` | Customer-facing reply-to/support address shown in every email footer (e.g. `contact@pepscorelab.com`) — safe to set now regardless of Resend domain verification |
+| `RESEND_FROM_EMAIL` | The one sender identity for all transactional email (e.g. `Pepscore Orders <orders@pepscorelab.com>`) — until pepscorelab.com is verified in Resend, leave unset; falls back to Resend's own sandbox address |
+| `RESEND_REPLY_TO_EMAIL` | Default Reply-To when a send site doesn't pick a more specific mailbox below. Defaults to `SUPPORT_EMAIL` if unset |
+| `ADMIN_EMAIL` / `BILLING_EMAIL` / `CONTACT_EMAIL` / `ORDERS_EMAIL` / `SUPPORT_EMAIL` | The five real pepscorelab.com mailboxes — see `lib/resend.ts` for which email type uses which as Reply-To. None require Resend domain verification (display text / Reply-To only, never the SMTP sender) — safe to set now |
 | `CRON_SECRET` | Generate any random string; must also be set in Vercel's Project Settings → Environment Variables (Production + Preview) — authenticates the daily invoice auto-archive sweep at `/api/cron/archive-invoices` and the shipment-tracking polling fallback at `/api/cron/poll-tracking` (see `vercel.json`) |
 | `NEXT_PUBLIC_APP_URL` | `http://localhost:3000` (local) or `https://pepscore.vercel.app` (prod) |
 
