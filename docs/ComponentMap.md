@@ -78,15 +78,30 @@
 **Props**: `initialEnabled: boolean`.
 **Dependencies**: `/api/admin/invoice-settings` PATCH.
 
+### `PaymentReceivedEmailSettingsForm.tsx`
+**Purpose**: Single on/off toggle for automatically emailing the customer a "Payment Received" confirmation (with the updated invoice PDF attached) every time a payment is recorded, also on `app/admin/settings/invoices`.
+**Props**: `initialEnabled: boolean`.
+**Dependencies**: `/api/admin/invoice-settings` PATCH.
+
+### `FulfillmentSettingsForm.tsx`
+**Purpose**: Return address and default package weight/dimensions/carrier for label purchase, on `app/admin/settings/fulfillment`. Mirrors `InvoiceEmailSettingsForm.tsx`'s local-state/PATCH/toast pattern. A missing return address is what `lib/fulfillment/labels.ts`'s `getShippingRatesForInvoice()` rejects on before ever calling Shippo.
+**Props**: `initialSettings: FulfillmentSettingsData`.
+**Dependencies**: `/api/admin/fulfillment-settings` GET/PATCH.
+
+### `PackagePresetsForm.tsx`
+**Purpose**: CRUD list of named, reusable package templates (weight + dimensions, e.g. "Small Box"/"Padded Envelope"), also on `app/admin/settings/fulfillment` — mirrors the existing `Promotion` list-management pattern. Selecting a preset in `ShipmentsSection.tsx`'s label-purchase panel pre-fills the weight/dimension inputs, which stay editable afterward.
+**Props**: `initialPresets: PackagePreset[]`.
+**Dependencies**: `/api/admin/package-presets` GET/POST, `/api/admin/package-presets/[id]` PATCH/DELETE.
+
 ### `TrackingNotificationSettingsForm.tsx`
 **Purpose**: Per-`ShippingStatus` checkboxes (the 8 notifiable statuses) for enabling/disabling customer shipment emails, also on `app/admin/settings/invoices`. A status missing from the saved map defaults to checked/enabled, mirroring `lib/invoiceSettings.ts`'s `isNotificationEnabled` default.
 **Props**: `initialEnabled: Partial<Record<ShippingStatus, boolean>>`.
 **Dependencies**: `/api/admin/invoice-settings` PATCH.
 
-### `TrackingSection.tsx`
-**Purpose**: Carrier-agnostic shipment tracking, edit-mode only (same reasoning as `PaymentSection` — no invoice id to attach a shipment to on an unsaved draft). Shows an "Add Tracking" form when no `Shipment` exists yet; once one does, shows the normalized status badge, carrier/tracking#/link, shipped/delivered/ETA dates, admin controls (Refresh, Mark Delivered, Resend Last Email, Remove Tracking — two-click confirm, Override Status), and an expandable tracking history list.
-**Props**: `invoiceId: string`, `shipment: (Shipment & { events: TrackingEvent[] }) | null`, `onTrackingUpdated: () => void`.
-**Dependencies**: `/api/admin/invoices/[id]/tracking` (POST add, PATCH actions, DELETE remove).
+### `ShipmentsSection.tsx`
+**Purpose**: Replaces `TrackingSection.tsx` now that `Shipment` is one-to-many (`docs/Decisions.md` #24). Edit-mode only (same reasoning as `PaymentSection`). Renders every shipment for the invoice newest-first — the derived primary is marked "Current" with the full action set (Refresh, Mark Delivered, Resend Last Email, Stop Monitoring, Override Status); every non-voided shipment (primary or not) gets a two-click "Void Shipment" button; voided shipments stay listed, dimmed, never removed. Keeps the existing manual "Add Tracking Manually" form unchanged. Adds a "Create Shipping Label" panel: a Fulfillment Gate eligibility banner (with a two-click "Fulfill Anyway" override when ineligible), a package-preset dropdown, weight/dimension inputs, a "Get Rates" step, a rate radio-list, and "Purchase Label" — on success opens the label PDF via `window.open`.
+**Props**: `invoiceId: string`, `shipments: (Shipment & { events: TrackingEvent[] })[]`, `onTrackingUpdated: () => void`.
+**Dependencies**: `/api/admin/invoices/[id]/tracking` (POST add, PATCH actions, DELETE remove), `/api/admin/invoices/[id]/fulfillment/eligibility` (GET), `/api/admin/invoices/[id]/fulfillment/override` (POST), `/api/admin/invoices/[id]/shipments/rates` (GET), `/api/admin/invoices/[id]/shipments` (POST purchase), `/api/admin/invoices/[id]/shipments/[shipmentId]/void` (POST), `/api/admin/package-presets` (GET), `lib/shipments/primary.ts` (to determine which shipment is primary for display).
 
 ### `InvoiceHeaderActions.tsx`
 **Purpose**: Duplicate / Archive-or-Restore / Delete actions on the invoice edit page header. Delete uses a two-click confirm (first click arms it for 4s, second click sends the request) rather than a native `confirm()` dialog, matching this UI's toast-driven conventions — moves the invoice to Trash (`deletedAt` set), it is not a hard delete.
@@ -113,6 +128,11 @@
 **Purpose**: `sendInvoiceIssuedEmailIfNeeded(invoice)` — called from `createInvoice`/`updateInvoice`/`recordPayment` in `lib/invoices.ts` — emails the Client Invoice PDF to `customerEmail` the first time an invoice reaches Issued/Paid/Partially Paid, gated by `InvoiceSettings.autoEmailInvoiceOnIssue` and by whether an `INVOICE_ISSUED_EMAIL_SENT` row already exists in `InvoiceActivityLog` for that invoice (not a boolean flag — see `docs/Decisions.md` #23). `sendInvoiceEmailManually(invoice, userId)` is the separate always-sends path behind the "Email Invoice to Customer" button, regardless of whether the auto-send already fired. `isInvoiceEmailTriggerStatus()` is the pure, unit-tested predicate for which `InvoiceStatus` values count as "issued or beyond."
 **Dependencies**: `emails/InvoiceIssued.tsx` (template), `lib/invoice/pdf/RecipientReceiptDocument.tsx` (attached PDF), `lib/resend.ts`.
 
+## `lib/paymentReceivedEmail.tsx` — automatic "payment received" customer email
+
+**Purpose**: `sendPaymentReceivedEmailIfNeeded(invoice, payment)` — called once from `lib/invoices.ts`'s `recordPayment()` right after each `InvoicePayment` row is created — emails a payment confirmation with the updated Client Invoice PDF attached, gated by `InvoiceSettings.autoEmailPaymentReceived`. Deliberately has no dedup guard, unlike the invoice-issued email above: each call already corresponds to exactly one real, distinct payment event, so there's no double-send risk to guard against.
+**Dependencies**: `emails/PaymentReceived.tsx` (template), `lib/invoice/pdf/RecipientReceiptDocument.tsx` (attached PDF), `lib/resend.ts`, `lib/customers.ts` (`recordCustomerActivity`).
+
 ## `lib/` — payment arrangements
 
 ### `lib/invoice/paymentArrangement.ts`
@@ -120,6 +140,30 @@
 
 ### `lib/paymentArrangements.ts`
 **Purpose**: Data access for `PaymentArrangement`/`PaymentArrangementInstallment` — `createPaymentArrangement()` (derives "Initial Payment Amount/Date" from the invoice's own payment history, generates and persists the future schedule) and `matchPaymentToNextPendingInstallment()` (called from `lib/invoices.ts`'s `recordPayment()` — any payment on an invoice with an arrangement satisfies the earliest pending installment). Deliberately never touches `Invoice.amountPaid`/`balanceDue` itself — those stay owned by `lib/invoices.ts`.
+
+## `lib/shipments/` — shared shipment helpers
+
+### `lib/shipments/primary.ts`
+**Purpose**: `getPrimaryShipment(shipments)` — the single pure function that derives which of an invoice's (possibly many) shipments is "current": the most recent non-voided one, falling back to the single most recent if every shipment is voided. Never a stored pointer (`docs/Decisions.md` #24). Used by `lib/tracking/service.ts`, `lib/tracking/notifications.tsx`, the PDF's `ShipmentTrackingSection`, the admin tracking API route, and `ShipmentsSection.tsx`.
+**Dependencies**: none — pure function, unit tested directly (`primary.test.ts`).
+
+## `lib/fulfillment/` — Fulfillment Gate, label purchase, settings
+
+### `lib/fulfillment/gate.ts`
+**Purpose**: `checkFulfillmentEligibility(invoiceId)` — the one centralized "can this invoice ship" check (paid in full, OR an active payment arrangement, OR a manual override), called both by the UI and again inside the purchase service itself. `computeFulfillmentEligibility()` is the pure decision logic underneath it, unit tested for override/paid/arrangement priority ordering with no database. `overrideFulfillmentEligibility(invoiceId, userId, note)` records a manual "fulfill anyway" as a permanent, attributed record on `Invoice` and logs it to both the invoice and customer activity timelines.
+**Dependencies**: `lib/paymentArrangements.ts` (`hasActivePaymentArrangement`), `lib/customers.ts` (`syncCustomerFromInvoiceEvent`).
+
+### `lib/fulfillment/labels.ts`
+**Purpose**: Real Shippo rate-shopping and label purchase for invoices. `getShippingRatesForInvoice(invoiceId, weight, dimensions)` builds the from/to addresses and parcel from `FulfillmentSettings` + the invoice's shipping address and calls `lib/shippo.ts`'s existing `getRates()`. `purchaseShippingLabelForInvoice(invoiceId, input, actor)` re-checks the Fulfillment Gate, guards against trashed/archived/cancelled invoices, purchases the label via `lib/shippo.ts`'s `purchaseLabel()` (requesting the `PDF_4x6` thermal format) *before* any database write, then calls `lib/tracking/service.ts`'s `registerShipmentForMonitoring()` with `origin: 'LABEL_PURCHASE'` and logs both timelines. `voidShipment(shipmentId, userId)` marks a shipment voided and stops monitoring it — never deletes the row. `FulfillmentLabelError` deliberately surfaces the real Shippo error text to the admin (contrast with `lib/tracking/shippoProvider.ts`'s `sanitizedShippoError` — this is a money-spending action the admin needs exact detail on to fix and retry).
+**Dependencies**: `lib/shippo.ts` (`getRates`, `purchaseLabel`), `./gate.ts`, `./settings.ts`, `lib/tracking/service.ts` (`registerShipmentForMonitoring`), `lib/tracking/carrierUrls.ts`.
+
+### `lib/fulfillment/settings.ts`
+**Purpose**: `getFulfillmentSettings()`/`updateFulfillmentSettings()` for the `FulfillmentSettings` singleton (return address, default carrier/service/weight/dimensions) — mirrors `lib/invoiceSettings.ts`'s get/update shape. `returnAddress` is full-replace-only in v1 (no null-clear support), sidestepping Prisma's nullable-Json ambiguity for a field the UI never needs to blank out.
+**Dependencies**: none beyond Prisma.
+
+### `lib/fulfillment/presets.ts`
+**Purpose**: `listPackagePresets()`/`createPackagePreset()`/`updatePackagePreset()`/`deletePackagePreset()` for the `PackagePreset` list table — mirrors `lib/promotions.ts`'s list/create shape.
+**Dependencies**: none beyond Prisma.
 
 ## `lib/tracking/` — carrier-agnostic shipment tracking
 
@@ -134,13 +178,13 @@
 **Purpose**: `getProviderForCarrier()` — the single place resolving which provider handles a given carrier. Adding a carrier via a different provider later means adding one adapter + one line here.
 
 ### `lib/tracking/service.ts`
-**Purpose**: The only module that mutates `Shipment`/`TrackingEvent`/`InvoiceActivityLog` rows. `addTrackingToInvoice()` (the full 9-step tracking-number workflow), `processTrackingEvents()` (dedup via `(shipmentId, eventHash)`, recomputes current status from whichever event is chronologically latest — not last-in-array, since carrier events can arrive out of order — then cascades into the invoice, activity log, `computeOrderStatus()`, and a notification), `refreshShipmentTracking()` (polling/manual refresh entry point), `markDeliveredManually()`/`overrideShippingStatus()`/`removeTracking()` (admin overrides, all logged).
+**Purpose**: The only module that mutates `Shipment`/`TrackingEvent`/`InvoiceActivityLog` rows. `registerShipmentForMonitoring()` is the shared "create a new Shipment row and denormalize its status onto the invoice" helper — called by both `addTrackingToInvoice()` (manual entry, `origin: 'MANUAL_ENTRY'`) and `lib/fulfillment/labels.ts`'s `purchaseShippingLabelForInvoice()` (`origin: 'LABEL_PURCHASE'`), so there's exactly one implementation of that concern. Since `Shipment` became one-to-many (`docs/Decisions.md` #24), a new physical package is always a new row — there's no "replace the existing shipment" branch anymore. `processTrackingEvents()` (dedup via `(shipmentId, eventHash)`, recomputes current status from whichever event is chronologically latest — not last-in-array, since carrier events can arrive out of order — then re-derives the primary shipment via `lib/shipments/primary.ts` and only cascades onto the invoice's denormalized fields if the updated shipment is primary), `refreshShipmentTracking()` (polling/manual refresh entry point), `markDeliveredManually()`/`overrideShippingStatus()`/`removeTracking()` (admin overrides on the primary shipment, all logged).
 
 ### `lib/tracking/orderStatus.ts`
 **Purpose**: `computeOrderStatus()` — the spec's "paid + delivered = completed" rule as a pure function, callable from both the payment side (`lib/invoices.ts`) and the shipping side without either module depending on the other.
 
 ### `lib/tracking/notifications.tsx`
-**Purpose**: `sendShipmentNotificationIfNeeded()` — gated by the notifiable-status list, the per-status settings toggle, and a dedup check against `ShipmentNotification` (never re-sends the same status twice for the same invoice); regenerates the Client Invoice PDF in-process and attaches it. Failures are recorded (`ShipmentNotification.status = 'FAILED'`), never thrown — a failed email never rolls back the tracking update that triggered it. `resendLastNotification()` is the admin manual-resend control.
+**Purpose**: `sendShipmentNotificationIfNeeded()` — gated by the notifiable-status list, the per-status settings toggle, and a dedup check against `ShipmentNotification` keyed on `(shipmentId, notificationType)` (never re-sends the same status twice for the *same shipment* — since `Shipment` became one-to-many, a second shipment on the same invoice reaching e.g. `DELIVERED` must still notify, so the dedup key had to move off `invoiceId` alone); regenerates the Client Invoice PDF in-process and attaches it. Failures are recorded (`ShipmentNotification.status = 'FAILED'`), never thrown — a failed email never rolls back the tracking update that triggered it. `resendLastNotification()` is the admin manual-resend control, using `lib/shipments/primary.ts` to resolve the current shipment.
 
 ### `lib/tracking/validation.ts`, `eventHash.ts`, `sanitize.ts`, `carrierUrls.ts`
 **Purpose**: Small pure helpers — advisory (non-blocking) tracking-number format checks per carrier, the deterministic dedup hash for a tracking event, HTML/control-character stripping for carrier-provided text before it's stored or rendered, and the carrier tracking-page URL builder. All covered by unit tests (`*.test.ts` alongside each) — see `docs/ChangeLog.md`.
