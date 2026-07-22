@@ -30,3 +30,9 @@ export const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? 'onboarding@resend.de
 // templates. Doesn't depend on Resend domain verification since it's only
 // ever used as display text / a Reply-To header, never as the SMTP sender.
 export const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL ?? 'contact@pepscorelab.com'
+
+// The owner/operator's own address — used as the suggested default when
+// adding the first Admin Notification Recipient, never sent from or hardcoded
+// into a template. Distinct from SUPPORT_EMAIL (customer-facing) and
+// FROM_EMAIL (SMTP sender).
+export const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'admin@pepscorelab.com'
