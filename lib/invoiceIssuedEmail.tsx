@@ -11,6 +11,7 @@ import { resend, FROM_EMAIL } from '@/lib/resend'
 import { RecipientReceiptDocument } from '@/lib/invoice/pdf/RecipientReceiptDocument'
 import { buildInvoiceIssuedHtml, invoiceIssuedSubject } from '@/emails/InvoiceIssued'
 import { getInvoiceSettings } from '@/lib/invoiceSettings'
+import { recordCustomerActivity } from '@/lib/customers'
 import type { InvoiceWithRelations } from '@/lib/invoices'
 
 const TRIGGER_STATUSES = ['ISSUED', 'PAID', 'PARTIALLY_PAID']
@@ -61,6 +62,16 @@ async function sendInvoiceEmail(invoice: InvoiceWithRelations, source: 'SYSTEM' 
         userId,
       },
     })
+    if (invoice.customerId) {
+      await recordCustomerActivity({
+        customerId: invoice.customerId,
+        invoiceId: invoice.id,
+        eventType: 'INVOICE_ISSUED_EMAIL_SENT',
+        newValue: recipient,
+        source,
+        userId,
+      })
+    }
     return true
   } catch (err) {
     console.error('[invoiceIssuedEmail] send failed:', err)

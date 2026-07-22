@@ -204,6 +204,15 @@ export async function recordCustomerActivity(input: RecordCustomerActivityInput)
   })
 }
 
+// Convenience wrapper for the invoice-side touchpoints (lib/invoices.ts,
+// lib/invoiceIssuedEmail.tsx, lib/tracking/service.ts): log what happened to
+// the customer timeline, then recompute their status from the result — the
+// two always happen together at these call sites.
+export async function syncCustomerFromInvoiceEvent(input: RecordCustomerActivityInput): Promise<void> {
+  await recordCustomerActivity(input)
+  await recomputeAndSaveCustomerStatus(input.customerId)
+}
+
 export async function getCustomerTimeline(customerId: string) {
   return prisma.customerActivityLog.findMany({
     where: { customerId },

@@ -11,6 +11,7 @@ import { assertPaymentWithinBalance, type InvoicePayload, type PaymentPayload } 
 import { matchPaymentToNextPendingInstallment } from '@/lib/paymentArrangements'
 import { computeOrderStatus } from '@/lib/tracking/orderStatus'
 import { sendInvoiceIssuedEmailIfNeeded } from '@/lib/invoiceIssuedEmail'
+import { syncCustomerFromInvoiceEvent } from '@/lib/customers'
 
 const invoiceWithRelations = Prisma.validator<Prisma.InvoiceDefaultArgs>()({
   include: {
@@ -185,6 +186,15 @@ export async function createInvoice(payload: InvoicePayload): Promise<InvoiceWit
   })
 
   await sendInvoiceIssuedEmailIfNeeded(invoice)
+  if (invoice.customerId) {
+    await syncCustomerFromInvoiceEvent({
+      customerId: invoice.customerId,
+      invoiceId: invoice.id,
+      eventType: invoice.status === 'DRAFT' ? 'DRAFT_INVOICE_CREATED' : 'INVOICE_CREATED',
+      newValue: invoice.status,
+      source: 'MANUAL',
+    })
+  }
   return invoice
 }
 
@@ -257,6 +267,16 @@ export async function updateInvoice(id: string, payload: InvoicePayload): Promis
   })
 
   await sendInvoiceIssuedEmailIfNeeded(invoice)
+  if (invoice.customerId && existing.status !== invoice.status) {
+    await syncCustomerFromInvoiceEvent({
+      customerId: invoice.customerId,
+      invoiceId: invoice.id,
+      eventType: invoice.status === 'ISSUED' ? 'INVOICE_ISSUED' : 'INVOICE_STATUS_UPDATED',
+      previousValue: existing.status,
+      newValue: invoice.status,
+      source: 'MANUAL',
+    })
+  }
   return invoice
 }
 
@@ -301,12 +321,30 @@ export async function recordPayment(invoiceId: string, payload: PaymentPayload):
 
   const updated = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId }, ...invoiceWithRelations })
   await sendInvoiceIssuedEmailIfNeeded(updated)
+  if (updated.customerId) {
+    await syncCustomerFromInvoiceEvent({
+      customerId: updated.customerId,
+      invoiceId: updated.id,
+      eventType: 'PAYMENT_RECEIVED',
+      newValue: `$${payload.amount.toFixed(2)} via ${payload.method}`,
+      source: 'MANUAL',
+    })
+  }
   return updated
 }
 
 // Archive rather than hard-delete, per the spec's Archive/Restore requirement.
 export async function archiveInvoice(id: string): Promise<InvoiceWithRelations> {
-  return prisma.invoice.update({ where: { id }, data: { archivedAt: new Date() }, ...invoiceWithRelations })
+  const invoice = await prisma.invoice.update({ where: { id }, data: { archivedAt: new Date() }, ...invoiceWithRelations })
+  if (invoice.customerId) {
+    await syncCustomerFromInvoiceEvent({
+      customerId: invoice.customerId,
+      invoiceId: invoice.id,
+      eventType: 'INVOICE_ARCHIVED',
+      source: 'MANUAL',
+    })
+  }
+  return invoice
 }
 
 export async function restoreInvoice(id: string): Promise<InvoiceWithRelations> {
