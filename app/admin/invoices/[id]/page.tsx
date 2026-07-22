@@ -9,6 +9,7 @@ import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
 import { getInvoice } from '@/lib/invoices'
 import { listPromotions } from '@/lib/promotions'
+import { isSmsConfigured } from '@/lib/intake/delivery'
 import { InvoiceBuilder } from '@/components/invoices/InvoiceBuilder'
 import { InvoiceHeaderActions } from '@/components/invoices/InvoiceHeaderActions'
 import { StatusBadge } from '@/components/invoices/StatusBadge'
@@ -55,7 +56,13 @@ export default async function EditInvoicePage({ params }: PageProps) {
           </div>
         </div>
 
-        <InvoiceBuilder mode="edit" initialInvoice={invoice} products={products} promotions={promotions} />
+        <InvoiceBuilder
+          mode="edit"
+          initialInvoice={invoice}
+          products={products}
+          promotions={promotions}
+          smsConfigured={isSmsConfigured()}
+        />
       </div>
     </main>
   )
