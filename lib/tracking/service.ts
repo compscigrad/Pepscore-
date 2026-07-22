@@ -14,6 +14,7 @@ import { computeEventHash } from './eventHash'
 import { sanitizeCarrierText } from './sanitize'
 import { computeOrderStatus } from './orderStatus'
 import { sendShipmentNotificationIfNeeded } from './notifications'
+import { syncCustomerFromInvoiceEvent } from '@/lib/customers'
 
 const TERMINAL_STATUSES: ShippingStatus[] = ['DELIVERED', 'RETURNED_TO_SENDER', 'LOST', 'CANCELLED']
 
@@ -172,6 +173,18 @@ export async function addTrackingToInvoice(
     latestMessage: 'Tracking number added',
   })
 
+  if (invoice.customerId) {
+    await syncCustomerFromInvoiceEvent({
+      customerId: invoice.customerId,
+      invoiceId,
+      eventType: isReplacement ? 'TRACKING_NUMBER_REPLACED' : 'TRACKING_ADDED',
+      previousValue: invoice.shipment?.trackingNumber,
+      newValue: trackingNumber,
+      source: actor.source,
+      userId: actor.userId,
+    })
+  }
+
   return { formatWarning: formatCheck.warning, customerNotified }
 }
 
@@ -279,6 +292,17 @@ export async function processTrackingEvents(
     status: latest.normalizedStatus,
     latestMessage: latest.carrierStatus ?? 'Status update',
   })
+
+  if (invoice.customerId) {
+    await syncCustomerFromInvoiceEvent({
+      customerId: invoice.customerId,
+      invoiceId: invoice.id,
+      eventType: isDelivered ? 'SHIPMENT_DELIVERED' : 'SHIPPING_STATUS_UPDATED',
+      previousValue: previousStatus,
+      newValue: latest.normalizedStatus,
+      source,
+    })
+  }
 }
 
 // Admin "Refresh tracking manually" / polling-cron entry point: fetches the
