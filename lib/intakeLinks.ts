@@ -7,6 +7,7 @@ import crypto from 'crypto'
 import type { IntakeLink } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { getInvoiceSettings } from '@/lib/invoiceSettings'
+import { recordCustomerActivity } from '@/lib/customers'
 
 // The token itself (unguessable, 48 hex chars) is the primary spam defense
 // (Decision 12); this just caps brute-force attempts against a single link.
@@ -23,7 +24,7 @@ export async function generateIntakeLink(input: GenerateIntakeLinkInput): Promis
   const expiresAt = new Date(Date.now() + settings.defaultIntakeLinkExpiryHours * 60 * 60 * 1000)
   const token = crypto.randomBytes(24).toString('hex')
 
-  return prisma.intakeLink.create({
+  const link = await prisma.intakeLink.create({
     data: {
       token,
       customerId: input.customerId ?? undefined,
@@ -32,6 +33,68 @@ export async function generateIntakeLink(input: GenerateIntakeLinkInput): Promis
       expiresAt,
     },
   })
+
+  // Timeline entry — write to whichever record already exists; a brand-new
+  // customer won't have one yet, so this may log to the invoice only.
+  if (link.customerId) {
+    await recordCustomerActivity({
+      customerId: link.customerId,
+      invoiceId: link.invoiceId,
+      eventType: 'INTAKE_LINK_GENERATED',
+      source: 'MANUAL',
+      userId: input.createdBy,
+    })
+  } else if (link.invoiceId) {
+    await prisma.invoiceActivityLog.create({
+      data: { invoiceId: link.invoiceId, eventType: 'INTAKE_LINK_GENERATED', source: 'MANUAL', userId: input.createdBy },
+    })
+  }
+
+  return link
+}
+
+// Every distinct state a link can be in, for admin display and the public
+// page's routing decision. Priority answers "can this link still be used,
+// and if not why" first, then whether it's already been submitted — a link
+// is multi-use, not single-use (see this file's own top comment), so a
+// SUBMITTED link still accepts further submissions unless it's also
+// expired/invalidated/attempt-limited.
+export type IntakeLinkState = 'ACTIVE' | 'VIEWED' | 'SUBMITTED' | 'EXPIRED' | 'INVALIDATED' | 'ATTEMPT_LIMIT_REACHED'
+
+export function getIntakeLinkState(
+  link: Pick<IntakeLink, 'expiresAt' | 'viewedAt' | 'invalidatedAt' | 'submittedAt' | 'submissionAttempts'>
+): IntakeLinkState {
+  if (link.invalidatedAt) return 'INVALIDATED'
+  if (link.expiresAt < new Date()) return 'EXPIRED'
+  if (link.submissionAttempts >= MAX_SUBMISSION_ATTEMPTS) return 'ATTEMPT_LIMIT_REACHED'
+  if (link.submittedAt) return 'SUBMITTED'
+  if (link.viewedAt) return 'VIEWED'
+  return 'ACTIVE'
+}
+
+const USABLE_STATES: IntakeLinkState[] = ['ACTIVE', 'VIEWED', 'SUBMITTED']
+
+// The requirement-11 safeguard: before minting a new link for an invoice or
+// customer, check whether a still-usable one already exists so the admin can
+// reuse/copy it instead of silently creating a second active link.
+export async function findActiveIntakeLinkFor(input: {
+  customerId?: string | null
+  invoiceId?: string | null
+}): Promise<IntakeLink | null> {
+  if (!input.customerId && !input.invoiceId) return null
+
+  const candidates = await prisma.intakeLink.findMany({
+    where: {
+      invalidatedAt: null,
+      OR: [
+        ...(input.customerId ? [{ customerId: input.customerId }] : []),
+        ...(input.invoiceId ? [{ invoiceId: input.invoiceId }] : []),
+      ],
+    },
+    orderBy: { createdAt: 'desc' },
+  })
+
+  return candidates.find((link) => USABLE_STATES.includes(getIntakeLinkState(link))) ?? null
 }
 
 export type IntakeLinkValidation =
@@ -49,7 +112,21 @@ export async function validateIntakeLink(token: string): Promise<IntakeLinkValid
   if (link.submissionAttempts >= MAX_SUBMISSION_ATTEMPTS) return { valid: false, reason: 'TOO_MANY_ATTEMPTS' }
 
   if (!link.viewedAt) {
-    await prisma.intakeLink.update({ where: { token }, data: { viewedAt: new Date() } })
+    const viewedAt = new Date()
+    await prisma.intakeLink.update({ where: { token }, data: { viewedAt } })
+    link.viewedAt = viewedAt // the caller relies on this reflecting the just-made update, not the pre-update fetch
+    if (link.customerId) {
+      await recordCustomerActivity({
+        customerId: link.customerId,
+        invoiceId: link.invoiceId,
+        eventType: 'INTAKE_LINK_VIEWED',
+        source: 'SYSTEM',
+      })
+    } else if (link.invoiceId) {
+      await prisma.invoiceActivityLog.create({
+        data: { invoiceId: link.invoiceId, eventType: 'INTAKE_LINK_VIEWED', source: 'SYSTEM' },
+      })
+    }
   }
 
   return { valid: true, link }
