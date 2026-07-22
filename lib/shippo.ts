@@ -71,14 +71,16 @@ export async function getRates(
   return data.rates ?? []
 }
 
-// Purchase a label using a rate object_id
-export async function purchaseLabel(rateObjectId: string): Promise<ShippoLabel> {
+// Purchase a label using a rate object_id. labelFileType defaults to 'PDF'
+// (unchanged for the existing Order-checkout caller); the invoice
+// fulfillment flow passes 'PDF_4x6', sized for thermal label printers.
+export async function purchaseLabel(rateObjectId: string, labelFileType: string = 'PDF'): Promise<ShippoLabel> {
   const res = await fetch(`${SHIPPO_BASE}/transactions`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify({
       rate: rateObjectId,
-      label_file_type: 'PDF',
+      label_file_type: labelFileType,
       async: false,
     }),
   })

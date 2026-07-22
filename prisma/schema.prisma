@@ -979,5 +979,46 @@ model InvoiceSettings {
   // accepting submissions (still regenerable). See docs/Decisions.md.
   defaultIntakeLinkExpiryHours Int @default(48)
 
+  // Auto-email the customer once a payment is recorded on their invoice.
+  // Off doesn't touch manual actions — same "toggle only affects the
+  // automatic send" shape as autoEmailInvoiceOnIssue.
+  autoEmailPaymentReceived Boolean @default(true)
+
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Fulfillment Settings ────────────────────────────────────────────────────
+// Package defaults + the return/sender address used for every Shippo rate
+// request and label purchase — admin-editable so it never requires a
+// redeploy, same reasoning as InvoiceSettings above. Singleton, same pattern.
+model FulfillmentSettings {
+  id String @id @default("singleton")
+
+  // { name, street1, street2?, city, state, zip, country, phone?, email? } —
+  // shape matches lib/shippo.ts's AddressInput exactly.
+  returnAddress Json?
+
+  defaultCarrier  ShippingCarrier?
+  defaultService  String?
+  defaultWeightOz Float?
+  defaultLengthIn Float?
+  defaultWidthIn  Float?
+  defaultHeightIn Float?
+
+  updatedAt DateTime @updatedAt
+}
+
+// Reusable named package templates (e.g. "Small Box", "Padded Envelope") —
+// same "reusable template, not retyped every time" reasoning as Promotion.
+model PackagePreset {
+  id       String  @id @default(cuid())
+  name     String
+  weightOz Float
+  lengthIn Float?
+  widthIn  Float?
+  heightIn Float?
+  active   Boolean @default(true)
+
+  createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
