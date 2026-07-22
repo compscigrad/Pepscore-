@@ -23,6 +23,7 @@ import { pillPrimary } from './theme'
 import { makeKey, EMPTY_DRAFT } from './types'
 import type { InvoiceDraft, AddressDraft, Product, Promotion } from './types'
 import type { InvoiceWithRelations } from '@/lib/invoices'
+import { getPrimaryShipment } from '@/lib/shipments/primary'
 
 interface Props {
   mode: 'create' | 'edit'
@@ -244,7 +245,7 @@ export function InvoiceBuilder({ mode, initialInvoice, products, promotions: ini
         <TotalsSummary totals={totals} shippingCost={draft.shipping.shippingCost} amountPaid={invoice?.amountPaid} />
 
         {mode === 'edit' && invoice ? (
-          <TrackingSection invoiceId={invoice.id} shipment={invoice.shipment} onTrackingUpdated={refreshInvoice} />
+          <TrackingSection invoiceId={invoice.id} shipment={getPrimaryShipment(invoice.shipments)} onTrackingUpdated={refreshInvoice} />
         ) : null}
 
         {mode === 'edit' && invoice ? (

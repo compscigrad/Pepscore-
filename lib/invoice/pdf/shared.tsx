@@ -6,6 +6,7 @@ import { BRAND } from './brand'
 import { formatMoney, formatDate, formatCarrierLabel } from '@/lib/invoice/format'
 import { INVOICE_LEGAL_SECTIONS } from '@/lib/invoice/legal'
 import type { InvoiceWithRelations } from '@/lib/invoices'
+import { getPrimaryShipment } from '@/lib/shipments/primary'
 
 export { formatMoney, formatDate }
 
@@ -255,7 +256,7 @@ export function CustomerShippingSection({ invoice }: { invoice: InvoiceWithRelat
 // docs/Decisions.md #18) is that wrapping a whole section atomically is
 // exactly what causes unnecessary page-2 jumps.
 export function ShipmentTrackingSection({ invoice }: { invoice: InvoiceWithRelations }) {
-  const shipment = invoice.shipment
+  const shipment = getPrimaryShipment(invoice.shipments)
   if (!shipment) return null
 
   return (

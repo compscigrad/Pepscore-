@@ -13,6 +13,7 @@ import {
   removeTracking,
 } from '@/lib/tracking/service'
 import { resendLastNotification } from '@/lib/tracking/notifications'
+import { getPrimaryShipment } from '@/lib/shipments/primary'
 
 function isAdmin(userId: string | null) {
   return userId === process.env.ADMIN_CLERK_USER_ID
@@ -91,7 +92,8 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
 
     switch (action) {
       case 'refresh': {
-        const shipment = await prisma.shipment.findUnique({ where: { invoiceId: id } })
+        const shipments = await prisma.shipment.findMany({ where: { invoiceId: id } })
+        const shipment = getPrimaryShipment(shipments)
         if (!shipment) return NextResponse.json({ error: 'No tracking on this invoice' }, { status: 400 })
         await refreshShipmentTracking(shipment.id, 'MANUAL')
         break
@@ -108,7 +110,10 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
         break
     }
 
-    const invoice = await prisma.invoice.findUnique({ where: { id }, include: { shipment: true } })
+    const invoice = await prisma.invoice.findUnique({
+      where: { id },
+      include: { shipments: { orderBy: { createdAt: 'desc' } } },
+    })
     return NextResponse.json(invoice)
   } catch (err: unknown) {
     if (err instanceof z.ZodError) {
