@@ -7,6 +7,7 @@ import {
   getInvoiceSettings,
   updateInvoiceSettings,
   updateTrackingNotificationSettings,
+  updateAutoEmailInvoiceOnIssue,
 } from '@/lib/invoiceSettings'
 
 function isAdmin(userId: string | null) {
@@ -17,6 +18,7 @@ function isAdmin(userId: string | null) {
 const patchSchema = z.object({
   archiveAfterDays: z.number().int().positive().nullable().optional(),
   trackingNotificationsEnabled: z.record(z.string(), z.boolean()).optional(),
+  autoEmailInvoiceOnIssue: z.boolean().optional(),
 })
 
 export async function GET() {
@@ -40,6 +42,11 @@ export async function PATCH(req: NextRequest) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         parsed.trackingNotificationsEnabled as any
       )
+      return NextResponse.json(settings)
+    }
+
+    if (parsed.autoEmailInvoiceOnIssue !== undefined) {
+      const settings = await updateAutoEmailInvoiceOnIssue(parsed.autoEmailInvoiceOnIssue)
       return NextResponse.json(settings)
     }
 

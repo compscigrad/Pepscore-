@@ -175,6 +175,17 @@ model Invoice {
   lastNotificationRecipient     String?
   lastNotificationFailureReason String?
 
+  // Denormalized snapshot of the most recent "invoice emailed to customer"
+  // send (auto-sent once on first reaching ISSUED/PAID/PARTIALLY_PAID, or
+  // manually resent anytime after) — same shape as the notification fields
+  // above, full history lives in InvoiceActivityLog. Presence of an
+  // INVOICE_ISSUED_EMAIL_SENT activity-log row is what gates the one-time
+  // auto-send, not a separate boolean, so re-sending manually never confuses
+  // "have we auto-sent yet."
+  lastInvoiceEmailSentAt        DateTime?
+  lastInvoiceEmailStatus        String?
+  lastInvoiceEmailFailureReason String?
+
   // Financials — stored (not just derived) so history survives later price/promo edits
   subtotal      Float @default(0)
   discountTotal Float @default(0)
@@ -671,6 +682,11 @@ model InvoiceSettings {
   // enabled — so the default (empty/null) is "everything on" without
   // needing to seed every enum value. See lib/tracking/notifications.ts.
   trackingNotificationsEnabled Json?
+
+  // Auto-email the Client Invoice PDF to customerEmail the first time an
+  // invoice reaches ISSUED/PAID/PARTIALLY_PAID. Off doesn't touch the manual
+  // "Email Invoice to Customer" button — that always works regardless.
+  autoEmailInvoiceOnIssue Boolean @default(true)
 
   updatedAt DateTime @updatedAt
 }

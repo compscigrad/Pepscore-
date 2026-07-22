@@ -2,6 +2,21 @@
 
 Notable changes to the invoice module. Ordinary commits don't all need an entry here — this tracks changes future engineers would want a summary of before digging into `git log`.
 
+## Unreleased — Automatic "invoice issued" customer email
+
+- The first time an invoice reaches Issued/Paid/Partially Paid (from any of `createInvoice`/`updateInvoice`/`recordPayment`), the Client Invoice PDF is automatically emailed to the customer on file — see `docs/Decisions.md` #23 for why this is gated by `InvoiceActivityLog` presence rather than a boolean flag.
+- New `lib/invoiceIssuedEmail.tsx` (`sendInvoiceIssuedEmailIfNeeded`, `sendInvoiceEmailManually`) and `emails/InvoiceIssued.tsx` template, matching the branding/attachment pattern already used for shipment notifications.
+- New "Email Invoice to Customer" button (`components/invoices/PDFExportButtons.tsx`, `POST /api/admin/invoices/[id]/email`) — always sends/resends regardless of whether the one-time auto-send already fired.
+- New Settings → Invoices toggle (`InvoiceEmailSettingsForm.tsx`, `InvoiceSettings.autoEmailInvoiceOnIssue`, default on) — off only disables the automatic trigger, never the manual button.
+- New `Invoice` fields: `lastInvoiceEmailSentAt`/`Status`/`FailureReason`, mirroring the existing `lastNotification*` tracking-email fields.
+- Verified via two safe scripted checks (no real email risk): the no-customer-email guard skips silently, and the dedup guard never double-sends — both confirmed against the shared local/production database. `tsc`/`eslint`/`vitest`/`next build` all clean.
+
+## Unreleased — Sanitized Shippo API errors + Vercel Hobby cron fix
+
+- `registerTracking`/`getTrackingStatus` no longer throw raw Shippo error JSON into the admin-facing toast — `sanitizedShippoError()` maps the missing-payment-method and sandbox-carrier-rejection errors to plain English, with a generic fallback for anything else; the raw payload still reaches server logs via `console.error`, never the client.
+- Fixed `poll-tracking`'s cron schedule (`vercel.json`) from every 4 hours to once daily (`0 6 * * *`, matching `archive-invoices`) — Hobby-tier Vercel projects reject the *entire deployment* if any cron is faster than daily, which had been silently blocking every production deploy since the carrier-tracking PR merged.
+- Went live end-to-end in production for the first time: a live Shippo account (replacing the sandbox key), a `SHIPPO_WEBHOOK_SECRET` + registered production webhook, and a real USPS tracking number that resolved to 16 real historical events and a correct `DELIVERED` status — confirmed the "paid + delivered = completed" rule correctly held off completion on a still-partially-paid invoice.
+
 ## Unreleased — Carrier-agnostic shipment tracking
 
 - Added a full tracking subsystem under `lib/tracking/` behind a `ShippingProvider` interface, with Shippo (already a project dependency for Order label purchases) as the only implementation today — see `docs/Decisions.md` #22 for why Shippo and why the abstraction.
