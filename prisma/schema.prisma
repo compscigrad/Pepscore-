@@ -26,6 +26,8 @@ model User {
 
   orders         Order[]
   complianceLogs ComplianceAcknowledgment[]
+  // Optional 1:1 — see Customer.userId below for the linking rules.
+  customer       Customer?
 
   @@index([email])
 }
@@ -724,6 +726,17 @@ model Customer {
   company   String?
   email     String?
   phone     String?
+
+  // Optional link to the Clerk-authenticated storefront User this Customer
+  // corresponds to. Null for admin-entered and intake-only customers (no
+  // login) — that must keep working exactly as today. @unique enforces the
+  // 1:1: a User can never end up linked to more than one Customer. No
+  // explicit onDelete — same default (SetNull) already used by every other
+  // optional User relation in this schema (Order.user, ComplianceAcknowledgment.user),
+  // so deleting a User never deletes or cascades into Customer history.
+  // Resolution/linking logic lives in lib/customers.ts, never inline here.
+  userId String? @unique
+  user   User?   @relation(fields: [userId], references: [id])
 
   billingAddress  Json?
   shippingAddress Json?
