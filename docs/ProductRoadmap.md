@@ -14,27 +14,20 @@ That operational core is now the foundation, not the frontier. **Phase 2's job i
 
 This is foundational context for every phase below, not a phase of its own — it governs how the storefront (2B) and any future public-facing work gets built.
 
+**Updated 2026-07-22**: earlier versions of this section assumed a full domain cutover (`pepscorelab.com` eventually retiring the landing page entirely) was the default plan. That assumption is explicitly withdrawn — see "Current Architecture" below. The two frontends are now a deliberate long-term structure, not a temporary state pending cutover.
+
 ### Current Architecture
 
-The public-facing **PepscoreLab.com** landing page is already complete and serves as the live marketing website for the business.
+Two separate Vercel projects, confirmed by direct inspection of both projects' Domains settings:
 
-The application currently under active development on the Vercel project (this repo) is the future production platform. It contains the administrative infrastructure, invoice system, customer management, fulfillment workflow, intake system, authentication, and all core business functionality.
+- **`pepscore-landing`** — owns `pepscorelab.com` and `www.pepscorelab.com` (redirect + Production). This is the public marketing/brand site: education, product information, trust building, SEO, conversions. It remains the primary domain visitors see.
+- **`pepscore`** — the operational application (admin dashboard, invoices, customers, Stripe, Shippo, Resend, CRM, fulfillment). Has **zero domains attached**; reachable only at its Vercel-assigned URLs (`pepscore.vercel.app`, `pepscore-compscigrads-projects.vercel.app`). May get its own subdomain later (e.g. `app.pepscorelab.com`), but that is not yet decided.
 
-The Vercel application is expected to eventually replace the current landing page entirely. When development reaches production readiness, the PepscoreLab.com domain will be pointed directly to this application, and the existing landing page will be retired. This migration should require little more than updating DNS and routing rather than changing application logic or business workflows.
+These are **two interfaces to one platform, not two businesses** — both must share the same backend database, authentication system, customer records, invoice/order/shipment data, Resend configuration, and Google Workspace email identities (`orders@`/`billing@`/`support@`/`contact@`/`admin@pepscorelab.com`). Never duplicate administrative functionality or spin up a second database.
 
-### Interim Integration Strategy
+The landing page should carry CTAs — "Admin Login," "Customer Portal," "Order Status," "Request Invoice" — that route into the application; it should never contain a second admin system of its own.
 
-While this application continues to be developed, the existing PepscoreLab.com landing page should begin acting as an entry point into it. Administrative functionality should become accessible from the landing page without duplicating any business logic — for example, "Admin Sign In," "Dashboard," "Invoices," "Customer Management," "Intake Management" should all authenticate into and operate directly against this same Vercel application.
-
-The landing page should not contain a separate admin system. It should simply provide navigation into the application already hosted here.
-
-### Single Source of Truth
-
-During this transition period there must remain only one authentication system, database, API, customer database, invoice system, intake workflow, fulfillment workflow, notification system, and administrative dashboard. Whether accessed through the existing PepscoreLab.com landing page or this Vercel application directly, it should be the exact same backend and the exact same data — never duplicate administrative functionality or separate databases.
-
-### Long-Term Objective
-
-As more application features are completed, they should be exposed through the existing landing page where appropriate. Once this application reaches production readiness, the domain simply moves from the landing page to the application, and the landing page can be retired entirely without requiring changes to the backend, authentication, customer records, invoices, fulfillment, notifications, or any other business system. Every feature built here should keep that transition seamless and nearly transparent to both administrators and customers — a reason, alongside the identity/checkout decisions below, to avoid building anything that would only make sense under a second, separate frontend.
+**Moving the root domain to the application is explicitly not the default next step.** Final routing architecture (whether `pepscorelab.com` ever points at the app, whether the app gets its own subdomain instead, or both coexist indefinitely) is an open decision to make later — don't build anything that assumes one outcome over the other.
 
 ## Foundation Assessment — is it stable enough to build on?
 
