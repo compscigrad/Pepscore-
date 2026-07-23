@@ -52,7 +52,7 @@ cp .env.local.example .env.local
 | `RESEND_REPLY_TO_EMAIL` | Default Reply-To when a send site doesn't pick a more specific mailbox below. Defaults to `SUPPORT_EMAIL` if unset |
 | `ADMIN_EMAIL` / `BILLING_EMAIL` / `CONTACT_EMAIL` / `ORDERS_EMAIL` / `SUPPORT_EMAIL` | The five real pepscorelab.com mailboxes — see `lib/resend.ts` for which email type uses which as Reply-To. None require Resend domain verification (display text / Reply-To only, never the SMTP sender) — safe to set now |
 | `CRON_SECRET` | Generate any random string; must also be set in Vercel's Project Settings → Environment Variables (Production + Preview) — authenticates the daily invoice auto-archive sweep at `/api/cron/archive-invoices` and the shipment-tracking polling fallback at `/api/cron/poll-tracking` (see `vercel.json`) |
-| `NEXT_PUBLIC_APP_URL` | `http://localhost:3000` (local) or `https://pepscore.vercel.app` (prod) |
+| `NEXT_PUBLIC_APP_URL` | `http://localhost:3000` (local) or `https://pepscore-compscigrads-projects.vercel.app` (prod) — must match a domain/alias that actually has a live deployment; `pepscore.vercel.app` does not and was found broken in production (see docs/ChangeLog.md) |
 
 ### Ship-From Address (used for Shippo label creation)
 ```
