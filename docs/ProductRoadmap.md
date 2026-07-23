@@ -21,7 +21,7 @@ This is foundational context for every phase below, not a phase of its own — i
 Two separate Vercel projects, confirmed by direct inspection of both projects' Domains settings:
 
 - **`pepscore-landing`** — owns `pepscorelab.com` and `www.pepscorelab.com` (redirect + Production). This is the public marketing/brand site: education, product information, trust building, SEO, conversions. It remains the primary domain visitors see.
-- **`pepscore`** — the operational application (admin dashboard, invoices, customers, Stripe, Shippo, Resend, CRM, fulfillment). Has **zero domains attached**; reachable only at its Vercel-assigned URLs (`pepscore.vercel.app`, `pepscore-compscigrads-projects.vercel.app`). May get its own subdomain later (e.g. `app.pepscorelab.com`), but that is not yet decided.
+- **`pepscore`** — the operational application (admin dashboard, invoices, customers, Stripe, Shippo, Resend, CRM, fulfillment). Has **zero domains attached**; reachable only at its Vercel-assigned URL `pepscore-compscigrads-projects.vercel.app`. (`pepscore.vercel.app` looks like it should also work but has no live deployment behind it — confirmed 404; don't use it anywhere, including `NEXT_PUBLIC_APP_URL`.) May get its own subdomain later (e.g. `app.pepscorelab.com`), but that is not yet decided.
 
 These are **two interfaces to one platform, not two businesses** — both must share the same backend database, authentication system, customer records, invoice/order/shipment data, Resend configuration, and Google Workspace email identities (`orders@`/`billing@`/`support@`/`contact@`/`admin@pepscorelab.com`). Never duplicate administrative functionality or spin up a second database.
 
