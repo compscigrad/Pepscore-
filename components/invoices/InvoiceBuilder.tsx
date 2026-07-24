@@ -20,10 +20,26 @@ import { IntakeLinkSection } from './IntakeLinkSection'
 import { TotalsSummary } from './TotalsSummary'
 import { InvoicePreview } from './InvoicePreview'
 import { PDFExportButtons } from './PDFExportButtons'
-import { pillPrimary } from './theme'
+import { card, mutedText, pillPrimary, sectionHeading } from './theme'
 import { makeKey, EMPTY_DRAFT } from './types'
 import type { InvoiceDraft, AddressDraft, Product, Promotion } from './types'
 import type { InvoiceWithRelations } from '@/lib/invoices'
+
+// Turns the server's { error, issues } shape (zod's err.issues, when present)
+// into a readable message — the generic top-level "error" string alone
+// (e.g. "Validation failed") never says which field, which is unusable in
+// practice for a real multi-field form like this one.
+function describeApiError(data: unknown, fallback: string): string {
+  if (data && typeof data === 'object' && 'issues' in data && Array.isArray((data as { issues: unknown }).issues)) {
+    const issues = (data as { issues: Array<{ message?: string }> }).issues
+    const messages = issues.map((i) => i.message).filter(Boolean)
+    if (messages.length > 0) return messages.join('; ')
+  }
+  if (data && typeof data === 'object' && 'error' in data && typeof (data as { error: unknown }).error === 'string') {
+    return (data as { error: string }).error
+  }
+  return fallback
+}
 
 interface Props {
   mode: 'create' | 'edit'
@@ -167,7 +183,7 @@ export function InvoiceBuilder({ mode, initialInvoice, products, promotions: ini
         body: JSON.stringify(payload),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? 'Failed to save invoice')
+      if (!res.ok) throw new Error(describeApiError(data, 'Failed to save invoice'))
 
       toast.success(mode === 'create' ? 'Invoice created' : 'Invoice saved')
       if (mode === 'create') {
@@ -180,6 +196,47 @@ export function InvoiceBuilder({ mode, initialInvoice, products, promotions: ini
       toast.error(err instanceof Error ? err.message : 'Failed to save invoice')
     } finally {
       setSaving(false)
+    }
+  }
+
+  // Create-mode-only shortcut: the admin has just a name + phone/email, no
+  // products yet, and wants to send an intake request right now rather than
+  // build the full invoice first. Creates a zero-item draft (see
+  // app/api/admin/invoices/quick-intake/route.ts) and redirects into edit
+  // mode, where the existing Request Customer Information section (SMS/
+  // email send included) already works — no separate UI to duplicate here.
+  const [sendingQuickIntake, setSendingQuickIntake] = useState(false)
+
+  async function sendQuickIntake() {
+    if (!draft.customer.customerName.trim()) {
+      toast.error('Customer name is required')
+      return
+    }
+    if (!draft.customer.customerEmail.trim() && !draft.customer.customerPhone.trim()) {
+      toast.error('Provide at least an email or phone number')
+      return
+    }
+
+    setSendingQuickIntake(true)
+    try {
+      const res = await fetch('/api/admin/invoices/quick-intake', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerName: draft.customer.customerName,
+          customerEmail: draft.customer.customerEmail || undefined,
+          customerPhone: draft.customer.customerPhone || undefined,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(describeApiError(data, 'Failed to start intake request'))
+
+      toast.success('Draft started — send the intake request from here')
+      router.push(`/admin/invoices/${data.id}`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to start intake request')
+    } finally {
+      setSendingQuickIntake(false)
     }
   }
 
@@ -217,6 +274,23 @@ export function InvoiceBuilder({ mode, initialInvoice, products, promotions: ini
             }))
           }
         />
+        {mode === 'create' ? (
+          <div className={`${card} p-6`}>
+            <h2 className={`${sectionHeading} mb-1`}>Request Customer Information</h2>
+            <p className={`${mutedText} text-sm mb-4`}>
+              Don&apos;t have the order details yet? Start a draft from just a name and phone/email, and send the
+              client a secure link to fill in the rest themselves.
+            </p>
+            <button
+              type="button"
+              onClick={sendQuickIntake}
+              disabled={sendingQuickIntake}
+              className={`${pillPrimary} px-6 py-2.5`}
+            >
+              {sendingQuickIntake ? 'Starting...' : 'Start Draft & Send Intake Request'}
+            </button>
+          </div>
+        ) : null}
         <ShippingSection
           value={draft.shipping}
           onChange={(shipping) => setDraft((d) => ({ ...d, shipping }))}
