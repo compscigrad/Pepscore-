@@ -34,6 +34,7 @@ export function InvoicePreview({ draft, totals, invoiceNumber }: Props) {
           <p className="text-[13px] text-dark">{customer.customerName || '—'}</p>
           {customer.customerCompany ? <p className="text-[13px] text-dark">{customer.customerCompany}</p> : null}
           {customer.customerEmail ? <p className="text-[12px] text-g700">{customer.customerEmail}</p> : null}
+          {customer.customerPhone ? <p className="text-[12px] text-g700">{customer.customerPhone}</p> : null}
         </div>
         <div className="bg-g100 rounded-lg p-3">
           <p className="text-[9px] font-bold tracking-[0.1em] uppercase text-g500 mb-1">Ship To</p>
