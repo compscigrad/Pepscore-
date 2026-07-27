@@ -63,7 +63,10 @@ async function main() {
       shippingCost,
       deliveryStatus: 'DELIVERED',
       deliveredDate: new Date('2026-07-18'),
-      status: 'PARTIALLY_PAID',
+      // A positive balance after issuance is always PENDING now — payment
+      // state lives on paymentStatus instead (see docs/Decisions.md).
+      status: 'PENDING',
+      paymentStatus: 'PARTIALLY_PAID',
       subtotal: totals.subtotal,
       discountTotal: totals.discountTotal,
       total: totals.total,

@@ -21,7 +21,7 @@ import { TotalsSummary } from './TotalsSummary'
 import { InvoicePreview } from './InvoicePreview'
 import { PDFExportButtons } from './PDFExportButtons'
 import { card, mutedText, pillPrimary, sectionHeading } from './theme'
-import { makeKey, EMPTY_DRAFT } from './types'
+import { makeKey, EMPTY_DRAFT, INVOICE_STATUSES } from './types'
 import type { InvoiceDraft, AddressDraft, Product, Promotion } from './types'
 import type { InvoiceWithRelations } from '@/lib/invoices'
 
@@ -67,6 +67,19 @@ function toAddressDraft(value: unknown): AddressDraft {
   }
 }
 
+// invoice.status can be PENDING (or, on old rows, a legacy PAID/PARTIALLY_PAID/
+// APPROVED value) — none of those are admin-submittable (see
+// INVOICE_STATUSES / lib/invoice/validation.ts), so round-tripping them
+// straight into the draft would make Save Changes 400 on every subsequent
+// edit to an issued-with-a-balance invoice until the admin happened to
+// touch the dropdown themselves. Every excluded value implies the invoice
+// has already been issued at least once, so ISSUED is always the correct,
+// safe stand-in — the server re-derives the real status from balance/
+// payments on every save regardless of what's sent here.
+function toEditableStatus(status: InvoiceDraft['status']): InvoiceDraft['status'] {
+  return INVOICE_STATUSES.includes(status) ? status : 'ISSUED'
+}
+
 function invoiceToDraft(invoice: InvoiceWithRelations): InvoiceDraft {
   return {
     orderId: invoice.orderId,
@@ -105,7 +118,7 @@ function invoiceToDraft(invoice: InvoiceWithRelations): InvoiceDraft {
       type: d.type,
       amount: d.amount,
     })),
-    status: invoice.status,
+    status: toEditableStatus(invoice.status),
   }
 }
 

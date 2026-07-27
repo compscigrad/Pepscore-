@@ -43,7 +43,7 @@ export default async function AccountPage() {
     where: { userId: user.id },
     include: {
       items: true,
-      invoice: { select: { invoiceNumber: true, status: true } },
+      invoice: { select: { invoiceNumber: true, status: true, paymentStatus: true } },
       shippingLabel: { select: { trackingNumber: true, carrier: true } },
     },
     orderBy: { createdAt: 'desc' },
@@ -113,8 +113,8 @@ export default async function AccountPage() {
                       <div className="text-[12px]">
                         <span className="text-g500">Invoice: </span>
                         <span className="font-heading font-bold text-dark">{order.invoice.invoiceNumber}</span>
-                        <span className={`ml-2 text-[10px] font-bold tracking-[0.06em] uppercase px-2 py-0.5 rounded-full ${order.invoice.status === 'PAID' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                          {order.invoice.status}
+                        <span className={`ml-2 text-[10px] font-bold tracking-[0.06em] uppercase px-2 py-0.5 rounded-full ${order.invoice.paymentStatus === 'PAID' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                          {order.invoice.paymentStatus === 'PAID' ? 'PAID' : order.invoice.status}
                         </span>
                       </div>
                     )}

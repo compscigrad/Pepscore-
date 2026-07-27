@@ -58,9 +58,12 @@ export const invoicePayloadSchema = z.object({
   items: z.array(lineItemSchema).min(1, 'At least one product is required'),
   discounts: z.array(discountSchema).default([]),
 
-  status: z
-    .enum(['DRAFT', 'PENDING', 'APPROVED', 'ISSUED', 'PAID', 'PARTIALLY_PAID', 'CANCELLED', 'REFUNDED', 'VOID'])
-    .default('DRAFT'),
+  // PENDING is deliberately excluded here — it's never admin-settable, only
+  // the automatic overlay applied whenever an issued invoice still has a
+  // positive balance (see lib/invoice/status.ts's deriveInvoiceWorkflowStatus
+  // and docs/Decisions.md's payment-status overhaul). PAID/PARTIALLY_PAID/
+  // APPROVED were removed entirely from InvoiceStatus — see the same note.
+  status: z.enum(['DRAFT', 'ISSUED', 'CANCELLED', 'REFUNDED', 'VOID']).default('DRAFT'),
 })
 
 export type InvoicePayload = z.infer<typeof invoicePayloadSchema>
@@ -97,6 +100,25 @@ export const paymentArrangementPayloadSchema = z.object({
 })
 
 export type PaymentArrangementPayload = z.infer<typeof paymentArrangementPayloadSchema>
+
+// Section 10/11 — the client's Pay in Full selection (a stated intention,
+// never a payment record). NA excluded for the same reason as above.
+export const payInFullSelectionSchema = z.object({
+  method: z.enum(REAL_PAYMENT_METHODS),
+})
+
+export type PayInFullSelectionPayload = z.infer<typeof payInFullSelectionSchema>
+
+// Section 13/15 — the client's payment-arrangement request. Frequency is
+// client-chosen; the installment count/schedule is always the Section 14
+// system recommendation (lib/invoice/status.ts's recommendInstallmentCount),
+// never client-supplied, so there's no numberOfPayments field here.
+export const arrangementRequestSchema = z.object({
+  frequency: z.enum(['WEEKLY', 'BIWEEKLY']),
+  proposedDownPayment: z.number().nonnegative('Down payment cannot be negative').default(0),
+})
+
+export type ArrangementRequestPayload = z.infer<typeof arrangementRequestSchema>
 
 // Guards a payment against overpaying an invoice — checked against the
 // invoice's *current* balance, so partial payments accumulate correctly.

@@ -26,6 +26,8 @@ model User {
 
   orders         Order[]
   complianceLogs ComplianceAcknowledgment[]
+  // Optional 1:1 — see Customer.userId below for the linking rules.
+  customer       Customer?
 
   @@index([email])
 }
@@ -208,14 +210,30 @@ model Invoice {
   lastInvoiceEmailFailureReason String?
 
   // Financials — stored (not just derived) so history survives later price/promo edits
-  subtotal      Float @default(0)
-  discountTotal Float @default(0)
-  total         Float @default(0)
-  amountPaid    Float @default(0)
-  balanceDue    Float @default(0)
+  subtotal       Float @default(0)
+  discountTotal  Float @default(0)
+  total          Float @default(0)
+  amountPaid     Float @default(0)
+  balanceDue     Float @default(0)
+  // Set only when confirmed payments exceed total — see
+  // lib/invoice/status.ts. Balance Due never goes negative; this is where
+  // the excess is surfaced instead, for admin review.
+  overpaidAmount Float @default(0)
 
-  status     InvoiceStatus @default(DRAFT)
-  issuedAt   DateTime      @default(now())
+  status                InvoiceStatus        @default(DRAFT)
+  // Derived exclusively from confirmed InvoicePayment records — see
+  // lib/invoice/status.ts's deriveInvoicePaymentStatus, recomputed
+  // everywhere amountPaid changes. Never settable directly by an admin
+  // dropdown (see docs/Decisions.md for the bug this replaces).
+  paymentStatus         InvoicePaymentStatus @default(UNPAID)
+  // Tracks the client's stated intention (pay-in-full selection or
+  // arrangement request/approval), independent of PaymentStatus.
+  paymentIntentStatus   PaymentIntentStatus  @default(NOT_AVAILABLE)
+  // The client's *intended* method from a Pay in Full selection — distinct
+  // from InvoicePayment.method, which records what was actually received.
+  selectedPaymentMethod PaymentMethod?
+
+  issuedAt   DateTime  @default(now())
   paidAt     DateTime?
   archivedAt DateTime?
 
@@ -257,16 +275,67 @@ model Invoice {
   @@index([deletedAt])
 }
 
+// Workflow lifecycle only — payment state lives in PaymentStatus below.
+// PENDING is never set directly by an admin; it's the automatic overlay
+// whenever an issued invoice still has Balance Due > $0 (see
+// lib/invoice/status.ts's deriveInvoiceWorkflowStatus and docs/Decisions.md).
+// APPROVED/PAID/PARTIALLY_PAID were removed from this enum — "approved"
+// belongs to PaymentIntentStatus (an approved payment *arrangement*, never
+// the invoice itself), and paid/partially-paid belong to PaymentStatus.
+// REFUNDED/VOID are preserved, pre-existing terminal states, orthogonal to
+// payment tracking and unused by the workflow described in docs/Decisions.md.
 enum InvoiceStatus {
   DRAFT
   PENDING
-  APPROVED
   ISSUED
-  PAID
-  PARTIALLY_PAID
   CANCELLED
   REFUNDED
   VOID
+  // TEMP-MIGRATION-PHASE-1: kept only until the two-phase data backfill
+  // below completes, then removed in phase 2 — see the migration note in
+  // this PR's description. Do not build new code against these three.
+  APPROVED
+  PAID
+  PARTIALLY_PAID
+}
+
+// Derived exclusively from confirmed InvoicePayment records — never settable
+// directly by an admin UI control. See lib/invoice/status.ts. Named
+// InvoicePaymentStatus (not PaymentStatus) to avoid colliding with the
+// pre-existing Stripe-order PaymentStatus enum below.
+enum InvoicePaymentStatus {
+  UNPAID
+  PARTIALLY_PAID
+  PAID
+  // Not yet driven by any automated logic in this pass (no refund workflow
+  // exists) — reserved so a future refund feature has a home without another
+  // schema change.
+  REFUNDED
+  OVERPAID
+}
+
+// Tracks the client's stated *intention* and any arrangement's approval
+// state — distinct from PaymentStatus (which only reflects money actually
+// confirmed received). Never implies a payment was received.
+enum PaymentIntentStatus {
+  NOT_AVAILABLE
+  AWAITING_CLIENT_SELECTION
+  AWAITING_MANUAL_CONFIRMATION
+  ARRANGEMENT_APPROVAL_PENDING
+  ARRANGEMENT_APPROVED
+  ARRANGEMENT_DENIED
+  CONFIRMED
+  CANCELLED
+}
+
+// A client-submitted arrangement request must be reviewed before it's
+// active — see lib/paymentArrangements.ts. An admin-created arrangement
+// (the pre-existing direct-create path) is stored as APPROVED immediately,
+// unchanged from today's behavior.
+enum ArrangementRequestStatus {
+  REQUESTED
+  APPROVED
+  DENIED
 }
 
 enum ShippingCarrier {
@@ -458,6 +527,21 @@ model PaymentArrangement {
   // payment, so an arrangement always has 1 + remainingPayments rows total.
   remainingPayments    Int
   frequency            PaymentFrequency
+
+  // REQUESTED when the client submits a proposal (never auto-active);
+  // APPROVED immediately when an admin creates one directly from the
+  // dashboard (today's pre-existing behavior, unchanged) or after an admin
+  // approves a REQUESTED one. hasActivePaymentArrangement() (Fulfillment
+  // Gate) only ever counts APPROVED rows.
+  status              ArrangementRequestStatus @default(APPROVED)
+  // Client's proposed down payment at request time — informational only
+  // until the admin actually records and confirms receipt of it via the
+  // normal Record Payment flow; never counted toward amountPaid on its own.
+  proposedDownPayment Float?
+  requestedAt         DateTime?
+  decidedAt           DateTime?
+  decidedBy           String?
+  denialReason        String?
 
   installments PaymentArrangementInstallment[]
 
@@ -724,6 +808,17 @@ model Customer {
   company   String?
   email     String?
   phone     String?
+
+  // Optional link to the Clerk-authenticated storefront User this Customer
+  // corresponds to. Null for admin-entered and intake-only customers (no
+  // login) — that must keep working exactly as today. @unique enforces the
+  // 1:1: a User can never end up linked to more than one Customer. No
+  // explicit onDelete — same default (SetNull) already used by every other
+  // optional User relation in this schema (Order.user, ComplianceAcknowledgment.user),
+  // so deleting a User never deletes or cascades into Customer history.
+  // Resolution/linking logic lives in lib/customers.ts, never inline here.
+  userId String? @unique
+  user   User?   @relation(fields: [userId], references: [id])
 
   billingAddress  Json?
   shippingAddress Json?

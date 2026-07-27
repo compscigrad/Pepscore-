@@ -2,7 +2,7 @@
 // computeOrderStatus() shape so both are recomputed the same way, at the
 // same mutation touchpoints, rather than derived at read time. Called from
 // lib/customers.ts after any change to a customer's most recent invoice.
-import type { InvoiceStatus, ShippingStatus, CustomerStatus } from '@prisma/client'
+import type { InvoiceStatus, InvoicePaymentStatus, ShippingStatus, CustomerStatus } from '@prisma/client'
 
 export interface CustomerStatusInput {
   hasIntakeLinkSent: boolean
@@ -15,6 +15,7 @@ export interface CustomerStatusInput {
   // null if they don't have one yet (pre-intake-submission).
   latestInvoice: {
     status: InvoiceStatus
+    paymentStatus: InvoicePaymentStatus
     shippingStatus: ShippingStatus
     archivedAt: Date | null
     // See lib/fulfillment/gate.ts — set when an admin bypassed the normal
@@ -53,7 +54,7 @@ export function computeCustomerStatus(input: CustomerStatusInput): CustomerStatu
 
   if (latestInvoice.archivedAt) return 'ARCHIVED'
 
-  const { status, shippingStatus, fulfillmentOverrideAt } = latestInvoice
+  const { status, paymentStatus, shippingStatus, fulfillmentOverrideAt } = latestInvoice
 
   // Terminal invoice states the enum has no direct equivalent for — hold at
   // whatever the customer's status already was rather than guessing.
@@ -61,9 +62,14 @@ export function computeCustomerStatus(input: CustomerStatusInput): CustomerStatu
     return currentStatus
   }
 
-  if (status === 'DRAFT' || status === 'PENDING' || status === 'APPROVED') {
+  if (status === 'DRAFT') {
     return 'AWAITING_FULFILLMENT'
   }
+
+  // PENDING and ISSUED are both "has been issued at least once" — they only
+  // differ in whether a balance remains (see lib/invoice/status.ts's
+  // deriveInvoiceWorkflowStatus), so they share identical downstream
+  // customer-status logic below, driven by paymentStatus instead.
 
   // Once a shipment genuinely exists, shipping progress is always the most
   // useful signal — regardless of payment tier, matching how a shipment
@@ -78,10 +84,8 @@ export function computeCustomerStatus(input: CustomerStatusInput): CustomerStatu
 
   // No shipment yet — where they sit depends on whether the Fulfillment
   // Gate (lib/fulfillment/gate.ts) has actually passed.
-  if (status === 'PAID' || fulfillmentOverrideAt) return 'ELIGIBLE_FOR_FULFILLMENT'
+  if (paymentStatus === 'PAID' || fulfillmentOverrideAt) return 'ELIGIBLE_FOR_FULFILLMENT'
   if (hasActivePaymentArrangement) return 'PAYMENT_ARRANGEMENT'
-  if (status === 'PARTIALLY_PAID') return 'PARTIALLY_PAID'
-  if (status === 'ISSUED') return 'AWAITING_PAYMENT'
-
-  return currentStatus
+  if (paymentStatus === 'PARTIALLY_PAID') return 'PARTIALLY_PAID'
+  return 'AWAITING_PAYMENT'
 }

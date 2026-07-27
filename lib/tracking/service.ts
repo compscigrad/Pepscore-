@@ -315,7 +315,7 @@ export async function processTrackingEvents(
   const isPrimary = primary?.id === shipmentId
 
   if (isPrimary) {
-    const newOrderStatus = computeOrderStatus(invoice.status, latest.normalizedStatus, invoice.orderStatus)
+    const newOrderStatus = computeOrderStatus(invoice.status, invoice.paymentStatus, latest.normalizedStatus, invoice.orderStatus)
     await prisma.invoice.update({
       where: { id: invoice.id },
       data: {

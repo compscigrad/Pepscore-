@@ -12,6 +12,7 @@ const base = {
 function invoice(overrides: Partial<NonNullable<Parameters<typeof computeCustomerStatus>[0]['latestInvoice']>>) {
   return {
     status: 'ISSUED' as const,
+    paymentStatus: 'UNPAID' as const,
     shippingStatus: 'NOT_SHIPPED' as const,
     archivedAt: null,
     fulfillmentOverrideAt: null,
@@ -34,20 +35,27 @@ describe('computeCustomerStatus', () => {
     )
   })
 
-  it('maps DRAFT/PENDING/APPROVED invoices to AWAITING_FULFILLMENT', () => {
-    for (const status of ['DRAFT', 'PENDING', 'APPROVED'] as const) {
-      expect(computeCustomerStatus({ ...base, latestInvoice: invoice({ status }) })).toBe('AWAITING_FULFILLMENT')
-    }
+  it('maps a DRAFT invoice to AWAITING_FULFILLMENT', () => {
+    expect(computeCustomerStatus({ ...base, latestInvoice: invoice({ status: 'DRAFT' }) })).toBe(
+      'AWAITING_FULFILLMENT'
+    )
   })
 
-  it('maps ISSUED with no arrangement to AWAITING_PAYMENT', () => {
+  it('maps ISSUED + UNPAID with no arrangement to AWAITING_PAYMENT', () => {
     expect(computeCustomerStatus({ ...base, latestInvoice: invoice({ status: 'ISSUED' }) })).toBe('AWAITING_PAYMENT')
   })
 
-  it('maps PARTIALLY_PAID with no arrangement directly', () => {
-    expect(computeCustomerStatus({ ...base, latestInvoice: invoice({ status: 'PARTIALLY_PAID' }) })).toBe(
-      'PARTIALLY_PAID'
-    )
+  // PENDING (an issued invoice with a positive balance — see
+  // lib/invoice/status.ts) shares identical downstream logic with ISSUED;
+  // only paymentStatus drives the branch now.
+  it('maps PENDING + UNPAID with no arrangement to AWAITING_PAYMENT, same as ISSUED', () => {
+    expect(computeCustomerStatus({ ...base, latestInvoice: invoice({ status: 'PENDING' }) })).toBe('AWAITING_PAYMENT')
+  })
+
+  it('maps PENDING + PARTIALLY_PAID with no arrangement directly', () => {
+    expect(
+      computeCustomerStatus({ ...base, latestInvoice: invoice({ status: 'PENDING', paymentStatus: 'PARTIALLY_PAID' }) })
+    ).toBe('PARTIALLY_PAID')
   })
 
   it('PAYMENT_ARRANGEMENT takes priority over AWAITING_PAYMENT when an active arrangement exists', () => {
@@ -65,15 +73,15 @@ describe('computeCustomerStatus', () => {
       computeCustomerStatus({
         ...base,
         hasActivePaymentArrangement: true,
-        latestInvoice: invoice({ status: 'PARTIALLY_PAID' }),
+        latestInvoice: invoice({ status: 'PENDING', paymentStatus: 'PARTIALLY_PAID' }),
       })
     ).toBe('PAYMENT_ARRANGEMENT')
   })
 
-  it('maps PAID + NOT_SHIPPED to ELIGIBLE_FOR_FULFILLMENT', () => {
-    expect(computeCustomerStatus({ ...base, latestInvoice: invoice({ status: 'PAID' }) })).toBe(
-      'ELIGIBLE_FOR_FULFILLMENT'
-    )
+  it('maps PAID (balance $0, back to ISSUED) + NOT_SHIPPED to ELIGIBLE_FOR_FULFILLMENT', () => {
+    expect(
+      computeCustomerStatus({ ...base, latestInvoice: invoice({ status: 'ISSUED', paymentStatus: 'PAID' }) })
+    ).toBe('ELIGIBLE_FOR_FULFILLMENT')
   })
 
   it('a manual fulfillment override makes an unpaid invoice ELIGIBLE_FOR_FULFILLMENT too', () => {
@@ -89,28 +97,37 @@ describe('computeCustomerStatus', () => {
     expect(
       computeCustomerStatus({
         ...base,
-        latestInvoice: invoice({ status: 'PAID', shippingStatus: 'LABEL_CREATED' }),
+        latestInvoice: invoice({ status: 'ISSUED', paymentStatus: 'PAID', shippingStatus: 'LABEL_CREATED' }),
       })
     ).toBe('LABEL_CREATED')
   })
 
   it('maps PAID + other label/tracking-created statuses to PREPARING_SHIPMENT', () => {
     for (const shippingStatus of ['TRACKING_ADDED', 'CARRIER_AWAITING_PACKAGE', 'ACCEPTED_BY_CARRIER'] as const) {
-      expect(computeCustomerStatus({ ...base, latestInvoice: invoice({ status: 'PAID', shippingStatus }) })).toBe(
-        'PREPARING_SHIPMENT'
-      )
+      expect(
+        computeCustomerStatus({
+          ...base,
+          latestInvoice: invoice({ status: 'ISSUED', paymentStatus: 'PAID', shippingStatus }),
+        })
+      ).toBe('PREPARING_SHIPMENT')
     }
   })
 
   it('maps PAID + IN_TRANSIT to SHIPPED', () => {
     expect(
-      computeCustomerStatus({ ...base, latestInvoice: invoice({ status: 'PAID', shippingStatus: 'IN_TRANSIT' }) })
+      computeCustomerStatus({
+        ...base,
+        latestInvoice: invoice({ status: 'ISSUED', paymentStatus: 'PAID', shippingStatus: 'IN_TRANSIT' }),
+      })
     ).toBe('SHIPPED')
   })
 
   it('maps PAID + DELIVERED to DELIVERED', () => {
     expect(
-      computeCustomerStatus({ ...base, latestInvoice: invoice({ status: 'PAID', shippingStatus: 'DELIVERED' }) })
+      computeCustomerStatus({
+        ...base,
+        latestInvoice: invoice({ status: 'ISSUED', paymentStatus: 'PAID', shippingStatus: 'DELIVERED' }),
+      })
     ).toBe('DELIVERED')
   })
 
@@ -119,7 +136,7 @@ describe('computeCustomerStatus', () => {
       computeCustomerStatus({
         ...base,
         hasActivePaymentArrangement: true,
-        latestInvoice: invoice({ status: 'PARTIALLY_PAID', shippingStatus: 'IN_TRANSIT' }),
+        latestInvoice: invoice({ status: 'PENDING', paymentStatus: 'PARTIALLY_PAID', shippingStatus: 'IN_TRANSIT' }),
       })
     ).toBe('SHIPPED')
   })
@@ -128,7 +145,12 @@ describe('computeCustomerStatus', () => {
     expect(
       computeCustomerStatus({
         ...base,
-        latestInvoice: invoice({ status: 'PAID', shippingStatus: 'DELIVERED', archivedAt: new Date() }),
+        latestInvoice: invoice({
+          status: 'ISSUED',
+          paymentStatus: 'PAID',
+          shippingStatus: 'DELIVERED',
+          archivedAt: new Date(),
+        }),
       })
     ).toBe('ARCHIVED')
   })
@@ -148,7 +170,7 @@ describe('computeCustomerStatus', () => {
       computeCustomerStatus({
         ...base,
         currentStatus: 'ARCHIVED',
-        latestInvoice: invoice({ status: 'PAID', shippingStatus: 'DELIVERED' }),
+        latestInvoice: invoice({ status: 'ISSUED', paymentStatus: 'PAID', shippingStatus: 'DELIVERED' }),
       })
     ).toBe('ARCHIVED')
   })

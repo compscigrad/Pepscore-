@@ -241,7 +241,7 @@ export async function recomputeAndSaveCustomerStatus(customerId: string): Promis
     prisma.invoice.findFirst({
       where: { customerId, deletedAt: null },
       orderBy: { createdAt: 'desc' },
-      select: { id: true, status: true, shippingStatus: true, archivedAt: true, fulfillmentOverrideAt: true },
+      select: { id: true, status: true, paymentStatus: true, shippingStatus: true, archivedAt: true, fulfillmentOverrideAt: true },
     }),
     prisma.intakeLink.findFirst({
       where: { customerId },

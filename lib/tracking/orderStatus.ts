@@ -2,14 +2,21 @@
 // the payment side (lib/invoices.ts) and the shipping side (lib/tracking/
 // service.ts) can recompute it after whichever one just changed, without
 // either module depending on the other.
-import type { InvoiceStatus, ShippingStatus, InvoiceOrderStatus } from '@prisma/client'
+//
+// Takes InvoiceStatus and InvoicePaymentStatus as two separate inputs (they
+// used to be one conflated InvoiceStatus field — see docs/Decisions.md for
+// the payment-status overhaul that split them). Cancellation is a workflow
+// concept (InvoiceStatus); paid/partially-paid is a payment concept
+// (InvoicePaymentStatus) — never mix the two back together.
+import type { InvoiceStatus, InvoicePaymentStatus, ShippingStatus, InvoiceOrderStatus } from '@prisma/client'
 
 export function computeOrderStatus(
-  paymentStatus: InvoiceStatus,
+  invoiceStatus: InvoiceStatus,
+  paymentStatus: InvoicePaymentStatus,
   shippingStatus: ShippingStatus,
   currentOrderStatus: InvoiceOrderStatus
 ): InvoiceOrderStatus {
-  if (paymentStatus === 'CANCELLED' || paymentStatus === 'VOID') return 'CANCELLED'
+  if (invoiceStatus === 'CANCELLED' || invoiceStatus === 'VOID') return 'CANCELLED'
   if (shippingStatus === 'CANCELLED') return 'CANCELLED'
 
   // Spec's explicit rule: paid + delivered => completed. A delivered

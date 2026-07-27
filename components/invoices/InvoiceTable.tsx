@@ -186,7 +186,10 @@ export function InvoiceTable({ initialInvoices, initialTotal }: Props) {
                     {formatCurrency(invoice.balanceDue)}
                   </td>
                   <td className="px-4 py-3">
-                    <StatusBadge status={invoice.status} />
+                    <div className="flex flex-wrap gap-1.5">
+                      <StatusBadge status={invoice.status} />
+                      {invoice.status !== 'DRAFT' ? <StatusBadge status={invoice.paymentStatus} variant="payment" /> : null}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-white/50 whitespace-nowrap">
                     {invoice.carrier ? `${formatCarrierLabel(invoice.carrier)} — ${invoice.trackingNumber ?? 'pending'}` : '—'}
