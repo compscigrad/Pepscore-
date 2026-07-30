@@ -8,11 +8,34 @@ import { prisma } from '@/lib/prisma'
 import { calculateInvoiceTotals, type InvoiceLineItemInput } from '@/lib/invoice/calculations'
 import { generateSequentialInvoiceNumber } from '@/lib/invoice/numbering'
 import { assertPaymentWithinBalance, type InvoicePayload, type PaymentPayload } from '@/lib/invoice/validation'
-import { matchPaymentToNextPendingInstallment } from '@/lib/paymentArrangements'
+import {
+  deriveInvoicePaymentAmounts,
+  deriveInvoiceWorkflowStatus,
+  deriveInitialPaymentIntentStatus,
+  resolvePaymentIntentAfterPayment,
+} from '@/lib/invoice/status'
+import { getIntakeLinkState } from '@/lib/intakeLinkState'
+import {
+  matchPaymentToNextPendingInstallment,
+  requestPaymentArrangement,
+  approveArrangement,
+  denyArrangement,
+  type RequestPaymentArrangementInput,
+  type ApproveArrangementOverrides,
+} from '@/lib/paymentArrangements'
 import { computeOrderStatus } from '@/lib/tracking/orderStatus'
-import { sendInvoiceIssuedEmailIfNeeded } from '@/lib/invoiceIssuedEmail'
+import { sendInvoiceIssuedEmailIfNeeded, sendInvoiceIssuedSmsIfNeeded } from '@/lib/invoiceIssuedEmail'
 import { sendPaymentReceivedEmailIfNeeded } from '@/lib/paymentReceivedEmail'
+import {
+  notifyAdminPaymentSelectionPending,
+  notifyClientPaymentSelectionConfirmation,
+  notifyAdminArrangementRequestPending,
+  notifyClientArrangementRequestReceived,
+  notifyClientArrangementApproved,
+  notifyClientArrangementDenied,
+} from '@/lib/notifications/paymentWorkflow'
 import { syncCustomerFromInvoiceEvent } from '@/lib/customers'
+import type { PaymentMethod } from '@prisma/client'
 
 const invoiceWithRelations = Prisma.validator<Prisma.InvoiceDefaultArgs>()({
   include: {
@@ -62,7 +85,7 @@ function buildFilterClause(filter: InvoiceListFilter): Prisma.InvoiceWhereInput 
     case 'outstanding':
       return { archivedAt: null, balanceDue: { gt: 0 }, status: OPEN_STATUSES }
     case 'paid':
-      return { archivedAt: null, status: 'PAID' }
+      return { archivedAt: null, paymentStatus: 'PAID' }
     case 'overdue': {
       const cutoff = new Date()
       cutoff.setUTCDate(cutoff.getUTCDate() - 30)
@@ -141,6 +164,44 @@ function round2(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100
 }
 
+// The Section 5 issuance guard: an invoice that still has an active
+// (un-submitted, un-expired, un-invalidated) intake link attached is one
+// where the admin explicitly asked the client for information that hasn't
+// come back yet — issuing anyway would notify the client to pay for an
+// invoice potentially missing details they were just asked for. Any other
+// invoice (no intake link, or the link was already submitted/invalidated)
+// issues freely.
+async function assertIntakeCompletedIfRequired(invoiceId: string): Promise<void> {
+  const activeLink = await prisma.intakeLink.findFirst({
+    where: { invoiceId },
+    orderBy: { createdAt: 'desc' },
+  })
+  if (!activeLink) return
+
+  const state = getIntakeLinkState(activeLink)
+  if (state === 'ACTIVE' || state === 'VIEWED') {
+    throw new InvoiceIssuanceError(
+      'This invoice has an active intake request the client has not submitted yet. Wait for their submission, or invalidate the intake link before issuing.'
+    )
+  }
+}
+
+// Thrown only for the Section 5 "cannot issue yet" business-rule failures —
+// distinct from Prisma/Zod errors so API routes can render a clean 400
+// instead of a generic 500, same shape as z.ZodError's { error, issues }.
+export class InvoiceIssuanceError extends Error {}
+
+// Fires once, exactly at the moment an invoice first transitions into
+// Issued/Pending (i.e. reaches ISSUED or PENDING for the first time) — the
+// branch-aware client notification (Section 6/7) plus its SMS companion.
+// Reuses the same one-time-dedup machinery as the pre-existing invoice email
+// (an INVOICE_ISSUED_EMAIL_SENT activity-log row already gates re-sends), so
+// re-saving an already-issued invoice never re-notifies.
+async function notifyOnFirstIssuance(invoice: InvoiceWithRelations): Promise<void> {
+  await sendInvoiceIssuedEmailIfNeeded(invoice)
+  await sendInvoiceIssuedSmsIfNeeded(invoice)
+}
+
 export async function createInvoice(payload: InvoicePayload): Promise<InvoiceWithRelations> {
   const invoiceNumber = await generateSequentialInvoiceNumber()
   const totals = calculateInvoiceTotals(
@@ -149,6 +210,19 @@ export async function createInvoice(payload: InvoicePayload): Promise<InvoiceWit
     payload.shippingCost,
     0
   )
+
+  const isIssuing = payload.status === 'ISSUED'
+  // A brand-new invoice can't yet have an intake link attached, so the
+  // Section 5 guard never applies on create — only on an existing draft
+  // (see updateInvoice) that already has one.
+
+  const paymentAmounts = deriveInvoicePaymentAmounts(0, totals.total)
+  const finalStatus = deriveInvoiceWorkflowStatus({
+    currentStatus: payload.status,
+    hasBeenIssued: isIssuing,
+    balanceDue: paymentAmounts.balanceDue,
+  })
+  const paymentIntentStatus = isIssuing ? deriveInitialPaymentIntentStatus(paymentAmounts.balanceDue) : 'NOT_AVAILABLE'
 
   const invoice = await prisma.invoice.create({
     data: {
@@ -169,12 +243,16 @@ export async function createInvoice(payload: InvoicePayload): Promise<InvoiceWit
       deliveryDate: payload.deliveryDate ?? undefined,
       deliveredDate: payload.deliveredDate ?? undefined,
       deliveryStatus: payload.deliveryStatus,
-      status: payload.status,
+      status: finalStatus,
+      paymentStatus: paymentAmounts.paymentStatus,
+      paymentIntentStatus,
       subtotal: totals.subtotal,
       discountTotal: totals.discountTotal,
       total: totals.total,
       amountPaid: 0,
-      balanceDue: totals.total,
+      balanceDue: paymentAmounts.balanceDue,
+      overpaidAmount: paymentAmounts.overpaidAmount,
+      orderStatus: computeOrderStatus(finalStatus, paymentAmounts.paymentStatus, 'NOT_SHIPPED', 'OPEN'),
       items: {
         create: payload.items.map((item, index) => ({
           productId: item.productId || undefined,
@@ -194,12 +272,14 @@ export async function createInvoice(payload: InvoicePayload): Promise<InvoiceWit
     ...invoiceWithRelations,
   })
 
-  await sendInvoiceIssuedEmailIfNeeded(invoice)
+  if (isIssuing) {
+    await notifyOnFirstIssuance(invoice)
+  }
   if (invoice.customerId) {
     await syncCustomerFromInvoiceEvent({
       customerId: invoice.customerId,
       invoiceId: invoice.id,
-      eventType: invoice.status === 'DRAFT' ? 'DRAFT_INVOICE_CREATED' : 'INVOICE_CREATED',
+      eventType: invoice.status === 'DRAFT' ? 'DRAFT_INVOICE_CREATED' : 'INVOICE_ISSUED',
       newValue: invoice.status,
       source: 'MANUAL',
     })
@@ -209,13 +289,42 @@ export async function createInvoice(payload: InvoicePayload): Promise<InvoiceWit
 
 export async function updateInvoice(id: string, payload: InvoicePayload): Promise<InvoiceWithRelations> {
   const existing = await prisma.invoice.findUniqueOrThrow({ where: { id } })
+
+  // Only a DRAFT->ISSUED transition is a genuine first issuance — re-saving
+  // an already-issued (or already-Pending, i.e. issued-with-balance)
+  // invoice never re-runs the issuance guard or re-notifies, even if the
+  // admin still has "Issued" selected in the dropdown.
+  const wasEverIssued = existing.status !== 'DRAFT'
+  const isFirstIssuance = !wasEverIssued && payload.status === 'ISSUED'
+
+  if (isFirstIssuance) {
+    await assertIntakeCompletedIfRequired(id)
+  }
+
   const totals = calculateInvoiceTotals(
     payload.items as InvoiceLineItemInput[],
     payload.discounts,
     payload.shippingCost,
     existing.amountPaid
   )
-  const isPaid = payload.status === 'PAID' && totals.balanceDue <= 0
+
+  const paymentAmounts = deriveInvoicePaymentAmounts(existing.amountPaid, totals.total)
+  const hasBeenIssued = wasEverIssued || isFirstIssuance
+  // A terminal admin action (Cancelled/Refunded/Void) always wins over the
+  // positive-balance overlay — deriveInvoiceWorkflowStatus only applies
+  // Pending once issuance has actually happened, and never overrides a
+  // terminal status regardless.
+  const finalStatus = deriveInvoiceWorkflowStatus({
+    currentStatus: payload.status,
+    hasBeenIssued,
+    balanceDue: paymentAmounts.balanceDue,
+  })
+
+  const paymentIntentStatus = isFirstIssuance
+    ? deriveInitialPaymentIntentStatus(paymentAmounts.balanceDue)
+    : existing.paymentIntentStatus
+
+  const isPaidOff = paymentAmounts.paymentStatus === 'PAID'
 
   // Replace items/discounts wholesale — simpler and safer than diffing rows,
   // and invoice edits are low-frequency admin actions, not high-throughput.
@@ -237,23 +346,26 @@ export async function updateInvoice(id: string, payload: InvoicePayload): Promis
       deliveryDate: payload.deliveryDate ?? undefined,
       deliveredDate: payload.deliveredDate ?? undefined,
       deliveryStatus: payload.deliveryStatus,
-      status: payload.status,
+      status: finalStatus,
+      paymentStatus: paymentAmounts.paymentStatus,
+      paymentIntentStatus,
       subtotal: totals.subtotal,
       discountTotal: totals.discountTotal,
       total: totals.total,
-      balanceDue: totals.balanceDue,
+      balanceDue: paymentAmounts.balanceDue,
+      overpaidAmount: paymentAmounts.overpaidAmount,
       // paidAt is the auto-archive countdown's anchor (see docs/Decisions.md
       // #21), not just a historical "first paid" timestamp — it's refreshed
       // to now on every save that leaves the invoice fully paid (an edit
       // resets the countdown, per spec) and cleared the moment it no longer
-      // is (reopened, balance increased, status moved off PAID), which also
+      // is (reopened, balance increased, status moved off Paid), which also
       // un-archives it rather than leaving a no-longer-paid invoice hidden.
-      paidAt: isPaid ? new Date() : null,
-      archivedAt: isPaid ? existing.archivedAt : null,
-      // The Status dropdown can set PAID/CANCELLED/etc. directly, bypassing
-      // recordPayment() — recompute here too so the completion rule always
-      // sees whichever side (payment or shipping) changed most recently.
-      orderStatus: computeOrderStatus(payload.status, existing.shippingStatus, existing.orderStatus),
+      paidAt: isPaidOff ? new Date() : null,
+      archivedAt: isPaidOff ? existing.archivedAt : null,
+      // Recompute here too (not just in recordPayment) so the completion
+      // rule always sees whichever side (payment or shipping/edit) changed
+      // most recently.
+      orderStatus: computeOrderStatus(finalStatus, paymentAmounts.paymentStatus, existing.shippingStatus, existing.orderStatus),
       items: {
         deleteMany: {},
         create: payload.items.map((item, index) => ({
@@ -275,12 +387,14 @@ export async function updateInvoice(id: string, payload: InvoicePayload): Promis
     ...invoiceWithRelations,
   })
 
-  await sendInvoiceIssuedEmailIfNeeded(invoice)
+  if (isFirstIssuance) {
+    await notifyOnFirstIssuance(invoice)
+  }
   if (invoice.customerId && existing.status !== invoice.status) {
     await syncCustomerFromInvoiceEvent({
       customerId: invoice.customerId,
       invoiceId: invoice.id,
-      eventType: invoice.status === 'ISSUED' ? 'INVOICE_ISSUED' : 'INVOICE_STATUS_UPDATED',
+      eventType: isFirstIssuance ? 'INVOICE_ISSUED' : 'INVOICE_STATUS_UPDATED',
       previousValue: existing.status,
       newValue: invoice.status,
       source: 'MANUAL',
@@ -294,8 +408,18 @@ export async function recordPayment(invoiceId: string, payload: PaymentPayload):
   assertPaymentWithinBalance(payload.amount, invoice.balanceDue)
 
   const newAmountPaid = round2(invoice.amountPaid + payload.amount)
-  const newBalanceDue = round2(invoice.total - newAmountPaid)
-  const newStatus = newBalanceDue <= 0 ? 'PAID' : 'PARTIALLY_PAID'
+  const paymentAmounts = deriveInvoicePaymentAmounts(newAmountPaid, invoice.total)
+  // A payment recorded during Draft never changes InvoiceStatus — Section 4
+  // explicitly allows recording pre-invoice payments without forcing
+  // issuance; deriveInvoiceWorkflowStatus already returns DRAFT unchanged
+  // whenever hasBeenIssued is false.
+  const hasBeenIssued = invoice.status !== 'DRAFT'
+  const newStatus = deriveInvoiceWorkflowStatus({
+    currentStatus: invoice.status,
+    hasBeenIssued,
+    balanceDue: paymentAmounts.balanceDue,
+  })
+  const newPaymentIntentStatus = resolvePaymentIntentAfterPayment(invoice.paymentIntentStatus, paymentAmounts.balanceDue)
 
   const payment = await prisma.invoicePayment.create({
     data: {
@@ -312,23 +436,31 @@ export async function recordPayment(invoiceId: string, payload: PaymentPayload):
     where: { id: invoiceId },
     data: {
       amountPaid: newAmountPaid,
-      balanceDue: newBalanceDue,
+      balanceDue: paymentAmounts.balanceDue,
+      overpaidAmount: paymentAmounts.overpaidAmount,
       status: newStatus,
-      paidAt: newBalanceDue <= 0 ? new Date() : invoice.paidAt,
+      paymentStatus: paymentAmounts.paymentStatus,
+      paymentIntentStatus: newPaymentIntentStatus,
+      paidAt: paymentAmounts.paymentStatus === 'PAID' ? new Date() : invoice.paidAt,
       // Payment is the other half of the "paid + delivered = completed" rule
       // (lib/tracking/orderStatus.ts) — a shipment that was already delivered
       // before the final payment landed would otherwise never recompute.
-      orderStatus: computeOrderStatus(newStatus, invoice.shippingStatus, invoice.orderStatus),
+      orderStatus: computeOrderStatus(newStatus, paymentAmounts.paymentStatus, invoice.shippingStatus, invoice.orderStatus),
     },
   })
 
-  // If this invoice has a payment arrangement, this payment satisfies
-  // whichever installment is next in schedule order — a no-op otherwise.
+  // If this invoice has an approved payment arrangement, this payment
+  // satisfies whichever installment is next in schedule order — a no-op
+  // otherwise (including a REQUESTED-but-not-yet-approved arrangement,
+  // which matchPaymentToNextPendingInstallment's own query excludes).
   // Done before the final fetch below so the returned invoice reflects the
   // installment's updated status, not a stale pre-match snapshot.
   await matchPaymentToNextPendingInstallment(invoiceId, payment)
 
   const updated = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId }, ...invoiceWithRelations })
+  // Only ever fires post-issuance (isInvoiceEmailTriggerStatus checks
+  // ISSUED/PENDING) — a Draft-stage pre-invoice payment recorded per
+  // Section 4 correctly sends nothing yet.
   await sendInvoiceIssuedEmailIfNeeded(updated)
   await sendPaymentReceivedEmailIfNeeded(updated, payment)
   if (updated.customerId) {
@@ -361,11 +493,11 @@ export async function restoreInvoice(id: string): Promise<InvoiceWithRelations> 
   return prisma.invoice.update({ where: { id }, data: { archivedAt: null }, ...invoiceWithRelations })
 }
 
-// Auto-archive sweep: archives every PAID, not-yet-archived invoice whose
-// paidAt countdown has elapsed. Run daily by the Vercel Cron-triggered route
-// (app/api/cron/archive-invoices) — see docs/Decisions.md #21 for why paidAt
-// itself (not a separately-stored "archive on" date) is the single source of
-// truth this compares against.
+// Auto-archive sweep: archives every fully-paid, not-yet-archived invoice
+// whose paidAt countdown has elapsed. Run daily by the Vercel Cron-triggered
+// route (app/api/cron/archive-invoices) — see docs/Decisions.md #21 for why
+// paidAt itself (not a separately-stored "archive on" date) is the single
+// source of truth this compares against.
 export async function sweepAutoArchive(archiveAfterDays: number | null): Promise<{ archivedCount: number }> {
   if (archiveAfterDays === null) return { archivedCount: 0 }
 
@@ -374,7 +506,7 @@ export async function sweepAutoArchive(archiveAfterDays: number | null): Promise
 
   const result = await prisma.invoice.updateMany({
     where: {
-      status: 'PAID',
+      paymentStatus: 'PAID',
       archivedAt: null,
       deletedAt: null,
       paidAt: { lte: cutoff },
@@ -443,6 +575,8 @@ export async function duplicateInvoice(id: string): Promise<InvoiceWithRelations
       shippingCost: source.shippingCost,
       deliveryStatus: 'PREPARING',
       status: 'DRAFT',
+      paymentStatus: 'UNPAID',
+      paymentIntentStatus: 'NOT_AVAILABLE',
       subtotal: source.subtotal,
       discountTotal: source.discountTotal,
       total: source.total,
@@ -488,8 +622,8 @@ export async function getInvoiceDashboardStats(): Promise<InvoiceDashboardStats>
   const [totalInvoices, paidInvoices, partiallyPaidInvoices, pendingShipments, deliveredOrders, activeInvoices, allInvoicesForRevenue] =
     await Promise.all([
       prisma.invoice.count({ where: { archivedAt: null, deletedAt: null } }),
-      prisma.invoice.count({ where: { archivedAt: null, deletedAt: null, status: 'PAID' } }),
-      prisma.invoice.count({ where: { archivedAt: null, deletedAt: null, status: 'PARTIALLY_PAID' } }),
+      prisma.invoice.count({ where: { archivedAt: null, deletedAt: null, paymentStatus: 'PAID' } }),
+      prisma.invoice.count({ where: { archivedAt: null, deletedAt: null, paymentStatus: 'PARTIALLY_PAID' } }),
       prisma.invoice.count({
         where: { archivedAt: null, deletedAt: null, deliveryStatus: { in: ['PREPARING', 'PACKED'] } },
       }),
@@ -519,5 +653,149 @@ export async function getInvoiceDashboardStats(): Promise<InvoiceDashboardStats>
     pendingShipments,
     deliveredOrders,
     revenue,
+  }
+}
+
+// ─── Client second-submission + admin approval/denial (Sections 10-21) ───────
+// Everything below is the "second client submission" the same secure intake
+// link serves once an invoice is Issued/Pending with a positive balance, and
+// the admin-side approval/denial that follows a payment-arrangement request.
+// Business-rule error (invalid state, e.g. already resolved) throws
+// InvoiceIssuanceError so callers render a clean 400; notification failures
+// never do (Section 26's required sequencing: validate -> save -> commit ->
+// notify, notification failure never reverses the business-state change).
+
+function assertOpenForClientSelection(invoice: { status: string; balanceDue: number }): void {
+  if (invoice.balanceDue <= 0) {
+    throw new InvoiceIssuanceError('This invoice has no balance due — no payment selection is needed.')
+  }
+  if (invoice.status !== 'ISSUED' && invoice.status !== 'PENDING') {
+    throw new InvoiceIssuanceError('This invoice is not currently open for a payment selection.')
+  }
+}
+
+// Section 11 — client submits Pay in Full. Idempotent: resubmitting the
+// exact same method while still awaiting confirmation is treated as a no-op
+// (no duplicate notifications), matching Section 26's dedup requirement;
+// selecting a *different* method still updates and re-notifies, since that's
+// new information the admin needs.
+export async function submitPayInFullSelection(invoiceId: string, method: PaymentMethod): Promise<InvoiceWithRelations> {
+  const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })
+  assertOpenForClientSelection(invoice)
+
+  const isDuplicate = invoice.paymentIntentStatus === 'AWAITING_MANUAL_CONFIRMATION' && invoice.selectedPaymentMethod === method
+  if (isDuplicate) {
+    return prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId }, ...invoiceWithRelations })
+  }
+
+  const updated = await prisma.invoice.update({
+    where: { id: invoiceId },
+    data: {
+      status: 'PENDING',
+      selectedPaymentMethod: method,
+      paymentIntentStatus: 'AWAITING_MANUAL_CONFIRMATION',
+    },
+    ...invoiceWithRelations,
+  })
+
+  await logClientSubmission(updated, 'PAY_IN_FULL_SELECTED', method)
+  await notifyAdminPaymentSelectionPending(updated)
+  await notifyClientPaymentSelectionConfirmation(updated)
+
+  return updated
+}
+
+// Section 15 — client submits a payment-arrangement request.
+export async function submitPaymentArrangementRequest(
+  invoiceId: string,
+  input: RequestPaymentArrangementInput
+): Promise<InvoiceWithRelations> {
+  const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })
+  assertOpenForClientSelection(invoice)
+
+  const arrangement = await requestPaymentArrangement(invoiceId, input)
+
+  const updated = await prisma.invoice.update({
+    where: { id: invoiceId },
+    data: {
+      status: 'PENDING',
+      paymentIntentStatus: 'ARRANGEMENT_APPROVAL_PENDING',
+    },
+    ...invoiceWithRelations,
+  })
+
+  await logClientSubmission(updated, 'ARRANGEMENT_REQUEST_SUBMITTED', `${input.frequency}, down payment $${input.proposedDownPayment.toFixed(2)}`)
+  await notifyAdminArrangementRequestPending(updated, arrangement)
+  await notifyClientArrangementRequestReceived(updated)
+
+  return updated
+}
+
+// Section 18 — admin approves a REQUESTED arrangement. Invoice.status is
+// never touched here (the Mandatory Positive-Balance Rule, Section 31) —
+// only PaymentIntentStatus moves.
+export async function approveArrangementRequest(
+  invoiceId: string,
+  adminUserId: string,
+  overrides?: ApproveArrangementOverrides
+): Promise<InvoiceWithRelations> {
+  const arrangement = await approveArrangement(invoiceId, adminUserId, overrides)
+
+  const updated = await prisma.invoice.update({
+    where: { id: invoiceId },
+    data: { paymentIntentStatus: 'ARRANGEMENT_APPROVED' },
+    ...invoiceWithRelations,
+  })
+
+  await logAdminDecision(updated, 'ARRANGEMENT_APPROVED', adminUserId)
+  await notifyClientArrangementApproved(updated, arrangement)
+
+  return updated
+}
+
+// Section 19 — admin denies a REQUESTED arrangement. Invoice.status stays
+// exactly where it was (Pending) — client action is still required, this is
+// not a cancellation.
+export async function denyArrangementRequest(
+  invoiceId: string,
+  adminUserId: string,
+  reason?: string
+): Promise<InvoiceWithRelations> {
+  await denyArrangement(invoiceId, adminUserId, reason)
+
+  const updated = await prisma.invoice.update({
+    where: { id: invoiceId },
+    data: { paymentIntentStatus: 'ARRANGEMENT_DENIED' },
+    ...invoiceWithRelations,
+  })
+
+  await logAdminDecision(updated, 'ARRANGEMENT_DENIED', adminUserId, reason)
+  await notifyClientArrangementDenied(updated, reason ?? null)
+
+  return updated
+}
+
+async function logClientSubmission(invoice: InvoiceWithRelations, eventType: string, newValue: string): Promise<void> {
+  if (invoice.customerId) {
+    await syncCustomerFromInvoiceEvent({ customerId: invoice.customerId, invoiceId: invoice.id, eventType, newValue, source: 'MANUAL' })
+  } else {
+    await prisma.invoiceActivityLog.create({ data: { invoiceId: invoice.id, eventType, newValue, source: 'MANUAL' } })
+  }
+}
+
+async function logAdminDecision(invoice: InvoiceWithRelations, eventType: string, adminUserId: string, note?: string): Promise<void> {
+  if (invoice.customerId) {
+    await syncCustomerFromInvoiceEvent({
+      customerId: invoice.customerId,
+      invoiceId: invoice.id,
+      eventType,
+      newValue: note ?? undefined,
+      source: 'MANUAL',
+      userId: adminUserId,
+    })
+  } else {
+    await prisma.invoiceActivityLog.create({
+      data: { invoiceId: invoice.id, eventType, newValue: note ?? undefined, source: 'MANUAL', userId: adminUserId },
+    })
   }
 }

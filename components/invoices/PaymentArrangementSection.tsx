@@ -51,6 +51,30 @@ export function PaymentArrangementSection({
   const [frequency, setFrequency] = useState<PaymentFrequency>('BIWEEKLY')
   const [startDate, setStartDate] = useState(todayInputValue())
   const [submitting, setSubmitting] = useState(false)
+  const [deciding, setDeciding] = useState(false)
+  const [denyReason, setDenyReason] = useState('')
+  const [showDenyForm, setShowDenyForm] = useState(false)
+
+  async function decide(action: 'approve' | 'deny') {
+    setDeciding(true)
+    try {
+      const res = await fetch(`/api/admin/invoices/${invoiceId}/payment-arrangement`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(action === 'approve' ? { action } : { action, reason: denyReason || undefined }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? `Failed to ${action} the arrangement`)
+      toast.success(action === 'approve' ? 'Arrangement approved' : 'Arrangement denied')
+      setShowDenyForm(false)
+      setDenyReason('')
+      onArrangementCreated()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : `Failed to ${action} the arrangement`)
+    } finally {
+      setDeciding(false)
+    }
+  }
 
   const hasExistingPayment = amountPaid > 0
 
@@ -134,6 +158,58 @@ export function PaymentArrangementSection({
 
       {arrangement ? (
         <>
+          {arrangement.status === 'REQUESTED' ? (
+            <div className="mb-5 rounded-lg border border-amber-400/30 bg-amber-400/10 p-4">
+              <p className="text-[11px] font-bold tracking-[0.08em] uppercase text-amber-300 mb-1">
+                Client Requested — Awaiting Your Approval
+              </p>
+              <p className="text-sm text-white/70 mb-3">
+                Proposed down payment: {formatMoney(arrangement.proposedDownPayment ?? 0)} · not yet recorded as received. This
+                request has not been approved — no payment has been confirmed by it.
+              </p>
+              {showDenyForm ? (
+                <div className="space-y-2">
+                  <textarea
+                    className={input}
+                    rows={2}
+                    placeholder="Optional note for the client (why, or what to revise)"
+                    value={denyReason}
+                    onChange={(e) => setDenyReason(e.target.value)}
+                  />
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => decide('deny')} disabled={deciding} className={`${pillPrimary} px-4 py-1.5`}>
+                      {deciding ? 'Denying...' : 'Confirm Deny'}
+                    </button>
+                    <button type="button" onClick={() => setShowDenyForm(false)} className="text-sm text-white/50 hover:text-white/70">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => decide('approve')} disabled={deciding} className={`${pillPrimary} px-4 py-1.5`}>
+                    {deciding ? 'Approving...' : 'Approve Arrangement'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowDenyForm(true)}
+                    disabled={deciding}
+                    className="rounded-full border border-white/15 text-white/70 text-sm font-bold px-4 py-1.5 hover:bg-white/5 transition-colors"
+                  >
+                    Deny Arrangement
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : arrangement.status === 'DENIED' ? (
+            <div className="mb-5 rounded-lg border border-red-400/30 bg-red-400/10 p-4">
+              <p className="text-[11px] font-bold tracking-[0.08em] uppercase text-red-300 mb-1">Request Denied</p>
+              <p className="text-sm text-white/70">
+                {arrangement.denialReason || 'No reason was recorded.'} The client can return to their secure link to choose
+                Pay in Full or submit a revised request.
+              </p>
+            </div>
+          ) : null}
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-5">
             <SummaryStat label="Original Invoice Total" value={formatMoney(invoiceTotal)} />
             <SummaryStat label="Payments Received" value={formatMoney(amountPaid)} />

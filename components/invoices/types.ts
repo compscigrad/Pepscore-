@@ -93,13 +93,15 @@ export function makeKey(): string {
   return Math.random().toString(36).slice(2)
 }
 
-// Every status the admin can manually select. PAID/PARTIALLY_PAID are also
-// set automatically by recordPayment() based on balance — leaving them
-// selectable here too covers payments tracked outside the system (e.g. a
-// wire confirmed by phone) without a matching payment record.
-export const INVOICE_STATUSES: InvoiceStatus[] = [
-  'DRAFT', 'PENDING', 'APPROVED', 'ISSUED', 'PAID', 'PARTIALLY_PAID', 'CANCELLED', 'REFUNDED', 'VOID',
-]
+// Every status the admin can manually select. PAID/PARTIALLY_PAID are
+// deliberately NOT here — they live on InvoicePaymentStatus now, derived
+// exclusively from confirmed InvoicePayment records (lib/invoice/status.ts).
+// A payment made outside the system (e.g. a wire confirmed by phone) must
+// still go through Record Payment, never a status dropdown — that was the
+// exact hole that let an invoice read "Paid" with zero payment records
+// behind it (see docs/Decisions.md). PENDING is also excluded — it's the
+// automatic overlay for "issued with a positive balance," never manual.
+export const INVOICE_STATUSES: InvoiceStatus[] = ['DRAFT', 'ISSUED', 'CANCELLED', 'REFUNDED', 'VOID']
 
 export function formatStatusLabel(status: InvoiceStatus): string {
   return status

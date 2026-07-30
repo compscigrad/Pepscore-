@@ -161,11 +161,13 @@ function formatEnumLabel(status: string): string {
     .join(' ')
 }
 
-// Gold is reserved for PAID — the one outcome worth celebrating with the
-// brand accent. Every other status reads in neutral ink so the badge stays
-// legible (and doesn't waste toner) on a black-and-white printer.
-function statusBadgeColor(status: string): string {
-  return status === 'PAID' ? colors.gold : colors.g700
+// Gold is reserved for a fully paid invoice — the one outcome worth
+// celebrating with the brand accent. Every other status reads in neutral ink
+// so the badge stays legible (and doesn't waste toner) on a black-and-white
+// printer. Takes InvoicePaymentStatus, not InvoiceStatus — "Paid" is a
+// payment concept now (see docs/Decisions.md).
+function statusBadgeColor(paymentStatus: string): string {
+  return paymentStatus === 'PAID' ? colors.gold : colors.g700
 }
 
 // Centered logo (the logo image already contains the "Pepscore Lab"
@@ -185,7 +187,12 @@ export function DocumentHeader({
   invoice: InvoiceWithRelations
   showStatus?: boolean
 }) {
-  const badgeColor = statusBadgeColor(invoice.status)
+  const badgeColor = statusBadgeColor(invoice.paymentStatus)
+  // Workflow status alone ("Issued") doesn't tell the admin what they most
+  // need at a glance on their own internal reference copy — surface Paid
+  // when it's true, otherwise fall back to the workflow status label
+  // (Draft/Issued/Pending/Cancelled/etc.).
+  const badgeLabel = invoice.paymentStatus === 'PAID' ? 'Paid' : formatEnumLabel(invoice.status)
   return (
     <View style={styles.header}>
       {BRAND.logoPath ? (
@@ -203,7 +210,7 @@ export function DocumentHeader({
       </Text>
       {showStatus ? (
         <View style={[styles.statusBadge, { borderColor: badgeColor }]}>
-          <Text style={[styles.statusBadgeText, { color: badgeColor }]}>{formatEnumLabel(invoice.status)}</Text>
+          <Text style={[styles.statusBadgeText, { color: badgeColor }]}>{badgeLabel}</Text>
         </View>
       ) : null}
     </View>

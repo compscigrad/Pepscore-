@@ -5,13 +5,13 @@
 // follows the same hairline-border, flat-depth language as the landing
 // page's cards, instead of the loud filled pills a light-theme admin would use.
 
+// APPROVED/PAID/PARTIALLY_PAID are deliberately absent — InvoiceStatus no
+// longer produces them (see docs/Decisions.md's payment-status overhaul).
+// PENDING now specifically means "issued, with a positive balance."
 const INVOICE_STATUS_COLORS: Record<string, string> = {
   DRAFT: 'border-white/15 bg-white/5 text-white/50',
   PENDING: 'border-amber-400/30 bg-amber-400/10 text-amber-300',
-  APPROVED: 'border-blue-400/30 bg-blue-400/10 text-blue-300',
   ISSUED: 'border-blue-400/30 bg-blue-400/10 text-blue-300',
-  PAID: 'border-gold/40 bg-gold/10 text-gold-light',
-  PARTIALLY_PAID: 'border-amber-400/30 bg-amber-400/10 text-amber-300',
   CANCELLED: 'border-red-400/30 bg-red-400/10 text-red-300',
   REFUNDED: 'border-orange-400/30 bg-orange-400/10 text-orange-300',
   VOID: 'border-white/15 bg-white/5 text-white/40',
@@ -29,13 +29,19 @@ const DELIVERY_STATUS_COLORS: Record<string, string> = {
   DAMAGED: 'border-red-400/30 bg-red-400/10 text-red-300',
 }
 
-// Covers both the invoice-level Payment Status (Pending/Partial/Paid) and
-// individual installment statuses (Pending/Paid/Overdue) — same three core
-// states, same meaning, so one color map serves both.
+// Covers the invoice-level InvoicePaymentStatus (Unpaid/Partially Paid/
+// Paid/Refunded/Overpaid), individual installment statuses (Pending/Paid),
+// and the older PENDING/PARTIAL naming some call sites still pass — all
+// share one color map since the visual meaning (neutral/amber/gold/red) is
+// the same regardless of which enum's values are being displayed.
 const PAYMENT_STATUS_COLORS: Record<string, string> = {
+  UNPAID: 'border-white/15 bg-white/5 text-white/50',
   PENDING: 'border-white/15 bg-white/5 text-white/50',
   PARTIAL: 'border-amber-400/30 bg-amber-400/10 text-amber-300',
+  PARTIALLY_PAID: 'border-amber-400/30 bg-amber-400/10 text-amber-300',
   PAID: 'border-gold/40 bg-gold/10 text-gold-light',
+  OVERPAID: 'border-purple-400/30 bg-purple-400/10 text-purple-300',
+  REFUNDED: 'border-orange-400/30 bg-orange-400/10 text-orange-300',
   OVERDUE: 'border-red-400/30 bg-red-400/10 text-red-300',
 }
 

@@ -1,0 +1,351 @@
+// The same secure link's view once an invoice has been issued (Section 9) —
+// replaces IntakeForm as the primary action. Shows the invoice itself and,
+// only when Balance Due > $0, the second client submission: Pay in Full or
+// Request a Payment Arrangement (Sections 10-15). Branches further on
+// paymentIntentStatus so a client revisiting the link sees their submission's
+// current state instead of a blank form again.
+'use client'
+
+import { useMemo, useState } from 'react'
+import toast from 'react-hot-toast'
+import { recommendInstallmentCount } from '@/lib/invoice/status'
+import { generateInstallmentSchedule, addDaysUTC, frequencyIntervalDays, type PaymentFrequency } from '@/lib/invoice/paymentArrangement'
+
+const label = 'block text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 mb-1.5'
+const input =
+  'w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold/30'
+const card = 'bg-white/[0.03] border border-gold/10 rounded-[18px]'
+
+function formatMoney(amount: number): string {
+  return amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+}
+
+const PAY_METHODS = [
+  { value: 'ZELLE', label: 'Zelle' },
+  { value: 'CASH_APP', label: 'Cash App' },
+  { value: 'VENMO', label: 'Venmo' },
+  { value: 'APPLE_PAY', label: 'Apple Pay' },
+  { value: 'ACH', label: 'Bank transfer (ACH)' },
+  { value: 'CREDIT_CARD', label: 'Credit card' },
+  { value: 'DEBIT_CARD', label: 'Debit card' },
+  { value: 'CASH', label: 'Cash' },
+  { value: 'WIRE', label: 'Wire transfer' },
+  { value: 'CHECK', label: 'Check' },
+  { value: 'OTHER', label: 'Other' },
+] as const
+
+interface LineItem {
+  id: string
+  name: string
+  description: string | null
+  quantity: number
+  unitPrice: number
+  total: number
+}
+
+interface Discount {
+  id: string
+  label: string
+  appliedAmount: number
+}
+
+interface Installment {
+  id: string
+  installmentNumber: number
+  dueDate: string
+  amount: number
+  status: string
+}
+
+export interface IssuedInvoiceData {
+  token: string
+  invoiceNumber: string
+  customerName: string
+  status: string
+  paymentStatus: string
+  paymentIntentStatus: string
+  items: LineItem[]
+  discounts: Discount[]
+  subtotal: number
+  shippingCost: number
+  discountTotal: number
+  total: number
+  amountPaid: number
+  balanceDue: number
+  overpaidAmount: number
+  selectedPaymentMethod: string | null
+  arrangement: { status: string; frequency: PaymentFrequency; denialReason: string | null; installments: Installment[] } | null
+}
+
+export function IssuedInvoiceView({ data }: { data: IssuedInvoiceData }) {
+  const [mode, setMode] = useState<'full' | 'arrangement'>('full')
+  const [method, setMethod] = useState('')
+  const [frequency, setFrequency] = useState<PaymentFrequency>('BIWEEKLY')
+  const [downPayment, setDownPayment] = useState('0')
+  const [submitting, setSubmitting] = useState(false)
+  const [justSubmitted, setJustSubmitted] = useState<'full' | 'arrangement' | null>(null)
+
+  const balanceToSchedule = useMemo(() => {
+    const dp = Number(downPayment) || 0
+    return Math.max(Math.round((data.balanceDue - dp) * 100) / 100, 0)
+  }, [downPayment, data.balanceDue])
+
+  const recommendedCount = recommendInstallmentCount(balanceToSchedule)
+
+  const previewSchedule = useMemo(() => {
+    if (recommendedCount < 1) return []
+    const intervalDays = frequencyIntervalDays(frequency)
+    return generateInstallmentSchedule({
+      firstDueDate: addDaysUTC(new Date(), intervalDays),
+      totalAmount: balanceToSchedule,
+      numberOfPayments: recommendedCount,
+      frequency,
+      startInstallmentNumber: 1,
+    })
+  }, [frequency, balanceToSchedule, recommendedCount])
+
+  async function submitPayInFull(e: React.FormEvent) {
+    e.preventDefault()
+    if (!method) {
+      toast.error('Select a payment method')
+      return
+    }
+    setSubmitting(true)
+    try {
+      const res = await fetch(`/api/intake/${data.token}/payment-selection`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ method }),
+      })
+      const body = await res.json()
+      if (!res.ok) throw new Error(body.error ?? 'Something went wrong — please try again.')
+      setJustSubmitted('full')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Something went wrong — please try again.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function submitArrangementRequest(e: React.FormEvent) {
+    e.preventDefault()
+    setSubmitting(true)
+    try {
+      const res = await fetch(`/api/intake/${data.token}/payment-arrangement`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ frequency, proposedDownPayment: Number(downPayment) || 0 }),
+      })
+      const body = await res.json()
+      if (!res.ok) throw new Error(body.error ?? 'Something went wrong — please try again.')
+      setJustSubmitted('arrangement')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Something went wrong — please try again.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const hasBalance = data.balanceDue > 0
+
+  return (
+    <main className="min-h-screen bg-dark px-4 py-10">
+      <div className="max-w-2xl mx-auto space-y-6">
+        <div className="text-center mb-2">
+          <h1 className="font-heading text-2xl font-bold text-gold tracking-[0.1em]">PEPSCORE</h1>
+          <p className="text-white/50 text-xs uppercase tracking-[0.2em] mt-1">Invoice {data.invoiceNumber}</p>
+        </div>
+
+        {/* Invoice summary */}
+        <div className={`${card} p-6`}>
+          <h2 className="text-white font-bold mb-4">Hi {data.customerName}, here&apos;s your invoice</h2>
+          <div className="divide-y divide-white/10">
+            {data.items.map((item) => (
+              <div key={item.id} className="py-2.5 flex justify-between text-sm">
+                <div>
+                  <p className="text-white">{item.name} <span className="text-white/40">× {item.quantity}</span></p>
+                  {item.description ? <p className="text-white/40 text-xs mt-0.5">{item.description}</p> : null}
+                </div>
+                <p className="text-white/80">{formatMoney(item.total)}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 pt-4 border-t border-white/10 space-y-1 text-sm">
+            <div className="flex justify-between text-white/60"><span>Subtotal</span><span>{formatMoney(data.subtotal)}</span></div>
+            {data.shippingCost > 0 ? <div className="flex justify-between text-white/60"><span>Shipping</span><span>{formatMoney(data.shippingCost)}</span></div> : null}
+            {data.discounts.map((d) => (
+              <div key={d.id} className="flex justify-between text-white/60"><span>{d.label}</span><span>-{formatMoney(d.appliedAmount)}</span></div>
+            ))}
+            <div className="flex justify-between text-white font-bold text-base pt-2 border-t border-white/10 mt-2">
+              <span>Total</span><span>{formatMoney(data.total)}</span>
+            </div>
+            <div className="flex justify-between text-white/60"><span>Amount Paid</span><span>{formatMoney(data.amountPaid)}</span></div>
+            <div className="flex justify-between text-white font-bold">
+              <span>Balance Due</span><span className={hasBalance ? 'text-gold' : ''}>{formatMoney(data.balanceDue)}</span>
+            </div>
+            {data.overpaidAmount > 0 ? (
+              <p className="text-amber-300 text-xs mt-2">
+                A payment of {formatMoney(data.overpaidAmount)} above the invoice total has been recorded — our team will
+                follow up about this overpayment.
+              </p>
+            ) : null}
+          </div>
+        </div>
+
+        {/* Paid in full — no controls needed */}
+        {!hasBalance ? (
+          <div className={`${card} p-6 text-center`}>
+            <div className="text-3xl mb-2">✅</div>
+            <p className="text-white font-bold mb-1">Payment Recorded — Thank You!</p>
+            <p className="text-white/60 text-sm">No additional payment selection is required.</p>
+          </div>
+        ) : justSubmitted === 'full' ? (
+          <ConfirmationCard title="Payment Selection Received">
+            We received your Pay in Full selection. Our team will manually verify your payment and follow up shortly —
+            this does not mean payment has been received yet.
+          </ConfirmationCard>
+        ) : justSubmitted === 'arrangement' ? (
+          <ConfirmationCard title="Arrangement Request Received">
+            We received your payment-arrangement request. It&apos;s now awaiting review — we&apos;ll email you as soon as
+            it&apos;s approved or if we need to follow up.
+          </ConfirmationCard>
+        ) : data.paymentIntentStatus === 'ARRANGEMENT_APPROVAL_PENDING' ? (
+          <ConfirmationCard title="Arrangement Request Under Review">
+            Your payment-arrangement request is awaiting review. We&apos;ll email you as soon as it&apos;s approved or if
+            we need to follow up.
+          </ConfirmationCard>
+        ) : data.paymentIntentStatus === 'ARRANGEMENT_APPROVED' && data.arrangement ? (
+          <div className={`${card} p-6`}>
+            <p className="text-[11px] font-bold tracking-[0.08em] uppercase text-gold mb-3">Approved Payment Arrangement</p>
+            <div className="space-y-1.5">
+              {data.arrangement.installments.map((inst) => (
+                <div key={inst.id} className="flex justify-between text-sm">
+                  <span className="text-white/70">
+                    Payment {inst.installmentNumber} — {new Date(inst.dueDate).toLocaleDateString('en-US', { timeZone: 'UTC' })}
+                  </span>
+                  <span className={inst.status === 'PAID' ? 'text-gold' : 'text-white'}>
+                    {formatMoney(inst.amount)} {inst.status === 'PAID' ? '· Paid' : ''}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <p className="text-white/40 text-xs mt-4">Payments will be recorded here after they are manually verified.</p>
+          </div>
+        ) : (
+          <div className={`${card} p-6`}>
+            {data.paymentIntentStatus === 'AWAITING_MANUAL_CONFIRMATION' ? (
+              <div className="mb-5 rounded-lg border border-amber-400/30 bg-amber-400/10 p-3 text-sm text-white/70">
+                We already have your <strong className="text-white">{data.selectedPaymentMethod}</strong> selection on
+                file and are verifying it. You can update your selection below if needed.
+              </div>
+            ) : null}
+            {data.paymentIntentStatus === 'ARRANGEMENT_DENIED' ? (
+              <div className="mb-5 rounded-lg border border-red-400/30 bg-red-400/10 p-3 text-sm text-white/70">
+                Your previous arrangement request wasn&apos;t approved as submitted
+                {data.arrangement?.denialReason ? `: ${data.arrangement.denialReason}` : '.'} Choose Pay in Full or submit
+                a revised request below.
+              </div>
+            ) : null}
+
+            <div className="flex gap-2 mb-5">
+              <button
+                type="button"
+                onClick={() => setMode('full')}
+                className={`flex-1 rounded-full py-2 text-sm font-bold transition-colors ${mode === 'full' ? 'bg-gold text-dark' : 'bg-white/5 text-white/60'}`}
+              >
+                Pay in Full
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('arrangement')}
+                className={`flex-1 rounded-full py-2 text-sm font-bold transition-colors ${mode === 'arrangement' ? 'bg-gold text-dark' : 'bg-white/5 text-white/60'}`}
+              >
+                Request a Payment Arrangement
+              </button>
+            </div>
+
+            {mode === 'full' ? (
+              <form onSubmit={submitPayInFull} className="space-y-4">
+                <p className="text-white/50 text-xs leading-relaxed">
+                  This means you intend to pay the remaining balance in one payment — it does not mean payment has been
+                  received.
+                </p>
+                <div>
+                  <label className={label} htmlFor="method">Payment Method</label>
+                  <select id="method" className={input} value={method} onChange={(e) => setMethod(e.target.value)}>
+                    <option value="">Select a method</option>
+                    {PAY_METHODS.map((m) => (
+                      <option key={m.value} value={m.value}>{m.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <button type="submit" disabled={submitting} className="w-full rounded-full bg-gold text-dark font-bold text-sm py-2.5 disabled:opacity-50">
+                  {submitting ? 'Submitting...' : 'Submit Payment Selection'}
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={submitArrangementRequest} className="space-y-4">
+                <p className="text-white/50 text-xs leading-relaxed">
+                  Propose a schedule below. This is a request only — it&apos;s subject to Pepscore&apos;s approval and is
+                  never active or finalized until approved.
+                </p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={label} htmlFor="frequency">Frequency</label>
+                    <select id="frequency" className={input} value={frequency} onChange={(e) => setFrequency(e.target.value as PaymentFrequency)}>
+                      <option value="WEEKLY">Every Week</option>
+                      <option value="BIWEEKLY">Every Two Weeks</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className={label} htmlFor="downPayment">Immediate Down Payment (optional)</label>
+                    <input
+                      id="downPayment"
+                      type="number"
+                      min={0}
+                      max={data.balanceDue}
+                      step="0.01"
+                      className={input}
+                      value={downPayment}
+                      onChange={(e) => setDownPayment(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {previewSchedule.length > 0 ? (
+                  <div>
+                    <p className={`${label} mb-2`}>Recommended Schedule (subject to approval)</p>
+                    <div className="space-y-1">
+                      {previewSchedule.map((s) => (
+                        <div key={s.installmentNumber} className="flex justify-between text-sm">
+                          <span className="text-white/70">
+                            Payment {s.installmentNumber} — {s.dueDate.toLocaleDateString('en-US', { timeZone: 'UTC' })}
+                          </span>
+                          <span className="text-white">{formatMoney(s.amount)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                <button type="submit" disabled={submitting} className="w-full rounded-full bg-gold text-dark font-bold text-sm py-2.5 disabled:opacity-50">
+                  {submitting ? 'Submitting...' : 'Submit Payment Arrangement Request'}
+                </button>
+              </form>
+            )}
+          </div>
+        )}
+      </div>
+    </main>
+  )
+}
+
+function ConfirmationCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className={`${card} p-6 text-center`}>
+      <div className="text-3xl mb-2">✅</div>
+      <p className="text-white font-bold mb-1">{title}</p>
+      <p className="text-white/60 text-sm leading-relaxed">{children}</p>
+    </div>
+  )
+}
