@@ -181,7 +181,13 @@ export function ShipmentsSection({ invoiceId, shipments, onTrackingUpdated }: Pr
         body: JSON.stringify({ action, ...extra }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? 'Action failed')
+      if (!res.ok) {
+        if (data.code === 'BACKORDER_ACTIVE') {
+          toast.error(data.error, { duration: 8000 })
+          return
+        }
+        throw new Error(data.error ?? 'Action failed')
+      }
       toast.success('Tracking updated')
       onTrackingUpdated()
     } catch (err) {
