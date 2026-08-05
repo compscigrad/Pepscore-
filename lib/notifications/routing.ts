@@ -40,6 +40,10 @@ export type MessageCategory =
   // routed to Orders by default (matches "Product and fulfillment questions"
   // being the closest fit for today's only such alert, intake submission).
   | 'ADMIN_INTAKE_ALERT'
+  // Admin-facing: a customer-facing send (currently: the invoice-issued
+  // email) failed outright — distinct from ADMIN_INTAKE_ALERT so the two can
+  // route differently later if needed, even though today both land on Orders.
+  | 'ADMIN_DELIVERY_FAILURE_ALERT'
 
 interface RoutedSender {
   fromName: string
@@ -69,6 +73,7 @@ const ROUTING: Record<MessageCategory, RoutedSender> = {
   SUPPORT_REQUEST: { fromName: 'Pepscore Support', replyTo: SUPPORT_EMAIL },
 
   ADMIN_INTAKE_ALERT: { fromName: 'Pepscore Orders', replyTo: ORDERS_EMAIL },
+  ADMIN_DELIVERY_FAILURE_ALERT: { fromName: 'Pepscore Orders', replyTo: ORDERS_EMAIL },
 }
 
 export interface ResolvedSender {

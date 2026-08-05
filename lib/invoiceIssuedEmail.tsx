@@ -51,6 +51,39 @@ async function resolveSecureLink(invoice: InvoiceWithRelations): Promise<string 
   return `${APP_URL}/intake/${first.token}`
 }
 
+// Section 5's "notify admin of success/failure" — success is already visible
+// to the admin (they're the one who just clicked Save/Issue), so only
+// failure gets a proactive push; a silent failure here is exactly the kind
+// of thing that goes unnoticed until a client calls asking where their
+// invoice is. Follows the same direct email/SMS-to-recipients shape as
+// lib/notifications/paymentWorkflow.ts's admin alerts, not the dashboard
+// Notification model (that model's schema is intake-submission-specific).
+async function notifyAdminOfInvoiceEmailFailure(invoice: InvoiceWithRelations, failureReason: string): Promise<void> {
+  const recipients = await prisma.adminNotificationRecipient.findMany()
+  const emailTargets = recipients.filter((r) => r.emailEnabled && r.email)
+  const body = `The invoice email for #${invoice.invoiceNumber} (${invoice.customerName}) failed to send: ${failureReason}`
+
+  if (emailTargets.length > 0) {
+    await sendCategorizedEmail(
+      {
+        category: 'ADMIN_DELIVERY_FAILURE_ALERT',
+        to: emailTargets.map((r) => r.email!),
+        subject: `Invoice email failed to send — #${invoice.invoiceNumber}`,
+        html: `<p>${body}</p><p>Invoice: ${APP_URL}/admin/invoices/${invoice.id}</p>`,
+      },
+      { customerId: invoice.customerId, invoiceId: invoice.id, actorType: 'SYSTEM' }
+    )
+  }
+  for (const recipient of recipients.filter((r) => r.smsEnabled && r.phone)) {
+    await sendCategorizedSms(
+      'ADMIN_DELIVERY_FAILURE_ALERT',
+      recipient.phone,
+      `Pepscore: ${body}`,
+      { customerId: invoice.customerId, invoiceId: invoice.id, actorType: 'SYSTEM' }
+    )
+  }
+}
+
 async function recordResult(invoiceId: string, result: 'SENT' | 'FAILED', failureReason: string | null): Promise<void> {
   await prisma.invoice.update({
     where: { id: invoiceId },
@@ -114,6 +147,7 @@ async function sendInvoiceEmail(invoice: InvoiceWithRelations, source: 'SYSTEM' 
     console.error('[invoiceIssuedEmail] send failed:', err)
     const message = err instanceof Error ? err.message : 'Unknown error'
     await recordResult(invoice.id, 'FAILED', message)
+    await notifyAdminOfInvoiceEmailFailure(invoice, message)
     return false
   }
 }
