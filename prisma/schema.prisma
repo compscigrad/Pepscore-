@@ -284,6 +284,27 @@ model Invoice {
   // Correspondence History section below.
   communications Communication[]
 
+  // ─── Balance Carryover (Phase 1B) ──────────────────────────────────────────
+  // Authoritative-receivable bookkeeping for lib/balanceTransfers.ts. Both are
+  // derived/cached totals recomputed transactionally by that module — same
+  // "Invoice's own field is a live cache, the ledger row is the source of
+  // truth" pattern as amountRefunded/InvoiceRefund above — never hand-edited.
+  //
+  // transferredOutAmount: how much of THIS invoice's balance has been moved
+  // to another invoice (as the source). Subtracted from balanceDue at
+  // transfer time so this invoice stops counting toward outstanding
+  // receivables — never applied to amountPaid, which stays a pure record of
+  // money actually received, per "preserve full historical payment data."
+  transferredOutAmount Float @default(0)
+  // carriedOverAmount: how much THIS invoice's total includes because it was
+  // moved in from another invoice (as the destination) — added directly into
+  // `total` (and therefore balanceDue) so the destination becomes the one
+  // place that balance is actually collectible.
+  carriedOverAmount Float @default(0)
+
+  balanceTransfersOut BalanceTransfer[] @relation("BalanceTransferSource")
+  balanceTransfersIn  BalanceTransfer[] @relation("BalanceTransferDestination")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -292,6 +313,44 @@ model Invoice {
   @@index([status])
   @@index([createdAt])
   @@index([deletedAt])
+}
+
+// One row per transfer *event* — reversing never deletes or overwrites this
+// row, it fills in reversedAt/reversedBy/reversalReason on the same record
+// (matching BackorderCondition's "resolve fills in fields on the same row"
+// precedent), so the full history of what moved where, and any later
+// reversal, is always preserved. Never a plain mutable note/total on the two
+// invoices — this ledger is what "explicit and audited" transfers means.
+model BalanceTransfer {
+  id String @id @default(cuid())
+
+  sourceInvoiceId String
+  sourceInvoice   Invoice @relation("BalanceTransferSource", fields: [sourceInvoiceId], references: [id], onDelete: Cascade)
+
+  destinationInvoiceId String
+  destinationInvoice   Invoice @relation("BalanceTransferDestination", fields: [destinationInvoiceId], references: [id], onDelete: Cascade)
+
+  amount Float
+  reason String?
+
+  status BalanceTransferStatus @default(ACTIVE)
+
+  transferredAt DateTime @default(now())
+  transferredBy String
+
+  reversedAt     DateTime?
+  reversedBy     String?
+  reversalReason String?
+
+  createdAt DateTime @default(now())
+
+  @@index([sourceInvoiceId])
+  @@index([destinationInvoiceId])
+}
+
+enum BalanceTransferStatus {
+  ACTIVE
+  REVERSED
 }
 
 // Workflow lifecycle only — payment state lives in PaymentStatus below.

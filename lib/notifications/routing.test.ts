@@ -28,6 +28,7 @@ const BILLING_CATEGORIES: MessageCategory[] = [
   'PAYMENT_RECEIVED',
   'REFUND_COMPLETED',
   'REFUND_ACTION_REQUIRED',
+  'BALANCE_TRANSFER_NOTICE',
 ]
 
 describe('routeFor', () => {

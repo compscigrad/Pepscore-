@@ -32,6 +32,7 @@ export type MessageCategory =
   | 'PAYMENT_RECEIVED'
   | 'REFUND_COMPLETED'
   | 'REFUND_ACTION_REQUIRED' // admin-facing: a pending refund needs manual processing
+  | 'BALANCE_TRANSFER_NOTICE' // a prior invoice's balance was moved onto a new invoice
   // Contact — pre-purchase / general inquiries
   | 'CONTACT_INQUIRY'
   // Support — existing-customer problems, access issues
@@ -68,6 +69,7 @@ const ROUTING: Record<MessageCategory, RoutedSender> = {
   PAYMENT_RECEIVED: { fromName: 'Pepscore Billing', replyTo: BILLING_EMAIL },
   REFUND_COMPLETED: { fromName: 'Pepscore Billing', replyTo: BILLING_EMAIL },
   REFUND_ACTION_REQUIRED: { fromName: 'Pepscore Billing', replyTo: BILLING_EMAIL },
+  BALANCE_TRANSFER_NOTICE: { fromName: 'Pepscore Billing', replyTo: BILLING_EMAIL },
 
   CONTACT_INQUIRY: { fromName: 'Pepscore', replyTo: CONTACT_EMAIL },
   SUPPORT_REQUEST: { fromName: 'Pepscore Support', replyTo: SUPPORT_EMAIL },
