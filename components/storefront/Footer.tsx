@@ -4,7 +4,7 @@ import Image from 'next/image'
 
 export function Footer() {
   return (
-    <footer id="contact" className="bg-[#111] text-white pt-14 pb-7 px-6">
+    <footer className="bg-[#111] text-white pt-14 pb-7 px-6">
       <div className="max-w-[1200px] mx-auto">
 
         {/* Top grid */}
@@ -65,7 +65,9 @@ export function Footer() {
             <div className="space-y-3">
               <div className="flex gap-2 items-start">
                 <span className="text-[15px] mt-0.5">✉️</span>
-                <span className="text-[13px] text-white/60">contact@pepscore.com</span>
+                <a href="mailto:contact@pepscorelab.com" className="text-[13px] text-white/60 hover:text-gold transition-colors">
+                  contact@pepscorelab.com
+                </a>
               </div>
               <div className="flex gap-2 items-start">
                 <span className="text-[15px] mt-0.5">📍</span>
