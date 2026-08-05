@@ -11,6 +11,7 @@ import { Header } from '@/components/storefront/Header'
 import { Footer } from '@/components/storefront/Footer'
 import { CartSidebar } from '@/components/storefront/CartSidebar'
 import { formatCurrency } from '@/lib/orders'
+import { resolveCustomerForUser } from '@/lib/customers'
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING: 'bg-gray-100 text-gray-600',
@@ -38,6 +39,18 @@ export default async function AccountPage() {
       name: clerkUser?.fullName ?? undefined,
     },
   })
+
+  // Resolve (and if needed, link or create) this User's Customer/CRM record.
+  // Ambiguous matches are surfaced for later admin review rather than
+  // guessed at — see lib/customers.ts's resolveCustomerForUser. This has no
+  // effect on the order history below, which is queried by User.id alone.
+  const identityResult = await resolveCustomerForUser(user.id)
+  if (identityResult.status === 'AMBIGUOUS') {
+    console.warn(
+      `[account] User ${user.id} (${user.email}) matches multiple unclaimed Customer records — left unlinked:`,
+      identityResult.matchingCustomerIds
+    )
+  }
 
   const orders = await prisma.order.findMany({
     where: { userId: user.id },

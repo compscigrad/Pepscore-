@@ -8,6 +8,7 @@ import { prisma } from '@/lib/prisma'
 import { computeCustomerStatus } from '@/lib/customers/status'
 import { generateSequentialInvoiceNumber } from '@/lib/invoice/numbering'
 import { hasActivePaymentArrangement } from '@/lib/paymentArrangements'
+import { decideCustomerIdentityAction } from '@/lib/customerIdentity'
 
 export interface CustomerInput {
   firstName: string
@@ -20,6 +21,10 @@ export interface CustomerInput {
   preferredContactMethod?: 'SMS' | 'EMAIL' | 'PHONE' | null
   preferredPaymentMethod?: PaymentMethod | null
   notes?: string | null
+  // Only set by resolveCustomerForUser's create path below — every other
+  // caller (intake, admin) leaves this unset, so Customer.userId stays null
+  // exactly as before for those records.
+  userId?: string | null
 }
 
 export async function getCustomer(id: string): Promise<Customer | null> {
@@ -72,8 +77,92 @@ export async function createCustomer(input: CustomerInput): Promise<Customer> {
       preferredContactMethod: input.preferredContactMethod ?? undefined,
       preferredPaymentMethod: input.preferredPaymentMethod ?? undefined,
       notes: input.notes || undefined,
+      userId: input.userId || undefined,
     },
   })
+}
+
+export type ResolveCustomerForUserResult =
+  | { status: 'ALREADY_LINKED'; customer: Customer }
+  | { status: 'LINKED_EXISTING'; customer: Customer }
+  | { status: 'CREATED'; customer: Customer }
+  | { status: 'AMBIGUOUS'; matchingCustomerIds: string[] }
+
+// The single, centralized identity-link resolver — the Phase 2B "User and
+// Customer are two separate identities" decision (docs/ProductRoadmap.md).
+// Call this from every place that needs to connect a signed-in storefront
+// User to their Customer/CRM record (app/account/page.tsx today, future
+// checkout flows) rather than re-deriving matching rules per caller.
+//
+// userId must be a verified User.id — the caller is responsible for sourcing
+// it from the authenticated Clerk session (never from client request data)
+// and for the User row already existing (e.g. via the account page's
+// existing prisma.user.upsert). This function throws if it doesn't.
+export async function resolveCustomerForUser(userId: string): Promise<ResolveCustomerForUserResult> {
+  const user = await prisma.user.findUnique({ where: { id: userId } })
+  if (!user) throw new Error(`resolveCustomerForUser: no User found for id "${userId}"`)
+
+  const alreadyLinked = await prisma.customer.findUnique({ where: { userId: user.id } })
+
+  // Fetched by email alone (not filtered to unclaimed here) so the pure
+  // decision function is the single place that enforces "never reassign a
+  // Customer already linked to someone else" — see lib/customerIdentity.ts.
+  const emailMatches = user.email
+    ? await prisma.customer.findMany({
+        where: { email: { equals: user.email, mode: 'insensitive' } },
+        select: { id: true, userId: true },
+      })
+    : []
+
+  const action = decideCustomerIdentityAction({
+    alreadyLinked: !!alreadyLinked,
+    emailMatches,
+  })
+
+  switch (action.type) {
+    case 'ALREADY_LINKED':
+      return { status: 'ALREADY_LINKED', customer: alreadyLinked! }
+
+    case 'AMBIGUOUS':
+      return { status: 'AMBIGUOUS', matchingCustomerIds: action.matchingCustomerIds }
+
+    case 'LINK_EXISTING': {
+      // Customer.userId's unique constraint is the ultimate backstop against
+      // a race with a concurrent request; a violation here means someone
+      // else won the race, so re-resolve rather than surface a raw DB error.
+      try {
+        const customer = await prisma.customer.update({
+          where: { id: action.customerId },
+          data: { userId: user.id },
+        })
+        return { status: 'LINKED_EXISTING', customer }
+      } catch (err) {
+        if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+          return resolveCustomerForUser(userId)
+        }
+        throw err
+      }
+    }
+
+    case 'CREATE_NEW': {
+      const [firstName, ...rest] = (user.name ?? user.email).trim().split(/\s+/)
+      try {
+        const customer = await createCustomer({
+          firstName: firstName || 'Customer',
+          lastName: rest.join(' ') || '—',
+          email: user.email,
+          phone: user.phone ?? undefined,
+          userId: user.id,
+        })
+        return { status: 'CREATED', customer }
+      } catch (err) {
+        if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+          return resolveCustomerForUser(userId)
+        }
+        throw err
+      }
+    }
+  }
 }
 
 // Exact match only — the auto-merge key (Decision 8). Widened name/company/
