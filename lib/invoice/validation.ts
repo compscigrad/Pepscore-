@@ -14,7 +14,12 @@ const addressSchema = z.object({
   country: z.string().min(1).default('US'),
 })
 
+// `id` is present (and matched against existing rows) when editing a row
+// that already exists in the database, absent/null for a genuinely new row
+// -- see updateInvoice()'s upsert-by-id handling. Never trust it blindly:
+// the server only honors an id that actually belongs to this invoice.
 const lineItemSchema = z.object({
+  id: z.string().optional().nullable(),
   productId: z.string().optional().nullable(),
   name: z.string().min(1, 'Product name is required'),
   description: z.string().optional(),
@@ -25,6 +30,7 @@ const lineItemSchema = z.object({
 })
 
 const discountSchema = z.object({
+  id: z.string().optional().nullable(),
   promotionId: z.string().optional().nullable(),
   label: z.string().min(1, 'Discount label is required'),
   type: z.enum(['FIXED', 'PERCENTAGE']),

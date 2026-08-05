@@ -31,12 +31,12 @@ export function DiscountsSection({ discounts, onChange, promotions, onPromotionC
     if (!promo) return
     onChange([
       ...discounts,
-      { key: makeKey(), promotionId: promo.id, label: promo.name, type: promo.type, amount: promo.amount },
+      { key: makeKey(), id: null, promotionId: promo.id, label: promo.name, type: promo.type, amount: promo.amount },
     ])
   }
 
   function addCustomDiscount() {
-    onChange([...discounts, { key: makeKey(), promotionId: null, label: '', type: 'FIXED', amount: 0 }])
+    onChange([...discounts, { key: makeKey(), id: null, promotionId: null, label: '', type: 'FIXED', amount: 0 }])
   }
 
   function updateDiscount(key: string, patch: Partial<InvoiceDiscountDraft>) {
@@ -75,7 +75,7 @@ export function DiscountsSection({ discounts, onChange, promotions, onPromotionC
       onPromotionCreated(data)
       onChange([
         ...discounts,
-        { key: makeKey(), promotionId: data.id, label: data.name, type: data.type, amount: data.amount },
+        { key: makeKey(), id: null, promotionId: data.id, label: data.name, type: data.type, amount: data.amount },
       ])
       toast.success(`Saved "${data.name}" as a reusable preset`)
       setPresetName('')

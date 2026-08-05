@@ -14,6 +14,7 @@ import {
   trashInvoice,
   restoreFromTrash,
 } from '@/lib/invoices'
+import { BackorderBlockedError } from '@/lib/backorders'
 import { invoicePayloadSchema } from '@/lib/invoice/validation'
 
 function isAdmin(userId: string | null) {
@@ -99,6 +100,9 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
   } catch (err: unknown) {
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: 'Validation failed', issues: err.issues }, { status: 400 })
+    }
+    if (err instanceof BackorderBlockedError) {
+      return NextResponse.json({ error: err.message }, { status: 409 })
     }
     console.error('[admin/invoices/:id PATCH]', err)
     const msg = err instanceof Error ? err.message : 'Failed to update invoice'
