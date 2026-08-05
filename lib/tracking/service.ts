@@ -16,7 +16,7 @@ import { computeOrderStatus } from './orderStatus'
 import { sendShipmentNotificationIfNeeded } from './notifications'
 import { syncCustomerFromInvoiceEvent } from '@/lib/customers'
 import { hasActiveBackorder } from '@/lib/backorders'
-import { isTrackingBlockedByBackorder } from '@/lib/invoice/backorder'
+import { isTrackingBlockedByBackorder, isDeliveryStatusBlockedByBackorder } from '@/lib/invoice/backorder'
 import { getPrimaryShipment } from '@/lib/shipments/primary'
 
 // Thrown by addTrackingToInvoice when an active backorder blocks manual
@@ -290,12 +290,22 @@ export async function addTrackingToInvoice(
 // event is chronologically latest (not just last-in-array, since carrier
 // events can arrive out of order) and cascades that into the invoice,
 // activity log, completion rule, and a customer notification.
+export interface ProcessTrackingEventsResult {
+  // True when this event batch would have moved the invoice's customer-
+  // facing status forward, but an active backorder held it back (see the
+  // comment further down). False for every other case, including "nothing
+  // changed" no-ops — a caller that only cares about the backorder block
+  // (markDeliveredManually, overrideShippingStatus) can check this without
+  // having to distinguish "no-op" from "genuinely applied."
+  invoiceCascadeSuppressed: boolean
+}
+
 export async function processTrackingEvents(
   shipmentId: string,
   events: NormalizedTrackingEvent[],
   source: TrackingEventSource
-): Promise<void> {
-  if (events.length === 0) return
+): Promise<ProcessTrackingEventsResult> {
+  if (events.length === 0) return { invoiceCascadeSuppressed: false }
 
   let insertedAny = false
   for (const event of events) {
@@ -322,13 +332,13 @@ export async function processTrackingEvents(
       throw err
     }
   }
-  if (!insertedAny) return
+  if (!insertedAny) return { invoiceCascadeSuppressed: false }
 
   const latest = await prisma.trackingEvent.findFirst({
     where: { shipmentId },
     orderBy: { eventAt: 'desc' },
   })
-  if (!latest) return
+  if (!latest) return { invoiceCascadeSuppressed: false }
 
   const shipment = await prisma.shipment.findUniqueOrThrow({ where: { id: shipmentId }, include: { invoice: true } })
   if (shipment.normalizedStatus === latest.normalizedStatus && shipment.lastEventAt && shipment.lastEventAt >= latest.eventAt) {
@@ -336,7 +346,7 @@ export async function processTrackingEvents(
     // duplicate that slipped past the hash check with different casing) —
     // still worth bumping lastCheckedAt, but no cascade needed.
     await prisma.shipment.update({ where: { id: shipmentId }, data: { lastCheckedAt: new Date() } })
-    return
+    return { invoiceCascadeSuppressed: false }
   }
 
   const previousStatus = shipment.normalizedStatus
@@ -368,24 +378,43 @@ export async function processTrackingEvents(
   const primary = getPrimaryShipment(allShipments)
   const isPrimary = primary?.id === shipmentId
 
+  // A real carrier event always updates the Shipment/TrackingEvent rows
+  // above — that's the factual record and must never be hidden. Whether it
+  // also moves the INVOICE's customer-facing status is a separate question:
+  // if an active backorder exists, the invoice stays at its current
+  // (non-shipped) customer-facing status per the tracking spec, even though
+  // the carrier genuinely reported movement — same override escape hatch as
+  // everywhere else in the backorder-gating story.
+  let invoiceCascadeSuppressed = false
   if (isPrimary) {
-    const newOrderStatus = computeOrderStatus(invoice.status, invoice.paymentStatus, latest.normalizedStatus, invoice.orderStatus)
-    await prisma.invoice.update({
-      where: { id: invoice.id },
-      data: {
-        shippingStatus: latest.normalizedStatus,
-        deliveryStatus: LEGACY_DELIVERY_STATUS[latest.normalizedStatus],
-        lastTrackingUpdate: new Date(),
-        deliveredDate: isDelivered ? latest.eventAt : invoice.deliveredDate,
-        shipDate: dateShipped ?? invoice.shipDate,
-        orderStatus: newOrderStatus,
-      },
+    const activeBackorder = await hasActiveBackorder(invoice.id)
+    const blocked = isDeliveryStatusBlockedByBackorder({
+      newDeliveryStatus: LEGACY_DELIVERY_STATUS[latest.normalizedStatus],
+      hasActiveBackorder: activeBackorder,
+      fulfillmentOverrideAt: invoice.fulfillmentOverrideAt,
     })
+
+    if (blocked) {
+      invoiceCascadeSuppressed = true
+    } else {
+      const newOrderStatus = computeOrderStatus(invoice.status, invoice.paymentStatus, latest.normalizedStatus, invoice.orderStatus)
+      await prisma.invoice.update({
+        where: { id: invoice.id },
+        data: {
+          shippingStatus: latest.normalizedStatus,
+          deliveryStatus: LEGACY_DELIVERY_STATUS[latest.normalizedStatus],
+          lastTrackingUpdate: new Date(),
+          deliveredDate: isDelivered ? latest.eventAt : invoice.deliveredDate,
+          shipDate: dateShipped ?? invoice.shipDate,
+          orderStatus: newOrderStatus,
+        },
+      })
+    }
   }
 
   await logActivity({
     invoiceId: invoice.id,
-    eventType: 'SHIPPING_STATUS_UPDATED',
+    eventType: invoiceCascadeSuppressed ? 'SHIPPING_STATUS_UPDATE_SUPPRESSED_BY_BACKORDER' : 'SHIPPING_STATUS_UPDATED',
     previousValue: previousStatus,
     newValue: latest.normalizedStatus,
     carrier: shipment.carrier,
@@ -394,12 +423,17 @@ export async function processTrackingEvents(
     actor: { source, userId: undefined },
   })
 
-  await sendShipmentNotificationIfNeeded({
-    invoiceId: invoice.id,
-    shipmentId: shipment.id,
-    status: latest.normalizedStatus,
-    latestMessage: latest.carrierStatus ?? 'Status update',
-  })
+  // Suppress the customer email too — telling a customer their order is "In
+  // Transit" while it's actually stuck on an active backorder would be
+  // actively wrong, not just premature.
+  if (!invoiceCascadeSuppressed) {
+    await sendShipmentNotificationIfNeeded({
+      invoiceId: invoice.id,
+      shipmentId: shipment.id,
+      status: latest.normalizedStatus,
+      latestMessage: latest.carrierStatus ?? 'Status update',
+    })
+  }
 
   if (invoice.customerId) {
     await syncCustomerFromInvoiceEvent({
@@ -411,6 +445,8 @@ export async function processTrackingEvents(
       source,
     })
   }
+
+  return { invoiceCascadeSuppressed }
 }
 
 // Admin "Refresh tracking manually" / polling-cron entry point: fetches the
@@ -436,11 +472,19 @@ export async function markDeliveredManually(invoiceId: string, userId: string): 
   const shipment = await getPrimaryShipmentForInvoice(invoiceId)
   if (!shipment) throw new Error('No shipment to mark delivered')
 
-  await processTrackingEvents(
+  const { invoiceCascadeSuppressed } = await processTrackingEvents(
     shipment.id,
     [{ normalizedStatus: 'DELIVERED', carrierStatus: 'Marked delivered by admin', description: 'Marked delivered by admin', eventAt: new Date() }],
     'MANUAL'
   )
+  // Unlike a webhook/poll (which silently holds back the invoice-facing
+  // status and moves on), this is an explicit admin click — the admin needs
+  // to know it didn't take effect rather than see a false "success" toast.
+  if (invoiceCascadeSuppressed) {
+    throw new BackorderBlocksTrackingError(
+      'This invoice has an active backorder. Resolve it, or use "Fulfill Anyway" below, before marking it delivered.'
+    )
+  }
   await logActivity({ invoiceId, eventType: 'MARKED_DELIVERED_MANUALLY', newValue: 'DELIVERED', shipmentId: shipment.id, actor: { source: 'MANUAL', userId } })
 }
 
@@ -450,11 +494,16 @@ export async function overrideShippingStatus(invoiceId: string, status: Shipping
   const shipment = await getPrimaryShipmentForInvoice(invoiceId)
   if (!shipment) throw new Error('No shipment to override')
 
-  await processTrackingEvents(
+  const { invoiceCascadeSuppressed } = await processTrackingEvents(
     shipment.id,
     [{ normalizedStatus: status, carrierStatus: 'Status manually overridden by admin', description: 'Status manually overridden by admin', eventAt: new Date() }],
     'MANUAL'
   )
+  if (invoiceCascadeSuppressed) {
+    throw new BackorderBlocksTrackingError(
+      'This invoice has an active backorder. Resolve it, or use "Fulfill Anyway" below, before overriding its shipping status.'
+    )
+  }
   await logActivity({
     invoiceId,
     eventType: 'STATUS_OVERRIDDEN',

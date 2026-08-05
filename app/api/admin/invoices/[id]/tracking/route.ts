@@ -131,6 +131,9 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: 'Validation failed', issues: err.issues }, { status: 400 })
     }
+    if (err instanceof BackorderBlocksTrackingError) {
+      return NextResponse.json({ error: err.message, code: 'BACKORDER_ACTIVE' }, { status: 409 })
+    }
     console.error('[admin/invoices/:id/tracking PATCH]', err)
     const msg = err instanceof Error ? err.message : 'Failed to update tracking'
     return NextResponse.json({ error: msg }, { status: 500 })
