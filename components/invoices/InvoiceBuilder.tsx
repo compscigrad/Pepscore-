@@ -26,6 +26,7 @@ import { card, mutedText, pillPrimary, sectionHeading } from './theme'
 import { makeKey, EMPTY_DRAFT, INVOICE_STATUSES } from './types'
 import type { InvoiceDraft, AddressDraft, Product, Promotion } from './types'
 import type { InvoiceWithRelations } from '@/lib/invoices'
+import type { Customer } from '@prisma/client'
 
 // Turns the server's { error, issues } shape (zod's err.issues, when present)
 // into a readable message — the generic top-level "error" string alone
@@ -49,6 +50,12 @@ interface Props {
   products: Product[]
   promotions: Promotion[]
   smsConfigured?: boolean
+  // Create-mode only — set when arriving from a customer profile's "New
+  // Invoice" action. Prefills the customer/shipping fields for review and,
+  // on save, links the new invoice to this customer (see the save() payload
+  // below) rather than leaving customerId unset the way a plain manual
+  // invoice always has until now.
+  prefillCustomer?: Customer | null
 }
 
 function toDateInputValue(date: Date | string | null | undefined): string {
@@ -134,9 +141,36 @@ function invoiceToDraft(invoice: InvoiceWithRelations): InvoiceDraft {
   }
 }
 
-export function InvoiceBuilder({ mode, initialInvoice, products, promotions: initialPromotions, smsConfigured = false }: Props) {
+function customerToDraft(customer: Customer): InvoiceDraft {
+  return {
+    ...EMPTY_DRAFT,
+    customer: {
+      ...EMPTY_DRAFT.customer,
+      customerName: `${customer.firstName} ${customer.lastName}`.trim(),
+      customerCompany: customer.company ?? '',
+      customerEmail: customer.email ?? '',
+      customerPhone: customer.phone ?? '',
+      billingAddress: toAddressDraft(customer.billingAddress),
+    },
+    shipping: {
+      ...EMPTY_DRAFT.shipping,
+      shippingAddress: toAddressDraft(customer.shippingAddress),
+    },
+  }
+}
+
+export function InvoiceBuilder({
+  mode,
+  initialInvoice,
+  products,
+  promotions: initialPromotions,
+  smsConfigured = false,
+  prefillCustomer,
+}: Props) {
   const router = useRouter()
-  const [draft, setDraft] = useState<InvoiceDraft>(() => (initialInvoice ? invoiceToDraft(initialInvoice) : EMPTY_DRAFT))
+  const [draft, setDraft] = useState<InvoiceDraft>(() =>
+    initialInvoice ? invoiceToDraft(initialInvoice) : prefillCustomer ? customerToDraft(prefillCustomer) : EMPTY_DRAFT
+  )
   const [invoice, setInvoice] = useState(initialInvoice)
   const [saving, setSaving] = useState(false)
   // Ephemeral UI convenience, not part of the draft/save payload — what's
@@ -167,6 +201,7 @@ export function InvoiceBuilder({ mode, initialInvoice, products, promotions: ini
     try {
       const payload = {
         orderId: draft.orderId,
+        customerId: mode === 'create' ? prefillCustomer?.id : undefined,
         customerName: draft.customer.customerName,
         customerCompany: draft.customer.customerCompany || undefined,
         customerEmail: draft.customer.customerEmail || undefined,

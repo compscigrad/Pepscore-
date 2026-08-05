@@ -39,6 +39,10 @@ const discountSchema = z.object({
 
 export const invoicePayloadSchema = z.object({
   orderId: z.string().optional().nullable(),
+  // Only ever sent by the create-mode "New Invoice from profile" flow — an
+  // update payload that omits it leaves an existing invoice's link
+  // untouched (see updateInvoice's `?? undefined` handling).
+  customerId: z.string().optional().nullable(),
   customerName: z.string().min(1, 'Customer name is required'),
   customerCompany: z.string().optional(),
   customerEmail: z.string().email('Invalid email address').optional().or(z.literal('')),

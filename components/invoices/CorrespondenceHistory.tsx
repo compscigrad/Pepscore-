@@ -40,18 +40,23 @@ function formatCategory(category: string): string {
   return category.toLowerCase().split('_').map((w) => w[0].toUpperCase() + w.slice(1)).join(' ')
 }
 
-interface Props {
-  invoiceId: string
-}
+type Props = { invoiceId: string; customerId?: never } | { customerId: string; invoiceId?: never }
 
-export function CorrespondenceHistory({ invoiceId }: Props) {
+export function CorrespondenceHistory(props: Props) {
+  const endpoint = 'invoiceId' in props && props.invoiceId
+    ? `/api/admin/invoices/${props.invoiceId}/communications`
+    : `/api/admin/customers/${(props as { customerId: string }).customerId}/communications`
+  const emptyMessage = 'invoiceId' in props && props.invoiceId
+    ? 'No emails or texts have been sent about this invoice yet.'
+    : 'No emails or texts have been sent to this customer yet.'
+
   const [communications, setCommunications] = useState<Communication[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
-    fetch(`/api/admin/invoices/${invoiceId}/communications`)
+    fetch(endpoint)
       .then((res) => (res.ok ? res.json() : []))
       .then((data) => {
         if (!cancelled) setCommunications(data)
@@ -62,7 +67,7 @@ export function CorrespondenceHistory({ invoiceId }: Props) {
     return () => {
       cancelled = true
     }
-  }, [invoiceId])
+  }, [endpoint])
 
   if (loading) return null
 
@@ -70,7 +75,7 @@ export function CorrespondenceHistory({ invoiceId }: Props) {
     <div className={`${card} p-6 space-y-4`}>
       <h3 className={sectionHeading}>Correspondence History</h3>
       {communications.length === 0 ? (
-        <p className={`text-sm ${mutedText}`}>No emails or texts have been sent about this invoice yet.</p>
+        <p className={`text-sm ${mutedText}`}>{emptyMessage}</p>
       ) : (
         <div className="space-y-2">
           {communications.map((c) => (

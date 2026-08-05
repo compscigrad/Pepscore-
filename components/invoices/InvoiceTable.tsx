@@ -178,7 +178,15 @@ export function InvoiceTable({ initialInvoices, initialTotal }: Props) {
               invoices.map((invoice) => (
                 <tr key={invoice.id} className="border-b border-white/10 hover:bg-white/[0.04] transition-colors">
                   <td className="px-4 py-3 font-medium text-white whitespace-nowrap">{invoice.invoiceNumber}</td>
-                  <td className="px-4 py-3 text-white/70">{invoice.customerName}</td>
+                  <td className="px-4 py-3 text-white/70">
+                    {invoice.customerId ? (
+                      <Link href={`/admin/customers/${invoice.customerId}`} className="hover:text-gold-light hover:underline">
+                        {invoice.customerName}
+                      </Link>
+                    ) : (
+                      invoice.customerName
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-white/50 whitespace-nowrap">
                     {new Date(invoice.createdAt).toLocaleDateString('en-US', { timeZone: 'UTC' })}
                   </td>
