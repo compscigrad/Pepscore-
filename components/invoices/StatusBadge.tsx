@@ -87,9 +87,30 @@ const REFUND_STATUS_COLORS: Record<string, string> = {
   CANCELLED: 'border-white/15 bg-white/5 text-white/40',
 }
 
+// Customer.status (CustomerStatus enum) — a coarse lifecycle spanning intake
+// through delivery, so its palette borrows meaning from the more granular
+// per-invoice enums above rather than inventing a third color language.
+const CUSTOMER_STATUS_COLORS: Record<string, string> = {
+  LEAD: 'border-white/15 bg-white/5 text-white/50',
+  INTAKE_SENT: 'border-amber-400/30 bg-amber-400/10 text-amber-300',
+  INTAKE_COMPLETED: 'border-blue-400/30 bg-blue-400/10 text-blue-300',
+  AWAITING_FULFILLMENT: 'border-amber-400/30 bg-amber-400/10 text-amber-300',
+  INVOICE_ISSUED: 'border-blue-400/30 bg-blue-400/10 text-blue-300',
+  AWAITING_PAYMENT: 'border-amber-400/30 bg-amber-400/10 text-amber-300',
+  PARTIALLY_PAID: 'border-amber-400/30 bg-amber-400/10 text-amber-300',
+  PAYMENT_ARRANGEMENT: 'border-purple-400/30 bg-purple-400/10 text-purple-300',
+  PAID: 'border-gold/40 bg-gold/10 text-gold-light',
+  ELIGIBLE_FOR_FULFILLMENT: 'border-blue-400/30 bg-blue-400/10 text-blue-300',
+  LABEL_CREATED: 'border-amber-400/30 bg-amber-400/10 text-amber-300',
+  PREPARING_SHIPMENT: 'border-amber-400/30 bg-amber-400/10 text-amber-300',
+  SHIPPED: 'border-purple-400/30 bg-purple-400/10 text-purple-300',
+  DELIVERED: 'border-gold/40 bg-gold/10 text-gold-light',
+  ARCHIVED: 'border-white/15 bg-white/5 text-white/40',
+}
+
 interface StatusBadgeProps {
   status: string
-  variant?: 'invoice' | 'delivery' | 'payment' | 'shipping' | 'backorder' | 'refund'
+  variant?: 'invoice' | 'delivery' | 'payment' | 'shipping' | 'backorder' | 'refund' | 'customer'
 }
 
 function formatLabel(status: string): string {
@@ -107,6 +128,7 @@ const VARIANT_COLORS: Record<NonNullable<StatusBadgeProps['variant']>, Record<st
   shipping: SHIPPING_STATUS_COLORS,
   backorder: BACKORDER_STATUS_COLORS,
   refund: REFUND_STATUS_COLORS,
+  customer: CUSTOMER_STATUS_COLORS,
 }
 
 export function StatusBadge({ status, variant = 'invoice' }: StatusBadgeProps) {

@@ -40,7 +40,15 @@ export default async function EditInvoicePage({ params }: PageProps) {
           <div className="flex items-center gap-3">
             <div>
               <h1 className="font-heading text-3xl font-bold text-white">{invoice.invoiceNumber}</h1>
-              <p className="text-white/50 text-sm mt-1">{invoice.customerName}</p>
+              <p className="text-white/50 text-sm mt-1">
+                {invoice.customerId ? (
+                  <Link href={`/admin/customers/${invoice.customerId}`} className="hover:text-gold-light hover:underline">
+                    {invoice.customerName} — View Profile →
+                  </Link>
+                ) : (
+                  invoice.customerName
+                )}
+              </p>
             </div>
             <StatusBadge status={invoice.status} />
             {invoice.archivedAt ? <StatusBadge status="ARCHIVED" /> : null}

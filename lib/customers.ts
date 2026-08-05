@@ -306,6 +306,37 @@ export async function createOrUpdateDraftInvoiceFromIntake(input: CreateOrUpdate
   })
 }
 
+const customerProfileInclude = Prisma.validator<Prisma.CustomerDefaultArgs>()({
+  include: {
+    invoices: {
+      where: { deletedAt: null },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        payments: { orderBy: { paidAt: 'desc' } },
+        refunds: { orderBy: { requestedAt: 'desc' } },
+        backorderConditions: { orderBy: { appliedAt: 'desc' } },
+        paymentArrangement: {
+          include: { installments: { orderBy: { installmentNumber: 'asc' } } },
+        },
+        shipments: { orderBy: { createdAt: 'desc' } },
+      },
+    },
+    accountCredits: { orderBy: { issuedAt: 'desc' } },
+    communications: { orderBy: { sentAt: 'desc' } },
+    activityLog: { orderBy: { createdAt: 'desc' } },
+    intakeLinks: { orderBy: { createdAt: 'desc' } },
+  },
+})
+export type CustomerProfile = Prisma.CustomerGetPayload<typeof customerProfileInclude>
+
+// Single rich fetch for the admin customer-profile page — everything the
+// spec's profile view needs in one round trip, mirroring InvoiceWithRelations'
+// shape/rationale in lib/invoices.ts. Not used by listCustomers/getCustomer,
+// which stay intentionally cheap for table/lookup use.
+export async function getCustomerProfileData(customerId: string): Promise<CustomerProfile | null> {
+  return prisma.customer.findUnique({ where: { id: customerId }, ...customerProfileInclude })
+}
+
 export interface FulfillmentQueueParams {
   sortBy?: 'oldest' | 'newest' | 'priority' | 'customerName'
   search?: string

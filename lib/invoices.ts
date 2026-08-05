@@ -230,6 +230,7 @@ export async function createInvoice(payload: InvoicePayload): Promise<InvoiceWit
     data: {
       invoiceNumber,
       orderId: payload.orderId || undefined,
+      customerId: payload.customerId || undefined,
       customerName: payload.customerName,
       customerCompany: payload.customerCompany || undefined,
       customerEmail: payload.customerEmail || undefined,
