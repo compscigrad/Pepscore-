@@ -75,9 +75,21 @@ const BACKORDER_STATUS_COLORS: Record<string, string> = {
   RESOLVED: 'border-white/15 bg-white/5 text-white/50',
 }
 
+// A refund's lifecycle is deliberately never "green until COMPLETED" — a
+// PENDING/manual-processing refund must always read as unfinished, never as
+// money already returned (see prisma/schema.prisma's RefundStatus).
+const REFUND_STATUS_COLORS: Record<string, string> = {
+  PENDING: 'border-amber-400/30 bg-amber-400/10 text-amber-300',
+  AWAITING_MANUAL_PROCESSING: 'border-amber-400/30 bg-amber-400/10 text-amber-300',
+  PROCESSING: 'border-blue-400/30 bg-blue-400/10 text-blue-300',
+  COMPLETED: 'border-gold/40 bg-gold/10 text-gold-light',
+  FAILED: 'border-red-400/30 bg-red-400/10 text-red-300',
+  CANCELLED: 'border-white/15 bg-white/5 text-white/40',
+}
+
 interface StatusBadgeProps {
   status: string
-  variant?: 'invoice' | 'delivery' | 'payment' | 'shipping' | 'backorder'
+  variant?: 'invoice' | 'delivery' | 'payment' | 'shipping' | 'backorder' | 'refund'
 }
 
 function formatLabel(status: string): string {
@@ -94,6 +106,7 @@ const VARIANT_COLORS: Record<NonNullable<StatusBadgeProps['variant']>, Record<st
   payment: PAYMENT_STATUS_COLORS,
   shipping: SHIPPING_STATUS_COLORS,
   backorder: BACKORDER_STATUS_COLORS,
+  refund: REFUND_STATUS_COLORS,
 }
 
 export function StatusBadge({ status, variant = 'invoice' }: StatusBadgeProps) {

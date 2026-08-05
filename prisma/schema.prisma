@@ -219,6 +219,13 @@ model Invoice {
   // lib/invoice/status.ts. Balance Due never goes negative; this is where
   // the excess is surfaced instead, for admin review.
   overpaidAmount Float @default(0)
+  // Authoritative running total of *completed* refunds only (see
+  // InvoiceRefund/RefundStatus below) — incremented exclusively by
+  // lib/backorders.ts's completeRefund(), never at refund-request time.
+  // Deliberately independent of amountPaid/balanceDue/total: a pending
+  // refund must never retroactively rewrite what was actually billed or
+  // paid, only a completed one is "real" enough to report here.
+  amountRefunded Float @default(0)
 
   status                InvoiceStatus        @default(DRAFT)
   // Derived exclusively from confirmed InvoicePayment records — see
@@ -569,6 +576,16 @@ enum BackorderStatus {
   RESOLVED
 }
 
+// Which bucket the collected-money portion of a compensation goes into when
+// the invoice's balance alone doesn't cover it — an explicit admin choice
+// (docs: "do not force an automatic cash refund when no provider can
+// execute it"), not an automatic default. REFUND still means "start a
+// pending refund obligation," never an actual completed transfer.
+enum CompensationDispositionPreference {
+  REFUND
+  ACCOUNT_CREDIT
+}
+
 // One compensation per genuinely separate delay, not one per affected item —
 // multiple line items backordered as part of the same order delay share a
 // single BackorderCompensation via the join table below, which is what makes
@@ -583,8 +600,20 @@ model BackorderCompensation {
 
   totalAmount         Float // the flat policy amount, normally 25.00
   creditAppliedAmount Float @default(0) // portion applied as an InvoiceDiscount, reducing balance due
-  refundAmount        Float @default(0) // portion returned as a real refund of money already collected
+  // Portion *requested* as a refund of money already collected — a fixed
+  // snapshot of the compensation's allocation plan at apply-time, not a
+  // live mirror of the linked InvoiceRefund's own lifecycle (that record's
+  // completedAmount is the only place "money actually returned" is tracked).
+  refundAmount        Float @default(0)
   accountCreditAmount Float @default(0) // portion stored as a CustomerAccountCredit (exceeds what was actually paid)
+  // Admin's chosen disposition for the collected-money portion when both a
+  // refund and an account credit are theoretically possible (i.e. some
+  // compensation exceeds balanceDue) — 'REFUND' still caps refundAmount at
+  // amountPaid and pushes any further excess into accountCreditAmount
+  // (the one case a "combination" happens), 'ACCOUNT_CREDIT' sends the
+  // entire post-discount remainder to account credit and never creates a
+  // refund at all. See lib/invoice/backorder.ts's computeCompensationSplit.
+  dispositionPreference CompensationDispositionPreference @default(REFUND)
 
   reason    String
   appliedAt DateTime @default(now())
@@ -621,27 +650,60 @@ model BackorderConditionCompensation {
   @@unique([backorderConditionId, backorderCompensationId])
 }
 
-// A real refund of money that was actually collected — never used to
-// represent money that was never received (that's a CustomerAccountCredit
-// instead). Deliberately separate from InvoicePayment (a positive-only
-// record of money coming in) rather than a negative-amount payment, so
-// "total collected" and "total refunded" are never ambiguous from the same
-// column's sign.
+// A refund *obligation* against money that was actually collected — never
+// used to represent money that was never received (that's a
+// CustomerAccountCredit instead). Deliberately separate from InvoicePayment
+// (a positive-only record of money coming in) rather than a negative-amount
+// payment, so "total collected" and "total refunded" are never ambiguous
+// from the same column's sign.
+//
+// Pepscore has no integrated online-payment/auto-refund provider yet, so
+// creating this row is never itself "money returned" — it starts PENDING
+// and stays that way (or moves through AWAITING_MANUAL_PROCESSING/
+// PROCESSING) until a real payment provider confirms it, or an authorized
+// admin records that they completed it manually (lib/backorders.ts's
+// completeRefund()). requestedAmount is fixed at creation; completedAmount
+// is only ever set at completion, and may differ from requestedAmount if
+// only a partial amount was actually returned. A future online-payment
+// webhook is expected to update *this same record* via its status/
+// completedAmount/providerTransactionId fields — never spin up a second,
+// parallel refund model.
 model InvoiceRefund {
-  id                String          @id @default(cuid())
-  invoiceId         String
-  invoice           Invoice         @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  amount            Float
-  reason            String
-  method            PaymentMethod?
-  relatedPaymentId  String?
-  relatedPayment    InvoicePayment? @relation(fields: [relatedPaymentId], references: [id])
-  processedAt       DateTime        @default(now())
-  processedBy       String
+  id                    String          @id @default(cuid())
+  invoiceId             String
+  invoice               Invoice         @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  requestedAmount       Float
+  completedAmount       Float?
+  status                RefundStatus    @default(PENDING)
+  reason                String
+  method                PaymentMethod?
+  // Set once a real payment provider (or manual record-keeping) has a
+  // reference id for the completed transaction — null until then.
+  providerTransactionId String?
+  relatedPaymentId      String?
+  relatedPayment        InvoicePayment? @relation(fields: [relatedPaymentId], references: [id])
+
+  requestedAt DateTime  @default(now())
+  requestedBy String
+  completedAt DateTime?
+  completedBy String?
+  failureReason String?
+  cancelledAt   DateTime?
+  cancelledBy   String?
 
   backorderCompensation BackorderCompensation?
 
   @@index([invoiceId])
+  @@index([status])
+}
+
+enum RefundStatus {
+  PENDING
+  AWAITING_MANUAL_PROCESSING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
 }
 
 // A stored, future-usable credit for a customer — used when compensation

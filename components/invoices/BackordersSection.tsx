@@ -5,6 +5,10 @@
 // DeliveryStatus value. Applying a backorder auto-applies/links the flat
 // $25 compensation (lib/backorders.ts's applyCompensation) — nothing extra
 // to trigger here beyond marking the item.
+//
+// Refund status is always shown as its own lifecycle, never implied by the
+// compensation summary alone — a pending refund reads as pending until an
+// admin explicitly completes it here (lib/backorders.ts's completeRefund).
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
@@ -14,14 +18,37 @@ import { StatusBadge } from './StatusBadge'
 import { card, input, label as labelClass, pillPrimary, pillOutline, sectionHeading, selectOption, mutedText } from './theme'
 import type { DeliveryStatus } from '@prisma/client'
 
+type RefundStatus = 'PENDING' | 'AWAITING_MANUAL_PROCESSING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED'
+
+interface RefundSummary {
+  id: string
+  requestedAmount: number
+  completedAmount: number | null
+  status: RefundStatus
+  method: string | null
+  providerTransactionId: string | null
+  requestedAt: string
+  completedAt: string | null
+  failureReason: string | null
+}
+
+interface AccountCreditSummary {
+  id: string
+  amount: number
+  remainingAmount: number
+}
+
 interface BackorderCompensationSummary {
   id: string
   totalAmount: number
   creditAppliedAmount: number
   refundAmount: number
   accountCreditAmount: number
+  dispositionPreference: 'REFUND' | 'ACCOUNT_CREDIT'
   reason: string
   appliedAt: string
+  refund: RefundSummary | null
+  accountCredit: AccountCreditSummary | null
 }
 
 interface BackorderCondition {
@@ -51,6 +78,8 @@ interface Props {
   onBackorderUpdated: () => void
 }
 
+const REFUND_TERMINAL: RefundStatus[] = ['COMPLETED', 'FAILED', 'CANCELLED']
+
 export function BackordersSection({ invoiceId, items, deliveryStatus, onBackorderUpdated }: Props) {
   const [backorders, setBackorders] = useState<BackorderCondition[]>([])
   const [loading, setLoading] = useState(true)
@@ -58,7 +87,10 @@ export function BackordersSection({ invoiceId, items, deliveryStatus, onBackorde
   const [selectedItemId, setSelectedItemId] = useState('')
   const [expectedAvailableDate, setExpectedAvailableDate] = useState('')
   const [notes, setNotes] = useState('')
+  const [preference, setPreference] = useState<'REFUND' | 'ACCOUNT_CREDIT'>('REFUND')
   const [resolutionNotes, setResolutionNotes] = useState<Record<string, string>>({})
+  const [providerTxnId, setProviderTxnId] = useState('')
+  const [failureReason, setFailureReason] = useState('')
 
   const refresh = useCallback(async () => {
     try {
@@ -98,6 +130,7 @@ export function BackordersSection({ invoiceId, items, deliveryStatus, onBackorde
           invoiceItemId: selectedItemId,
           expectedAvailableDate: expectedAvailableDate || undefined,
           notes: notes || undefined,
+          preference: compensation ? undefined : preference,
         }),
       })
       const data = await res.json()
@@ -136,6 +169,28 @@ export function BackordersSection({ invoiceId, items, deliveryStatus, onBackorde
     }
   }
 
+  async function refundAction(refundId: string, body: Record<string, unknown>, successMessage: string) {
+    setSubmitting(true)
+    try {
+      const res = await fetch(`/api/admin/invoices/${invoiceId}/refunds/${refundId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed to update refund')
+      toast.success(successMessage)
+      setProviderTxnId('')
+      setFailureReason('')
+      await refresh()
+      onBackorderUpdated()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update refund')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   if (loading) return null
 
   return (
@@ -161,15 +216,87 @@ export function BackordersSection({ invoiceId, items, deliveryStatus, onBackorde
       </div>
 
       {compensation ? (
-        <div className="rounded-lg border border-gold/20 bg-gold/5 p-3 text-xs text-white/70 space-y-1">
+        <div className="rounded-lg border border-gold/20 bg-gold/5 p-3 text-xs text-white/70 space-y-2">
           <p className="font-heading font-bold text-gold-light">
             {compensation.reason} — {formatMoney(compensation.totalAmount)} total
           </p>
           <p>
-            {compensation.creditAppliedAmount > 0 ? `Credit applied: ${formatMoney(compensation.creditAppliedAmount)}. ` : ''}
-            {compensation.refundAmount > 0 ? `Refunded: ${formatMoney(compensation.refundAmount)}. ` : ''}
-            {compensation.accountCreditAmount > 0 ? `Account credit: ${formatMoney(compensation.accountCreditAmount)}.` : ''}
+            {compensation.creditAppliedAmount > 0 ? `Invoice discount applied: ${formatMoney(compensation.creditAppliedAmount)}. ` : ''}
+            {compensation.accountCreditAmount > 0 ? `Account credit issued: ${formatMoney(compensation.accountCreditAmount)}.` : ''}
           </p>
+
+          {compensation.refund ? (
+            <div className="pt-2 border-t border-white/10 space-y-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span>
+                  Refund — requested {formatMoney(compensation.refund.requestedAmount)}
+                  {compensation.refund.completedAmount != null ? `, completed ${formatMoney(compensation.refund.completedAmount)}` : ''}
+                </span>
+                <StatusBadge status={compensation.refund.status} variant="refund" />
+              </div>
+              {compensation.refund.status === 'COMPLETED' ? (
+                <p className={mutedText}>
+                  Completed {formatDate(compensation.refund.completedAt)}
+                  {compensation.refund.method ? ` via ${compensation.refund.method}` : ''}
+                  {compensation.refund.providerTransactionId ? ` — ref ${compensation.refund.providerTransactionId}` : ''}
+                </p>
+              ) : null}
+              {compensation.refund.status === 'FAILED' && compensation.refund.failureReason ? (
+                <p className="text-red-300">Failed: {compensation.refund.failureReason}</p>
+              ) : null}
+              {!REFUND_TERMINAL.includes(compensation.refund.status) ? (
+                <div className="flex flex-wrap items-end gap-2 pt-1">
+                  <div>
+                    <label className={labelClass} htmlFor="providerTxnId">Provider Txn ID (optional)</label>
+                    <input
+                      id="providerTxnId"
+                      className={`${input} w-40`}
+                      value={providerTxnId}
+                      onChange={(e) => setProviderTxnId(e.target.value)}
+                      placeholder="e.g. terminal receipt #"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className={`${pillPrimary} px-4 py-2`}
+                    disabled={submitting}
+                    onClick={() =>
+                      refundAction(
+                        compensation.refund!.id,
+                        { action: 'complete', providerTransactionId: providerTxnId || undefined },
+                        'Refund marked completed — customer notified'
+                      )
+                    }
+                  >
+                    Mark Refund Completed
+                  </button>
+                  <div>
+                    <label className={labelClass} htmlFor="failureReason">Failure Reason</label>
+                    <input
+                      id="failureReason"
+                      className={`${input} w-40`}
+                      value={failureReason}
+                      onChange={(e) => setFailureReason(e.target.value)}
+                      placeholder="If it can't be completed"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className={`${pillOutline} px-4 py-2`}
+                    disabled={submitting || !failureReason}
+                    onClick={() => refundAction(compensation.refund!.id, { action: 'fail', failureReason }, 'Refund marked failed')}
+                  >
+                    Mark Failed
+                  </button>
+                </div>
+              ) : null}
+              <p className={mutedText}>
+                No money has been recorded as returned until this refund is marked Completed — the customer has not
+                been told it&apos;s finished yet.
+              </p>
+            </div>
+          ) : null}
+
           <p className={mutedText}>Applied {formatDate(compensation.appliedAt)} — one compensation covers every backorder on this invoice.</p>
         </div>
       ) : null}
@@ -245,6 +372,20 @@ export function BackordersSection({ invoiceId, items, deliveryStatus, onBackorde
             <label className={labelClass} htmlFor="backorderNotes">Notes (optional)</label>
             <input id="backorderNotes" className={input} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
+          {!compensation ? (
+            <div>
+              <label className={labelClass} htmlFor="disposition">If Money Is Owed Back</label>
+              <select
+                id="disposition"
+                className={`${input} w-44`}
+                value={preference}
+                onChange={(e) => setPreference(e.target.value as 'REFUND' | 'ACCOUNT_CREDIT')}
+              >
+                <option value="REFUND" className={selectOption}>Pending Refund</option>
+                <option value="ACCOUNT_CREDIT" className={selectOption}>Account Credit</option>
+              </select>
+            </div>
+          ) : null}
           <button type="submit" className={`${pillPrimary} px-5 py-2`} disabled={submitting}>
             Mark Backordered
           </button>

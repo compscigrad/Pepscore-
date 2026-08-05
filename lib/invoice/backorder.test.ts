@@ -3,6 +3,7 @@ import {
   computeCompensationSplit,
   decideCompensationDisposition,
   isDeliveryStatusBlockedByBackorder,
+  canTransitionRefundStatus,
 } from './backorder'
 
 describe('computeCompensationSplit', () => {
@@ -59,6 +60,54 @@ describe('computeCompensationSplit', () => {
   it('rounds to the nearest cent', () => {
     const result = computeCompensationSplit({ compensationAmount: 25, balanceDue: 10.005, amountPaid: 0 })
     expect(result.creditAppliedAmount).toBe(10.01)
+  })
+
+  it('defaults to the REFUND preference when none is given', () => {
+    expect(computeCompensationSplit({ compensationAmount: 25, balanceDue: 0, amountPaid: 100 })).toEqual({
+      creditAppliedAmount: 0,
+      refundAmount: 25,
+      accountCreditAmount: 0,
+    })
+  })
+
+  it('ACCOUNT_CREDIT preference sends the entire remainder to account credit, never creating a refund', () => {
+    expect(
+      computeCompensationSplit({ compensationAmount: 25, balanceDue: 0, amountPaid: 100, preference: 'ACCOUNT_CREDIT' })
+    ).toEqual({
+      creditAppliedAmount: 0,
+      refundAmount: 0,
+      accountCreditAmount: 25,
+    })
+  })
+
+  it('ACCOUNT_CREDIT preference still applies the discount portion first when balance is owed', () => {
+    expect(
+      computeCompensationSplit({ compensationAmount: 25, balanceDue: 10, amountPaid: 90, preference: 'ACCOUNT_CREDIT' })
+    ).toEqual({
+      creditAppliedAmount: 10,
+      refundAmount: 0,
+      accountCreditAmount: 15,
+    })
+  })
+
+  it('REFUND preference still caps the refund at amountPaid and pushes any further excess to account credit (the combination case)', () => {
+    expect(
+      computeCompensationSplit({ compensationAmount: 25, balanceDue: 0, amountPaid: 10, preference: 'REFUND' })
+    ).toEqual({
+      creditAppliedAmount: 0,
+      refundAmount: 10,
+      accountCreditAmount: 15,
+    })
+  })
+
+  it('never creates a refund when the remainder is fully absorbed by the discount, regardless of preference', () => {
+    expect(
+      computeCompensationSplit({ compensationAmount: 25, balanceDue: 100, amountPaid: 0, preference: 'ACCOUNT_CREDIT' })
+    ).toEqual({
+      creditAppliedAmount: 25,
+      refundAmount: 0,
+      accountCreditAmount: 0,
+    })
   })
 })
 
@@ -121,5 +170,19 @@ describe('isDeliveryStatusBlockedByBackorder', () => {
         fulfillmentOverrideAt: new Date(),
       })
     ).toBe(false)
+  })
+})
+
+describe('canTransitionRefundStatus', () => {
+  it('allows transitions from every non-terminal status', () => {
+    expect(canTransitionRefundStatus('PENDING')).toBe(true)
+    expect(canTransitionRefundStatus('AWAITING_MANUAL_PROCESSING')).toBe(true)
+    expect(canTransitionRefundStatus('PROCESSING')).toBe(true)
+  })
+
+  it('blocks transitions from every terminal status — prevents completing/failing/cancelling twice', () => {
+    expect(canTransitionRefundStatus('COMPLETED')).toBe(false)
+    expect(canTransitionRefundStatus('FAILED')).toBe(false)
+    expect(canTransitionRefundStatus('CANCELLED')).toBe(false)
   })
 })

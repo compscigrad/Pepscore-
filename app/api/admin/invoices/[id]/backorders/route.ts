@@ -17,6 +17,9 @@ const applyBackorderSchema = z.object({
   invoiceItemId: z.string().min(1),
   expectedAvailableDate: z.coerce.date().optional(),
   notes: z.string().optional(),
+  // Only meaningful the first time compensation is created on an invoice
+  // that's already collected money — see lib/invoice/backorder.ts.
+  preference: z.enum(['REFUND', 'ACCOUNT_CREDIT']).optional(),
 })
 
 interface RouteParams {
@@ -48,6 +51,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       appliedBy: userId!,
       expectedAvailableDate: payload.expectedAvailableDate ?? null,
       notes: payload.notes ?? null,
+      preference: payload.preference,
     })
 
     await prisma.adminAuditLog.create({

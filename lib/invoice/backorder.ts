@@ -12,7 +12,7 @@
 //  - Exactly one BackorderCompensation per invoice-delay, ever, without
 //    manual admin approval for a second one — decideCompensationDisposition
 //    is the single choke point that enforces "link, don't duplicate."
-import type { DeliveryStatus } from '@prisma/client'
+import type { DeliveryStatus, RefundStatus, CompensationDispositionPreference } from '@prisma/client'
 
 function round2(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100
@@ -26,19 +26,35 @@ export interface CompensationSplit {
 
 // balanceDue and amountPaid must reflect the invoice's state *before* this
 // compensation is applied. Order of disposition: reduce what's still owed
-// first (a visible InvoiceDiscount), then refund what's actually been
-// collected, then whatever's left over becomes a standing account credit
-// (this only happens if compensationAmount exceeds the invoice's total).
+// first (a visible InvoiceDiscount), then dispose of whatever's left
+// (money already collected but not owed back through the discount) per the
+// admin's chosen preference:
+//  - 'REFUND' (default): start a *pending* refund obligation, capped at
+//    amountPaid — never more than was actually collected. Any leftover
+//    beyond that (compensation bigger than the whole invoice) still falls
+//    through to account credit; this is the one case a "combination" of
+//    refund + account credit happens under this preference.
+//  - 'ACCOUNT_CREDIT': skip the refund entirely — the whole remainder
+//    becomes a standing account credit, chosen when the admin doesn't want
+//    to promise a manual cash refund at all.
+// Creating a refund obligation here is never itself "money returned" — see
+// RefundStatus/InvoiceRefund in prisma/schema.prisma.
 export function computeCompensationSplit(input: {
   compensationAmount: number
   balanceDue: number
   amountPaid: number
+  preference?: CompensationDispositionPreference
 }): CompensationSplit {
+  const preference = input.preference ?? 'REFUND'
   const creditAppliedAmount = round2(Math.max(0, Math.min(input.compensationAmount, Math.max(0, input.balanceDue))))
   const remainder = round2(input.compensationAmount - creditAppliedAmount)
 
   if (remainder <= 0) {
     return { creditAppliedAmount, refundAmount: 0, accountCreditAmount: 0 }
+  }
+
+  if (preference === 'ACCOUNT_CREDIT') {
+    return { creditAppliedAmount, refundAmount: 0, accountCreditAmount: remainder }
   }
 
   const refundAmount = round2(Math.min(remainder, Math.max(0, input.amountPaid)))
@@ -62,6 +78,7 @@ export function decideCompensationDisposition(input: {
   compensationAmount: number
   balanceDue: number
   amountPaid: number
+  preference?: CompensationDispositionPreference
 }): CompensationDisposition {
   if (input.existingCompensationId) {
     return { kind: 'LINK_EXISTING', compensationId: input.existingCompensationId }
@@ -70,6 +87,16 @@ export function decideCompensationDisposition(input: {
     kind: 'CREATE_NEW',
     split: computeCompensationSplit(input),
   }
+}
+
+// Terminal refund states — once reached, a refund can never transition
+// again. Shared by completeRefund/failRefund/cancelRefund (lib/backorders.ts)
+// so "prevent the same refund from being completed twice" is enforced by
+// one pure, tested rule instead of three separate ad-hoc checks.
+const TERMINAL_REFUND_STATUSES: RefundStatus[] = ['COMPLETED', 'FAILED', 'CANCELLED']
+
+export function canTransitionRefundStatus(currentStatus: RefundStatus): boolean {
+  return !TERMINAL_REFUND_STATUSES.includes(currentStatus)
 }
 
 // Shipment progression is blocked past this point while a backorder is
