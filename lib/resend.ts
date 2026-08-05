@@ -24,10 +24,21 @@ export const resend = {
 // architecture varies Reply-To by context instead, not the From address, per
 // the single-sending-system decision. Falls back to Resend's own shared
 // sandbox address — safe to send from even with no domain verified yet,
-// unlike a made-up address on a domain we don't control. Once pepscorelab.com
-// is verified in Resend, set RESEND_FROM_EMAIL (e.g. "Pepscore Orders
-// <orders@pepscorelab.com>") in the environment; no code change needed here.
-export const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? 'onboarding@resend.dev'
+// unlike a made-up address on a domain we don't control. Once
+// pepscorelab.com is verified in Resend, set RESEND_FROM_EMAIL to the bare
+// address (e.g. "orders@pepscorelab.com") — lib/notifications/routing.ts's
+// routeFor() wraps this in its own "<Display Name> <email>" From header per
+// category, so a "Name <email>" value here would double-wrap into an
+// invalid From header — confirmed live in production: Resend rejected the
+// resulting double-wrapped address with "Invalid `from` field". Since a
+// misconfigured env var can silently break every outbound email until
+// someone notices, extractBareEmail() below makes FROM_EMAIL always resolve
+// to a bare address regardless of which format the env var actually holds.
+export function extractBareEmail(value: string): string {
+  const match = value.match(/<([^>]+)>/)
+  return (match ? match[1] : value).trim()
+}
+export const FROM_EMAIL = extractBareEmail(process.env.RESEND_FROM_EMAIL ?? 'onboarding@resend.dev')
 
 // The five real pepscorelab.com mailboxes. Each is a distinct Google
 // Workspace inbox; none are aliases of each other. Only ever used as display
