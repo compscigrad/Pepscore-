@@ -89,7 +89,7 @@ export function InvoicePreview({ draft, totals, invoiceNumber }: Props) {
         <div className="flex justify-between text-g700"><span>Subtotal</span><span>{formatMoney(totals.subtotal)}</span></div>
         {discounts.map((d) => (
           <div className="flex justify-between text-g700" key={d.key}>
-            <span>{d.label || 'Discount'}</span>
+            <span>{d.label || 'Miscellaneous'}</span>
             <span>-{formatMoney(resolveDiscountAmount(d, totals.itemsTotal))}</span>
           </div>
         ))}

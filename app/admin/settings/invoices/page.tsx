@@ -29,6 +29,12 @@ export default async function InvoiceSettingsPage() {
           </div>
           <div className="flex items-center gap-6">
             <Link
+              href="/admin/settings/discounts"
+              className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
+            >
+              Discount Presets →
+            </Link>
+            <Link
               href="/admin/settings/fulfillment"
               className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
             >
