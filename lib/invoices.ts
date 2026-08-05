@@ -59,6 +59,17 @@ const invoiceWithRelations = Prisma.validator<Prisma.InvoiceDefaultArgs>()({
     // Every intake link ever generated for this invoice, newest first — the
     // admin UI only surfaces the most recent one, but nothing is deleted.
     intakeLinks: { orderBy: { createdAt: 'desc' } },
+    // Balance Carryover (Phase 1B) — every transfer this invoice has ever
+    // been the source or destination of, active or reversed. See
+    // lib/balanceTransfers.ts.
+    balanceTransfersOut: {
+      include: { destinationInvoice: { select: { id: true, invoiceNumber: true } } },
+      orderBy: { transferredAt: 'desc' },
+    },
+    balanceTransfersIn: {
+      include: { sourceInvoice: { select: { id: true, invoiceNumber: true } } },
+      orderBy: { transferredAt: 'desc' },
+    },
   },
 })
 export type InvoiceWithRelations = Prisma.InvoiceGetPayload<typeof invoiceWithRelations>

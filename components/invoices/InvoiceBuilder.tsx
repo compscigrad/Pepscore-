@@ -17,6 +17,7 @@ import { DiscountsSection } from './DiscountsSection'
 import { PaymentSection } from './PaymentSection'
 import { ShipmentsSection } from './ShipmentsSection'
 import { BackordersSection } from './BackordersSection'
+import { BalanceTransferSection } from './BalanceTransferSection'
 import { CorrespondenceHistory } from './CorrespondenceHistory'
 import { IntakeLinkSection } from './IntakeLinkSection'
 import { TotalsSummary } from './TotalsSummary'
@@ -434,6 +435,16 @@ export function InvoiceBuilder({
             balanceDue={invoice.balanceDue}
             paymentArrangement={invoice.paymentArrangement}
             onPaymentRecorded={refreshInvoice}
+          />
+        ) : null}
+
+        {mode === 'edit' && invoice ? (
+          <BalanceTransferSection
+            invoiceId={invoice.id}
+            balanceDue={invoice.balanceDue}
+            transfersOut={invoice.balanceTransfersOut}
+            transfersIn={invoice.balanceTransfersIn}
+            onTransferUpdated={refreshInvoice}
           />
         ) : null}
 
