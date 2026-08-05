@@ -17,6 +17,11 @@ describe('contactInquirySchema', () => {
     expect(result.success).toBe(true)
   })
 
+  it('accepts an optional inquiryType (the marketing site\'s category picker)', () => {
+    const result = contactInquirySchema.safeParse({ ...base, inquiryType: 'Wholesale Inquiry' })
+    expect(result.success).toBe(true)
+  })
+
   it('rejects a missing name', () => {
     expect(contactInquirySchema.safeParse({ ...base, name: '' }).success).toBe(false)
   })
