@@ -36,6 +36,13 @@ export interface ShippingFields {
 
 export interface InvoiceItemDraft {
   key: string
+  // The real database row id, when this draft was loaded from an existing
+  // invoice -- null for a row the admin just added in this editing session.
+  // Round-tripped through save so the server can update the existing row in
+  // place instead of deleting and recreating it (see updateInvoice()) --
+  // required so anything that references a specific InvoiceItem row (e.g. a
+  // BackorderCondition) survives an unrelated edit to the same invoice.
+  id: string | null
   productId: string | null
   name: string
   description: string
@@ -46,6 +53,9 @@ export interface InvoiceItemDraft {
 
 export interface InvoiceDiscountDraft {
   key: string
+  // Same id round-tripping as InvoiceItemDraft, and for the same reason --
+  // a BackorderCompensation's discount must survive unrelated invoice edits.
+  id: string | null
   promotionId: string | null
   label: string
   type: PromotionType

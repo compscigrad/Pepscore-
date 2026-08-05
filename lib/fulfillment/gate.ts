@@ -4,6 +4,7 @@
 // No duplicated eligibility logic anywhere else in the app.
 import { prisma } from '@/lib/prisma'
 import { hasActivePaymentArrangement } from '@/lib/paymentArrangements'
+import { hasActiveBackorder } from '@/lib/backorders'
 import { syncCustomerFromInvoiceEvent } from '@/lib/customers'
 
 export type FulfillmentEligibilityReason = 'PAID_IN_FULL' | 'ACTIVE_PAYMENT_ARRANGEMENT' | 'MANUAL_OVERRIDE'
@@ -13,13 +14,18 @@ export interface FulfillmentEligibility {
   reason?: FulfillmentEligibilityReason
 }
 
-// Pure decision logic — tested directly, no database involved.
+// Pure decision logic — tested directly, no database involved. An active
+// backorder blocks eligibility outright (checked right after the override,
+// ahead of paid-in-full/arrangement) — being paid up is not the same as
+// being ready to ship when the thing they paid for isn't in stock yet.
 export function computeFulfillmentEligibility(input: {
   balanceDue: number
   hasActivePaymentArrangement: boolean
   fulfillmentOverrideAt: Date | null
+  hasActiveBackorder: boolean
 }): FulfillmentEligibility {
   if (input.fulfillmentOverrideAt) return { allowed: true, reason: 'MANUAL_OVERRIDE' }
+  if (input.hasActiveBackorder) return { allowed: false }
   if (input.balanceDue <= 0) return { allowed: true, reason: 'PAID_IN_FULL' }
   if (input.hasActivePaymentArrangement) return { allowed: true, reason: 'ACTIVE_PAYMENT_ARRANGEMENT' }
   return { allowed: false }
@@ -28,11 +34,13 @@ export function computeFulfillmentEligibility(input: {
 export async function checkFulfillmentEligibility(invoiceId: string): Promise<FulfillmentEligibility> {
   const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })
   const activeArrangement = await hasActivePaymentArrangement(invoiceId)
+  const activeBackorder = await hasActiveBackorder(invoiceId)
 
   return computeFulfillmentEligibility({
     balanceDue: invoice.balanceDue,
     hasActivePaymentArrangement: activeArrangement,
     fulfillmentOverrideAt: invoice.fulfillmentOverrideAt,
+    hasActiveBackorder: activeBackorder,
   })
 }
 

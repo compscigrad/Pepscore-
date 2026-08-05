@@ -6,6 +6,7 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { calculateInvoiceTotals, type InvoiceLineItemInput } from '@/lib/invoice/calculations'
+import { planRowSync } from '@/lib/invoice/rowSync'
 import { generateSequentialInvoiceNumber } from '@/lib/invoice/numbering'
 import { assertPaymentWithinBalance, type InvoicePayload, type PaymentPayload } from '@/lib/invoice/validation'
 import {
@@ -35,6 +36,7 @@ import {
   notifyClientArrangementDenied,
 } from '@/lib/notifications/paymentWorkflow'
 import { syncCustomerFromInvoiceEvent } from '@/lib/customers'
+import { assertDeliveryStatusAllowed } from '@/lib/backorders'
 import type { PaymentMethod } from '@prisma/client'
 
 const invoiceWithRelations = Prisma.validator<Prisma.InvoiceDefaultArgs>()({
@@ -288,7 +290,10 @@ export async function createInvoice(payload: InvoicePayload): Promise<InvoiceWit
 }
 
 export async function updateInvoice(id: string, payload: InvoicePayload): Promise<InvoiceWithRelations> {
-  const existing = await prisma.invoice.findUniqueOrThrow({ where: { id } })
+  const existing = await prisma.invoice.findUniqueOrThrow({
+    where: { id },
+    include: { items: { select: { id: true } }, discounts: { select: { id: true } } },
+  })
 
   // Only a DRAFT->ISSUED transition is a genuine first issuance — re-saving
   // an already-issued (or already-Pending, i.e. issued-with-balance)
@@ -300,6 +305,16 @@ export async function updateInvoice(id: string, payload: InvoicePayload): Promis
   if (isFirstIssuance) {
     await assertIntakeCompletedIfRequired(id)
   }
+
+  // The backorder-block guard: never trusts the UI to have disabled the
+  // right dropdown options — a payload that tries to move deliveryStatus to
+  // SHIPPED/IN_TRANSIT/DELIVERED while an active backorder exists (and no
+  // fulfillment override is on record) is rejected here, before any write.
+  await assertDeliveryStatusAllowed({
+    invoiceId: id,
+    newDeliveryStatus: payload.deliveryStatus,
+    fulfillmentOverrideAt: existing.fulfillmentOverrideAt,
+  })
 
   const totals = calculateInvoiceTotals(
     payload.items as InvoiceLineItemInput[],
@@ -326,49 +341,67 @@ export async function updateInvoice(id: string, payload: InvoicePayload): Promis
 
   const isPaidOff = paymentAmounts.paymentStatus === 'PAID'
 
-  // Replace items/discounts wholesale — simpler and safer than diffing rows,
-  // and invoice edits are low-frequency admin actions, not high-throughput.
-  const invoice = await prisma.invoice.update({
-    where: { id },
-    data: {
-      customerName: payload.customerName,
-      customerCompany: payload.customerCompany || undefined,
-      customerEmail: payload.customerEmail || undefined,
-      customerPhone: payload.customerPhone || undefined,
-      billingAddress: payload.billingAddress ?? undefined,
-      shippingAddress: payload.shippingAddress ?? undefined,
-      internalNotes: payload.internalNotes || undefined,
-      publicNotes: payload.publicNotes || undefined,
-      carrier: payload.carrier ?? undefined,
-      trackingNumber: payload.trackingNumber || undefined,
-      shippingCost: payload.shippingCost,
-      shipDate: payload.shipDate ?? undefined,
-      deliveryDate: payload.deliveryDate ?? undefined,
-      deliveredDate: payload.deliveredDate ?? undefined,
-      deliveryStatus: payload.deliveryStatus,
-      status: finalStatus,
-      paymentStatus: paymentAmounts.paymentStatus,
-      paymentIntentStatus,
-      subtotal: totals.subtotal,
-      discountTotal: totals.discountTotal,
-      total: totals.total,
-      balanceDue: paymentAmounts.balanceDue,
-      overpaidAmount: paymentAmounts.overpaidAmount,
-      // paidAt is the auto-archive countdown's anchor (see docs/Decisions.md
-      // #21), not just a historical "first paid" timestamp — it's refreshed
-      // to now on every save that leaves the invoice fully paid (an edit
-      // resets the countdown, per spec) and cleared the moment it no longer
-      // is (reopened, balance increased, status moved off Paid), which also
-      // un-archives it rather than leaving a no-longer-paid invoice hidden.
-      paidAt: isPaidOff ? new Date() : null,
-      archivedAt: isPaidOff ? existing.archivedAt : null,
-      // Recompute here too (not just in recordPayment) so the completion
-      // rule always sees whichever side (payment or shipping/edit) changed
-      // most recently.
-      orderStatus: computeOrderStatus(finalStatus, paymentAmounts.paymentStatus, existing.shippingStatus, existing.orderStatus),
-      items: {
-        deleteMany: {},
-        create: payload.items.map((item, index) => ({
+  // Update items/discounts in place by id rather than deleting and
+  // recreating everything on every save (the previous approach) — a plain
+  // deleteMany+create gives every row a brand-new id on every single save,
+  // which silently breaks anything that needs to reference a specific row
+  // across edits (e.g. a BackorderCondition pointing at the line item it was
+  // applied to, or a BackorderCompensation's linked InvoiceDiscount). An id
+  // present in the payload is only honored when it matches a row that
+  // actually belongs to this invoice (planRowSync never trusts a
+  // client-supplied id blindly) — anything else is treated as a new row.
+  const itemsWithSortOrder = payload.items.map((item, index) => ({ ...item, sortOrder: item.sortOrder ?? index }))
+  const itemPlan = planRowSync(existing.items, itemsWithSortOrder)
+  const discountPlan = planRowSync(existing.discounts, payload.discounts)
+  const discountAppliedAmount = (d: { type: 'FIXED' | 'PERCENTAGE'; amount: number }) =>
+    d.type === 'PERCENTAGE' ? round2(totals.itemsTotal * (d.amount / 100)) : round2(d.amount)
+
+  const invoice = await prisma.$transaction(async (tx) => {
+    await tx.invoice.update({
+      where: { id },
+      data: {
+        customerName: payload.customerName,
+        customerCompany: payload.customerCompany || undefined,
+        customerEmail: payload.customerEmail || undefined,
+        customerPhone: payload.customerPhone || undefined,
+        billingAddress: payload.billingAddress ?? undefined,
+        shippingAddress: payload.shippingAddress ?? undefined,
+        internalNotes: payload.internalNotes || undefined,
+        publicNotes: payload.publicNotes || undefined,
+        carrier: payload.carrier ?? undefined,
+        trackingNumber: payload.trackingNumber || undefined,
+        shippingCost: payload.shippingCost,
+        shipDate: payload.shipDate ?? undefined,
+        deliveryDate: payload.deliveryDate ?? undefined,
+        deliveredDate: payload.deliveredDate ?? undefined,
+        deliveryStatus: payload.deliveryStatus,
+        status: finalStatus,
+        paymentStatus: paymentAmounts.paymentStatus,
+        paymentIntentStatus,
+        subtotal: totals.subtotal,
+        discountTotal: totals.discountTotal,
+        total: totals.total,
+        balanceDue: paymentAmounts.balanceDue,
+        overpaidAmount: paymentAmounts.overpaidAmount,
+        // paidAt is the auto-archive countdown's anchor (see docs/Decisions.md
+        // #21), not just a historical "first paid" timestamp — it's refreshed
+        // to now on every save that leaves the invoice fully paid (an edit
+        // resets the countdown, per spec) and cleared the moment it no longer
+        // is (reopened, balance increased, status moved off Paid), which also
+        // un-archives it rather than leaving a no-longer-paid invoice hidden.
+        paidAt: isPaidOff ? new Date() : null,
+        archivedAt: isPaidOff ? existing.archivedAt : null,
+        // Recompute here too (not just in recordPayment) so the completion
+        // rule always sees whichever side (payment or shipping/edit) changed
+        // most recently.
+        orderStatus: computeOrderStatus(finalStatus, paymentAmounts.paymentStatus, existing.shippingStatus, existing.orderStatus),
+      },
+    })
+
+    for (const { id: itemId, payload: item } of itemPlan.toUpdate) {
+      await tx.invoiceItem.update({
+        where: { id: itemId },
+        data: {
           productId: item.productId || undefined,
           name: item.name,
           description: item.description || undefined,
@@ -376,15 +409,58 @@ export async function updateInvoice(id: string, payload: InvoicePayload): Promis
           unitPrice: item.unitPrice,
           lineDiscount: item.lineDiscount ?? 0,
           total: item.quantity * item.unitPrice - (item.lineDiscount ?? 0),
-          sortOrder: item.sortOrder ?? index,
+          sortOrder: item.sortOrder,
+        },
+      })
+    }
+    if (itemPlan.toCreate.length > 0) {
+      await tx.invoiceItem.createMany({
+        data: itemPlan.toCreate.map((item) => ({
+          invoiceId: id,
+          productId: item.productId || undefined,
+          name: item.name,
+          description: item.description || undefined,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          lineDiscount: item.lineDiscount ?? 0,
+          total: item.quantity * item.unitPrice - (item.lineDiscount ?? 0),
+          sortOrder: item.sortOrder,
         })),
-      },
-      discounts: {
-        deleteMany: {},
-        create: buildDiscountCreateInputs(payload.discounts, totals.itemsTotal),
-      },
-    },
-    ...invoiceWithRelations,
+      })
+    }
+    if (itemPlan.toDeleteIds.length > 0) {
+      await tx.invoiceItem.deleteMany({ where: { id: { in: itemPlan.toDeleteIds } } })
+    }
+
+    for (const { id: discountId, payload: d } of discountPlan.toUpdate) {
+      await tx.invoiceDiscount.update({
+        where: { id: discountId },
+        data: {
+          promotionId: d.promotionId ?? undefined,
+          label: d.label,
+          type: d.type,
+          amount: d.amount,
+          appliedAmount: discountAppliedAmount(d),
+        },
+      })
+    }
+    if (discountPlan.toCreate.length > 0) {
+      await tx.invoiceDiscount.createMany({
+        data: discountPlan.toCreate.map((d) => ({
+          invoiceId: id,
+          promotionId: d.promotionId ?? undefined,
+          label: d.label,
+          type: d.type,
+          amount: d.amount,
+          appliedAmount: discountAppliedAmount(d),
+        })),
+      })
+    }
+    if (discountPlan.toDeleteIds.length > 0) {
+      await tx.invoiceDiscount.deleteMany({ where: { id: { in: discountPlan.toDeleteIds } } })
+    }
+
+    return tx.invoice.findUniqueOrThrow({ where: { id }, ...invoiceWithRelations })
   })
 
   if (isFirstIssuance) {

@@ -67,9 +67,17 @@ const SHIPPING_STATUS_COLORS: Record<string, string> = {
   UNKNOWN: 'border-white/15 bg-white/5 text-white/40',
 }
 
+// The backorder condition is a separate dimension from delivery status —
+// deliberately not reusing DELIVERY_STATUS_COLORS's palette, so the two
+// pills never look like the same axis at a glance.
+const BACKORDER_STATUS_COLORS: Record<string, string> = {
+  ACTIVE: 'border-red-400/30 bg-red-400/10 text-red-300',
+  RESOLVED: 'border-white/15 bg-white/5 text-white/50',
+}
+
 interface StatusBadgeProps {
   status: string
-  variant?: 'invoice' | 'delivery' | 'payment' | 'shipping'
+  variant?: 'invoice' | 'delivery' | 'payment' | 'shipping' | 'backorder'
 }
 
 function formatLabel(status: string): string {
@@ -85,6 +93,7 @@ const VARIANT_COLORS: Record<NonNullable<StatusBadgeProps['variant']>, Record<st
   delivery: DELIVERY_STATUS_COLORS,
   payment: PAYMENT_STATUS_COLORS,
   shipping: SHIPPING_STATUS_COLORS,
+  backorder: BACKORDER_STATUS_COLORS,
 }
 
 export function StatusBadge({ status, variant = 'invoice' }: StatusBadgeProps) {

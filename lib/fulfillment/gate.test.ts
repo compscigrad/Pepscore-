@@ -5,6 +5,7 @@ const base = {
   balanceDue: 100,
   hasActivePaymentArrangement: false,
   fulfillmentOverrideAt: null as Date | null,
+  hasActiveBackorder: false,
 }
 
 describe('computeFulfillmentEligibility', () => {
@@ -43,6 +44,7 @@ describe('computeFulfillmentEligibility', () => {
         balanceDue: 0,
         hasActivePaymentArrangement: true,
         fulfillmentOverrideAt: new Date(),
+        hasActiveBackorder: false,
       })
     ).toEqual({ allowed: true, reason: 'MANUAL_OVERRIDE' })
 
@@ -51,7 +53,27 @@ describe('computeFulfillmentEligibility', () => {
         balanceDue: 0,
         hasActivePaymentArrangement: true,
         fulfillmentOverrideAt: null,
+        hasActiveBackorder: false,
       })
     ).toEqual({ allowed: true, reason: 'PAID_IN_FULL' })
+  })
+
+  it('blocks fulfillment while an active backorder exists, even if paid in full or under an arrangement', () => {
+    expect(computeFulfillmentEligibility({ ...base, hasActiveBackorder: true, balanceDue: 0 })).toEqual({
+      allowed: false,
+    })
+    expect(
+      computeFulfillmentEligibility({ ...base, hasActiveBackorder: true, hasActivePaymentArrangement: true })
+    ).toEqual({ allowed: false })
+  })
+
+  it('still allows fulfillment through a manual override despite an active backorder', () => {
+    expect(
+      computeFulfillmentEligibility({
+        ...base,
+        hasActiveBackorder: true,
+        fulfillmentOverrideAt: new Date(),
+      })
+    ).toEqual({ allowed: true, reason: 'MANUAL_OVERRIDE' })
   })
 })

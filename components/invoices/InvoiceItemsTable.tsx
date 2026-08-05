@@ -17,7 +17,7 @@ interface Props {
 }
 
 function emptyItem(): InvoiceItemDraft {
-  return { key: makeKey(), productId: null, name: '', description: '', quantity: 1, unitPrice: 0, lineDiscount: 0 }
+  return { key: makeKey(), id: null, productId: null, name: '', description: '', quantity: 1, unitPrice: 0, lineDiscount: 0 }
 }
 
 export function InvoiceItemsTable({ items, onChange, products }: Props) {
@@ -33,7 +33,9 @@ export function InvoiceItemsTable({ items, onChange, products }: Props) {
     const source = items.find((i) => i.key === key)
     if (!source) return
     const index = items.findIndex((i) => i.key === key)
-    const copy = { ...source, key: makeKey() }
+    // A duplicate is a brand-new row -- must never carry the source's real
+    // database id, or the save would try to update the original row twice.
+    const copy = { ...source, key: makeKey(), id: null }
     onChange([...items.slice(0, index + 1), copy, ...items.slice(index + 1)])
   }
 

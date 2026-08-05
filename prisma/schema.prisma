@@ -265,6 +265,14 @@ model Invoice {
   intakeLinks         IntakeLink[]
   adminNotifications  Notification[]
 
+  // Backorder back-relations — see the Backorders section below.
+  backorderConditions     BackorderCondition[]
+  backorderCompensations  BackorderCompensation[]
+  refunds                 InvoiceRefund[]
+  // Account credits that *originated from* this invoice (sourceInvoiceId) —
+  // not the customer's full credit balance, which is queried via Customer.
+  issuedAccountCredits    CustomerAccountCredit[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -462,6 +470,10 @@ model InvoiceDiscount {
   amount        Float
   appliedAmount Float
 
+  // Set only when this specific discount row is a backorder compensation
+  // credit — the back-relation for BackorderCompensation.discountId.
+  backorderCompensation BackorderCompensation?
+
   @@index([invoiceId])
 }
 
@@ -479,6 +491,9 @@ model InvoicePayment {
   // PaymentArrangement below) — lets an installment's "Paid" status point
   // back to the actual payment record that satisfied it.
   installment PaymentArrangementInstallment?
+
+  // Refunds that were issued against this specific payment, if any.
+  refunds InvoiceRefund[]
 
   @@index([invoiceId])
 }
@@ -505,6 +520,157 @@ enum PaymentMethod {
   CHECK
   CRYPTO
   OTHER
+}
+
+// ─── Backorders ──────────────────────────────────────────────────────────────
+// Backordered is an internal operational condition, entirely separate from
+// both the customer-facing fulfillment status (DeliveryStatus/ShippingStatus
+// — while backordered, that stays PREPARING) and the invoice lifecycle
+// status. Tracked at the line-item level (not invoice-level) because a
+// single invoice may have some available items and some backordered ones,
+// and "the invoice must identify the affected item" requires that
+// granularity. One row per backorder *event*, never mutated away — resolving
+// a backorder fills in resolvedAt/resolvedBy/resolutionNote on the same row
+// rather than deleting it, so the full history (including past, already
+// resolved backorders) is always preserved.
+//
+// Deliberately NOT a hard foreign key onto InvoiceItem: invoiceItem edits go
+// through lib/invoice/rowSync.ts's upsert-by-id path (items are only ever
+// updated or newly created, never blanket-replaced), so a live InvoiceItem
+// row an active BackorderCondition points at will normally keep existing —
+// but if an admin genuinely deletes that specific line item, this row must
+// not be silently destroyed by a cascade. It carries its own snapshot
+// (productName) so the record stays meaningful even if the InvoiceItem it
+// originally pointed to is later removed.
+model BackorderCondition {
+  id            String          @id @default(cuid())
+  invoiceId     String
+  invoice       Invoice         @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoiceItemId String
+  productName   String
+
+  status                BackorderStatus @default(ACTIVE)
+  expectedAvailableDate DateTime?
+  appliedAt             DateTime        @default(now())
+  appliedBy             String
+  resolvedAt            DateTime?
+  resolvedBy             String?
+  resolutionNote        String?
+  notes                 String?
+
+  compensationLinks BackorderConditionCompensation[]
+
+  @@index([invoiceId])
+  @@index([invoiceItemId])
+}
+
+enum BackorderStatus {
+  ACTIVE
+  RESOLVED
+}
+
+// One compensation per genuinely separate delay, not one per affected item —
+// multiple line items backordered as part of the same order delay share a
+// single BackorderCompensation via the join table below, which is what makes
+// "one $25 credit per invoice/order delay, not per item" both auditable and
+// idempotent (applying compensation for a newly-backordered item on an
+// invoice that already has an active compensation just links the join row;
+// it never creates a second discount/refund/credit).
+model BackorderCompensation {
+  id        String  @id @default(cuid())
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  totalAmount         Float // the flat policy amount, normally 25.00
+  creditAppliedAmount Float @default(0) // portion applied as an InvoiceDiscount, reducing balance due
+  refundAmount        Float @default(0) // portion returned as a real refund of money already collected
+  accountCreditAmount Float @default(0) // portion stored as a CustomerAccountCredit (exceeds what was actually paid)
+
+  reason    String
+  appliedAt DateTime @default(now())
+  appliedBy String
+
+  // Each of these is optional and independent -- a single compensation can
+  // be a pure credit, a pure refund, a pure account credit, or a genuine mix
+  // of two or three, matching whatever the invoice's payment state actually
+  // supported at the moment compensation was applied.
+  discountId      String?                 @unique
+  discount        InvoiceDiscount?        @relation(fields: [discountId], references: [id])
+  refundId        String?                 @unique
+  refund          InvoiceRefund?          @relation(fields: [refundId], references: [id])
+  accountCreditId String?                 @unique
+  accountCredit   CustomerAccountCredit?  @relation(fields: [accountCreditId], references: [id])
+
+  coveredConditions BackorderConditionCompensation[]
+
+  @@index([invoiceId])
+}
+
+// Join table: which specific backorder events a given compensation covers —
+// the "store enough linkage to show which backorder conditions are covered
+// by the invoice-level compensation" requirement, queryable in either
+// direction.
+model BackorderConditionCompensation {
+  id                       String                 @id @default(cuid())
+  backorderConditionId     String
+  backorderCondition       BackorderCondition     @relation(fields: [backorderConditionId], references: [id], onDelete: Cascade)
+  backorderCompensationId  String
+  backorderCompensation    BackorderCompensation  @relation(fields: [backorderCompensationId], references: [id], onDelete: Cascade)
+  createdAt                DateTime               @default(now())
+
+  @@unique([backorderConditionId, backorderCompensationId])
+}
+
+// A real refund of money that was actually collected — never used to
+// represent money that was never received (that's a CustomerAccountCredit
+// instead). Deliberately separate from InvoicePayment (a positive-only
+// record of money coming in) rather than a negative-amount payment, so
+// "total collected" and "total refunded" are never ambiguous from the same
+// column's sign.
+model InvoiceRefund {
+  id                String          @id @default(cuid())
+  invoiceId         String
+  invoice           Invoice         @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  amount            Float
+  reason            String
+  method            PaymentMethod?
+  relatedPaymentId  String?
+  relatedPayment    InvoicePayment? @relation(fields: [relatedPaymentId], references: [id])
+  processedAt       DateTime        @default(now())
+  processedBy       String
+
+  backorderCompensation BackorderCompensation?
+
+  @@index([invoiceId])
+}
+
+// A stored, future-usable credit for a customer — used when compensation
+// exceeds money actually collected on the invoice it originated from (e.g. a
+// $25 backorder credit on an invoice where only $10 has been paid so far:
+// $10 reduces the balance via InvoiceDiscount, the remaining $15 has no real
+// money behind it to refund, so it becomes account credit instead of an
+// invented refund). Requires a linked Customer -- an invoice with no
+// customerId has nowhere durable to store the credit; that edge case needs
+// manual admin handling rather than a silently-lost credit.
+model CustomerAccountCredit {
+  id              String   @id @default(cuid())
+  customerId      String
+  customer        Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  amount          Float
+  remainingAmount Float
+  reason          String
+  // SetNull, not Cascade: a permanently-deleted invoice (the Trash ->
+  // Permanent Delete flow, lib/invoices.ts's permanentlyDeleteInvoice) must
+  // never take a customer's real, spendable credit down with it — the
+  // credit simply loses its origin-invoice reference and keeps existing.
+  sourceInvoiceId String?
+  sourceInvoice   Invoice? @relation(fields: [sourceInvoiceId], references: [id], onDelete: SetNull)
+  issuedAt        DateTime @default(now())
+  issuedBy        String
+
+  backorderCompensation BackorderCompensation?
+
+  @@index([customerId])
 }
 
 // ─── Payment Arrangements (installment plans) ───────────────────────────────
@@ -840,6 +1006,7 @@ model Customer {
   intakeLinks   IntakeLink[]
   activityLog   CustomerActivityLog[]
   notifications Notification[]
+  accountCredits CustomerAccountCredit[]
 
   @@index([email])
   @@index([phone])

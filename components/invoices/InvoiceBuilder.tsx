@@ -16,6 +16,7 @@ import { InvoiceItemsTable } from './InvoiceItemsTable'
 import { DiscountsSection } from './DiscountsSection'
 import { PaymentSection } from './PaymentSection'
 import { ShipmentsSection } from './ShipmentsSection'
+import { BackordersSection } from './BackordersSection'
 import { IntakeLinkSection } from './IntakeLinkSection'
 import { TotalsSummary } from './TotalsSummary'
 import { InvoicePreview } from './InvoicePreview'
@@ -104,6 +105,7 @@ function invoiceToDraft(invoice: InvoiceWithRelations): InvoiceDraft {
     },
     items: invoice.items.map((item) => ({
       key: makeKey(),
+      id: item.id,
       productId: item.productId,
       name: item.name,
       description: item.description ?? '',
@@ -113,6 +115,7 @@ function invoiceToDraft(invoice: InvoiceWithRelations): InvoiceDraft {
     })),
     discounts: invoice.discounts.map((d) => ({
       key: makeKey(),
+      id: d.id,
       promotionId: d.promotionId,
       label: d.label,
       type: d.type,
@@ -345,6 +348,15 @@ export function InvoiceBuilder({ mode, initialInvoice, products, promotions: ini
 
         {mode === 'edit' && invoice ? (
           <ShipmentsSection invoiceId={invoice.id} shipments={invoice.shipments} onTrackingUpdated={refreshInvoice} />
+        ) : null}
+
+        {mode === 'edit' && invoice ? (
+          <BackordersSection
+            invoiceId={invoice.id}
+            items={invoice.items.map((item) => ({ id: item.id, name: item.name }))}
+            deliveryStatus={invoice.deliveryStatus}
+            onBackorderUpdated={refreshInvoice}
+          />
         ) : null}
 
         {mode === 'edit' && invoice ? (
