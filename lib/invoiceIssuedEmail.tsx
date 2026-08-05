@@ -10,7 +10,7 @@
 import { prisma } from '@/lib/prisma'
 import { renderToBuffer } from '@react-pdf/renderer'
 import { RecipientReceiptDocument } from '@/lib/invoice/pdf/RecipientReceiptDocument'
-import { buildInvoiceIssuedHtml, invoiceIssuedSubject } from '@/emails/InvoiceIssued'
+import { buildInvoiceIssuedHtml, invoiceIssuedSubject, invoiceRevisedSubject } from '@/emails/InvoiceIssued'
 import { getInvoiceSettings } from '@/lib/invoiceSettings'
 import { recordCustomerActivity } from '@/lib/customers'
 import { findActiveIntakeLinkFor, generateIntakeLink } from '@/lib/intakeLinks'
@@ -95,8 +95,14 @@ async function recordResult(invoiceId: string, result: 'SENT' | 'FAILED', failur
   })
 }
 
-async function sendInvoiceEmail(invoice: InvoiceWithRelations, source: 'SYSTEM' | 'MANUAL', userId?: string): Promise<boolean> {
+async function sendInvoiceEmail(
+  invoice: InvoiceWithRelations,
+  source: 'SYSTEM' | 'MANUAL',
+  userId?: string,
+  revision?: { previousTotal: number }
+): Promise<boolean> {
   const recipient = invoice.customerEmail!
+  const eventType = revision ? 'INVOICE_REVISED_EMAIL_SENT' : 'INVOICE_ISSUED_EMAIL_SENT'
 
   try {
     const pdfBuffer = await renderToBuffer(<RecipientReceiptDocument invoice={invoice} />)
@@ -108,13 +114,14 @@ async function sendInvoiceEmail(invoice: InvoiceWithRelations, source: 'SYSTEM' 
       amountPaid: invoice.amountPaid,
       balanceDue: invoice.balanceDue,
       secureLink,
+      previousTotal: revision?.previousTotal,
     })
 
     const result = await sendCategorizedEmail(
       {
-        category: 'INVOICE_ISSUED',
+        category: revision ? 'INVOICE_REVISED' : 'INVOICE_ISSUED',
         to: recipient,
-        subject: invoiceIssuedSubject(invoice.invoiceNumber),
+        subject: revision ? invoiceRevisedSubject(invoice.invoiceNumber) : invoiceIssuedSubject(invoice.invoiceNumber),
         html,
         attachments: [{ filename: `${invoice.invoiceNumber}-invoice.pdf`, content: pdfBuffer }],
       },
@@ -124,23 +131,10 @@ async function sendInvoiceEmail(invoice: InvoiceWithRelations, source: 'SYSTEM' 
 
     await recordResult(invoice.id, 'SENT', null)
     await prisma.invoiceActivityLog.create({
-      data: {
-        invoiceId: invoice.id,
-        eventType: 'INVOICE_ISSUED_EMAIL_SENT',
-        newValue: recipient,
-        source,
-        userId,
-      },
+      data: { invoiceId: invoice.id, eventType, newValue: recipient, source, userId },
     })
     if (invoice.customerId) {
-      await recordCustomerActivity({
-        customerId: invoice.customerId,
-        invoiceId: invoice.id,
-        eventType: 'INVOICE_ISSUED_EMAIL_SENT',
-        newValue: recipient,
-        source,
-        userId,
-      })
+      await recordCustomerActivity({ customerId: invoice.customerId, invoiceId: invoice.id, eventType, newValue: recipient, source, userId })
     }
     return true
   } catch (err) {
@@ -176,6 +170,30 @@ export async function sendInvoiceIssuedEmailIfNeeded(invoice: InvoiceWithRelatio
 export async function sendInvoiceEmailManually(invoice: InvoiceWithRelations, userId: string): Promise<boolean> {
   if (!invoice.customerEmail) return false
   return sendInvoiceEmail(invoice, 'MANUAL', userId)
+}
+
+// Called from lib/invoices.ts's updateInvoice after a save that changes the
+// total on an invoice the client has already been emailed — a distinct
+// "here's what changed" notification rather than silently reusing the
+// issued-email framing for a change the client hasn't seen. Every genuinely
+// total-changing save re-notifies (no one-time dedup): each one is a real,
+// separate revision the client should know about.
+export async function sendInvoiceRevisedEmailIfNeeded(invoice: InvoiceWithRelations, previousTotal: number): Promise<boolean> {
+  if (!invoice.customerEmail) return false
+  if (!isInvoiceEmailTriggerStatus(invoice.status)) return false
+  if (previousTotal === invoice.total) return false
+
+  const settings = await getInvoiceSettings()
+  if (!settings.autoEmailInvoiceOnIssue) return false
+
+  // Never fires for an invoice's very first issuance — that's always the
+  // issued email (sendInvoiceIssuedEmailIfNeeded), not a revision.
+  const everEmailed = await prisma.invoiceActivityLog.findFirst({
+    where: { invoiceId: invoice.id, eventType: { in: ['INVOICE_ISSUED_EMAIL_SENT', 'INVOICE_REVISED_EMAIL_SENT'] } },
+  })
+  if (!everEmailed) return false
+
+  return sendInvoiceEmail(invoice, 'SYSTEM', undefined, { previousTotal })
 }
 
 const SMS_ATTEMPT_EVENT_TYPES = ['INVOICE_ISSUED_SMS_SENT', 'INVOICE_ISSUED_SMS_SKIPPED', 'INVOICE_ISSUED_SMS_FAILED']

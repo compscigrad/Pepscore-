@@ -20,7 +20,14 @@ import { computeOrderStatus } from '@/lib/tracking/orderStatus'
 import { decideCompensationDisposition, isDeliveryStatusBlockedByBackorder, canTransitionRefundStatus } from '@/lib/invoice/backorder'
 import { syncCustomerFromInvoiceEvent, recordCustomerActivity } from '@/lib/customers'
 import { sendCategorizedEmail } from '@/lib/notifications/log'
-import { backorderNoticeSubject, buildBackorderNoticeHtml, refundCompletedSubject, buildRefundCompletedHtml } from '@/emails/BackorderNotice'
+import {
+  backorderNoticeSubject,
+  buildBackorderNoticeHtml,
+  backorderResolvedSubject,
+  buildBackorderResolvedHtml,
+  refundCompletedSubject,
+  buildRefundCompletedHtml,
+} from '@/emails/BackorderNotice'
 import { backorderFinancialActionRequiredSubject, buildBackorderFinancialActionRequiredHtml } from '@/emails/AdminBackorderAlerts'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? ''
@@ -470,7 +477,30 @@ export async function resolveBackorder(backorderConditionId: string, input: Reso
     })
   }
 
+  await sendBackorderResolvedEmail(invoice, condition, input.resolvedBy)
+
   return resolved
+}
+
+async function sendBackorderResolvedEmail(
+  invoice: { id: string; customerId: string | null; customerEmail: string | null; customerName: string; invoiceNumber: string },
+  condition: { id: string; productName: string },
+  resolvedBy: string
+): Promise<void> {
+  if (!invoice.customerEmail) return
+  await sendCategorizedEmail(
+    {
+      category: 'BACKORDER_NOTICE',
+      to: invoice.customerEmail,
+      subject: backorderResolvedSubject(invoice.invoiceNumber),
+      html: buildBackorderResolvedHtml({
+        customerName: invoice.customerName,
+        invoiceNumber: invoice.invoiceNumber,
+        productName: condition.productName,
+      }),
+    },
+    { customerId: invoice.customerId, invoiceId: invoice.id, relatedBackorderConditionId: condition.id, actorType: 'MANUAL', actorUserId: resolvedBy }
+  )
 }
 
 export async function listBackordersForInvoice(invoiceId: string) {
