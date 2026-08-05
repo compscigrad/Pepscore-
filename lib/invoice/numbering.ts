@@ -1,14 +1,30 @@
 // Sequential invoice numbering for the standalone invoice module — separate
 // from lib/orders.ts's generateInvoiceNumber() (random-suffix, still used by
 // the Stripe-order invoice path) because Part 2 of the spec requires
-// non-reused, sequential numbers: PS-2026-000001, PS-2026-000002, ...
+// non-reused, sequential numbers.
 //
-// Backed by a persisted per-year counter (InvoiceNumberCounter) rather than
-// counting existing rows: a count-based number silently gets reused if the
-// invoice holding it is ever permanently deleted (the count just drops).
-// The atomic `increment` update below can't race two concurrent creates onto
-// the same number the way a read-then-write count could.
+// Format is PS-YY-N (e.g. PS-26-25 for the 25th invoice of 2026) — a
+// two-digit year and the bare sequence number, no leading zeros. Deliberately
+// shorter than the original PS-2026-000025 shape; that format is still what
+// every already-issued invoice carries and remains fully valid/searchable
+// (invoiceNumber is stored and matched as an opaque string everywhere in
+// this codebase — no call site parses or assumes a fixed length) — this
+// function only changes what gets generated for new invoices going forward,
+// never rewrites history.
+//
+// Backed by a persisted per-year counter (InvoiceNumberCounter, still keyed
+// by the full 4-digit year internally — only the generated string's display
+// changed) rather than counting existing rows: a count-based number silently
+// gets reused if the invoice holding it is ever permanently deleted (the
+// count just drops). The atomic `increment` update below can't race two
+// concurrent creates onto the same number the way a read-then-write count
+// could.
 import { prisma } from '@/lib/prisma'
+
+export function formatInvoiceNumber(year: number, sequence: number): string {
+  const twoDigitYear = String(year).slice(-2)
+  return `PS-${twoDigitYear}-${sequence}`
+}
 
 export async function generateSequentialInvoiceNumber(date = new Date()): Promise<string> {
   const year = date.getFullYear()
@@ -27,7 +43,7 @@ export async function generateSequentialInvoiceNumber(date = new Date()): Promis
       create: { year, lastSequence: 1 },
     })
 
-    const candidate = `PS-${year}-${String(counter.lastSequence).padStart(6, '0')}`
+    const candidate = formatInvoiceNumber(year, counter.lastSequence)
     const existing = await prisma.invoice.findUnique({ where: { invoiceNumber: candidate } })
     if (!existing) return candidate
   }
