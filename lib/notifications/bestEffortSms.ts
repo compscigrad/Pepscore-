@@ -7,7 +7,19 @@
 // config, or any send failure, is caught here and reported back as a result
 // — it never propagates to the caller, matching Section 8's "SMS failure
 // must never block a business operation" rule.
-import { isSmsConfigured, normalizePhoneToE164 } from '@/lib/intake/delivery'
+export function isSmsConfigured(): boolean {
+  return !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER)
+}
+
+// Best-effort US/CA normalization to E.164 — Twilio rejects anything else.
+// Numbers that don't match a recognizable 10/11-digit US pattern are passed
+// through as-is so an already-E.164 international number isn't mangled.
+export function normalizePhoneToE164(raw: string): string {
+  const digits = raw.replace(/\D/g, '')
+  if (digits.length === 10) return `+1${digits}`
+  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`
+  return raw.startsWith('+') ? raw : `+${digits}`
+}
 
 export type SmsOutcome = 'SENT' | 'SKIPPED_NOT_CONFIGURED' | 'SKIPPED_NO_PHONE' | 'FAILED'
 

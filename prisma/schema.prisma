@@ -280,6 +280,10 @@ model Invoice {
   // not the customer's full credit balance, which is queried via Customer.
   issuedAccountCredits    CustomerAccountCredit[]
 
+  // Every email/SMS ever sent that referenced this invoice — see the
+  // Correspondence History section below.
+  communications Communication[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1069,6 +1073,7 @@ model Customer {
   activityLog   CustomerActivityLog[]
   notifications Notification[]
   accountCredits CustomerAccountCredit[]
+  communications Communication[]
 
   @@index([email])
   @@index([phone])
@@ -1345,4 +1350,73 @@ model PackagePreset {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// ─── Correspondence History ──────────────────────────────────────────────────
+// The authoritative record of every customer-facing (and admin-alert) email
+// or SMS Pepscore has actually sent. Resend delivers directly through its
+// own infrastructure, not through Google Workspace SMTP, so these messages
+// never appear in the admin@ Gmail Sent folder — this table, not Workspace,
+// is the only place "did we actually send this, and what did it say" can be
+// answered. Written once per send attempt by lib/notifications/log.ts's
+// sendCategorizedEmail/sendCategorizedSms — never edited afterward; a retry
+// creates a new row (linked via retryOfId), it never overwrites the original.
+model Communication {
+  id String @id @default(cuid())
+
+  channel  CommunicationChannel
+  category String // a lib/notifications/routing.ts MessageCategory value — stored
+  // as a plain string (not a Prisma enum) so adding a new category never
+  // requires a migration, matching InvoiceActivityLog/CustomerActivityLog's
+  // existing eventType convention elsewhere in this schema.
+  status CommunicationStatus
+
+  fromAddress String?
+  fromName    String?
+  replyTo     String?
+  toAddress   String
+  subject     String?
+  // The exact rendered HTML (email) or message text (SMS) that was sent —
+  // an immutable snapshot, so "what did the customer actually receive"
+  // never depends on the current state of the template that generated it.
+  body String
+
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  invoiceId  String?
+  invoice    Invoice?  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  // Soft references (plain ids, no FK) to whichever specific record this
+  // message was actually about — same "never trust a live FK to survive an
+  // unrelated edit or deletion" posture as BackorderCondition.invoiceItemId.
+  relatedPaymentId            String?
+  relatedRefundId              String?
+  relatedBackorderConditionId String?
+  relatedIntakeLinkId          String?
+
+  providerName      String? // 'resend' | 'twilio'
+  providerMessageId String?
+  failureReason     String?
+  retryOfId         String? // points at the original Communication this retry is for
+
+  actorType   TrackingEventSource // reuse: MANUAL (an admin action triggered the send) or SYSTEM
+  actorUserId String?
+
+  sentAt DateTime @default(now())
+
+  @@index([customerId, sentAt])
+  @@index([invoiceId, sentAt])
+  @@index([category])
+  @@index([providerMessageId])
+}
+
+enum CommunicationChannel {
+  EMAIL
+  SMS
+}
+
+enum CommunicationStatus {
+  SENT
+  FAILED
+  SKIPPED
 }

@@ -3,25 +3,18 @@
 // SMS stays inert (isSmsConfigured() false, callers hide/disable the button)
 // until real Twilio credentials are added as env vars; no code change is
 // needed to activate it once they are — see .env.local.example.
-import { resend } from '@/lib/resend'
-import { routeFor } from '@/lib/notifications/routing'
 import { buildIntakeLinkRequestHtml, intakeLinkRequestSubject } from '@/emails/IntakeLinkRequest'
 import { recordCustomerActivity } from '@/lib/customers'
 import { prisma } from '@/lib/prisma'
+import { sendCategorizedEmail, sendCategorizedSms } from '@/lib/notifications/log'
+import { isSmsConfigured } from '@/lib/notifications/bestEffortSms'
 
-export function isSmsConfigured(): boolean {
-  return !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER)
-}
-
-// Best-effort US/CA normalization to E.164 — Twilio rejects anything else.
-// Numbers that don't match a recognizable 10/11-digit US pattern are passed
-// through as-is so an already-E.164 international number isn't mangled.
-export function normalizePhoneToE164(raw: string): string {
-  const digits = raw.replace(/\D/g, '')
-  if (digits.length === 10) return `+1${digits}`
-  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`
-  return raw.startsWith('+') ? raw : `+${digits}`
-}
+// Re-exported for existing importers (app/admin/invoices/[id]/page.tsx) —
+// the canonical definition now lives in bestEffortSms.ts, which this file's
+// own sendIntakeLinkEmail/sendIntakeLinkSms depend on transitively via
+// lib/notifications/log.ts; defining it here directly would create a
+// circular import.
+export { isSmsConfigured }
 
 interface SendIntakeLinkInput {
   token: string
@@ -51,14 +44,16 @@ async function logSendActivity(input: SendIntakeLinkInput, eventType: string) {
 export async function sendIntakeLinkEmail(input: SendIntakeLinkInput): Promise<void> {
   if (!input.email) throw new Error('No email address on file for this customer')
 
-  const sender = routeFor('INTAKE_REQUEST')
-  await resend.emails.send({
-    from: sender.from,
-    to: input.email,
-    replyTo: sender.replyTo,
-    subject: intakeLinkRequestSubject(),
-    html: buildIntakeLinkRequestHtml({ customerName: input.customerName, link: input.link }),
-  })
+  const result = await sendCategorizedEmail(
+    {
+      category: 'INTAKE_REQUEST',
+      to: input.email,
+      subject: intakeLinkRequestSubject(),
+      html: buildIntakeLinkRequestHtml({ customerName: input.customerName, link: input.link }),
+    },
+    { customerId: input.customerId, invoiceId: input.invoiceId, actorType: 'MANUAL' }
+  )
+  if (!result.sent) throw new Error(result.failureReason ?? 'Unknown email provider error')
 
   await logSendActivity(input, 'INTAKE_LINK_SENT_EMAIL')
 }
@@ -67,16 +62,13 @@ export async function sendIntakeLinkSms(input: SendIntakeLinkInput): Promise<voi
   if (!input.phone) throw new Error('No phone number on file for this customer')
   if (!isSmsConfigured()) throw new Error('SMS is not configured — add TWILIO_* environment variables')
 
-  // Lazy import: avoids requiring TWILIO_* at module-load time in
-  // environments (tests, build) that never actually send SMS.
-  const twilio = (await import('twilio')).default
-  const client = twilio(process.env.TWILIO_ACCOUNT_SID!, process.env.TWILIO_AUTH_TOKEN!)
-
-  await client.messages.create({
-    to: normalizePhoneToE164(input.phone),
-    from: process.env.TWILIO_PHONE_NUMBER!,
-    body: `Hi ${input.customerName}, please complete your Pepscore order details here: ${input.link}`,
-  })
+  const result = await sendCategorizedSms(
+    'INTAKE_REQUEST',
+    input.phone,
+    `Hi ${input.customerName}, please complete your Pepscore order details here: ${input.link}`,
+    { customerId: input.customerId, invoiceId: input.invoiceId, actorType: 'MANUAL' }
+  )
+  if (result.outcome !== 'SENT') throw new Error(result.failureReason ?? 'SMS send failed')
 
   await logSendActivity(input, 'INTAKE_LINK_SENT_SMS')
 }

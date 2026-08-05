@@ -5,8 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe, estimateStripeFee } from '@/lib/stripe'
 import { prisma } from '@/lib/prisma'
-import { resend } from '@/lib/resend'
-import { routeFor } from '@/lib/notifications/routing'
+import { sendCategorizedEmail } from '@/lib/notifications/log'
 import { buildOrderConfirmationHtml } from '@/emails/OrderConfirmation'
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
 
@@ -129,14 +128,10 @@ export async function POST(req: NextRequest) {
         invoiceNumber: order.invoice?.invoiceNumber ?? '',
       })
 
-      const sender = routeFor('ORDER_CONFIRMATION')
-      await resend.emails.send({
-        from: sender.from,
-        to: order.customerEmail,
-        replyTo: sender.replyTo,
-        subject: `Order Confirmed — ${order.orderNumber} | Pepscore`,
-        html,
-      })
+      await sendCategorizedEmail(
+        { category: 'ORDER_CONFIRMATION', to: order.customerEmail, subject: `Order Confirmed — ${order.orderNumber} | Pepscore`, html },
+        { invoiceId: order.invoice?.id ?? null, actorType: 'SYSTEM' }
+      )
     } catch (emailErr) {
       // Log but don't fail — order is already recorded
       console.error('[webhook] Failed to send confirmation email:', emailErr)

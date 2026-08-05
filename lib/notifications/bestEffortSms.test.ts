@@ -1,5 +1,5 @@
 import { describe, expect, it, afterEach, vi } from 'vitest'
-import { isSmsConfigured, normalizePhoneToE164 } from './delivery'
+import { isSmsConfigured, normalizePhoneToE164 } from './bestEffortSms'
 
 describe('normalizePhoneToE164', () => {
   it('formats a 10-digit US number', () => {

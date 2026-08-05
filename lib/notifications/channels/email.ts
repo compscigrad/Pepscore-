@@ -3,8 +3,7 @@
 // Never throws: a failed send is logged, not fatal to the intake submission
 // that triggered it (same "notification failure never blocks the customer
 // flow" principle as lib/tracking/notifications.tsx).
-import { resend } from '@/lib/resend'
-import { routeFor } from '@/lib/notifications/routing'
+import { sendCategorizedEmail } from '@/lib/notifications/log'
 import { buildAdminIntakeNotificationHtml, adminIntakeNotificationSubject } from '@/emails/AdminIntakeNotification'
 import type { NotificationChannel, IntakeNotificationPayload, AdminNotificationRecipientLike } from '../types'
 
@@ -16,14 +15,16 @@ export const emailChannel: NotificationChannel = {
 
     const html = buildAdminIntakeNotificationHtml(payload)
     const subject = adminIntakeNotificationSubject(payload.customerName)
+
     // Was literally `from: ADMIN_EMAIL` (admin@pepscorelab.com) — Resend
     // rejects sends whose From uses an unverified domain, so this send was
-    // silently failing (the catch below swallows it) until now.
-    const sender = routeFor('ADMIN_INTAKE_ALERT')
-
+    // silently failing until the routing-centralization pass fixed it.
     await Promise.all(
       targets.map((r) =>
-        resend.emails.send({ from: sender.from, replyTo: sender.replyTo, to: r.email!, subject, html }).catch((err) => {
+        sendCategorizedEmail(
+          { category: 'ADMIN_INTAKE_ALERT', to: r.email!, subject, html },
+          { customerId: payload.customerId, invoiceId: payload.invoiceId, actorType: 'SYSTEM' }
+        ).catch((err) => {
           console.error('[notifications/email] send failed:', err)
         })
       )

@@ -4,8 +4,7 @@
 // them (an email failure is recorded, not thrown).
 import { prisma } from '@/lib/prisma'
 import { renderToBuffer } from '@react-pdf/renderer'
-import { resend } from '@/lib/resend'
-import { routeFor } from '@/lib/notifications/routing'
+import { sendCategorizedEmail } from '@/lib/notifications/log'
 import { getInvoice } from '@/lib/invoices'
 import { getPrimaryShipment } from '@/lib/shipments/primary'
 import { RecipientReceiptDocument } from '@/lib/invoice/pdf/RecipientReceiptDocument'
@@ -93,20 +92,17 @@ async function sendShipmentEmail(
       deliveredAt: shipment.deliveredAt,
     })
 
-    const sender = routeFor('TRACKING_UPDATE')
-    await resend.emails.send({
-      from: sender.from,
-      to: recipient,
-      replyTo: sender.replyTo,
-      subject: shipmentUpdateSubject(status, invoice.invoiceNumber),
-      html,
-      attachments: [
-        {
-          filename: `${invoice.invoiceNumber}-invoice.pdf`,
-          content: pdfBuffer,
-        },
-      ],
-    })
+    const result = await sendCategorizedEmail(
+      {
+        category: 'TRACKING_UPDATE',
+        to: recipient,
+        subject: shipmentUpdateSubject(status, invoice.invoiceNumber),
+        html,
+        attachments: [{ filename: `${invoice.invoiceNumber}-invoice.pdf`, content: pdfBuffer }],
+      },
+      { customerId: invoice.customerId, invoiceId: invoice.id, actorType: 'SYSTEM' }
+    )
+    if (!result.sent) throw new Error(result.failureReason ?? 'Unknown email provider error')
 
     await recordNotification(invoice.id, shipment.id, status, recipient, 'SENT', null)
   } catch (err) {

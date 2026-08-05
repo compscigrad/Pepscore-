@@ -7,8 +7,7 @@ import { auth } from '@clerk/nextjs/server'
 import { prisma } from '@/lib/prisma'
 import { purchaseLabel, getRates } from '@/lib/shippo'
 import { getFulfillmentSettings } from '@/lib/fulfillment/settings'
-import { resend } from '@/lib/resend'
-import { routeFor } from '@/lib/notifications/routing'
+import { sendCategorizedEmail } from '@/lib/notifications/log'
 import { buildTrackingUpdateHtml } from '@/emails/TrackingUpdate'
 import type { ShippingAddress } from '@/types'
 
@@ -83,14 +82,10 @@ export async function POST(req: NextRequest) {
         trackingNumber: label.tracking_number,
         trackingUrl,
       })
-      const sender = routeFor('TRACKING_UPDATE')
-      await resend.emails.send({
-        from: sender.from,
-        to: order.customerEmail,
-        replyTo: sender.replyTo,
-        subject: `Your Pepscore Order Has Shipped — ${order.orderNumber}`,
-        html,
-      })
+      await sendCategorizedEmail(
+        { category: 'TRACKING_UPDATE', to: order.customerEmail, subject: `Your Pepscore Order Has Shipped — ${order.orderNumber}`, html },
+        { actorType: 'SYSTEM' }
+      )
     } catch (emailErr) {
       console.error('[shipping] Failed to send tracking email:', emailErr)
     }

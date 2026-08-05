@@ -19,8 +19,7 @@ import { deriveInvoicePaymentAmounts, deriveInvoiceWorkflowStatus } from '@/lib/
 import { computeOrderStatus } from '@/lib/tracking/orderStatus'
 import { decideCompensationDisposition, isDeliveryStatusBlockedByBackorder, canTransitionRefundStatus } from '@/lib/invoice/backorder'
 import { syncCustomerFromInvoiceEvent, recordCustomerActivity } from '@/lib/customers'
-import { resend } from '@/lib/resend'
-import { routeFor } from '@/lib/notifications/routing'
+import { sendCategorizedEmail } from '@/lib/notifications/log'
 import { backorderNoticeSubject, buildBackorderNoticeHtml, refundCompletedSubject, buildRefundCompletedHtml } from '@/emails/BackorderNotice'
 import { backorderFinancialActionRequiredSubject, buildBackorderFinancialActionRequiredHtml } from '@/emails/AdminBackorderAlerts'
 
@@ -270,13 +269,11 @@ async function notifyAdminFinancialActionRequired(invoiceId: string, refund: Inv
   const emailTargets = recipients.filter((r) => r.emailEnabled && r.email)
 
   let emailSent = false
-  try {
-    if (emailTargets.length > 0) {
-      const sender = routeFor('REFUND_ACTION_REQUIRED')
-      await resend.emails.send({
-        from: sender.from,
+  if (emailTargets.length > 0) {
+    const result = await sendCategorizedEmail(
+      {
+        category: 'REFUND_ACTION_REQUIRED',
         to: emailTargets.map((r) => r.email!),
-        replyTo: sender.replyTo,
         subject: backorderFinancialActionRequiredSubject(invoice.invoiceNumber),
         html: buildBackorderFinancialActionRequiredHtml({
           invoiceNumber: invoice.invoiceNumber,
@@ -287,11 +284,10 @@ async function notifyAdminFinancialActionRequired(invoiceId: string, refund: Inv
           reason: refund.reason,
           appUrl: APP_URL,
         }),
-      })
-      emailSent = true
-    }
-  } catch (err) {
-    console.error('[backorders] admin financial-action-required email failed:', err)
+      },
+      { customerId: invoice.customerId, invoiceId: invoice.id, relatedRefundId: refund.id, actorType: 'SYSTEM' }
+    )
+    emailSent = result.sent
   }
 
   await logInvoiceAndCustomerEvent(
@@ -306,8 +302,8 @@ async function notifyAdminFinancialActionRequired(invoiceId: string, refund: Inv
 // credit issued) using the compensation's real current amounts — a pending
 // refund is always described as "being processed," never as completed.
 async function sendBackorderNoticeEmail(
-  invoice: { customerEmail: string | null; customerName: string; invoiceNumber: string },
-  condition: { productName: string; expectedAvailableDate: Date | null },
+  invoice: { id: string; customerId: string | null; customerEmail: string | null; customerName: string; invoiceNumber: string },
+  condition: { id: string; productName: string; expectedAvailableDate: Date | null },
   compensation: BackorderCompensation
 ): Promise<void> {
   if (!invoice.customerEmail) return
@@ -325,12 +321,10 @@ async function sendBackorderNoticeEmail(
     lines.push(`A ${formatMoney(compensation.accountCreditAmount)} credit has been added to your account for a future order.`)
   }
 
-  try {
-    const sender = routeFor('BACKORDER_NOTICE')
-    await resend.emails.send({
-      from: sender.from,
+  await sendCategorizedEmail(
+    {
+      category: 'BACKORDER_NOTICE',
       to: invoice.customerEmail,
-      replyTo: sender.replyTo,
       subject: backorderNoticeSubject(invoice.invoiceNumber),
       html: buildBackorderNoticeHtml({
         customerName: invoice.customerName,
@@ -339,10 +333,9 @@ async function sendBackorderNoticeEmail(
         expectedAvailableDate: condition.expectedAvailableDate,
         compensationLines: lines,
       }),
-    })
-  } catch (err) {
-    console.error('[backorders] backorder-notice email failed:', err)
-  }
+    },
+    { customerId: invoice.customerId, invoiceId: invoice.id, relatedBackorderConditionId: condition.id, actorType: 'SYSTEM' }
+  )
 }
 
 export interface ApplyBackorderInput {
@@ -546,16 +539,14 @@ export async function completeRefund(refundId: string, input: CompleteRefundInpu
 }
 
 async function sendRefundCompletedEmail(
-  invoice: { customerEmail: string | null; customerName: string; invoiceNumber: string },
+  invoice: { id: string; customerId: string | null; customerEmail: string | null; customerName: string; invoiceNumber: string },
   refund: InvoiceRefund
 ): Promise<void> {
   if (!invoice.customerEmail) return
-  try {
-    const sender = routeFor('REFUND_COMPLETED')
-    await resend.emails.send({
-      from: sender.from,
+  await sendCategorizedEmail(
+    {
+      category: 'REFUND_COMPLETED',
       to: invoice.customerEmail,
-      replyTo: sender.replyTo,
       subject: refundCompletedSubject(invoice.invoiceNumber),
       html: buildRefundCompletedHtml({
         customerName: invoice.customerName,
@@ -563,10 +554,9 @@ async function sendRefundCompletedEmail(
         amount: refund.completedAmount ?? refund.requestedAmount,
         method: refund.method,
       }),
-    })
-  } catch (err) {
-    console.error('[backorders] refund-completed email failed:', err)
-  }
+    },
+    { customerId: invoice.customerId, invoiceId: invoice.id, relatedRefundId: refund.id, actorType: 'MANUAL', actorUserId: refund.completedBy }
+  )
 }
 
 export interface FailRefundInput {
