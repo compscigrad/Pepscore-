@@ -6,7 +6,8 @@
 // before any of these run, and nothing in here is allowed to throw — a
 // failed or unconfigured channel is recorded, never fatal (Section 8/26).
 import { prisma } from '@/lib/prisma'
-import { resend, FROM_EMAIL, BILLING_EMAIL } from '@/lib/resend'
+import { resend } from '@/lib/resend'
+import { routeFor } from '@/lib/notifications/routing'
 import { attemptSms } from '@/lib/notifications/bestEffortSms'
 import { recordCustomerActivity } from '@/lib/customers'
 import {
@@ -75,7 +76,8 @@ export async function notifyAdminPaymentSelectionPending(invoice: InvoiceWithRel
   let emailSent = false
   try {
     if (emailTargets.length > 0) {
-      await resend.emails.send({ from: FROM_EMAIL, to: emailTargets.map((r) => r.email!), replyTo: BILLING_EMAIL, subject, html })
+      const sender = routeFor('PAYMENT_SELECTION_PENDING')
+      await resend.emails.send({ from: sender.from, to: emailTargets.map((r) => r.email!), replyTo: sender.replyTo, subject, html })
       emailSent = true
     }
   } catch (err) {
@@ -94,10 +96,11 @@ export async function notifyAdminPaymentSelectionPending(invoice: InvoiceWithRel
 export async function notifyClientPaymentSelectionConfirmation(invoice: InvoiceWithRelations): Promise<void> {
   if (invoice.customerEmail) {
     try {
+      const sender = routeFor('PAYMENT_SELECTION_CONFIRMATION')
       await resend.emails.send({
-        from: FROM_EMAIL,
+        from: sender.from,
         to: invoice.customerEmail,
-        replyTo: BILLING_EMAIL,
+        replyTo: sender.replyTo,
         subject: paymentSelectionConfirmationSubject(invoice.invoiceNumber),
         html: buildPaymentSelectionConfirmationHtml(invoice.customerName, invoice.invoiceNumber),
       })
@@ -139,7 +142,8 @@ export async function notifyAdminArrangementRequestPending(
   let emailSent = false
   try {
     if (emailTargets.length > 0) {
-      await resend.emails.send({ from: FROM_EMAIL, to: emailTargets.map((r) => r.email!), replyTo: BILLING_EMAIL, subject, html })
+      const sender = routeFor('PAYMENT_ARRANGEMENT_REQUEST_PENDING')
+      await resend.emails.send({ from: sender.from, to: emailTargets.map((r) => r.email!), replyTo: sender.replyTo, subject, html })
       emailSent = true
     }
   } catch (err) {
@@ -157,10 +161,11 @@ export async function notifyAdminArrangementRequestPending(
 export async function notifyClientArrangementRequestReceived(invoice: InvoiceWithRelations): Promise<void> {
   if (invoice.customerEmail) {
     try {
+      const sender = routeFor('PAYMENT_ARRANGEMENT_REQUEST_RECEIVED')
       await resend.emails.send({
-        from: FROM_EMAIL,
+        from: sender.from,
         to: invoice.customerEmail,
-        replyTo: BILLING_EMAIL,
+        replyTo: sender.replyTo,
         subject: arrangementRequestReceivedSubject(invoice.invoiceNumber),
         html: buildArrangementRequestReceivedHtml(invoice.customerName, invoice.invoiceNumber),
       })
@@ -179,10 +184,11 @@ export async function notifyClientArrangementApproved(
 ): Promise<void> {
   if (invoice.customerEmail) {
     try {
+      const sender = routeFor('PAYMENT_ARRANGEMENT_DECISION')
       await resend.emails.send({
-        from: FROM_EMAIL,
+        from: sender.from,
         to: invoice.customerEmail,
-        replyTo: BILLING_EMAIL,
+        replyTo: sender.replyTo,
         subject: arrangementApprovedSubject(invoice.invoiceNumber),
         html: buildArrangementApprovedHtml({
           customerName: invoice.customerName,
@@ -214,10 +220,11 @@ export async function notifyClientArrangementDenied(invoice: InvoiceWithRelation
 
   if (invoice.customerEmail) {
     try {
+      const sender = routeFor('PAYMENT_ARRANGEMENT_DECISION')
       await resend.emails.send({
-        from: FROM_EMAIL,
+        from: sender.from,
         to: invoice.customerEmail,
-        replyTo: BILLING_EMAIL,
+        replyTo: sender.replyTo,
         subject: arrangementDeniedSubject(invoice.invoiceNumber),
         html: buildArrangementDeniedHtml({
           customerName: invoice.customerName,

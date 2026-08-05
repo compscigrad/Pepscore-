@@ -4,7 +4,8 @@
 // them (an email failure is recorded, not thrown).
 import { prisma } from '@/lib/prisma'
 import { renderToBuffer } from '@react-pdf/renderer'
-import { resend, FROM_EMAIL, ORDERS_EMAIL } from '@/lib/resend'
+import { resend } from '@/lib/resend'
+import { routeFor } from '@/lib/notifications/routing'
 import { getInvoice } from '@/lib/invoices'
 import { getPrimaryShipment } from '@/lib/shipments/primary'
 import { RecipientReceiptDocument } from '@/lib/invoice/pdf/RecipientReceiptDocument'
@@ -92,10 +93,11 @@ async function sendShipmentEmail(
       deliveredAt: shipment.deliveredAt,
     })
 
+    const sender = routeFor('TRACKING_UPDATE')
     await resend.emails.send({
-      from: FROM_EMAIL,
+      from: sender.from,
       to: recipient,
-      replyTo: ORDERS_EMAIL,
+      replyTo: sender.replyTo,
       subject: shipmentUpdateSubject(status, invoice.invoiceNumber),
       html,
       attachments: [
