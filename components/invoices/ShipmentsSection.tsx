@@ -7,13 +7,15 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import toast from 'react-hot-toast'
-import { formatCarrierLabel } from '@/lib/invoice/format'
+import { formatCarrierLabel, formatLabelSourceLabel } from '@/lib/invoice/format'
 import { getPrimaryShipment } from '@/lib/shipments/primary'
 import { StatusBadge } from './StatusBadge'
 import { card, input, label as labelClass, pillPrimary, pillOutline, sectionHeading, selectOption, mutedText } from './theme'
-import type { ShippingCarrier, ShippingStatus, Shipment, TrackingEvent } from '@prisma/client'
+import type { ShippingCarrier, ShippingStatus, LabelSource, Shipment, TrackingEvent } from '@prisma/client'
 
 const CARRIERS: ShippingCarrier[] = ['USPS', 'UPS', 'FEDEX', 'DHL', 'PICKUP', 'HAND_DELIVERY', 'COURIER', 'OTHER']
+
+const LABEL_SOURCES: LabelSource[] = ['PIRATE_SHIP', 'SHIPPO', 'USPS_DIRECT', 'UPS_DIRECT', 'FEDEX_DIRECT', 'OTHER_MANUAL']
 
 const OVERRIDE_STATUSES: ShippingStatus[] = [
   'NOT_SHIPPED', 'TRACKING_ADDED', 'LABEL_CREATED', 'CARRIER_AWAITING_PACKAGE', 'ACCEPTED_BY_CARRIER',
@@ -72,6 +74,8 @@ export function ShipmentsSection({ invoiceId, shipments, onTrackingUpdated }: Pr
   const [carrier, setCarrier] = useState<ShippingCarrier>('USPS')
   const [trackingNumber, setTrackingNumber] = useState('')
   const [service, setService] = useState('')
+  const [labelSource, setLabelSource] = useState<LabelSource | ''>('')
+  const [notes, setNotes] = useState('')
   const [overrideStatus, setOverrideStatus] = useState<ShippingStatus>('IN_TRANSIT')
   const [showHistory, setShowHistory] = useState<string | null>(null)
   const [confirmingRemove, setConfirmingRemove] = useState(false)
@@ -134,14 +138,32 @@ export function ShipmentsSection({ invoiceId, shipments, onTrackingUpdated }: Pr
       const res = await fetch(`/api/admin/invoices/${invoiceId}/tracking`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ carrier, trackingNumber, service: service || undefined }),
+        body: JSON.stringify({
+          carrier,
+          trackingNumber,
+          service: service || undefined,
+          labelSource: labelSource || undefined,
+          notes: notes || undefined,
+        }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? 'Failed to add tracking')
+      if (!res.ok) {
+        // A blocked backorder is an expected, actionable state — not a
+        // generic failure — so it gets a longer, clearer toast pointing at
+        // the "Fulfill Anyway" control below rather than a terse error.
+        if (data.code === 'BACKORDER_ACTIVE') {
+          toast.error(data.error, { duration: 8000 })
+          return
+        }
+        throw new Error(data.error ?? 'Failed to add tracking')
+      }
       if (data.formatWarning) toast(data.formatWarning, { icon: '⚠️', duration: 6000 })
+      if (data.providerWarning) toast(data.providerWarning, { icon: 'ℹ️', duration: 8000 })
       toast.success(data.customerNotified ? 'Tracking added — customer notified' : 'Tracking added (no customer email on file — nothing sent)')
       setTrackingNumber('')
       setService('')
+      setLabelSource('')
+      setNotes('')
       onTrackingUpdated()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to add tracking')
@@ -337,6 +359,9 @@ export function ShipmentsSection({ invoiceId, shipments, onTrackingUpdated }: Pr
                     <span className={mutedText}>Carrier:</span> {formatCarrierLabel(shipment.carrier)}
                     {shipment.service ? ` — ${shipment.service}` : ''}
                   </p>
+                  {shipment.labelSource ? (
+                    <p><span className={mutedText}>Label Source:</span> {formatLabelSourceLabel(shipment.labelSource)}</p>
+                  ) : null}
                   <p>
                     <span className={mutedText}>Tracking #:</span>{' '}
                     {shipment.trackingUrl ? (
@@ -349,6 +374,9 @@ export function ShipmentsSection({ invoiceId, shipments, onTrackingUpdated }: Pr
                   </p>
                   {shipment.postageAmount != null ? (
                     <p><span className={mutedText}>Postage:</span> {formatMoney(shipment.postageAmount)}</p>
+                  ) : null}
+                  {shipment.notes ? (
+                    <p><span className={mutedText}>Notes:</span> {shipment.notes}</p>
                   ) : null}
                   {shipment.labelUrl ? (
                     <p>
@@ -490,6 +518,25 @@ export function ShipmentsSection({ invoiceId, shipments, onTrackingUpdated }: Pr
               value={service}
               onChange={(e) => setService(e.target.value)}
               placeholder="e.g. Priority Mail"
+            />
+          </div>
+          <div>
+            <label className={labelClass} htmlFor="labelSource">Label Source</label>
+            <select id="labelSource" className={input} value={labelSource} onChange={(e) => setLabelSource(e.target.value as LabelSource | '')}>
+              <option value="" className={selectOption}>Unspecified</option>
+              {LABEL_SOURCES.map((s) => (
+                <option key={s} value={s} className={selectOption}>{formatLabelSourceLabel(s)}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex-1 min-w-[200px]">
+            <label className={labelClass} htmlFor="trackingNotes">Notes</label>
+            <input
+              id="trackingNotes"
+              className={input}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Optional — internal note"
             />
           </div>
           <button type="submit" className={`${pillPrimary} px-5 py-2`} disabled={submitting}>

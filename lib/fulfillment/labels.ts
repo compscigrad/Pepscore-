@@ -46,11 +46,25 @@ interface InvoiceShippingAddress {
   country?: string
 }
 
+// Checked up front, before any Shippo call, so a missing API key produces
+// the same plain-English message every time this path is entered — rather
+// than surfacing whatever raw "Missing SHIPPO_API_KEY environment variable"
+// text happens to bubble up from lib/shippo.ts's own guard. Manual tracking
+// (lib/tracking/service.ts) never calls this function, so it's unaffected
+// either way — this only gates Shippo's own label-purchase flow.
+export function isShippoConfigured(): boolean {
+  return Boolean(process.env.SHIPPO_API_KEY)
+}
+
+export const SHIPPO_NOT_CONFIGURED_MESSAGE = 'Shippo label purchasing is not configured. Manual tracking remains available.'
+
 export async function getShippingRatesForInvoice(
   invoiceId: string,
   weight: PackageWeight,
   dimensions: PackageDimensions
 ): Promise<ShippoRate[]> {
+  if (!isShippoConfigured()) throw new FulfillmentLabelError(SHIPPO_NOT_CONFIGURED_MESSAGE)
+
   const [invoice, settings] = await Promise.all([
     prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } }),
     getFulfillmentSettings(),
@@ -109,6 +123,8 @@ export async function purchaseShippingLabelForInvoice(
   input: PurchaseShippingLabelInput,
   actor: { userId: string }
 ): Promise<Shipment> {
+  if (!isShippoConfigured()) throw new FulfillmentLabelError(SHIPPO_NOT_CONFIGURED_MESSAGE)
+
   const eligibility = await checkFulfillmentEligibility(invoiceId)
   if (!eligibility.allowed) {
     throw new FulfillmentLabelError(
@@ -148,6 +164,7 @@ export async function purchaseShippingLabelForInvoice(
     providerName: 'shippo',
     providerTrackingId: purchased.object_id,
     origin: 'LABEL_PURCHASE',
+    labelSource: 'SHIPPO',
     labelFields: {
       shippoTransactionId: purchased.object_id,
       postageAmount,

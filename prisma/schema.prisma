@@ -960,6 +960,23 @@ model Shipment {
   // The fields below are only ever populated for LABEL_PURCHASE shipments.
   origin ShipmentOrigin @default(MANUAL_ENTRY)
 
+  // Where the physical label actually came from — orthogonal to origin above
+  // (origin is "did this app buy postage", labelSource is "which service
+  // produced the label admin is holding"). A LABEL_PURCHASE shipment is
+  // always SHIPPO (this app only integrates Shippo for in-app purchases);
+  // MANUAL_ENTRY can be any of these, most commonly PIRATE_SHIP today.
+  labelSource LabelSource?
+
+  // Freeform admin note on this specific shipment (e.g. "customer requested
+  // signature confirmation", "split into two boxes"). Never customer-facing.
+  notes String?
+
+  // Who manually typed this tracking number in, for MANUAL_ENTRY shipments —
+  // mirrors purchasedBy below, which covers the LABEL_PURCHASE case. Also
+  // captured in InvoiceActivityLog's TRACKING_ADDED row, but kept here too so
+  // the shipment card can show it without a second query.
+  enteredBy String?
+
   shippoShipmentId    String?
   shippoTransactionId String?
   postageAmount       Float?
@@ -999,6 +1016,17 @@ model Shipment {
 enum ShipmentOrigin {
   MANUAL_ENTRY
   LABEL_PURCHASE
+}
+
+// Which service actually produced the physical label — distinct from
+// ShipmentOrigin (see the field comment on Shipment.labelSource above).
+enum LabelSource {
+  PIRATE_SHIP
+  SHIPPO
+  USPS_DIRECT
+  UPS_DIRECT
+  FEDEX_DIRECT
+  OTHER_MANUAL
 }
 
 // One row per normalized carrier event, in provider-agnostic shape. Dedup is

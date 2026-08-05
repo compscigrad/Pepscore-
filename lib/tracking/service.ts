@@ -3,7 +3,7 @@
 // UI call these functions; nothing else touches lib/tracking's internals or
 // Prisma tables directly.
 import { Prisma } from '@prisma/client'
-import type { ShippingCarrier, ShippingStatus, TrackingEventSource, DeliveryStatus, ShipmentOrigin, Shipment } from '@prisma/client'
+import type { ShippingCarrier, ShippingStatus, TrackingEventSource, DeliveryStatus, ShipmentOrigin, LabelSource, Shipment } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { getProviderForCarrier } from './registry'
 import { isTrackableCarrier } from './types'
@@ -15,7 +15,15 @@ import { sanitizeCarrierText } from './sanitize'
 import { computeOrderStatus } from './orderStatus'
 import { sendShipmentNotificationIfNeeded } from './notifications'
 import { syncCustomerFromInvoiceEvent } from '@/lib/customers'
+import { hasActiveBackorder } from '@/lib/backorders'
+import { isTrackingBlockedByBackorder } from '@/lib/invoice/backorder'
 import { getPrimaryShipment } from '@/lib/shipments/primary'
+
+// Thrown by addTrackingToInvoice when an active backorder blocks manual
+// tracking entry — a distinct type so the API route can map it to a 409
+// (rather than the generic 500) and the UI can offer the existing "Fulfill
+// Anyway" override instead of just showing a raw error string.
+export class BackorderBlocksTrackingError extends Error {}
 
 const TERMINAL_STATUSES: ShippingStatus[] = ['DELIVERED', 'RETURNED_TO_SENDER', 'LOST', 'CANCELLED']
 
@@ -93,6 +101,9 @@ export interface RegisterShipmentInput {
   providerName?: string
   providerTrackingId?: string
   origin: ShipmentOrigin
+  labelSource?: LabelSource
+  notes?: string
+  enteredBy?: string
   // Populated only for LABEL_PURCHASE shipments — see lib/fulfillment/labels.ts.
   labelFields?: {
     shippoShipmentId?: string
@@ -129,6 +140,9 @@ export async function registerShipmentForMonitoring(input: RegisterShipmentInput
       providerName: input.providerName,
       providerTrackingId: input.providerTrackingId,
       origin: input.origin,
+      labelSource: input.labelSource,
+      notes: input.notes,
+      enteredBy: input.enteredBy,
       ...input.labelFields,
     },
   })
@@ -153,10 +167,21 @@ export interface AddTrackingInput {
   carrier: ShippingCarrier
   trackingNumber: string
   service?: string
+  labelSource?: LabelSource
+  notes?: string
 }
 
 export interface AddTrackingResult {
   formatWarning?: string
+  // Set when a live provider (Shippo) exists for this carrier but couldn't
+  // register the tracking number — missing/invalid API key, Shippo account
+  // issue, or a transient API failure. Tracking is still saved and usable
+  // (carrier tracking URL, customer notification, activity log all still
+  // work); this only means automated status polling/webhooks won't be
+  // active for this shipment until the provider issue is resolved and
+  // "Refresh" is retried. Per Phase 2/4 of the tracking spec: manual
+  // tracking must never fail just because Shippo isn't configured.
+  providerWarning?: string
   customerNotified: boolean
 }
 
@@ -174,16 +199,42 @@ export async function addTrackingToInvoice(
   const trackingNumber = input.trackingNumber.trim()
   if (!trackingNumber) throw new Error('Tracking number is required')
 
+  // An active backorder blocks new shipment creation here — the one place
+  // an admin actually starts fulfillment by hand — same override escape
+  // hatch as the Fulfillment Gate (fulfillmentOverrideAt), but deliberately
+  // not the full gate: payment status must never block manual tracking (see
+  // isTrackingBlockedByBackorder's own comment).
+  const activeBackorder = await hasActiveBackorder(invoiceId)
+  if (isTrackingBlockedByBackorder({ hasActiveBackorder: activeBackorder, fulfillmentOverrideAt: invoice.fulfillmentOverrideAt })) {
+    throw new BackorderBlocksTrackingError(
+      'This invoice has an active backorder. Resolve it, or use "Fulfill Anyway" below, before adding tracking.'
+    )
+  }
+
   const formatCheck = checkTrackingNumberFormat(input.carrier, trackingNumber)
   const existingPrimary = getPrimaryShipment(invoice.shipments)
 
   let providerTrackingId: string | undefined
+  let providerWarning: string | undefined
   let trackingUrl = buildCarrierTrackingUrl(input.carrier, trackingNumber)
   const provider = getProviderForCarrier(input.carrier)
   if (provider) {
-    const registered = await provider.registerTracking(input.carrier, trackingNumber)
-    providerTrackingId = registered.providerTrackingId
-    trackingUrl = registered.trackingUrl
+    try {
+      const registered = await provider.registerTracking(input.carrier, trackingNumber)
+      providerTrackingId = registered.providerTrackingId
+      trackingUrl = registered.trackingUrl
+    } catch (err) {
+      // Never let a provider failure (missing SHIPPO_API_KEY, Shippo account
+      // issue, transient API error) block a manual tracking save — the
+      // tracking number and carrier-built URL above are already good on
+      // their own. Live status monitoring just won't start until this is
+      // resolved and refreshed.
+      console.warn('[tracking/service] Provider registration failed for manual entry, continuing without live monitoring:', err)
+      providerWarning =
+        err instanceof Error
+          ? `Tracking saved, but live status monitoring could not start: ${err.message}`
+          : 'Tracking saved, but live status monitoring could not start.'
+    }
   }
 
   const shipment = await registerShipmentForMonitoring({
@@ -192,9 +243,12 @@ export async function addTrackingToInvoice(
     service: input.service,
     trackingNumber,
     trackingUrl,
-    providerName: provider?.name,
+    providerName: providerTrackingId ? provider?.name : undefined,
     providerTrackingId,
     origin: 'MANUAL_ENTRY',
+    labelSource: input.labelSource,
+    notes: input.notes,
+    enteredBy: actor.userId,
   })
 
   await logActivity({
@@ -227,7 +281,7 @@ export async function addTrackingToInvoice(
     })
   }
 
-  return { formatWarning: formatCheck.warning, customerNotified }
+  return { formatWarning: formatCheck.warning, providerWarning, customerNotified }
 }
 
 // Applies a batch of normalized events (from a webhook payload or a poll) to

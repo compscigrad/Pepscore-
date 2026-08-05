@@ -35,6 +35,19 @@ export function formatCarrierLabel(carrier: string): string {
   return CARRIER_LABELS[carrier] ?? carrier.replace('_', ' ')
 }
 
+const LABEL_SOURCE_LABELS: Record<string, string> = {
+  PIRATE_SHIP: 'Pirate Ship',
+  SHIPPO: 'Shippo',
+  USPS_DIRECT: 'USPS (direct)',
+  UPS_DIRECT: 'UPS (direct)',
+  FEDEX_DIRECT: 'FedEx (direct)',
+  OTHER_MANUAL: 'Other / Manual',
+}
+
+export function formatLabelSourceLabel(labelSource: string): string {
+  return LABEL_SOURCE_LABELS[labelSource] ?? labelSource.replace('_', ' ')
+}
+
 // Display-only US mask — never touches what's actually stored (Customer.phone
 // / Invoice.customerPhone are saved exactly as typed, no normalization at
 // write time). A number that doesn't parse as a US 10/11-digit number
