@@ -3,7 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { z } from 'zod'
-import { listPromotions, createPromotion } from '@/lib/promotions'
+import { listPromotions, createPromotion, DuplicatePromotionNameError } from '@/lib/promotions'
 
 function isAdmin(userId: string | null) {
   return userId === process.env.ADMIN_CLERK_USER_ID
@@ -37,6 +37,9 @@ export async function POST(req: NextRequest) {
   } catch (err: unknown) {
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: 'Validation failed', issues: err.issues }, { status: 400 })
+    }
+    if (err instanceof DuplicatePromotionNameError) {
+      return NextResponse.json({ error: err.message }, { status: 409 })
     }
     console.error('[admin/promotions POST]', err)
     const msg = err instanceof Error ? err.message : 'Failed to create promotion'

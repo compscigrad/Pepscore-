@@ -10,6 +10,28 @@ export async function listPromotions(activeOnly = true) {
   })
 }
 
+// Two active presets sharing a name are indistinguishable in the "Apply
+// Promotion..." picker, and on an invoice that applies both (found live in
+// production: two separate presets both named "Miscellaneous" applied to
+// the same invoice as -$25 and -$11 lines) — nothing on the invoice
+// explains what either one was actually for beyond its dollar amount. A
+// deactivated preset's name doesn't count: it's already hidden from the
+// picker, and its name is fair to reuse.
+export class DuplicatePromotionNameError extends Error {}
+
+async function assertNameNotInUse(name: string, excludeId?: string): Promise<void> {
+  const existing = await prisma.promotion.findFirst({
+    where: {
+      active: true,
+      name: { equals: name, mode: 'insensitive' },
+      id: excludeId ? { not: excludeId } : undefined,
+    },
+  })
+  if (existing) {
+    throw new DuplicatePromotionNameError(`An active discount preset named "${existing.name}" already exists — use a more specific name.`)
+  }
+}
+
 export interface CreatePromotionInput {
   name: string
   description?: string
@@ -18,6 +40,7 @@ export interface CreatePromotionInput {
 }
 
 export async function createPromotion(input: CreatePromotionInput) {
+  await assertNameNotInUse(input.name)
   return prisma.promotion.create({ data: input })
 }
 
@@ -35,6 +58,16 @@ export interface UpdatePromotionInput {
 // never rewrites a historical invoice. See prisma/schema.prisma's
 // InvoiceDiscount comment.
 export async function updatePromotion(id: string, input: UpdatePromotionInput) {
+  // Only worth checking when the edit could actually produce a live
+  // name collision: a rename, or a reactivation (which needs the current
+  // name, since input.name wasn't necessarily provided).
+  if (input.name !== undefined) {
+    await assertNameNotInUse(input.name, id)
+  } else if (input.active === true) {
+    const current = await prisma.promotion.findUniqueOrThrow({ where: { id } })
+    await assertNameNotInUse(current.name, id)
+  }
+
   return prisma.promotion.update({
     where: { id },
     data: {
