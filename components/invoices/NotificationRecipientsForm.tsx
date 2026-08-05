@@ -112,7 +112,7 @@ export function NotificationRecipientsForm({ initialRecipients, suggestedEmail }
                   {[r.email, r.phone].filter(Boolean).join(' · ')}
                 </span>
               </div>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 flex-wrap">
                 <label className="flex items-center gap-1.5 text-xs text-white/60 cursor-pointer">
                   <input
                     type="checkbox"
