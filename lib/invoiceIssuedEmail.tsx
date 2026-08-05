@@ -9,14 +9,12 @@
 // missing/failed Twilio config is recorded, never fatal.
 import { prisma } from '@/lib/prisma'
 import { renderToBuffer } from '@react-pdf/renderer'
-import { resend } from '@/lib/resend'
-import { routeFor } from '@/lib/notifications/routing'
 import { RecipientReceiptDocument } from '@/lib/invoice/pdf/RecipientReceiptDocument'
 import { buildInvoiceIssuedHtml, invoiceIssuedSubject } from '@/emails/InvoiceIssued'
 import { getInvoiceSettings } from '@/lib/invoiceSettings'
 import { recordCustomerActivity } from '@/lib/customers'
 import { findActiveIntakeLinkFor, generateIntakeLink } from '@/lib/intakeLinks'
-import { attemptSms } from '@/lib/notifications/bestEffortSms'
+import { sendCategorizedEmail, sendCategorizedSms } from '@/lib/notifications/log'
 import type { InvoiceWithRelations } from '@/lib/invoices'
 
 // Issued and Pending are both "has been issued at least once" (see
@@ -79,15 +77,17 @@ async function sendInvoiceEmail(invoice: InvoiceWithRelations, source: 'SYSTEM' 
       secureLink,
     })
 
-    const sender = routeFor('INVOICE_ISSUED')
-    await resend.emails.send({
-      from: sender.from,
-      to: recipient,
-      replyTo: sender.replyTo,
-      subject: invoiceIssuedSubject(invoice.invoiceNumber),
-      html,
-      attachments: [{ filename: `${invoice.invoiceNumber}-invoice.pdf`, content: pdfBuffer }],
-    })
+    const result = await sendCategorizedEmail(
+      {
+        category: 'INVOICE_ISSUED',
+        to: recipient,
+        subject: invoiceIssuedSubject(invoice.invoiceNumber),
+        html,
+        attachments: [{ filename: `${invoice.invoiceNumber}-invoice.pdf`, content: pdfBuffer }],
+      },
+      { customerId: invoice.customerId, invoiceId: invoice.id, actorType: source, actorUserId: userId }
+    )
+    if (!result.sent) throw new Error(result.failureReason ?? 'Unknown email provider error')
 
     await recordResult(invoice.id, 'SENT', null)
     await prisma.invoiceActivityLog.create({
@@ -168,7 +168,12 @@ export async function sendInvoiceIssuedSmsIfNeeded(invoice: InvoiceWithRelations
   if (alreadyAttempted) return
 
   const secureLink = await resolveSecureLink(invoice)
-  const result = await attemptSms(invoice.customerPhone, invoiceReadySmsBody(invoice, secureLink))
+  const result = await sendCategorizedSms(
+    'INVOICE_ISSUED',
+    invoice.customerPhone,
+    invoiceReadySmsBody(invoice, secureLink),
+    { customerId: invoice.customerId, invoiceId: invoice.id, actorType: 'SYSTEM' }
+  )
 
   const eventType =
     result.outcome === 'SENT'

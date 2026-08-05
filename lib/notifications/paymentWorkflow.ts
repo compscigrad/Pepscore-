@@ -6,9 +6,7 @@
 // before any of these run, and nothing in here is allowed to throw — a
 // failed or unconfigured channel is recorded, never fatal (Section 8/26).
 import { prisma } from '@/lib/prisma'
-import { resend } from '@/lib/resend'
-import { routeFor } from '@/lib/notifications/routing'
-import { attemptSms } from '@/lib/notifications/bestEffortSms'
+import { sendCategorizedEmail, sendCategorizedSms } from '@/lib/notifications/log'
 import { recordCustomerActivity } from '@/lib/customers'
 import {
   paymentSelectionPendingSubject,
@@ -74,18 +72,21 @@ export async function notifyAdminPaymentSelectionPending(invoice: InvoiceWithRel
   const subject = paymentSelectionPendingSubject(invoice.invoiceNumber)
 
   let emailSent = false
-  try {
-    if (emailTargets.length > 0) {
-      const sender = routeFor('PAYMENT_SELECTION_PENDING')
-      await resend.emails.send({ from: sender.from, to: emailTargets.map((r) => r.email!), replyTo: sender.replyTo, subject, html })
-      emailSent = true
-    }
-  } catch (err) {
-    console.error('[paymentWorkflow] admin payment-selection email failed:', err)
+  if (emailTargets.length > 0) {
+    const result = await sendCategorizedEmail(
+      { category: 'PAYMENT_SELECTION_PENDING', to: emailTargets.map((r) => r.email!), subject, html },
+      { customerId: invoice.customerId, invoiceId: invoice.id, actorType: 'SYSTEM' }
+    )
+    emailSent = result.sent
   }
 
   for (const recipient of recipients.filter((r) => r.smsEnabled && r.phone)) {
-    await attemptSms(recipient.phone, `Pepscore: ${invoice.customerName} selected Pay in Full for invoice #${invoice.invoiceNumber}. Awaiting manual confirmation.`)
+    await sendCategorizedSms(
+      'PAYMENT_SELECTION_PENDING',
+      recipient.phone,
+      `Pepscore: ${invoice.customerName} selected Pay in Full for invoice #${invoice.invoiceNumber}. Awaiting manual confirmation.`,
+      { customerId: invoice.customerId, invoiceId: invoice.id, actorType: 'SYSTEM' }
+    )
   }
 
   await logInvoiceAndCustomerEvent(invoice, 'PAY_IN_FULL_SELECTED_ADMIN_NOTIFIED', emailSent ? 'Email sent' : 'No admin recipients configured')
@@ -95,20 +96,22 @@ export async function notifyAdminPaymentSelectionPending(invoice: InvoiceWithRel
 // above so a failure in one never blocks the other.
 export async function notifyClientPaymentSelectionConfirmation(invoice: InvoiceWithRelations): Promise<void> {
   if (invoice.customerEmail) {
-    try {
-      const sender = routeFor('PAYMENT_SELECTION_CONFIRMATION')
-      await resend.emails.send({
-        from: sender.from,
+    await sendCategorizedEmail(
+      {
+        category: 'PAYMENT_SELECTION_CONFIRMATION',
         to: invoice.customerEmail,
-        replyTo: sender.replyTo,
         subject: paymentSelectionConfirmationSubject(invoice.invoiceNumber),
         html: buildPaymentSelectionConfirmationHtml(invoice.customerName, invoice.invoiceNumber),
-      })
-    } catch (err) {
-      console.error('[paymentWorkflow] client payment-selection confirmation email failed:', err)
-    }
+      },
+      { customerId: invoice.customerId, invoiceId: invoice.id, actorType: 'SYSTEM' }
+    )
   }
-  const sms = await attemptSms(invoice.customerPhone, `Hi ${invoice.customerName}, we received your Pay in Full selection for invoice #${invoice.invoiceNumber}.`)
+  const sms = await sendCategorizedSms(
+    'PAYMENT_SELECTION_CONFIRMATION',
+    invoice.customerPhone,
+    `Hi ${invoice.customerName}, we received your Pay in Full selection for invoice #${invoice.invoiceNumber}.`,
+    { customerId: invoice.customerId, invoiceId: invoice.id, actorType: 'SYSTEM' }
+  )
   await logInvoiceAndCustomerEvent(invoice, 'PAY_IN_FULL_SELECTED_CLIENT_CONFIRMED', sms.outcome)
 }
 
@@ -140,18 +143,21 @@ export async function notifyAdminArrangementRequestPending(
   const subject = arrangementRequestPendingSubject(invoice.invoiceNumber)
 
   let emailSent = false
-  try {
-    if (emailTargets.length > 0) {
-      const sender = routeFor('PAYMENT_ARRANGEMENT_REQUEST_PENDING')
-      await resend.emails.send({ from: sender.from, to: emailTargets.map((r) => r.email!), replyTo: sender.replyTo, subject, html })
-      emailSent = true
-    }
-  } catch (err) {
-    console.error('[paymentWorkflow] admin arrangement-request email failed:', err)
+  if (emailTargets.length > 0) {
+    const result = await sendCategorizedEmail(
+      { category: 'PAYMENT_ARRANGEMENT_REQUEST_PENDING', to: emailTargets.map((r) => r.email!), subject, html },
+      { customerId: invoice.customerId, invoiceId: invoice.id, actorType: 'SYSTEM' }
+    )
+    emailSent = result.sent
   }
 
   for (const recipient of recipients.filter((r) => r.smsEnabled && r.phone)) {
-    await attemptSms(recipient.phone, `Pepscore: ${invoice.customerName} requested a payment arrangement for invoice #${invoice.invoiceNumber}. Review required.`)
+    await sendCategorizedSms(
+      'PAYMENT_ARRANGEMENT_REQUEST_PENDING',
+      recipient.phone,
+      `Pepscore: ${invoice.customerName} requested a payment arrangement for invoice #${invoice.invoiceNumber}. Review required.`,
+      { customerId: invoice.customerId, invoiceId: invoice.id, actorType: 'SYSTEM' }
+    )
   }
 
   await logInvoiceAndCustomerEvent(invoice, 'ARRANGEMENT_REQUEST_ADMIN_NOTIFIED', emailSent ? 'Email sent' : 'No admin recipients configured')
@@ -160,20 +166,22 @@ export async function notifyAdminArrangementRequestPending(
 // Section 15's client-facing confirmation.
 export async function notifyClientArrangementRequestReceived(invoice: InvoiceWithRelations): Promise<void> {
   if (invoice.customerEmail) {
-    try {
-      const sender = routeFor('PAYMENT_ARRANGEMENT_REQUEST_RECEIVED')
-      await resend.emails.send({
-        from: sender.from,
+    await sendCategorizedEmail(
+      {
+        category: 'PAYMENT_ARRANGEMENT_REQUEST_RECEIVED',
         to: invoice.customerEmail,
-        replyTo: sender.replyTo,
         subject: arrangementRequestReceivedSubject(invoice.invoiceNumber),
         html: buildArrangementRequestReceivedHtml(invoice.customerName, invoice.invoiceNumber),
-      })
-    } catch (err) {
-      console.error('[paymentWorkflow] client arrangement-request confirmation email failed:', err)
-    }
+      },
+      { customerId: invoice.customerId, invoiceId: invoice.id, actorType: 'SYSTEM' }
+    )
   }
-  const sms = await attemptSms(invoice.customerPhone, `Hi ${invoice.customerName}, we received your payment-arrangement request for invoice #${invoice.invoiceNumber}. Awaiting review.`)
+  const sms = await sendCategorizedSms(
+    'PAYMENT_ARRANGEMENT_REQUEST_RECEIVED',
+    invoice.customerPhone,
+    `Hi ${invoice.customerName}, we received your payment-arrangement request for invoice #${invoice.invoiceNumber}. Awaiting review.`,
+    { customerId: invoice.customerId, invoiceId: invoice.id, actorType: 'SYSTEM' }
+  )
   await logInvoiceAndCustomerEvent(invoice, 'ARRANGEMENT_REQUEST_CLIENT_CONFIRMED', sms.outcome)
 }
 
@@ -183,12 +191,10 @@ export async function notifyClientArrangementApproved(
   arrangement: PaymentArrangement & { installments: PaymentArrangementInstallment[] }
 ): Promise<void> {
   if (invoice.customerEmail) {
-    try {
-      const sender = routeFor('PAYMENT_ARRANGEMENT_DECISION')
-      await resend.emails.send({
-        from: sender.from,
+    await sendCategorizedEmail(
+      {
+        category: 'PAYMENT_ARRANGEMENT_DECISION',
         to: invoice.customerEmail,
-        replyTo: sender.replyTo,
         subject: arrangementApprovedSubject(invoice.invoiceNumber),
         html: buildArrangementApprovedHtml({
           customerName: invoice.customerName,
@@ -202,12 +208,16 @@ export async function notifyClientArrangementApproved(
           installmentCount: arrangement.installments.length,
           scheduleSummary: formatSchedule(arrangement.installments),
         }),
-      })
-    } catch (err) {
-      console.error('[paymentWorkflow] client arrangement-approved email failed:', err)
-    }
+      },
+      { customerId: invoice.customerId, invoiceId: invoice.id, actorType: 'SYSTEM' }
+    )
   }
-  const sms = await attemptSms(invoice.customerPhone, `Hi ${invoice.customerName}, your payment arrangement for invoice #${invoice.invoiceNumber} was approved.`)
+  const sms = await sendCategorizedSms(
+    'PAYMENT_ARRANGEMENT_DECISION',
+    invoice.customerPhone,
+    `Hi ${invoice.customerName}, your payment arrangement for invoice #${invoice.invoiceNumber} was approved.`,
+    { customerId: invoice.customerId, invoiceId: invoice.id, actorType: 'SYSTEM' }
+  )
   await logInvoiceAndCustomerEvent(invoice, 'ARRANGEMENT_APPROVED_CLIENT_NOTIFIED', sms.outcome)
 }
 
@@ -219,12 +229,10 @@ export async function notifyClientArrangementDenied(invoice: InvoiceWithRelation
   const secureLink = link ? `${APP_URL}/intake/${link.token}` : APP_URL
 
   if (invoice.customerEmail) {
-    try {
-      const sender = routeFor('PAYMENT_ARRANGEMENT_DECISION')
-      await resend.emails.send({
-        from: sender.from,
+    await sendCategorizedEmail(
+      {
+        category: 'PAYMENT_ARRANGEMENT_DECISION',
         to: invoice.customerEmail,
-        replyTo: sender.replyTo,
         subject: arrangementDeniedSubject(invoice.invoiceNumber),
         html: buildArrangementDeniedHtml({
           customerName: invoice.customerName,
@@ -234,11 +242,15 @@ export async function notifyClientArrangementDenied(invoice: InvoiceWithRelation
           paymentStatus: invoice.paymentStatus,
           balanceDue: invoice.balanceDue,
         }),
-      })
-    } catch (err) {
-      console.error('[paymentWorkflow] client arrangement-denied email failed:', err)
-    }
+      },
+      { customerId: invoice.customerId, invoiceId: invoice.id, actorType: 'SYSTEM' }
+    )
   }
-  const sms = await attemptSms(invoice.customerPhone, `Hi ${invoice.customerName}, your payment arrangement request for invoice #${invoice.invoiceNumber} needs a revision. Please check your email.`)
+  const sms = await sendCategorizedSms(
+    'PAYMENT_ARRANGEMENT_DECISION',
+    invoice.customerPhone,
+    `Hi ${invoice.customerName}, your payment arrangement request for invoice #${invoice.invoiceNumber} needs a revision. Please check your email.`,
+    { customerId: invoice.customerId, invoiceId: invoice.id, actorType: 'SYSTEM' }
+  )
   await logInvoiceAndCustomerEvent(invoice, 'ARRANGEMENT_DENIED_CLIENT_NOTIFIED', sms.outcome)
 }

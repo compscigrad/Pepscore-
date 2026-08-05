@@ -17,6 +17,7 @@ import { DiscountsSection } from './DiscountsSection'
 import { PaymentSection } from './PaymentSection'
 import { ShipmentsSection } from './ShipmentsSection'
 import { BackordersSection } from './BackordersSection'
+import { CorrespondenceHistory } from './CorrespondenceHistory'
 import { IntakeLinkSection } from './IntakeLinkSection'
 import { TotalsSummary } from './TotalsSummary'
 import { InvoicePreview } from './InvoicePreview'
@@ -400,6 +401,8 @@ export function InvoiceBuilder({ mode, initialInvoice, products, promotions: ini
             onPaymentRecorded={refreshInvoice}
           />
         ) : null}
+
+        {mode === 'edit' && invoice ? <CorrespondenceHistory invoiceId={invoice.id} /> : null}
 
         <div className="flex items-center gap-3">
           <button

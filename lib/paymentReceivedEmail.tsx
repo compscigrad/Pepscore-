@@ -6,8 +6,7 @@
 // there's no "retry" path that could fire this twice for the same payment.
 import { prisma } from '@/lib/prisma'
 import { renderToBuffer } from '@react-pdf/renderer'
-import { resend } from '@/lib/resend'
-import { routeFor } from '@/lib/notifications/routing'
+import { sendCategorizedEmail } from '@/lib/notifications/log'
 import { RecipientReceiptDocument } from '@/lib/invoice/pdf/RecipientReceiptDocument'
 import { buildPaymentReceivedHtml, paymentReceivedSubject } from '@/emails/PaymentReceived'
 import { getInvoiceSettings } from '@/lib/invoiceSettings'
@@ -33,15 +32,17 @@ export async function sendPaymentReceivedEmailIfNeeded(invoice: InvoiceWithRelat
       total: invoice.total,
     })
 
-    const sender = routeFor('PAYMENT_RECEIVED')
-    await resend.emails.send({
-      from: sender.from,
-      to: recipient,
-      replyTo: sender.replyTo,
-      subject: paymentReceivedSubject(invoice.invoiceNumber),
-      html,
-      attachments: [{ filename: `${invoice.invoiceNumber}-invoice.pdf`, content: pdfBuffer }],
-    })
+    const result = await sendCategorizedEmail(
+      {
+        category: 'PAYMENT_RECEIVED',
+        to: recipient,
+        subject: paymentReceivedSubject(invoice.invoiceNumber),
+        html,
+        attachments: [{ filename: `${invoice.invoiceNumber}-invoice.pdf`, content: pdfBuffer }],
+      },
+      { customerId: invoice.customerId, invoiceId: invoice.id, relatedPaymentId: payment.id, actorType: 'SYSTEM' }
+    )
+    if (!result.sent) throw new Error(result.failureReason ?? 'Unknown email provider error')
 
     await prisma.invoiceActivityLog.create({
       data: {
