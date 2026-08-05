@@ -3,7 +3,7 @@
 // spec explicitly says to hide from the customer-facing copy.
 import { Text, View, Image, Link, StyleSheet } from '@react-pdf/renderer'
 import { BRAND } from './brand'
-import { formatMoney, formatDate, formatCarrierLabel } from '@/lib/invoice/format'
+import { formatMoney, formatDate, formatCarrierLabel, formatPhoneDisplay } from '@/lib/invoice/format'
 import { INVOICE_LEGAL_SECTIONS } from '@/lib/invoice/legal'
 import type { InvoiceWithRelations } from '@/lib/invoices'
 import { getPrimaryShipment } from '@/lib/shipments/primary'
@@ -217,10 +217,15 @@ export function DocumentHeader({
   )
 }
 
+// Country line is omitted for domestic (US) addresses — a shipment
+// originating and delivering within the US never needs "US" printed on
+// every invoice; an actual international destination still shows its
+// country so it isn't silently dropped.
 function formatAddress(address: unknown): string {
   if (!address || typeof address !== 'object') return '—'
   const a = address as Record<string, string | undefined>
-  return [a.street1, a.street2, [a.city, a.state, a.zip].filter(Boolean).join(', '), a.country]
+  const country = a.country && a.country !== 'US' ? a.country : undefined
+  return [a.street1, a.street2, [a.city, a.state, a.zip].filter(Boolean).join(', '), country]
     .filter(Boolean)
     .join('\n')
 }
@@ -233,7 +238,7 @@ export function CustomerShippingSection({ invoice }: { invoice: InvoiceWithRelat
         <Text style={styles.sectionText}>{invoice.customerName}</Text>
         {invoice.customerCompany ? <Text style={styles.sectionText}>{invoice.customerCompany}</Text> : null}
         {invoice.customerEmail ? <Text style={styles.sectionText}>{invoice.customerEmail}</Text> : null}
-        {invoice.customerPhone ? <Text style={styles.sectionText}>{invoice.customerPhone}</Text> : null}
+        {invoice.customerPhone ? <Text style={styles.sectionText}>{formatPhoneDisplay(invoice.customerPhone)}</Text> : null}
       </View>
       <View style={styles.sectionCard}>
         <Text style={styles.sectionLabel}>Ship To</Text>

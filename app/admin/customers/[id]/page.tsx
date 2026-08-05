@@ -11,7 +11,7 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getCustomerProfileData, findPossibleDuplicateCustomers } from '@/lib/customers'
 import { formatCurrency } from '@/lib/orders'
-import { formatDate, formatCarrierLabel, formatPaymentMethodLabel } from '@/lib/invoice/format'
+import { formatDate, formatCarrierLabel, formatPaymentMethodLabel, formatPhoneDisplay } from '@/lib/invoice/format'
 import { CorrespondenceHistory } from '@/components/invoices/CorrespondenceHistory'
 import { StatusBadge } from '@/components/invoices/StatusBadge'
 import { card, mutedText, sectionHeading, pillPrimary } from '@/components/invoices/theme'
@@ -118,7 +118,7 @@ export default async function CustomerProfilePage({ params }: PageProps) {
               </div>
               <div>
                 <dt className={`${mutedText} text-[11px] uppercase tracking-wide`}>Phone</dt>
-                <dd className="text-white">{customer.phone ?? '—'}</dd>
+                <dd className="text-white">{customer.phone ? formatPhoneDisplay(customer.phone) : '—'}</dd>
               </div>
               <div>
                 <dt className={`${mutedText} text-[11px] uppercase tracking-wide`}>Preferred Contact</dt>
