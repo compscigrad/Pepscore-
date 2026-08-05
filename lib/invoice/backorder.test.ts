@@ -3,6 +3,7 @@ import {
   computeCompensationSplit,
   decideCompensationDisposition,
   isDeliveryStatusBlockedByBackorder,
+  isTrackingBlockedByBackorder,
   canTransitionRefundStatus,
 } from './backorder'
 
@@ -170,6 +171,20 @@ describe('isDeliveryStatusBlockedByBackorder', () => {
         fulfillmentOverrideAt: new Date(),
       })
     ).toBe(false)
+  })
+})
+
+describe('isTrackingBlockedByBackorder', () => {
+  it('blocks adding tracking while an active backorder exists', () => {
+    expect(isTrackingBlockedByBackorder({ hasActiveBackorder: true, fulfillmentOverrideAt: null })).toBe(true)
+  })
+
+  it('allows adding tracking once there is no active backorder', () => {
+    expect(isTrackingBlockedByBackorder({ hasActiveBackorder: false, fulfillmentOverrideAt: null })).toBe(false)
+  })
+
+  it('allows adding tracking through an attributed fulfillment override, even with an active backorder', () => {
+    expect(isTrackingBlockedByBackorder({ hasActiveBackorder: true, fulfillmentOverrideAt: new Date() })).toBe(false)
   })
 })
 

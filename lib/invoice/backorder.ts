@@ -119,3 +119,18 @@ export function isDeliveryStatusBlockedByBackorder(input: {
   if (input.fulfillmentOverrideAt) return false
   return input.hasActiveBackorder
 }
+
+// Same override escape hatch as above, applied to the "add tracking" entry
+// point specifically. Unlike the Fulfillment Gate (gate.ts), this never
+// checks payment status — an unpaid invoice can still get manual tracking
+// entered (COD, in-person arrangements, informal terms are all real cases
+// here) — only an unresolved backorder blocks it, since shipping something
+// that isn't actually in stock is the one thing this must prevent regardless
+// of how payment is being handled.
+export function isTrackingBlockedByBackorder(input: {
+  hasActiveBackorder: boolean
+  fulfillmentOverrideAt: Date | null
+}): boolean {
+  if (input.fulfillmentOverrideAt) return false
+  return input.hasActiveBackorder
+}

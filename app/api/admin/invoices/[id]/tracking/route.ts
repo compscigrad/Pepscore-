@@ -11,6 +11,7 @@ import {
   markDeliveredManually,
   overrideShippingStatus,
   removeTracking,
+  BackorderBlocksTrackingError,
 } from '@/lib/tracking/service'
 import { resendLastNotification } from '@/lib/tracking/notifications'
 import { getPrimaryShipment } from '@/lib/shipments/primary'
@@ -27,6 +28,8 @@ const addTrackingSchema = z.object({
   carrier: z.enum(['USPS', 'UPS', 'FEDEX', 'DHL', 'PICKUP', 'HAND_DELIVERY', 'COURIER', 'OTHER']),
   trackingNumber: z.string().min(1),
   service: z.string().optional(),
+  labelSource: z.enum(['PIRATE_SHIP', 'SHIPPO', 'USPS_DIRECT', 'UPS_DIRECT', 'FEDEX_DIRECT', 'OTHER_MANUAL']).optional(),
+  notes: z.string().max(1000).optional(),
 })
 
 export async function POST(req: NextRequest, { params }: RouteParams) {
@@ -41,7 +44,13 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
 
     const result = await addTrackingToInvoice(
       id,
-      { carrier: payload.carrier, trackingNumber: payload.trackingNumber, service: payload.service },
+      {
+        carrier: payload.carrier,
+        trackingNumber: payload.trackingNumber,
+        service: payload.service,
+        labelSource: payload.labelSource,
+        notes: payload.notes,
+      },
       { source: 'MANUAL', userId: userId! }
     )
 
@@ -49,6 +58,9 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
   } catch (err: unknown) {
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: 'Validation failed', issues: err.issues }, { status: 400 })
+    }
+    if (err instanceof BackorderBlocksTrackingError) {
+      return NextResponse.json({ error: err.message, code: 'BACKORDER_ACTIVE' }, { status: 409 })
     }
     console.error('[admin/invoices/:id/tracking POST]', err)
     const msg = err instanceof Error ? err.message : 'Failed to add tracking'
