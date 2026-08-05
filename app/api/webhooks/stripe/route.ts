@@ -5,7 +5,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe, estimateStripeFee } from '@/lib/stripe'
 import { prisma } from '@/lib/prisma'
-import { resend, FROM_EMAIL, ORDERS_EMAIL } from '@/lib/resend'
+import { resend } from '@/lib/resend'
+import { routeFor } from '@/lib/notifications/routing'
 import { buildOrderConfirmationHtml } from '@/emails/OrderConfirmation'
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
 
@@ -128,10 +129,11 @@ export async function POST(req: NextRequest) {
         invoiceNumber: order.invoice?.invoiceNumber ?? '',
       })
 
+      const sender = routeFor('ORDER_CONFIRMATION')
       await resend.emails.send({
-        from: FROM_EMAIL,
+        from: sender.from,
         to: order.customerEmail,
-        replyTo: ORDERS_EMAIL,
+        replyTo: sender.replyTo,
         subject: `Order Confirmed — ${order.orderNumber} | Pepscore`,
         html,
       })

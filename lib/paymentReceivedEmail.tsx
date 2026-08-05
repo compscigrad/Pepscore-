@@ -6,7 +6,8 @@
 // there's no "retry" path that could fire this twice for the same payment.
 import { prisma } from '@/lib/prisma'
 import { renderToBuffer } from '@react-pdf/renderer'
-import { resend, FROM_EMAIL, BILLING_EMAIL } from '@/lib/resend'
+import { resend } from '@/lib/resend'
+import { routeFor } from '@/lib/notifications/routing'
 import { RecipientReceiptDocument } from '@/lib/invoice/pdf/RecipientReceiptDocument'
 import { buildPaymentReceivedHtml, paymentReceivedSubject } from '@/emails/PaymentReceived'
 import { getInvoiceSettings } from '@/lib/invoiceSettings'
@@ -32,10 +33,11 @@ export async function sendPaymentReceivedEmailIfNeeded(invoice: InvoiceWithRelat
       total: invoice.total,
     })
 
+    const sender = routeFor('PAYMENT_RECEIVED')
     await resend.emails.send({
-      from: FROM_EMAIL,
+      from: sender.from,
       to: recipient,
-      replyTo: BILLING_EMAIL,
+      replyTo: sender.replyTo,
       subject: paymentReceivedSubject(invoice.invoiceNumber),
       html,
       attachments: [{ filename: `${invoice.invoiceNumber}-invoice.pdf`, content: pdfBuffer }],

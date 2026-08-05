@@ -9,7 +9,8 @@
 // missing/failed Twilio config is recorded, never fatal.
 import { prisma } from '@/lib/prisma'
 import { renderToBuffer } from '@react-pdf/renderer'
-import { resend, FROM_EMAIL, BILLING_EMAIL } from '@/lib/resend'
+import { resend } from '@/lib/resend'
+import { routeFor } from '@/lib/notifications/routing'
 import { RecipientReceiptDocument } from '@/lib/invoice/pdf/RecipientReceiptDocument'
 import { buildInvoiceIssuedHtml, invoiceIssuedSubject } from '@/emails/InvoiceIssued'
 import { getInvoiceSettings } from '@/lib/invoiceSettings'
@@ -78,10 +79,11 @@ async function sendInvoiceEmail(invoice: InvoiceWithRelations, source: 'SYSTEM' 
       secureLink,
     })
 
+    const sender = routeFor('INVOICE_ISSUED')
     await resend.emails.send({
-      from: FROM_EMAIL,
+      from: sender.from,
       to: recipient,
-      replyTo: BILLING_EMAIL,
+      replyTo: sender.replyTo,
       subject: invoiceIssuedSubject(invoice.invoiceNumber),
       html,
       attachments: [{ filename: `${invoice.invoiceNumber}-invoice.pdf`, content: pdfBuffer }],

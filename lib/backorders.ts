@@ -19,7 +19,8 @@ import { deriveInvoicePaymentAmounts, deriveInvoiceWorkflowStatus } from '@/lib/
 import { computeOrderStatus } from '@/lib/tracking/orderStatus'
 import { decideCompensationDisposition, isDeliveryStatusBlockedByBackorder, canTransitionRefundStatus } from '@/lib/invoice/backorder'
 import { syncCustomerFromInvoiceEvent, recordCustomerActivity } from '@/lib/customers'
-import { resend, FROM_EMAIL, BILLING_EMAIL } from '@/lib/resend'
+import { resend } from '@/lib/resend'
+import { routeFor } from '@/lib/notifications/routing'
 import { backorderNoticeSubject, buildBackorderNoticeHtml, refundCompletedSubject, buildRefundCompletedHtml } from '@/emails/BackorderNotice'
 import { backorderFinancialActionRequiredSubject, buildBackorderFinancialActionRequiredHtml } from '@/emails/AdminBackorderAlerts'
 
@@ -271,10 +272,11 @@ async function notifyAdminFinancialActionRequired(invoiceId: string, refund: Inv
   let emailSent = false
   try {
     if (emailTargets.length > 0) {
+      const sender = routeFor('REFUND_ACTION_REQUIRED')
       await resend.emails.send({
-        from: FROM_EMAIL,
+        from: sender.from,
         to: emailTargets.map((r) => r.email!),
-        replyTo: BILLING_EMAIL,
+        replyTo: sender.replyTo,
         subject: backorderFinancialActionRequiredSubject(invoice.invoiceNumber),
         html: buildBackorderFinancialActionRequiredHtml({
           invoiceNumber: invoice.invoiceNumber,
@@ -324,10 +326,11 @@ async function sendBackorderNoticeEmail(
   }
 
   try {
+    const sender = routeFor('BACKORDER_NOTICE')
     await resend.emails.send({
-      from: FROM_EMAIL,
+      from: sender.from,
       to: invoice.customerEmail,
-      replyTo: BILLING_EMAIL,
+      replyTo: sender.replyTo,
       subject: backorderNoticeSubject(invoice.invoiceNumber),
       html: buildBackorderNoticeHtml({
         customerName: invoice.customerName,
@@ -548,10 +551,11 @@ async function sendRefundCompletedEmail(
 ): Promise<void> {
   if (!invoice.customerEmail) return
   try {
+    const sender = routeFor('REFUND_COMPLETED')
     await resend.emails.send({
-      from: FROM_EMAIL,
+      from: sender.from,
       to: invoice.customerEmail,
-      replyTo: BILLING_EMAIL,
+      replyTo: sender.replyTo,
       subject: refundCompletedSubject(invoice.invoiceNumber),
       html: buildRefundCompletedHtml({
         customerName: invoice.customerName,
