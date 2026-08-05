@@ -4,7 +4,7 @@
 // react-pdf's primitives. See docs/Decisions.md #3 for why this isn't
 // pixel-identical to the generated PDF.
 import Image from 'next/image'
-import { formatMoney, formatCarrierLabel } from '@/lib/invoice/format'
+import { formatMoney, formatCarrierLabel, formatPhoneDisplay } from '@/lib/invoice/format'
 import { lineItemTotal, resolveDiscountAmount, type InvoiceTotals } from '@/lib/invoice/calculations'
 import type { InvoiceDraft } from './types'
 
@@ -34,7 +34,7 @@ export function InvoicePreview({ draft, totals, invoiceNumber }: Props) {
           <p className="text-[13px] text-dark">{customer.customerName || '—'}</p>
           {customer.customerCompany ? <p className="text-[13px] text-dark">{customer.customerCompany}</p> : null}
           {customer.customerEmail ? <p className="text-[12px] text-g700">{customer.customerEmail}</p> : null}
-          {customer.customerPhone ? <p className="text-[12px] text-g700">{customer.customerPhone}</p> : null}
+          {customer.customerPhone ? <p className="text-[12px] text-g700">{formatPhoneDisplay(customer.customerPhone)}</p> : null}
         </div>
         <div className="bg-g100 rounded-lg p-3">
           <p className="text-[9px] font-bold tracking-[0.1em] uppercase text-g500 mb-1">Ship To</p>
@@ -43,6 +43,7 @@ export function InvoicePreview({ draft, totals, invoiceNumber }: Props) {
               shipping.shippingAddress.street1,
               shipping.shippingAddress.street2,
               [shipping.shippingAddress.city, shipping.shippingAddress.state, shipping.shippingAddress.zip].filter(Boolean).join(', '),
+              shipping.shippingAddress.country && shipping.shippingAddress.country !== 'US' ? shipping.shippingAddress.country : null,
             ]
               .filter(Boolean)
               .join('\n') || '—'}

@@ -35,6 +35,21 @@ export function formatCarrierLabel(carrier: string): string {
   return CARRIER_LABELS[carrier] ?? carrier.replace('_', ' ')
 }
 
+// Display-only US mask — never touches what's actually stored (Customer.phone
+// / Invoice.customerPhone are saved exactly as typed, no normalization at
+// write time). A number that doesn't parse as a US 10/11-digit number
+// (already-E.164 international, or a legacy free-text value) is returned
+// unchanged rather than mangled. lib/notifications/bestEffortSms.ts's
+// normalizePhoneToE164 is a separate, unrelated on-the-fly transform used
+// only at actual SMS send time — it never touches what's stored either.
+export function formatPhoneDisplay(raw: string | null | undefined): string {
+  if (!raw) return ''
+  const digits = raw.replace(/\D/g, '')
+  if (digits.length === 10) return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
+  if (digits.length === 11 && digits.startsWith('1')) return `(${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`
+  return raw
+}
+
 // PaymentMethod's NA value can't be named "N/A" (enum identifiers can't
 // contain a slash) — restore the slash for display everywhere the method
 // is shown (dropdown, payment history, PDFs).
