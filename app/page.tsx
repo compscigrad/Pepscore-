@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
 import { Header } from '@/components/storefront/Header'
 import { Footer } from '@/components/storefront/Footer'
+import { ContactSection } from '@/components/storefront/ContactSection'
 import { ProductCard, type ProductCardProps } from '@/components/storefront/ProductCard'
 import { CartSidebar } from '@/components/storefront/CartSidebar'
 
@@ -383,6 +384,8 @@ export default async function HomePage() {
             </Link>
           </div>
         </section>
+
+        <ContactSection />
       </main>
 
       <Footer />

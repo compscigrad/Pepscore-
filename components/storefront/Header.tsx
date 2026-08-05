@@ -54,6 +54,7 @@ export function Header() {
             ['Bulk Orders', '/#bulk'],
             ['Why Us', '/#features'],
             ['About', '/#about'],
+            ['Contact', '/#contact'],
           ].map(([label, href]) => (
             <li key={label}>
               <Link
@@ -106,6 +107,7 @@ export function Header() {
             ['Bulk Orders', '/#bulk'],
             ['Why Us', '/#features'],
             ['About', '/#about'],
+            ['Contact', '/#contact'],
           ].map(([label, href]) => (
             <Link
               key={label}
