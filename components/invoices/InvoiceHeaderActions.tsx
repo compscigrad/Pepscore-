@@ -88,7 +88,7 @@ export function InvoiceHeaderActions({ invoiceId, archived }: Props) {
   }
 
   return (
-    <div className="flex gap-2">
+    <div className="flex gap-2 flex-wrap">
       <button
         type="button"
         onClick={duplicate}
