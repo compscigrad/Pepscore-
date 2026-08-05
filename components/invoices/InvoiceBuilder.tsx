@@ -81,6 +81,30 @@ function toEditableStatus(status: InvoiceDraft['status']): InvoiceDraft['status'
   return INVOICE_STATUSES.includes(status) ? status : 'ISSUED'
 }
 
+function itemsToDraft(items: InvoiceWithRelations['items']): InvoiceDraft['items'] {
+  return items.map((item) => ({
+    key: makeKey(),
+    id: item.id,
+    productId: item.productId,
+    name: item.name,
+    description: item.description ?? '',
+    quantity: item.quantity,
+    unitPrice: item.unitPrice,
+    lineDiscount: item.lineDiscount,
+  }))
+}
+
+function discountsToDraft(discounts: InvoiceWithRelations['discounts']): InvoiceDraft['discounts'] {
+  return discounts.map((d) => ({
+    key: makeKey(),
+    id: d.id,
+    promotionId: d.promotionId,
+    label: d.label,
+    type: d.type,
+    amount: d.amount,
+  }))
+}
+
 function invoiceToDraft(invoice: InvoiceWithRelations): InvoiceDraft {
   return {
     orderId: invoice.orderId,
@@ -103,24 +127,8 @@ function invoiceToDraft(invoice: InvoiceWithRelations): InvoiceDraft {
       deliveredDate: toDateInputValue(invoice.deliveredDate),
       deliveryStatus: invoice.deliveryStatus,
     },
-    items: invoice.items.map((item) => ({
-      key: makeKey(),
-      id: item.id,
-      productId: item.productId,
-      name: item.name,
-      description: item.description ?? '',
-      quantity: item.quantity,
-      unitPrice: item.unitPrice,
-      lineDiscount: item.lineDiscount,
-    })),
-    discounts: invoice.discounts.map((d) => ({
-      key: makeKey(),
-      id: d.id,
-      promotionId: d.promotionId,
-      label: d.label,
-      type: d.type,
-      amount: d.amount,
-    })),
+    items: itemsToDraft(invoice.items),
+    discounts: discountsToDraft(invoice.discounts),
     status: toEditableStatus(invoice.status),
   }
 }
@@ -262,11 +270,20 @@ export function InvoiceBuilder({ mode, initialInvoice, products, promotions: ini
     if (res.ok) {
       const fresh = await res.json()
       setInvoice(fresh)
-      // recordPayment() can change status server-side (e.g. DRAFT -> PAID)
-      // without the draft's own status field knowing — keep them in sync so
-      // the next Save doesn't silently overwrite the payment-derived status
-      // with whatever was in the dropdown before the payment was recorded.
-      setDraft((d) => ({ ...d, status: fresh.status }))
+      // Several things can change server-side without the draft knowing:
+      // recordPayment() can move status (e.g. DRAFT -> PAID), and — the
+      // reason this resync exists at all — lib/backorders.ts's
+      // applyBackorder/resolveBackorder creates/reads InvoiceDiscount rows
+      // through a side-channel API, not through this form's own discount
+      // editor. Without resyncing draft.items/discounts here too, the next
+      // unrelated "Save Changes" click would submit the *stale* discount
+      // list (missing the backorder credit) straight into
+      // lib/invoice/rowSync.ts's upsert — which correctly deletes any row
+      // "removed" from the payload, silently wiping a real compensation
+      // discount off the invoice while the BackorderCompensation record
+      // still claims it was applied. Resyncing on every refresh closes that
+      // gap the same way status is already kept in sync.
+      setDraft((d) => ({ ...d, status: fresh.status, items: itemsToDraft(fresh.items), discounts: discountsToDraft(fresh.discounts) }))
     }
     router.refresh()
   }

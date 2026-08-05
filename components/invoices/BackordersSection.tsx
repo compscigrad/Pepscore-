@@ -290,10 +290,12 @@ export function BackordersSection({ invoiceId, items, deliveryStatus, onBackorde
                   </button>
                 </div>
               ) : null}
-              <p className={mutedText}>
-                No money has been recorded as returned until this refund is marked Completed — the customer has not
-                been told it&apos;s finished yet.
-              </p>
+              {!REFUND_TERMINAL.includes(compensation.refund.status) ? (
+                <p className={mutedText}>
+                  No money has been recorded as returned until this refund is marked Completed — the customer has not
+                  been told it&apos;s finished yet.
+                </p>
+              ) : null}
             </div>
           ) : null}
 
