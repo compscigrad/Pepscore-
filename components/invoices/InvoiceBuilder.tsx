@@ -283,7 +283,20 @@ export function InvoiceBuilder({ mode, initialInvoice, products, promotions: ini
       // discount off the invoice while the BackorderCompensation record
       // still claims it was applied. Resyncing on every refresh closes that
       // gap the same way status is already kept in sync.
-      setDraft((d) => ({ ...d, status: fresh.status, items: itemsToDraft(fresh.items), discounts: discountsToDraft(fresh.discounts) }))
+      //
+      // status must go through toEditableStatus() here too, not just a raw
+      // assignment — a backorder discount (or a payment) can push the
+      // invoice's real status to PENDING (the positive-balance overlay),
+      // which invoicePayloadSchema deliberately rejects as a submittable
+      // value. Assigning it unsanitized left the *next* Save Changes with
+      // no way to succeed at all until the admin happened to touch the
+      // status dropdown themselves.
+      setDraft((d) => ({
+        ...d,
+        status: toEditableStatus(fresh.status),
+        items: itemsToDraft(fresh.items),
+        discounts: discountsToDraft(fresh.discounts),
+      }))
     }
     router.refresh()
   }
