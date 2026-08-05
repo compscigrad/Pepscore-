@@ -47,6 +47,7 @@ export interface ContactInquiryProps {
   email: string
   phone?: string
   company?: string
+  inquiryType?: string
   message: string
 }
 
@@ -62,6 +63,7 @@ export function buildContactInquiryAdminHtml(props: ContactInquiryProps): string
       <p style="margin:0"><strong>Email:</strong> ${escapeHtml(props.email)}</p>
       ${props.phone ? `<p style="margin:0"><strong>Phone:</strong> ${escapeHtml(props.phone)}</p>` : ''}
       ${props.company ? `<p style="margin:0"><strong>Company:</strong> ${escapeHtml(props.company)}</p>` : ''}
+      ${props.inquiryType ? `<p style="margin:0"><strong>Inquiry Type:</strong> ${escapeHtml(props.inquiryType)}</p>` : ''}
     </div>
     <p style="font-size:14px;line-height:1.7;color:#424242;white-space:pre-wrap">${escapeHtml(props.message)}</p>
     <p style="font-size:12px;color:#9E9E9E;margin-top:18px">Reply directly to this visitor at the email address above — this notification itself is sent from Pepscore's system identity, not the visitor's inbox.</p>
