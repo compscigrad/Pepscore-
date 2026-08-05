@@ -69,6 +69,29 @@ export function buildBackorderNoticeHtml(props: BackorderNoticeProps): string {
   `)
 }
 
+export interface BackorderResolvedProps {
+  customerName: string
+  invoiceNumber: string
+  productName: string
+}
+
+export function backorderResolvedSubject(invoiceNumber: string): string {
+  return `Your Backordered Item Is Available — Invoice #${invoiceNumber}`
+}
+
+export function buildBackorderResolvedHtml(props: BackorderResolvedProps): string {
+  return shell(`
+    <h2 style="font-family:Helvetica,sans-serif;font-size:19px;margin:0 0 14px">Hi ${props.customerName},</h2>
+    <p style="font-size:14px;line-height:1.7;color:#424242">
+      Good news — <strong>${props.productName}</strong> on your order (Invoice <strong>#${props.invoiceNumber}</strong>)
+      is no longer on backorder. We're moving your order forward now.
+    </p>
+    <p style="font-size:14px;line-height:1.7;color:#424242">
+      You'll get a separate tracking update once it ships. Reach out anytime at ${BILLING_EMAIL} with questions.
+    </p>
+  `)
+}
+
 export interface RefundCompletedProps {
   customerName: string
   invoiceNumber: string

@@ -25,7 +25,7 @@ import {
   type ApproveArrangementOverrides,
 } from '@/lib/paymentArrangements'
 import { computeOrderStatus } from '@/lib/tracking/orderStatus'
-import { sendInvoiceIssuedEmailIfNeeded, sendInvoiceIssuedSmsIfNeeded } from '@/lib/invoiceIssuedEmail'
+import { sendInvoiceIssuedEmailIfNeeded, sendInvoiceIssuedSmsIfNeeded, sendInvoiceRevisedEmailIfNeeded } from '@/lib/invoiceIssuedEmail'
 import { sendPaymentReceivedEmailIfNeeded } from '@/lib/paymentReceivedEmail'
 import {
   notifyAdminPaymentSelectionPending,
@@ -466,6 +466,8 @@ export async function updateInvoice(id: string, payload: InvoicePayload): Promis
 
   if (isFirstIssuance) {
     await notifyOnFirstIssuance(invoice)
+  } else if (wasEverIssued && invoice.total !== existing.total) {
+    await sendInvoiceRevisedEmailIfNeeded(invoice, existing.total)
   }
   if (invoice.customerId && existing.status !== invoice.status) {
     await syncCustomerFromInvoiceEvent({

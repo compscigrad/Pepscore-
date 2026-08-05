@@ -18,10 +18,19 @@ interface InvoiceIssuedProps {
   // link ever generated and none mintable at send time — the email still
   // sends, just without a CTA link, rather than blocking the notification.
   secureLink: string | null
+  // Set only when this is a revision of an already-sent invoice (the total
+  // changed after the client already received it) — swaps the headline/intro
+  // to say so and shows what the total used to be, rather than silently
+  // reusing the "here's your invoice" framing for a change they haven't seen.
+  previousTotal?: number
 }
 
 export function invoiceIssuedSubject(invoiceNumber: string): string {
   return `Your Invoice — #${invoiceNumber}`
+}
+
+export function invoiceRevisedSubject(invoiceNumber: string): string {
+  return `Your Invoice Has Been Updated — #${invoiceNumber}`
 }
 
 function formatMoney(amount: number): string {
@@ -35,8 +44,10 @@ export function buildInvoiceIssuedHtml({
   amountPaid,
   balanceDue,
   secureLink,
+  previousTotal,
 }: InvoiceIssuedProps): string {
   const year = new Date().getFullYear()
+  const isRevision = previousTotal !== undefined && previousTotal !== total
 
   const statusLine =
     balanceDue <= 0
@@ -83,14 +94,15 @@ export function buildInvoiceIssuedHtml({
     <div style="padding:36px 36px 28px;text-align:center">
       <div style="font-size:48px;margin-bottom:16px">🧾</div>
       <h2 style="font-family:Helvetica,sans-serif;font-size:22px;color:#1A1A1A;margin-bottom:8px">
-        ${balanceDue <= 0 ? 'Your Invoice Is Ready — Payment Recorded' : 'Your Invoice Is Ready'}
+        ${isRevision ? 'Your Invoice Has Been Updated' : balanceDue <= 0 ? 'Your Invoice Is Ready — Payment Recorded' : 'Your Invoice Is Ready'}
       </h2>
       <p style="color:#424242;font-size:15px;line-height:1.6">
-        Hi ${customerName}, here's invoice <strong>${invoiceNumber}</strong>.
+        Hi ${customerName}, ${isRevision ? 'invoice' : "here's invoice"} <strong>${invoiceNumber}</strong>${isRevision ? ' has been revised.' : '.'}
       </p>
       <div style="background:#F5F5F0;border-radius:10px;padding:20px 24px;margin:24px 0;text-align:left">
         <p style="margin:0 0 8px;font-size:13px;color:#757575;text-transform:uppercase;letter-spacing:0.1em;font-family:Helvetica,sans-serif">Summary</p>
-        <p style="margin:0 0 4px;font-size:15px"><strong>Total:</strong> ${formatMoney(total)}</p>
+        ${isRevision ? `<p style="margin:0 0 4px;font-size:15px;color:#757575"><strong>Previous Total:</strong> ${formatMoney(previousTotal!)}</p>` : ''}
+        <p style="margin:0 0 4px;font-size:15px"><strong>${isRevision ? 'New Total' : 'Total'}:</strong> ${formatMoney(total)}</p>
         <p style="margin:0 0 4px;font-size:15px"><strong>Amount Paid:</strong> ${formatMoney(amountPaid)}</p>
         <p style="margin:0 0 4px;font-size:15px"><strong>Balance Due:</strong> ${formatMoney(balanceDue)}</p>
         ${statusLine}
