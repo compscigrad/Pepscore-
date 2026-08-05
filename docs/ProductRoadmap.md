@@ -168,6 +168,63 @@ This distinction exists because merged PRs measure implementation, not customer 
 7. **Phase 2F** (Analytics) — once 2B/2C/2D give it real data to show.
 8. **Phase 2D full scope, Phase 2G later items, Phase 2C full scope** — ongoing, prioritized against whatever Pepscore's actual growth reveals as the next bottleneck, rather than pre-committed now.
 
+## Customer Portal Readiness Assessment (Phase 2B pre-work)
+
+Written after the Admin Portal Completion sprint (customer profiles, correspondence log, invoice send orchestration, balance carryover, discount admin) shipped and was production-validated. This assesses what a real customer-facing portal (Phase 2B's "customer account portal") would read and write against, given everything that now actually exists — not a design for the portal itself, no code changes here.
+
+**Bottom line: the data and service layer are ready. Auth-scoping is not built yet — that is Phase 2B's actual first task, not a prerequisite that needs separate work first.**
+
+### Identity linking and account claiming
+
+Still genuinely open, unchanged from the "Two open architectural decisions" section above: `User` (Clerk-authenticated) and `Customer` (invoice/CRM identity, no login) remain unconnected. Nothing shipped this sprint added `Customer.userId`. What this sprint *did* add — the customer profile page, duplicate-detection surfaced in the UI, and the intake-link pipeline — all still operate on `Customer` alone, with no `User` involved, so they don't conflict with the eventual link; they're exactly what a signed-in customer's portal view would read once the link exists.
+
+*Recommended claiming flow, given what's built*: a signed-in `User` claims their existing `Customer` history by verifying an email/phone match (the same signal `findPossibleDuplicateCustomers()` already uses for duplicate detection) — set `Customer.userId` on confirmed match, never auto-link on a bare email string match alone. A `User` with no matching `Customer` yet gets one created on their first self-service order, same as `upsertCustomerFromIntake()` does today for intake submissions. One `Customer` row should never belong to two `User`s; treat a second claim attempt against an already-linked `Customer` as a duplicate-support case, not an automatic merge.
+
+### Duplicate resolution
+
+Ready. `findPossibleDuplicateCustomers()` (`lib/customers.ts`) already runs on every intake submission and now also surfaces as a warning banner on the admin customer profile page (`app/admin/customers/[id]/page.tsx`). It never auto-merges — matches are surfaced for a human to resolve. A customer portal doesn't need new duplicate-detection logic; it needs the same function called at claim-time (above), with mismatches routed to an admin queue rather than silently resolved client-side.
+
+### Customer-only authorization boundary
+
+**Not built — this is Phase 2B's real first implementation task.** Today's admin auth is a single hardcoded `ADMIN_CLERK_USER_ID` check (see Phase 2G) — there is no concept of "a `User` scoped to only their own data" anywhere in the app yet. A customer portal needs a distinct authorization path, not an extension of the admin one:
+- Every customer-portal query must filter by the requesting `User`'s linked `Customer.id` (or `Order`/`Invoice.customerId`) at the query layer — never reuse an admin route that trusts a caller-supplied ID.
+- Admin-only fields must not round-trip through any customer-facing response: `Customer.internalNotes` (Phase 2C), discount preset management, balance-transfer creation/reversal, `AdminNotificationRecipient` data, and any other customer's records.
+- This is new middleware/route-guard work, separate from `proxy.ts`'s existing admin-route matcher — likely a second matcher pattern (e.g. `/portal(.*)`, `/api/portal(.*)`) with its own Clerk-session-to-`Customer`-scoping check, mirroring the existing admin pattern structurally without sharing its trust boundary.
+
+### Shared service boundary — confirmed, no duplication needed
+
+One Neon Postgres database, one Prisma schema, one business-logic layer already serves both the admin app and the public intake pipeline (Phase 2A) today — there is no separate customer database and none should be introduced. The functions a customer portal would call already exist and are already exercised by non-admin callers:
+- `lib/customers.ts` — `getCustomerProfileData()` (built this sprint) is the exact shape a customer's own "my account" view needs; a portal route would call it with the session's own `Customer.id` rather than an admin-supplied param.
+- `lib/invoices.ts` — invoice read/PDF generation already customer-agnostic.
+- `lib/balanceTransfers.ts` — `listBalanceTransfersForInvoice()` is safe for customer-facing read; `transferBalance()`/`reverseBalanceTransfer()` must stay admin-only (they move real money between invoices).
+- `lib/notifications/log.ts` (`sendCategorizedEmail`) / correspondence log — a customer viewing their own `Communication` history reuses the same log the admin correspondence view (`CorrespondenceHistory.tsx`) already reads; the component already accepts a `customerId` prop for exactly this reuse.
+- `lib/notifications/routing.ts` — category-based routing (`BALANCE_TRANSFER_NOTICE`, invoice/shipment/backorder categories) needs no change; a customer-initiated action (e.g. requesting a payment-plan change) would dispatch through the same categories, not a parallel notification path.
+
+The rule for Phase 2B: every customer-portal read/write calls these same functions with a session-derived `Customer.id` filter added at the call site. No parallel "customer version" of `lib/invoices.ts` or `lib/customers.ts` should ever be written.
+
+### What a customer should be able to see and do
+
+Given the sprint's build-out, a portal's realistic v1 surface, all backed by existing data with no new models:
+- **View**: their own invoices (issued, paid, open balance), payment history, account credits (`CustomerAccountCredit`), shipment tracking (`Shipment`/tracking fields already on `Invoice`), correspondence history (`Communication`, customer-scoped), and their own profile (name/email/phone/addresses).
+- **Act**: select/change payment method on an open invoice (reusing existing payment-method fields), request a profile-detail update (write path should go through the same activity-log/notification pattern as intake — not a silent direct write — so admin sees the change), possibly initiate a balance-transfer *request* (not execute one — `transferBalance()` moves real money and must stay admin-executed even from a customer-initiated request).
+- **Not see**: other customers' records, `internalNotes`, discount presets, `AdminNotificationRecipient` config, admin audit/activity logs beyond their own customer-scoped entries, balance-transfer reversal controls.
+
+### Historical snapshot preservation
+
+Already guaranteed, unrelated to any Phase 2B work. Every `Invoice` stores its own `customerName`/`customerEmail`/`customerPhone`/billing/shipping address snapshot independent of the live `Customer` record (established in `docs/Decisions.md`) — a customer editing their profile later never rewrites what an old invoice says it was billed to. A portal's "update my profile" action should update `Customer` only; past invoices keep their own snapshot untouched, exactly as admin-side edits already behave today.
+
+### Net readiness
+
+| Area | Status |
+|---|---|
+| Data model (`Customer`, `CustomerActivityLog`, `Communication`, `BalanceTransfer`) | Ready — no new models needed for v1 portal scope |
+| Duplicate detection | Ready — reuse `findPossibleDuplicateCustomers()` |
+| Shared service/business-logic layer | Ready — single DB, single `lib/` layer, already proven by intake pipeline reuse |
+| Historical data integrity | Ready — snapshot fields already isolate past invoices from profile edits |
+| `User`↔`Customer` identity link | Open — schema change + claim flow, still Phase 2B's first task |
+| Customer-only auth/route-scoping | Not built — new middleware matcher + session-to-`Customer` scoping, Phase 2B's second task |
+| Money-moving actions (balance transfer execution, refunds) | By design admin-only even post-launch — portal can request, never execute |
+
 ## How this document should be used
 
 Before scoping any Phase 2+ feature, check it against this document: which phase does it belong to, does it depend on an earlier phase or an open decision above, and does it fit inside a phase's stated MVP or full scope. When a phase actually gets built, its *why-this-way* engineering decisions still go in `docs/Decisions.md` and its shipped state still goes in `docs/ChangeLog.md` and `docs/ComponentMap.md` — this document stays about sequencing and scope, not implementation detail. Update it when a phase completes, a priority genuinely changes, or a new open decision surfaces — it should stay a living reflection of what's actually next, not a static plan followed past the point it stops making sense.
