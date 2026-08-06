@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { claimPortalInvite } from '@/lib/portalInvites'
+import { isPortalEnabled } from '@/lib/portalAuth'
 
 interface RouteParams {
   params: Promise<{ token: string }>
@@ -22,6 +23,8 @@ const REASON_MESSAGES: Record<string, string> = {
 }
 
 export async function POST(_req: NextRequest, { params }: RouteParams) {
+  if (!isPortalEnabled()) return NextResponse.json({ error: 'Account setup is not available yet.' }, { status: 403 })
+
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
