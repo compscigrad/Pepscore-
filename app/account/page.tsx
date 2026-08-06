@@ -5,7 +5,9 @@
 export const dynamic = 'force-dynamic'
 
 import { redirect } from 'next/navigation'
-import { getPortalAuthState } from '@/lib/portalAuth'
+import { auth, currentUser } from '@clerk/nextjs/server'
+import { getPortalAuthState, isSelfRegistrationEnabled } from '@/lib/portalAuth'
+import { resolveSelfServiceIdentity } from '@/lib/portal/selfServiceResolve'
 import { getPortalDashboardData } from '@/lib/portal/dashboard'
 import { formatMoney, formatDate } from '@/lib/invoice/format'
 import { StatusBadge } from '@/components/invoices/StatusBadge'
@@ -16,7 +18,22 @@ export default async function AccountPage() {
   const authState = await getPortalAuthState()
 
   if (authState.state === 'UNAUTHENTICATED') redirect('/sign-in')
+
   if (authState.state === 'NOT_LINKED') {
+    const resolved = await tryResolveNotLinked()
+    if (resolved === 'RESOLVED') redirect('/account') // re-evaluate fresh as AUTHORIZED
+    if (resolved === 'NEEDS_REVIEW') {
+      return (
+        <PortalStatusShell
+          heading="Setting up your account"
+          // Deliberately identical wording regardless of *why* resolution
+          // couldn't complete (multiple matching records vs. already claimed
+          // by someone else) — see lib/portal/selfServiceResolve.ts's header
+          // comment on enumeration-safety. Never hint at which case applies.
+          body="We're finishing setting up your account and will follow up shortly. If you need immediate help, contact us."
+        />
+      )
+    }
     return (
       <PortalStatusShell
         heading="No account found"
@@ -162,6 +179,38 @@ export default async function AccountPage() {
       </div>
     </main>
   )
+}
+
+// Attempts self-service resolution for a signed-in Clerk user who isn't yet
+// linked to a Customer — covers both "just signed up" and "signed in but
+// never resolved" (self-heals a stuck visitor on their next page load)
+// since both flows land here. Returns 'SKIPPED' unchanged (falls through to
+// the plain "No account found" message) whenever resolution can't safely
+// run: the feature flag is off, there's no verified email yet, or — the one
+// hard exclusion — this is the admin's own Clerk identity, which must never
+// be treated as a self-registration candidate.
+type ResolveOutcome = 'RESOLVED' | 'NEEDS_REVIEW' | 'SKIPPED'
+
+async function tryResolveNotLinked(): Promise<ResolveOutcome> {
+  if (!isSelfRegistrationEnabled()) return 'SKIPPED'
+
+  const { userId: clerkUserId } = await auth()
+  if (!clerkUserId) return 'SKIPPED'
+  if (clerkUserId === process.env.ADMIN_CLERK_USER_ID) return 'SKIPPED'
+
+  const clerkUser = await currentUser()
+  const primaryEmail = clerkUser?.primaryEmailAddress
+  if (!primaryEmail || primaryEmail.verification?.status !== 'verified') return 'SKIPPED'
+
+  const result = await resolveSelfServiceIdentity({
+    clerkUserId,
+    clerkVerifiedEmail: primaryEmail.emailAddress,
+    clerkFirstName: clerkUser.firstName,
+    clerkLastName: clerkUser.lastName,
+  })
+
+  if (result.outcome === 'NEEDS_REVIEW') return 'NEEDS_REVIEW'
+  return 'RESOLVED' // CLAIMED_EXISTING | REGISTERED_NEW | ALREADY_LINKED
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
