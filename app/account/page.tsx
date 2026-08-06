@@ -10,6 +10,7 @@ import { getPortalDashboardData } from '@/lib/portal/dashboard'
 import { formatMoney, formatDate } from '@/lib/invoice/format'
 import { StatusBadge } from '@/components/invoices/StatusBadge'
 import { PortalStatusShell } from '@/components/account/PortalStatusShell'
+import { getCategoryLabel } from '@/lib/notifications/categoryLabels'
 
 export default async function AccountPage() {
   const authState = await getPortalAuthState()
@@ -151,7 +152,7 @@ export default async function AccountPage() {
             <div className="space-y-2">
               {data.recentCommunications.map((c) => (
                 <div key={c.id} className="flex items-center justify-between flex-wrap gap-2 bg-white/[0.03] border border-white/10 rounded-lg p-3">
-                  <p className="text-white/80 text-sm">{c.subject ?? c.category}</p>
+                  <p className="text-white/80 text-sm">{c.subject ?? getCategoryLabel(c.category)}</p>
                   <p className="text-white/40 text-xs">{formatDate(c.sentAt)}</p>
                 </div>
               ))}

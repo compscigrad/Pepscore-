@@ -5,27 +5,7 @@ import { getPortalAuthState } from '@/lib/portalAuth'
 import { listPortalCorrespondence } from '@/lib/portal/correspondence'
 import { formatDate } from '@/lib/invoice/format'
 import { PortalStatusShell } from '@/components/account/PortalStatusShell'
-
-const CATEGORY_LABELS: Record<string, string> = {
-  INVOICE_ISSUED: 'Invoice Issued',
-  INVOICE_REVISED: 'Invoice Updated',
-  ORDER_CONFIRMATION: 'Order Confirmation',
-  INTAKE_REQUEST: 'Information Requested',
-  INTAKE_SUBMISSION_CONFIRMATION: 'Information Received',
-  BACKORDER_NOTICE: 'Backorder Notice',
-  FULFILLMENT_UPDATE: 'Fulfillment Update',
-  TRACKING_UPDATE: 'Tracking Update',
-  PORTAL_INVITE: 'Account Setup',
-  PORTAL_ACCOUNT_CLAIMED: 'Account Setup',
-  PAYMENT_SELECTION_CONFIRMATION: 'Payment Selection',
-  PAYMENT_ARRANGEMENT_REQUEST_RECEIVED: 'Payment Arrangement',
-  PAYMENT_ARRANGEMENT_DECISION: 'Payment Arrangement',
-  PAYMENT_RECEIVED: 'Payment Receipt',
-  REFUND_COMPLETED: 'Refund Completed',
-  REFUND_REQUESTED: 'Refund Requested',
-  ACCOUNT_CREDIT_ISSUED: 'Account Credit',
-  BALANCE_TRANSFER_NOTICE: 'Balance Transfer',
-}
+import { getCategoryLabel } from '@/lib/notifications/categoryLabels'
 
 export default async function CorrespondencePage() {
   const authState = await getPortalAuthState()
@@ -50,9 +30,9 @@ export default async function CorrespondencePage() {
               <div key={e.id} className="bg-white/[0.03] border border-white/10 rounded-lg p-3">
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div>
-                    <p className="text-white text-sm">{e.subject ?? CATEGORY_LABELS[e.category] ?? e.category}</p>
+                    <p className="text-white text-sm">{e.subject ?? getCategoryLabel(e.category)}</p>
                     <p className="text-white/40 text-xs mt-0.5">
-                      {CATEGORY_LABELS[e.category] ?? e.category}
+                      {getCategoryLabel(e.category)}
                       {e.invoiceNumber ? ` — Invoice ${e.invoiceNumber}` : ''}
                     </p>
                   </div>
