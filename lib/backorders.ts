@@ -533,8 +533,11 @@ export interface CompleteRefundInput {
 // Sends the customer's completed-refund confirmation only after the DB
 // write has actually committed, never before.
 export async function completeRefund(refundId: string, input: CompleteRefundInput) {
-  const { refund, invoice } = await prisma.$transaction(async (tx) => {
-    const existing = await tx.invoiceRefund.findUniqueOrThrow({ where: { id: refundId } })
+  const { refund, invoice, isBackorderOriginated } = await prisma.$transaction(async (tx) => {
+    const existing = await tx.invoiceRefund.findUniqueOrThrow({
+      where: { id: refundId },
+      include: { backorderCompensation: true },
+    })
     if (!canTransitionRefundStatus(existing.status)) {
       throw new Error(`This refund is already ${existing.status.toLowerCase().replace('_', ' ')} and cannot be completed`)
     }
@@ -554,12 +557,12 @@ export async function completeRefund(refundId: string, input: CompleteRefundInpu
       where: { id: existing.invoiceId },
       data: { amountRefunded: { increment: completedAmount } },
     })
-    return { refund: updatedRefund, invoice: updatedInvoice }
+    return { refund: updatedRefund, invoice: updatedInvoice, isBackorderOriginated: existing.backorderCompensation !== null }
   })
 
   await logInvoiceAndCustomerEvent(
     invoice,
-    'BACKORDER_REFUND_COMPLETED',
+    isBackorderOriginated ? 'BACKORDER_REFUND_COMPLETED' : 'REFUND_COMPLETED',
     `${formatMoney(refund.completedAmount ?? refund.requestedAmount)}${refund.method ? ` via ${refund.method}` : ''}`,
     input.completedBy
   )
@@ -595,19 +598,28 @@ export interface FailRefundInput {
 }
 
 export async function failRefund(refundId: string, input: FailRefundInput) {
-  const refund = await prisma.$transaction(async (tx) => {
-    const existing = await tx.invoiceRefund.findUniqueOrThrow({ where: { id: refundId } })
+  const { refund, isBackorderOriginated } = await prisma.$transaction(async (tx) => {
+    const existing = await tx.invoiceRefund.findUniqueOrThrow({
+      where: { id: refundId },
+      include: { backorderCompensation: true },
+    })
     if (!canTransitionRefundStatus(existing.status)) {
       throw new Error(`This refund is already ${existing.status.toLowerCase().replace('_', ' ')} and cannot be marked failed`)
     }
-    return tx.invoiceRefund.update({
+    const updated = await tx.invoiceRefund.update({
       where: { id: refundId },
       data: { status: 'FAILED', failureReason: input.failureReason },
     })
+    return { refund: updated, isBackorderOriginated: existing.backorderCompensation !== null }
   })
 
   const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: refund.invoiceId } })
-  await logInvoiceAndCustomerEvent(invoice, 'BACKORDER_REFUND_FAILED', input.failureReason, input.failedBy)
+  await logInvoiceAndCustomerEvent(
+    invoice,
+    isBackorderOriginated ? 'BACKORDER_REFUND_FAILED' : 'REFUND_FAILED',
+    input.failureReason,
+    input.failedBy
+  )
 
   return refund
 }
@@ -617,19 +629,28 @@ export interface CancelRefundInput {
 }
 
 export async function cancelRefund(refundId: string, input: CancelRefundInput) {
-  const refund = await prisma.$transaction(async (tx) => {
-    const existing = await tx.invoiceRefund.findUniqueOrThrow({ where: { id: refundId } })
+  const { refund, isBackorderOriginated } = await prisma.$transaction(async (tx) => {
+    const existing = await tx.invoiceRefund.findUniqueOrThrow({
+      where: { id: refundId },
+      include: { backorderCompensation: true },
+    })
     if (!canTransitionRefundStatus(existing.status)) {
       throw new Error(`This refund is already ${existing.status.toLowerCase().replace('_', ' ')} and cannot be cancelled`)
     }
-    return tx.invoiceRefund.update({
+    const updated = await tx.invoiceRefund.update({
       where: { id: refundId },
       data: { status: 'CANCELLED', cancelledAt: new Date(), cancelledBy: input.cancelledBy },
     })
+    return { refund: updated, isBackorderOriginated: existing.backorderCompensation !== null }
   })
 
   const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: refund.invoiceId } })
-  await logInvoiceAndCustomerEvent(invoice, 'BACKORDER_REFUND_CANCELLED', undefined, input.cancelledBy)
+  await logInvoiceAndCustomerEvent(
+    invoice,
+    isBackorderOriginated ? 'BACKORDER_REFUND_CANCELLED' : 'REFUND_CANCELLED',
+    undefined,
+    input.cancelledBy
+  )
 
   return refund
 }
