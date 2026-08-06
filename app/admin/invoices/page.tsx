@@ -43,6 +43,12 @@ export default async function InvoicesDashboard() {
               Identity Review
             </Link>
             <Link
+              href="/admin/portal-rollout"
+              className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
+            >
+              Portal Rollout
+            </Link>
+            <Link
               href="/admin/settings/notifications"
               className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
             >
