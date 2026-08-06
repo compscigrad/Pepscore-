@@ -3,6 +3,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { checkFulfillmentEligibility } from '@/lib/fulfillment/gate'
+import { isShippoPurchasingEnabled, SHIPPO_PURCHASING_DEFERRED_MESSAGE } from '@/lib/fulfillment/labels'
 
 function isAdmin(userId: string | null) {
   return userId === process.env.ADMIN_CLERK_USER_ID
@@ -18,5 +19,10 @@ export async function GET(_req: Request, { params }: RouteParams) {
 
   const { id } = await params
   const eligibility = await checkFulfillmentEligibility(id)
-  return NextResponse.json(eligibility)
+  const shippoPurchasingEnabled = isShippoPurchasingEnabled()
+  return NextResponse.json({
+    ...eligibility,
+    shippoPurchasingEnabled,
+    shippoDeferredMessage: shippoPurchasingEnabled ? undefined : SHIPPO_PURCHASING_DEFERRED_MESSAGE,
+  })
 }

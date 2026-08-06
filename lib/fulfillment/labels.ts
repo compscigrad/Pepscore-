@@ -58,11 +58,28 @@ export function isShippoConfigured(): boolean {
 
 export const SHIPPO_NOT_CONFIGURED_MESSAGE = 'Shippo label purchasing is not configured. Manual tracking remains available.'
 
+// Explicit kill-switch, independent of whether a key happens to be present.
+// Pepscore's Shippo account is currently held for Trust & Safety business-
+// verification review — the account still has an old test-mode key
+// configured (kept only so manual-tracking's provider registration doesn't
+// regress), but purchasing must stay off regardless of key validity until
+// the account is actually approved and a live key is installed. Flip this
+// on in Vercel (SHIPPO_PURCHASING_ENABLED=true) once that happens — no code
+// change needed at that point. Defaults to disabled (unset = off) so
+// nothing has to be touched to keep purchasing safely off right now.
+export function isShippoPurchasingEnabled(): boolean {
+  return process.env.SHIPPO_PURCHASING_ENABLED === 'true'
+}
+
+export const SHIPPO_PURCHASING_DEFERRED_MESSAGE =
+  'Shippo label purchasing is not yet available — the account is pending Trust & Safety business verification. Use Pirate Ship with manual tracking for now.'
+
 export async function getShippingRatesForInvoice(
   invoiceId: string,
   weight: PackageWeight,
   dimensions: PackageDimensions
 ): Promise<ShippoRate[]> {
+  if (!isShippoPurchasingEnabled()) throw new FulfillmentLabelError(SHIPPO_PURCHASING_DEFERRED_MESSAGE)
   if (!isShippoConfigured()) throw new FulfillmentLabelError(SHIPPO_NOT_CONFIGURED_MESSAGE)
 
   const [invoice, settings] = await Promise.all([
@@ -123,6 +140,7 @@ export async function purchaseShippingLabelForInvoice(
   input: PurchaseShippingLabelInput,
   actor: { userId: string }
 ): Promise<Shipment> {
+  if (!isShippoPurchasingEnabled()) throw new FulfillmentLabelError(SHIPPO_PURCHASING_DEFERRED_MESSAGE)
   if (!isShippoConfigured()) throw new FulfillmentLabelError(SHIPPO_NOT_CONFIGURED_MESSAGE)
 
   const eligibility = await checkFulfillmentEligibility(invoiceId)

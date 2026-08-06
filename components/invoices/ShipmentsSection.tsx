@@ -54,6 +54,8 @@ interface PackagePreset {
 interface Eligibility {
   allowed: boolean
   reason?: 'PAID_IN_FULL' | 'ACTIVE_PAYMENT_ARRANGEMENT' | 'MANUAL_OVERRIDE'
+  shippoPurchasingEnabled?: boolean
+  shippoDeferredMessage?: string
 }
 
 const ELIGIBILITY_LABELS: Record<NonNullable<Eligibility['reason']>, string> = {
@@ -586,25 +588,31 @@ export function ShipmentsSection({ invoiceId, shipments, onTrackingUpdated }: Pr
       <div className="pt-4 border-t border-white/5 space-y-3">
         <p className={labelClass}>Create Shipping Label</p>
 
-        {eligibility ? (
-          eligibility.allowed ? (
-            <p className="text-xs text-gold-light">
-              Eligible for fulfillment{eligibility.reason ? ` — ${ELIGIBILITY_LABELS[eligibility.reason]}` : ''}.
-            </p>
-          ) : (
-            <div className="flex items-center gap-3">
-              <p className="text-xs text-amber-300">Not yet eligible — invoice must be paid in full or have an active payment arrangement.</p>
-              <button
-                type="button"
-                className={`${pillOutline} px-3 py-1 text-xs ${confirmingOverride ? 'border-red-400/40 text-red-300' : ''}`}
-                onClick={fulfillAnyway}
-                disabled={submitting}
-              >
-                {confirmingOverride ? 'Click again to confirm' : 'Fulfill Anyway'}
-              </button>
-            </div>
-          )
-        ) : null}
+        {eligibility && eligibility.shippoPurchasingEnabled === false ? (
+          <div className="rounded-lg border border-amber-400/20 bg-amber-400/5 p-3">
+            <p className="text-xs text-amber-300">{eligibility.shippoDeferredMessage}</p>
+          </div>
+        ) : (
+          <>
+            {eligibility ? (
+              eligibility.allowed ? (
+                <p className="text-xs text-gold-light">
+                  Eligible for fulfillment{eligibility.reason ? ` — ${ELIGIBILITY_LABELS[eligibility.reason]}` : ''}.
+                </p>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <p className="text-xs text-amber-300">Not yet eligible — invoice must be paid in full or have an active payment arrangement.</p>
+                  <button
+                    type="button"
+                    className={`${pillOutline} px-3 py-1 text-xs ${confirmingOverride ? 'border-red-400/40 text-red-300' : ''}`}
+                    onClick={fulfillAnyway}
+                    disabled={submitting}
+                  >
+                    {confirmingOverride ? 'Click again to confirm' : 'Fulfill Anyway'}
+                  </button>
+                </div>
+              )
+            ) : null}
 
         {presets.length > 0 ? (
           <div className="max-w-xs">
@@ -686,6 +694,8 @@ export function ShipmentsSection({ invoiceId, shipments, onTrackingUpdated }: Pr
             </button>
           </div>
         ) : null}
+          </>
+        )}
       </div>
     </div>
   )
