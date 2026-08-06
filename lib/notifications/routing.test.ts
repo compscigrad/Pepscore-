@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { routeFor, type MessageCategory } from './routing'
+import { routeFor, isCustomerVisibleCategory, type MessageCategory } from './routing'
 
 // Every category the Orders/Billing/Contact/Support/DMARC policy defines —
 // listing them explicitly here means adding a new MessageCategory without a
@@ -15,6 +15,8 @@ const ORDERS_CATEGORIES: MessageCategory[] = [
   'BACKORDER_NOTICE',
   'FULFILLMENT_UPDATE',
   'TRACKING_UPDATE',
+  'PORTAL_INVITE',
+  'PORTAL_ACCOUNT_CLAIMED',
   'ADMIN_INTAKE_ALERT',
   'ADMIN_DELIVERY_FAILURE_ALERT',
 ]
@@ -65,6 +67,49 @@ describe('routeFor', () => {
   it('never returns a from address for an unverified domain literally as the sender — always wraps FROM_EMAIL with a display name', () => {
     const result = routeFor('INVOICE_ISSUED')
     expect(result.from).toMatch(/^Pepscore Orders <.+>$/)
+  })
+
+  it('never marks an admin-only/internal category as customer-visible', () => {
+    const adminOnly: MessageCategory[] = [
+      'REFUND_ACTION_REQUIRED',
+      'ADMIN_INTAKE_ALERT',
+      'ADMIN_DELIVERY_FAILURE_ALERT',
+      'PAYMENT_SELECTION_PENDING',
+      'PAYMENT_ARRANGEMENT_REQUEST_PENDING',
+      'SUPPORT_REQUEST',
+      'CONTACT_INQUIRY',
+    ]
+    for (const category of adminOnly) {
+      expect(isCustomerVisibleCategory(category)).toBe(false)
+    }
+  })
+
+  it('marks every genuinely customer-facing category as customer-visible', () => {
+    const customerFacing: MessageCategory[] = [
+      'INVOICE_ISSUED',
+      'INVOICE_REVISED',
+      'ORDER_CONFIRMATION',
+      'BACKORDER_NOTICE',
+      'FULFILLMENT_UPDATE',
+      'TRACKING_UPDATE',
+      'PORTAL_INVITE',
+      'PORTAL_ACCOUNT_CLAIMED',
+      'PAYMENT_SELECTION_CONFIRMATION',
+      'PAYMENT_ARRANGEMENT_REQUEST_RECEIVED',
+      'PAYMENT_ARRANGEMENT_DECISION',
+      'PAYMENT_RECEIVED',
+      'REFUND_COMPLETED',
+      'REFUND_REQUESTED',
+      'ACCOUNT_CREDIT_ISSUED',
+      'BALANCE_TRANSFER_NOTICE',
+    ]
+    for (const category of customerFacing) {
+      expect(isCustomerVisibleCategory(category)).toBe(true)
+    }
+  })
+
+  it('defaults an unrecognized category string to not customer-visible (fail closed)', () => {
+    expect(isCustomerVisibleCategory('SOME_FUTURE_CATEGORY_NOT_YET_CLASSIFIED')).toBe(false)
   })
 
   it('gives every category a distinct, non-empty display name', () => {

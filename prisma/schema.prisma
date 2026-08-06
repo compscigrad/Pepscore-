@@ -1150,6 +1150,13 @@ model Customer {
   userId String? @unique
   user   User?   @relation(fields: [userId], references: [id])
 
+  // Admin kill-switch, independent of the userId link itself: lets an admin
+  // instantly cut off portal access (e.g. a compromised session, a dispute)
+  // without destroying the identity link — repair/re-enable is then just
+  // flipping this back, not re-running the claim flow. Unlinking (userId =
+  // null) is the separate, more drastic action for "this link is wrong."
+  portalAccessDisabled Boolean @default(false)
+
   billingAddress  Json?
   shippingAddress Json?
 
@@ -1172,10 +1179,37 @@ model Customer {
   notifications Notification[]
   accountCredits CustomerAccountCredit[]
   communications Communication[]
+  portalInvites  CustomerPortalInvite[]
 
   @@index([email])
   @@index([phone])
   @@index([status])
+}
+
+// Single-purpose, expiring, revocable, admin-initiated invite that binds one
+// Clerk User to one specific Customer record. Deliberately mirrors
+// IntakeLink's proven shape (token-as-boundary, multi-field state derived
+// from timestamps, never a separate status enum to keep in sync) rather than
+// inventing a new pattern — see lib/portalInvites.ts / lib/portalInviteState.ts.
+// The token alone never grants access: claimPortalInvite() additionally
+// requires the authenticated Clerk session's own verified email to match
+// customer.email before Customer.userId is ever set.
+model CustomerPortalInvite {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  token     String   @unique
+  createdAt DateTime @default(now())
+  createdBy String
+  expiresAt DateTime
+
+  claimedAt       DateTime?
+  claimedByUserId String?
+  revokedAt       DateTime?
+  revokedBy       String?
+
+  @@index([customerId])
 }
 
 enum PreferredContactMethod {
