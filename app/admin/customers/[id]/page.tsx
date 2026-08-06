@@ -15,6 +15,8 @@ import { formatDate, formatCarrierLabel, formatPaymentMethodLabel, formatPhoneDi
 import { CorrespondenceHistory } from '@/components/invoices/CorrespondenceHistory'
 import { StatusBadge } from '@/components/invoices/StatusBadge'
 import { card, mutedText, sectionHeading, pillPrimary } from '@/components/invoices/theme'
+import { PortalAccessSection } from '@/components/admin/PortalAccessSection'
+import { CustomerContactEditor } from '@/components/admin/CustomerContactEditor'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -131,6 +133,14 @@ export default async function CustomerProfilePage({ params }: PageProps) {
                 </dd>
               </div>
             </dl>
+            <CustomerContactEditor
+              customerId={customer.id}
+              firstName={customer.firstName}
+              lastName={customer.lastName}
+              email={customer.email}
+              phone={customer.phone}
+              company={customer.company}
+            />
           </div>
 
           <div className={`${card} p-6 space-y-3`}>
@@ -237,6 +247,8 @@ export default async function CustomerProfilePage({ params }: PageProps) {
             </div>
           </div>
         ) : null}
+
+        <PortalAccessSection customerId={customer.id} hasEmail={Boolean(customer.email)} />
 
         <CorrespondenceHistory customerId={customer.id} />
 
