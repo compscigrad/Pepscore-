@@ -16,12 +16,35 @@ import { CorrespondenceHistory } from '@/components/invoices/CorrespondenceHisto
 import { StatusBadge } from '@/components/invoices/StatusBadge'
 import { card, mutedText, sectionHeading, pillPrimary } from '@/components/invoices/theme'
 import { PortalAccessSection } from '@/components/admin/PortalAccessSection'
+import { getPortalReadinessStatus, type PortalReadinessStatus } from '@/lib/portal/readiness'
 import { AccessHistorySection } from '@/components/admin/AccessHistorySection'
 import { LocalTimestamp } from '@/components/admin/LocalTimestamp'
 import { CustomerContactEditor } from '@/components/admin/CustomerContactEditor'
 
 interface PageProps {
   params: Promise<{ id: string }>
+}
+
+const READINESS_LABEL: Record<PortalReadinessStatus, string> = {
+  CLAIMED: 'Claimed',
+  DISABLED: 'Access disabled',
+  CONFLICT_REVIEW: 'Needs review',
+  INVITE_SENT: 'Invite sent',
+  INVITE_EXPIRED: 'Invite expired',
+  INVITE_REVOKED: 'Invite revoked',
+  UNCLAIMED_ELIGIBLE: 'Not yet invited',
+  MISSING_CONTACT: 'Missing contact info',
+}
+
+const READINESS_BADGE_STYLE: Record<PortalReadinessStatus, string> = {
+  CLAIMED: 'bg-emerald-400/10 text-emerald-300 border border-emerald-400/20',
+  DISABLED: 'bg-red-400/10 text-red-300 border border-red-400/20',
+  CONFLICT_REVIEW: 'bg-amber-400/10 text-amber-300 border border-amber-400/20',
+  INVITE_SENT: 'bg-blue-400/10 text-blue-300 border border-blue-400/20',
+  INVITE_EXPIRED: 'bg-white/5 text-white/40 border border-white/10',
+  INVITE_REVOKED: 'bg-white/5 text-white/40 border border-white/10',
+  UNCLAIMED_ELIGIBLE: 'bg-white/5 text-white/50 border border-white/10',
+  MISSING_CONTACT: 'bg-white/5 text-white/30 border border-white/10',
 }
 
 function formatAddress(address: unknown): string | null {
@@ -55,6 +78,8 @@ export default async function CustomerProfilePage({ params }: PageProps) {
   const { id } = await params
   const customer = await getCustomerProfileData(id)
   if (!customer) notFound()
+
+  const portalReadiness = await getPortalReadinessStatus(customer)
 
   const duplicates = await findPossibleDuplicateCustomers({
     firstName: customer.firstName,
@@ -249,6 +274,17 @@ export default async function CustomerProfilePage({ params }: PageProps) {
             </div>
           </div>
         ) : null}
+
+        <div className="flex items-center gap-2">
+          <span className={`text-xs font-heading font-bold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full ${READINESS_BADGE_STYLE[portalReadiness]}`}>
+            {READINESS_LABEL[portalReadiness]}
+          </span>
+          {portalReadiness === 'CONFLICT_REVIEW' ? (
+            <Link href="/admin/identity-review" className="text-xs text-gold hover:text-gold-light underline">
+              Review in queue →
+            </Link>
+          ) : null}
+        </div>
 
         <PortalAccessSection customerId={customer.id} hasEmail={Boolean(customer.email)} />
 
