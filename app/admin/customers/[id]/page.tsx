@@ -16,6 +16,7 @@ import { CorrespondenceHistory } from '@/components/invoices/CorrespondenceHisto
 import { StatusBadge } from '@/components/invoices/StatusBadge'
 import { card, mutedText, sectionHeading, pillPrimary } from '@/components/invoices/theme'
 import { PortalAccessSection } from '@/components/admin/PortalAccessSection'
+import { AccessHistorySection } from '@/components/admin/AccessHistorySection'
 import { CustomerContactEditor } from '@/components/admin/CustomerContactEditor'
 
 interface PageProps {
@@ -249,6 +250,8 @@ export default async function CustomerProfilePage({ params }: PageProps) {
         ) : null}
 
         <PortalAccessSection customerId={customer.id} hasEmail={Boolean(customer.email)} />
+
+        {customer.userId ? <AccessHistorySection customerId={customer.id} /> : null}
 
         <CorrespondenceHistory customerId={customer.id} />
 
