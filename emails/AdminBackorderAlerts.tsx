@@ -60,3 +60,33 @@ export function buildBackorderFinancialActionRequiredHtml(props: RefundActionReq
     </p>
   `)
 }
+
+// Same alert, generic wording — for a refund requested directly (not via a
+// backorder compensation). Kept as a separate pair rather than reusing
+// backorderFinancialActionRequiredSubject/Html so the backorder path's exact
+// wording and behavior stay untouched.
+export function refundActionRequiredSubject(invoiceNumber: string): string {
+  return `Manual Refund Required — Invoice #${invoiceNumber}`
+}
+
+export function buildRefundActionRequiredHtml(props: RefundActionRequiredProps): string {
+  const adminLink = `${props.appUrl}/admin/invoices/${props.invoiceId}`
+  return shell(`
+    <h2 style="font-family:Helvetica,sans-serif;font-size:18px;margin:0 0 12px">Manual Refund Required</h2>
+    <p style="font-size:14px;line-height:1.6;color:#424242">
+      A refund of <strong>${formatMoney(props.refundAmount)}</strong> was requested on Invoice
+      <strong>#${props.invoiceNumber}</strong> (${props.clientName}).
+    </p>
+    <p style="font-size:13px;color:#757575;line-height:1.6">
+      No money has been returned yet. Pepscore has no automated refund provider, so this refund is recorded as
+      <strong>Pending</strong> until you process it manually (e.g. through your payment terminal or bank) and mark it
+      complete from the invoice page. The customer has not been told a refund is complete.
+    </p>
+    <p style="font-size:13px;color:#757575;line-height:1.6"><strong>Reason:</strong> ${props.reason}</p>
+    <p style="text-align:center;margin:22px 0 0">
+      <a href="${adminLink}" style="display:inline-block;background:#C49A1A;color:#1A1A1A;font-family:Helvetica,sans-serif;font-weight:bold;font-size:13px;text-decoration:none;padding:12px 26px;border-radius:8px">
+        Open Invoice &amp; Process Refund
+      </a>
+    </p>
+  `)
+}

@@ -17,6 +17,7 @@ import { DiscountsSection } from './DiscountsSection'
 import { PaymentSection } from './PaymentSection'
 import { ShipmentsSection } from './ShipmentsSection'
 import { BackordersSection } from './BackordersSection'
+import { RefundsSection } from './RefundsSection'
 import { BalanceTransferSection } from './BalanceTransferSection'
 import { CorrespondenceHistory } from './CorrespondenceHistory'
 import { IntakeLinkSection } from './IntakeLinkSection'
@@ -424,6 +425,10 @@ export function InvoiceBuilder({
             deliveryStatus={invoice.deliveryStatus}
             onBackorderUpdated={refreshInvoice}
           />
+        ) : null}
+
+        {mode === 'edit' && invoice ? (
+          <RefundsSection invoiceId={invoice.id} hasCustomer={Boolean(invoice.customerId)} />
         ) : null}
 
         {mode === 'edit' && invoice ? (
