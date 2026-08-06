@@ -4,7 +4,7 @@
 // or embeds the raw token in a way that implies clicking alone grants
 // access — the link still requires signing in with a matching verified
 // email before anything is linked (see lib/portalInvites.ts's claim flow).
-import { ORDERS_EMAIL } from '@/lib/resend'
+import { ORDERS_EMAIL, ADMIN_EMAIL } from '@/lib/resend'
 
 function shell(bodyHtml: string): string {
   const year = new Date().getFullYear()
@@ -54,6 +54,49 @@ export function buildPortalInviteHtml(props: PortalInviteProps): string {
       Reach out anytime at ${ORDERS_EMAIL} with questions.
     </p>
   `)
+}
+
+export interface PortalInviteReminderProps {
+  customerName: string
+  claimUrl: string
+  expiresAt: Date
+}
+
+export function portalInviteReminderSubject(): string {
+  return `Your Pepscore Customer Profile Is Ready`
+}
+
+export function buildPortalInviteReminderHtml(props: PortalInviteReminderProps): string {
+  const expiresLabel = props.expiresAt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+  return shell(`
+    <h2 style="font-family:Helvetica,sans-serif;font-size:19px;margin:0 0 14px">Hi ${props.customerName},</h2>
+    <p style="font-size:14px;line-height:1.7;color:#424242">
+      Your Pepscore customer profile is ready. Set up your secure account to view your invoices, payments,
+      previous purchases, order status, tracking, and account communications. Pepscore's expanded online store
+      and inventory features are still under construction and will become available through this same account
+      as they launch.
+    </p>
+    <p style="text-align:center;margin:24px 0">
+      <a href="${props.claimUrl}" style="display:inline-block;background:#C49A1A;color:#1A1A1A;font-family:Helvetica,sans-serif;font-weight:bold;font-size:13px;text-decoration:none;padding:12px 28px;border-radius:8px">
+        Set Up My Account
+      </a>
+    </p>
+    <p style="font-size:13px;line-height:1.7;color:#757575">
+      This link expires ${expiresLabel} and can only be used once.
+    </p>
+    <p style="font-size:14px;line-height:1.7;color:#424242">
+      Reach out anytime at ${ADMIN_EMAIL} with questions.
+    </p>
+  `)
+}
+
+// SMS bodies live alongside their email counterparts (same notification,
+// two channels) rather than in a separate file. Deliberately terse and
+// transactional per the compliance requirement — no invoice/balance/product
+// detail, just enough to identify Pepscore and link to the secure setup
+// flow. "Reply STOP" is required opt-out language for any Twilio send.
+export function portalInviteSmsBody(claimUrl: string): string {
+  return `Pepscore: Your customer profile is ready. Set up your secure account to view invoices, payments, purchases, tracking, and updates: ${claimUrl}. Reply STOP to opt out of texts.`
 }
 
 export interface PortalAccountClaimedProps {

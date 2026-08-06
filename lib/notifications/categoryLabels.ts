@@ -17,6 +17,7 @@ const CATEGORY_LABELS: Record<MessageCategory, string> = {
   TRACKING_UPDATE: 'Tracking Update',
   PORTAL_INVITE: 'Account Setup',
   PORTAL_ACCOUNT_CLAIMED: 'Account Setup',
+  PORTAL_INVITE_REMINDER: 'Account Setup',
   PAYMENT_SELECTION_PENDING: 'Payment Selection',
   PAYMENT_SELECTION_CONFIRMATION: 'Payment Selection',
   PAYMENT_ARRANGEMENT_REQUEST_PENDING: 'Payment Arrangement',
