@@ -22,11 +22,24 @@ async function resolveClerkUserId(clerkUserId: string): Promise<string | null> {
   return user?.id ?? null
 }
 
+// Rollout kill-switch, same deliberate-separate-gate pattern as Shippo's
+// isShippoPurchasingEnabled(): independent of whether any Customer is
+// actually linked, so the portal can be fully built, merged, and deployed
+// while staying completely inert for every user (including an already-
+// linked test customer) until explicitly turned on. Defaults to disabled
+// (unset = off) so nothing has to be touched to keep it off.
+export function isPortalEnabled(): boolean {
+  return process.env.PORTAL_ENABLED === 'true'
+}
+
 // Null covers every "not authorized" case alike (not signed in, no linked
-// Customer, access disabled) — callers redirect/403 uniformly rather than
-// branching on why, so no code path can accidentally treat a disabled
-// account as "just not linked yet" and offer to re-claim it silently.
+// Customer, access disabled, portal not yet enabled) — callers redirect/403
+// uniformly rather than branching on why, so no code path can accidentally
+// treat a disabled account as "just not linked yet" and offer to re-claim
+// it silently.
 export async function getPortalCustomer(): Promise<Customer | null> {
+  if (!isPortalEnabled()) return null
+
   const { userId: clerkUserId } = await auth()
   if (!clerkUserId) return null
 
@@ -51,6 +64,13 @@ export type PortalAuthState =
 export async function getPortalAuthState(): Promise<PortalAuthState> {
   const { userId: clerkUserId } = await auth()
   if (!clerkUserId) return { state: 'UNAUTHENTICATED' }
+
+  // Same fail-closed rollout gate as getPortalCustomer() — folds into
+  // NOT_LINKED rather than a distinct state, since "account setup isn't
+  // open yet" and "no account found for you" render the same honest,
+  // zero-data message to every caller without needing a new branch on
+  // every page that already handles NOT_LINKED.
+  if (!isPortalEnabled()) return { state: 'NOT_LINKED' }
 
   const userId = await resolveClerkUserId(clerkUserId)
   if (!userId) return { state: 'NOT_LINKED' }
