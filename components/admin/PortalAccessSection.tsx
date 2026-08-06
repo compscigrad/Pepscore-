@@ -9,6 +9,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { card, mutedText, sectionHeading, pillPrimary, pillOutline } from '@/components/invoices/theme'
 
@@ -19,6 +20,7 @@ interface PortalInviteStatus {
 }
 
 export function PortalAccessSection({ customerId, hasEmail }: { customerId: string; hasEmail: boolean }) {
+  const router = useRouter()
   const [status, setStatus] = useState<PortalInviteStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -44,6 +46,7 @@ export function PortalAccessSection({ customerId, hasEmail }: { customerId: stri
       if (!res.ok) throw new Error(data.error ?? 'Failed to send invitation')
       toast.success('Invitation sent')
       await refresh()
+      router.refresh()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to send invitation')
     } finally {
@@ -63,6 +66,7 @@ export function PortalAccessSection({ customerId, hasEmail }: { customerId: stri
       if (!res.ok) throw new Error(data.error ?? 'Failed to update portal access')
       toast.success(successMessage)
       await refresh()
+      router.refresh()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to update portal access')
     } finally {

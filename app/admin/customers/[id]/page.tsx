@@ -17,6 +17,7 @@ import { StatusBadge } from '@/components/invoices/StatusBadge'
 import { card, mutedText, sectionHeading, pillPrimary } from '@/components/invoices/theme'
 import { PortalAccessSection } from '@/components/admin/PortalAccessSection'
 import { AccessHistorySection } from '@/components/admin/AccessHistorySection'
+import { LocalTimestamp } from '@/components/admin/LocalTimestamp'
 import { CustomerContactEditor } from '@/components/admin/CustomerContactEditor'
 
 interface PageProps {
@@ -267,7 +268,7 @@ export default async function CustomerProfilePage({ params }: PageProps) {
                     <p className="text-white">{formatLabel(entry.eventType)}</p>
                     {entry.newValue ? <p className={`${mutedText} text-xs`}>{entry.newValue}</p> : null}
                   </div>
-                  <p className={`${mutedText} text-xs whitespace-nowrap`}>{new Date(entry.createdAt).toLocaleString()}</p>
+                  <p className={`${mutedText} text-xs whitespace-nowrap`}><LocalTimestamp value={entry.createdAt} /></p>
                 </div>
               ))}
             </div>
