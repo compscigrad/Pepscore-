@@ -16,6 +16,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
 import { formatCurrency } from '@/lib/orders'
+import { isAdminClerkUser } from '@/lib/isAdmin'
 import { getAdminOperationsSummary, type AdminOperationsSummary } from '@/lib/adminDashboard'
 import { AdminOrdersTable } from '@/components/admin/AdminOrdersTable'
 import { AdminExportPanel } from '@/components/admin/AdminExportPanel'
@@ -70,8 +71,21 @@ function ErrorCard({ label, error }: { label: string; error: string }) {
 
 export default async function AdminDashboard() {
   const { userId } = await auth()
-  if (!userId || userId !== process.env.ADMIN_CLERK_USER_ID) {
-    redirect('/')
+  // Not signed in at all -- send to sign-in with an explicit redirect_url
+  // so they land back here (not /account) once authenticated.
+  if (!userId) redirect('/sign-in?redirect_url=/admin')
+  // Signed in, but not the admin -- a clear, explicit access-denied
+  // response, never a silent bounce to the storefront that leaves someone
+  // wondering what just happened.
+  if (!isAdminClerkUser(userId)) {
+    return (
+      <main className="min-h-screen bg-g100 flex items-center justify-center p-8">
+        <div className="bg-white rounded-2xl shadow-sh p-8 max-w-md text-center">
+          <h1 className="font-heading text-xl font-bold text-dark mb-2">Access Denied</h1>
+          <p className="text-g500 text-sm">This account isn&apos;t authorized to view the admin dashboard.</p>
+        </div>
+      </main>
+    )
   }
 
   const [operations, storefront, recentOrdersResult] = await Promise.all([

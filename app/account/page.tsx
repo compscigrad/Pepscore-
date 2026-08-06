@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic'
 import { redirect } from 'next/navigation'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { getPortalAuthState, isSelfRegistrationEnabled } from '@/lib/portalAuth'
+import { isAdminClerkUser } from '@/lib/isAdmin'
 import { resolveSelfServiceIdentity } from '@/lib/portal/selfServiceResolve'
 import { getPortalDashboardData } from '@/lib/portal/dashboard'
 import { formatMoney, formatDate } from '@/lib/invoice/format'
@@ -15,6 +16,15 @@ import { PortalStatusShell } from '@/components/account/PortalStatusShell'
 import { getCategoryLabel } from '@/lib/notifications/categoryLabels'
 
 export default async function AccountPage() {
+  // The admin's own Clerk identity must never fall through to customer
+  // messaging ("No account found", claim/setup copy, etc.) — this check
+  // runs before getPortalAuthState() does any Customer-linkage lookup at
+  // all, so an admin landing here (a stale bookmark, a shared /sign-in
+  // link without ?redirect_url) is sent straight to /admin instead of
+  // being told they have no account.
+  const { userId } = await auth()
+  if (isAdminClerkUser(userId)) redirect('/admin')
+
   const authState = await getPortalAuthState()
 
   if (authState.state === 'UNAUTHENTICATED') redirect('/sign-in')
