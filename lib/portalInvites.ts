@@ -13,10 +13,17 @@ import crypto from 'crypto'
 import type { CustomerPortalInvite, Customer } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { recordCustomerActivity } from '@/lib/customers'
-import { sendCategorizedEmail } from '@/lib/notifications/log'
-import { portalInviteSubject, buildPortalInviteHtml, portalAccountClaimedSubject, buildPortalAccountClaimedHtml } from '@/emails/PortalInvite'
+import { sendCategorizedEmail, sendCategorizedSms } from '@/lib/notifications/log'
+import {
+  portalInviteSubject,
+  buildPortalInviteHtml,
+  portalInviteSmsBody,
+  portalAccountClaimedSubject,
+  buildPortalAccountClaimedHtml,
+} from '@/emails/PortalInvite'
 import { getPortalInviteState, isPortalInviteUsable } from '@/lib/portalInviteState'
 import type { PortalInviteState } from '@/lib/portalInviteState'
+import type { PortalInviteChannel, PortalInviteSource } from '@prisma/client'
 
 export { getPortalInviteState }
 export type { PortalInviteState }
@@ -27,6 +34,13 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? ''
 export interface GeneratePortalInviteInput {
   customerId: string
   createdBy: string
+  // Both default to the admin single-invite path's existing behavior
+  // (EMAIL-only, ADMIN-sourced) — omitting these keeps every current call
+  // site byte-for-byte unchanged. The auto-rollout audience (PR6) is the
+  // first caller expected to pass channel: 'BOTH'/'SMS' and source:
+  // 'AUTO_ROLLOUT'.
+  channel?: PortalInviteChannel
+  source?: PortalInviteSource
 }
 
 export class PortalInviteError extends Error {}
@@ -59,7 +73,14 @@ export async function generatePortalInvite(input: GeneratePortalInviteInput): Pr
   const expiresAt = new Date(Date.now() + INVITE_EXPIRY_HOURS * 60 * 60 * 1000)
 
   const invite = await prisma.customerPortalInvite.create({
-    data: { customerId: input.customerId, token, createdBy: input.createdBy, expiresAt },
+    data: {
+      customerId: input.customerId,
+      token,
+      createdBy: input.createdBy,
+      expiresAt,
+      channel: input.channel ?? 'EMAIL',
+      source: input.source ?? 'ADMIN',
+    },
   })
 
   await recordCustomerActivity({
@@ -75,21 +96,35 @@ export async function generatePortalInvite(input: GeneratePortalInviteInput): Pr
 }
 
 async function sendPortalInviteEmail(customer: Customer, invite: CustomerPortalInvite): Promise<void> {
-  if (!customer.email) return
   const claimUrl = `${APP_URL}/account/claim/${invite.token}`
-  await sendCategorizedEmail(
-    {
-      category: 'PORTAL_INVITE',
-      to: customer.email,
-      subject: portalInviteSubject(),
-      html: buildPortalInviteHtml({
-        customerName: `${customer.firstName} ${customer.lastName}`.trim(),
-        claimUrl,
-        expiresAt: invite.expiresAt,
-      }),
-    },
-    { customerId: customer.id, actorType: 'MANUAL', actorUserId: invite.createdBy }
-  )
+
+  if (customer.email) {
+    await sendCategorizedEmail(
+      {
+        category: 'PORTAL_INVITE',
+        to: customer.email,
+        subject: portalInviteSubject(),
+        html: buildPortalInviteHtml({
+          customerName: `${customer.firstName} ${customer.lastName}`.trim(),
+          claimUrl,
+          expiresAt: invite.expiresAt,
+        }),
+      },
+      { customerId: customer.id, actorType: 'MANUAL', actorUserId: invite.createdBy }
+    )
+  }
+
+  // SMS is additive to email, never a replacement — gracefully no-ops via
+  // attemptSms (lib/notifications/bestEffortSms.ts) when the customer has no
+  // phone or Twilio isn't configured, exactly like every other SMS call
+  // site in this codebase.
+  if (invite.channel === 'SMS' || invite.channel === 'BOTH') {
+    await sendCategorizedSms('PORTAL_INVITE', customer.phone, portalInviteSmsBody(claimUrl), {
+      customerId: customer.id,
+      actorType: 'MANUAL',
+      actorUserId: invite.createdBy,
+    })
+  }
 }
 
 // Regenerate = revoke the old one (if any) and mint a fresh token — the

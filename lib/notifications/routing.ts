@@ -11,7 +11,7 @@
 // <onboarding@resend.dev>"); once the domain is verified, FROM_EMAIL becomes
 // a real pepscorelab.com address and every category's display name starts
 // resolving to a real, distinct-looking sender with zero code change here.
-import { FROM_EMAIL, ORDERS_EMAIL, BILLING_EMAIL, CONTACT_EMAIL, SUPPORT_EMAIL } from '@/lib/resend'
+import { FROM_EMAIL, ORDERS_EMAIL, BILLING_EMAIL, CONTACT_EMAIL, SUPPORT_EMAIL, ADMIN_EMAIL } from '@/lib/resend'
 
 export type MessageCategory =
   // Orders — new/revised invoices, intake, backorders, fulfillment/tracking
@@ -25,6 +25,7 @@ export type MessageCategory =
   | 'TRACKING_UPDATE'
   | 'PORTAL_INVITE' // customer-facing: admin invited them to claim portal access
   | 'PORTAL_ACCOUNT_CLAIMED' // customer-facing: confirms the claim succeeded
+  | 'PORTAL_INVITE_REMINDER' // customer-facing: unclaimed-invite reminder sequence
   // Billing — payment selection, arrangements, receipts, refunds, credits
   | 'PAYMENT_SELECTION_PENDING'
   | 'PAYMENT_SELECTION_CONFIRMATION'
@@ -65,8 +66,11 @@ const ROUTING: Record<MessageCategory, RoutedSender> = {
   BACKORDER_NOTICE: { fromName: 'Pepscore Orders', replyTo: ORDERS_EMAIL },
   FULFILLMENT_UPDATE: { fromName: 'Pepscore Orders', replyTo: ORDERS_EMAIL },
   TRACKING_UPDATE: { fromName: 'Pepscore Orders', replyTo: ORDERS_EMAIL },
-  PORTAL_INVITE: { fromName: 'Pepscore Orders', replyTo: ORDERS_EMAIL },
-  PORTAL_ACCOUNT_CLAIMED: { fromName: 'Pepscore Orders', replyTo: ORDERS_EMAIL },
+  // Account-setup correspondence deliberately routes through admin@, not
+  // orders@ — the one explicit sender requirement for this category.
+  PORTAL_INVITE: { fromName: 'Pepscore Lab', replyTo: ADMIN_EMAIL },
+  PORTAL_ACCOUNT_CLAIMED: { fromName: 'Pepscore Lab', replyTo: ADMIN_EMAIL },
+  PORTAL_INVITE_REMINDER: { fromName: 'Pepscore Lab', replyTo: ADMIN_EMAIL },
 
   PAYMENT_SELECTION_PENDING: { fromName: 'Pepscore Billing', replyTo: BILLING_EMAIL },
   PAYMENT_SELECTION_CONFIRMATION: { fromName: 'Pepscore Billing', replyTo: BILLING_EMAIL },
@@ -122,6 +126,7 @@ const CUSTOMER_VISIBLE_CATEGORIES: ReadonlySet<MessageCategory> = new Set<Messag
   'TRACKING_UPDATE',
   'PORTAL_INVITE',
   'PORTAL_ACCOUNT_CLAIMED',
+  'PORTAL_INVITE_REMINDER',
   'PAYMENT_SELECTION_CONFIRMATION',
   'PAYMENT_ARRANGEMENT_REQUEST_RECEIVED',
   'PAYMENT_ARRANGEMENT_DECISION',

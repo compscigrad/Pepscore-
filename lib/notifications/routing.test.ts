@@ -15,11 +15,13 @@ const ORDERS_CATEGORIES: MessageCategory[] = [
   'BACKORDER_NOTICE',
   'FULFILLMENT_UPDATE',
   'TRACKING_UPDATE',
-  'PORTAL_INVITE',
-  'PORTAL_ACCOUNT_CLAIMED',
   'ADMIN_INTAKE_ALERT',
   'ADMIN_DELIVERY_FAILURE_ALERT',
 ]
+
+// Account-setup correspondence deliberately routes through admin@, not
+// orders@ — see routing.ts.
+const PORTAL_CATEGORIES: MessageCategory[] = ['PORTAL_INVITE', 'PORTAL_ACCOUNT_CLAIMED', 'PORTAL_INVITE_REMINDER']
 
 const BILLING_CATEGORIES: MessageCategory[] = [
   'PAYMENT_SELECTION_PENDING',
@@ -39,6 +41,12 @@ describe('routeFor', () => {
   it('routes every Orders-category message to the orders mailbox', () => {
     for (const category of ORDERS_CATEGORIES) {
       expect(routeFor(category).replyTo).toBe('orders@pepscorelab.com')
+    }
+  })
+
+  it('routes every portal account-setup category to the admin mailbox, not orders', () => {
+    for (const category of PORTAL_CATEGORIES) {
+      expect(routeFor(category).replyTo).toBe('admin@pepscorelab.com')
     }
   })
 
@@ -95,6 +103,7 @@ describe('routeFor', () => {
       'TRACKING_UPDATE',
       'PORTAL_INVITE',
       'PORTAL_ACCOUNT_CLAIMED',
+      'PORTAL_INVITE_REMINDER',
       'PAYMENT_SELECTION_CONFIRMATION',
       'PAYMENT_ARRANGEMENT_REQUEST_RECEIVED',
       'PAYMENT_ARRANGEMENT_DECISION',
@@ -117,6 +126,7 @@ describe('routeFor', () => {
   it('gives every category a distinct, non-empty display name', () => {
     const allCategories = [
       ...ORDERS_CATEGORIES,
+      ...PORTAL_CATEGORIES,
       ...BILLING_CATEGORIES,
       'INTAKE_SUBMISSION_CONFIRMATION',
       'CONTACT_INQUIRY',
