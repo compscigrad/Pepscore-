@@ -23,6 +23,8 @@ export type MessageCategory =
   | 'BACKORDER_NOTICE'
   | 'FULFILLMENT_UPDATE'
   | 'TRACKING_UPDATE'
+  | 'PORTAL_INVITE' // customer-facing: admin invited them to claim portal access
+  | 'PORTAL_ACCOUNT_CLAIMED' // customer-facing: confirms the claim succeeded
   // Billing — payment selection, arrangements, receipts, refunds, credits
   | 'PAYMENT_SELECTION_PENDING'
   | 'PAYMENT_SELECTION_CONFIRMATION'
@@ -62,6 +64,8 @@ const ROUTING: Record<MessageCategory, RoutedSender> = {
   BACKORDER_NOTICE: { fromName: 'Pepscore Orders', replyTo: ORDERS_EMAIL },
   FULFILLMENT_UPDATE: { fromName: 'Pepscore Orders', replyTo: ORDERS_EMAIL },
   TRACKING_UPDATE: { fromName: 'Pepscore Orders', replyTo: ORDERS_EMAIL },
+  PORTAL_INVITE: { fromName: 'Pepscore Orders', replyTo: ORDERS_EMAIL },
+  PORTAL_ACCOUNT_CLAIMED: { fromName: 'Pepscore Orders', replyTo: ORDERS_EMAIL },
 
   PAYMENT_SELECTION_PENDING: { fromName: 'Pepscore Billing', replyTo: BILLING_EMAIL },
   PAYMENT_SELECTION_CONFIRMATION: { fromName: 'Pepscore Billing', replyTo: BILLING_EMAIL },
@@ -92,4 +96,40 @@ export interface ResolvedSender {
 export function routeFor(category: MessageCategory): ResolvedSender {
   const { fromName, replyTo } = ROUTING[category]
   return { from: `${fromName} <${FROM_EMAIL}>`, replyTo }
+}
+
+// The customer-portal correspondence view's authorization boundary for
+// *which categories*, not which rows — row-level ownership (only this
+// customer's own Communication rows) is still enforced separately by every
+// portal query filtering on customerId. This only decides whether a given
+// category is ever appropriate to show a customer at all, so an admin-only
+// alert (REFUND_ACTION_REQUIRED, ADMIN_INTAKE_ALERT, ...) can never leak
+// into the portal even if it happens to carry that customer's id.
+// Deliberately an explicit allowlist, not "everything except admin
+// categories" — a new category defaults to hidden from the portal until
+// someone deliberately decides otherwise, matching the same fail-closed
+// posture as every admin-route isAdmin() check.
+const CUSTOMER_VISIBLE_CATEGORIES: ReadonlySet<MessageCategory> = new Set<MessageCategory>([
+  'INVOICE_ISSUED',
+  'INVOICE_REVISED',
+  'ORDER_CONFIRMATION',
+  'INTAKE_REQUEST',
+  'INTAKE_SUBMISSION_CONFIRMATION',
+  'BACKORDER_NOTICE',
+  'FULFILLMENT_UPDATE',
+  'TRACKING_UPDATE',
+  'PORTAL_INVITE',
+  'PORTAL_ACCOUNT_CLAIMED',
+  'PAYMENT_SELECTION_CONFIRMATION',
+  'PAYMENT_ARRANGEMENT_REQUEST_RECEIVED',
+  'PAYMENT_ARRANGEMENT_DECISION',
+  'PAYMENT_RECEIVED',
+  'REFUND_COMPLETED',
+  'REFUND_REQUESTED',
+  'ACCOUNT_CREDIT_ISSUED',
+  'BALANCE_TRANSFER_NOTICE',
+])
+
+export function isCustomerVisibleCategory(category: string): boolean {
+  return CUSTOMER_VISIBLE_CATEGORIES.has(category as MessageCategory)
 }
