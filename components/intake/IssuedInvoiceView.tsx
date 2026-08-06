@@ -58,7 +58,13 @@ interface Installment {
 }
 
 export interface IssuedInvoiceData {
-  token: string
+  // Absolute submit endpoints, computed by the caller — the intake page
+  // points these at /api/intake/[token]/..., the customer portal's invoice
+  // detail page points them at its own ownership-checked /api/account/...
+  // routes. This component only ever POSTs to whichever URL it's given; it
+  // has no opinion on how the caller authenticated the request.
+  payInFullUrl: string
+  arrangementUrl: string
   invoiceNumber: string
   customerName: string
   status: string
@@ -112,7 +118,7 @@ export function IssuedInvoiceView({ data }: { data: IssuedInvoiceData }) {
     }
     setSubmitting(true)
     try {
-      const res = await fetch(`/api/intake/${data.token}/payment-selection`, {
+      const res = await fetch(data.payInFullUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ method }),
@@ -131,7 +137,7 @@ export function IssuedInvoiceView({ data }: { data: IssuedInvoiceData }) {
     e.preventDefault()
     setSubmitting(true)
     try {
-      const res = await fetch(`/api/intake/${data.token}/payment-arrangement`, {
+      const res = await fetch(data.arrangementUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ frequency, proposedDownPayment: Number(downPayment) || 0 }),
