@@ -37,7 +37,8 @@ export default async function IntakePage({ params }: { params: Promise<{ token: 
 
     if (invoice && invoice.status !== 'DRAFT') {
       const data: IssuedInvoiceData = {
-        token,
+        payInFullUrl: `/api/intake/${token}/payment-selection`,
+        arrangementUrl: `/api/intake/${token}/payment-arrangement`,
         invoiceNumber: invoice.invoiceNumber,
         customerName: invoice.customerName,
         status: invoice.status,
