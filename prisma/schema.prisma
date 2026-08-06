@@ -1286,6 +1286,22 @@ model PortalRolloutSettings {
   id          String    @id @default(cuid())
   activatedAt DateTime?
   activatedBy String?
+
+  // Batch pause/resume (Issue 5 safeguard, 2026-08-06 incident review) --
+  // an admin-facing stop that doesn't require deactivating the whole
+  // rollout. Independent of CUSTOMER_ROLLOUT_KILL_SWITCH (an env-var-level
+  // stop that needs no DB write and survives even if this row is
+  // unreachable) -- two separate layers, deliberately redundant.
+  pausedAt DateTime?
+  pausedBy String?
+
+  // The exact eligible-customer-id list computed and shown to the admin at
+  // the moment they activated -- captured once, never recomputed. The
+  // rollout cron only ever sends to ids in this snapshot (intersected with
+  // still-currently-eligible, so a customer who claims or gets disabled in
+  // the interim is still excluded), so what was approved is provably what
+  // can be sent, not a live query that could have silently grown.
+  audienceSnapshot Json?
 }
 
 enum PreferredContactMethod {
