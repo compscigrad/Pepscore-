@@ -118,6 +118,8 @@ export interface RegisterShipmentInput {
     heightIn?: number
     purchasedAt: Date
     purchasedBy: string
+    qrCodeRequested?: boolean
+    qrCodeUrl?: string
   }
 }
 

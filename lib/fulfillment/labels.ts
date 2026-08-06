@@ -177,6 +177,12 @@ export async function purchaseShippingLabelForInvoice(
       heightIn: input.dimensions?.heightIn,
       purchasedAt: new Date(),
       purchasedBy: actor.userId,
+      // Every rate-shopping call requests one (see lib/shippo.ts getRates);
+      // qrCodeUrl only ends up populated when the purchased carrier/service
+      // actually supports it. labelUrl above is always set regardless, so
+      // the admin never loses the printable fallback either way.
+      qrCodeRequested: true,
+      qrCodeUrl: purchased.qr_code_url,
     },
   })
 
