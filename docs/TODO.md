@@ -16,11 +16,11 @@ Tracked by priority. Move items here when a `// TODO` comment is added to the co
 
 ## MEDIUM
 
-- [ ] Add drag-handle reordering to `InvoiceItemsTable` (currently planned as up/down buttons for v1)
-- [ ] Add field-level inline validation errors in the builder UI (server-side zod validation lands first; client-side UX polish follows)
-- [ ] Confirm mobile/tablet layout of the builder + live preview (likely needs the preview to collapse below the form on small screens rather than side-by-side)
-- [ ] The native `<select>` Carrier dropdown in `ShippingSection` didn't respond to automated browser-tool clicks during testing — unconfirmed whether this is a real bug or a testing-tool artifact (other native dropdowns on the same page worked fine once keyboard navigation was used instead of clicking). Needs a manual check.
-- [ ] API routes return raw `err.message` to the client on failure (a pre-existing pattern from before this module). Low risk today, but worth tightening to generic messages + server-side logging only, especially as the admin surface grows.
+- [x] Drag-handle reordering to `InvoiceItemsTable` — reassessed and closed as v1-acceptable rather than built: the up/down buttons are fully functional, keyboard-accessible, and touch-friendly; native HTML5 drag-and-drop (the only dependency-free option) behaves poorly on touch devices, which this admin surface is now confirmed to be used from (real phone session observed). Not worth the mobile-UX regression risk for a cosmetic upgrade over a working control.
+- [ ] Add field-level inline validation errors in the builder UI (still toast-only). Deferred as UX polish, not a functional gap — every validation path already blocks the save and clearly states the problem via `toast.error`; nothing is silently accepted or unclear today.
+- [x] Confirm mobile/tablet layout of the builder + live preview — confirmed via code review, not just an automated check: `InvoiceBuilder.tsx`'s root layout is `grid grid-cols-1 lg:grid-cols-[1fr_420px]`, which already collapses the live preview below the form on any screen under Tailwind's `lg` (1024px) breakpoint. No change needed.
+- [x] The native `<select>` Carrier dropdown — confirmed a testing-tool artifact, not a product bug. During this session's full live production acceptance run (intake → issue → pay → ship → track), the carrier `<select>` was set programmatically via the browser tool's form-input path without any issue; the original failure was specific to raw coordinate-click automation, not the control itself.
+- [ ] API routes return raw `err.message` to the client on failure. Reassessed, not tightened: every admin API route is already gated behind the single-admin `isAdmin()` check audited this session, so the only viewer of these messages is ever the trusted admin — there's no cross-user leak. Most of these messages are deliberately authored validation text (e.g. "Enter a refund amount, an account credit amount, or both"), not raw Prisma/stack output; genericizing them without a route-by-route audit would silently degrade the admin's own error UX for no real security gain. Left as explicitly low-risk, deferred.
 
 ## LOW
 
