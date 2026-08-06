@@ -9,6 +9,7 @@ import { useEffect, useState, useCallback } from 'react'
 import toast from 'react-hot-toast'
 import { formatCarrierLabel, formatLabelSourceLabel } from '@/lib/invoice/format'
 import { getPrimaryShipment } from '@/lib/shipments/primary'
+import { describeQrCodeState } from '@/lib/shipments/qrCode'
 import { StatusBadge } from './StatusBadge'
 import { card, input, label as labelClass, pillPrimary, pillOutline, sectionHeading, selectOption, mutedText } from './theme'
 import type { ShippingCarrier, ShippingStatus, LabelSource, Shipment, TrackingEvent } from '@prisma/client'
@@ -309,8 +310,13 @@ export function ShipmentsSection({ invoiceId, shipments, onTrackingUpdated }: Pr
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Failed to purchase label')
-      toast.success('Label purchased — tracking started automatically')
-      if (data.labelUrl) window.open(data.labelUrl, '_blank', 'noopener,noreferrer')
+      // Never auto-open a new tab here — the QR code (when eligible) and the
+      // printable label are both shown prominently in the shipment card
+      // below once onTrackingUpdated() refreshes, per the "display in-app,
+      // don't just hand off to a popup" requirement.
+      toast.success(
+        data.qrCodeUrl ? 'Label purchased — printerless QR code ready below' : 'Label purchased — tracking started automatically'
+      )
       setRates([])
       setSelectedRateId(null)
       onTrackingUpdated()
@@ -384,10 +390,35 @@ export function ShipmentsSection({ invoiceId, shipments, onTrackingUpdated }: Pr
                   {shipment.notes ? (
                     <p><span className={mutedText}>Notes:</span> {shipment.notes}</p>
                   ) : null}
+                  {shipment.qrCodeUrl ? (
+                    <div className="mt-2 rounded-lg border border-gold/20 bg-gold/5 p-3 space-y-2">
+                      <p className="text-[11px] font-heading font-bold uppercase tracking-[0.08em] text-gold-light">
+                        Printerless USPS QR Code
+                      </p>
+                      <a href={shipment.qrCodeUrl} target="_blank" rel="noreferrer">
+                        <img src={shipment.qrCodeUrl} alt="USPS printerless label QR code" className="max-w-[200px] rounded border border-white/10" />
+                      </a>
+                      <p className={`text-xs ${mutedText}`}>
+                        Bring this QR code and your packaged shipment to any participating USPS location — staff will scan it and print the label for you.
+                      </p>
+                      <div className="flex gap-3 text-xs">
+                        <a href={shipment.qrCodeUrl} target="_blank" rel="noreferrer" className="text-gold-light hover:underline">
+                          Open Full Screen
+                        </a>
+                        <a href={shipment.qrCodeUrl} download className="text-gold-light hover:underline">
+                          Download
+                        </a>
+                      </div>
+                    </div>
+                  ) : describeQrCodeState(shipment) === 'NOT_ELIGIBLE' ? (
+                    <p className="text-xs text-amber-300">
+                      This service doesn&apos;t support printerless QR codes — a printable label was generated instead.
+                    </p>
+                  ) : null}
                   {shipment.labelUrl ? (
                     <p>
                       <a href={shipment.labelUrl} target="_blank" rel="noreferrer" className="text-gold-light hover:underline">
-                        Open label PDF
+                        {shipment.qrCodeUrl ? 'Open printable label PDF instead' : 'Open label PDF'}
                       </a>
                     </p>
                   ) : null}
