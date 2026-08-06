@@ -41,6 +41,7 @@ export type MessageCategory =
   | 'CONTACT_INQUIRY'
   // Support — existing-customer problems, access issues
   | 'SUPPORT_REQUEST'
+  | 'SUPPORT_REQUEST_RECEIVED' // customer-facing: acknowledges their submission
   // Internal admin alerts not tied to a specific customer-facing category —
   // routed to Orders by default (matches "Product and fulfillment questions"
   // being the closest fit for today's only such alert, intake submission).
@@ -81,6 +82,7 @@ const ROUTING: Record<MessageCategory, RoutedSender> = {
 
   CONTACT_INQUIRY: { fromName: 'Pepscore', replyTo: CONTACT_EMAIL },
   SUPPORT_REQUEST: { fromName: 'Pepscore Support', replyTo: SUPPORT_EMAIL },
+  SUPPORT_REQUEST_RECEIVED: { fromName: 'Pepscore Support', replyTo: SUPPORT_EMAIL },
 
   ADMIN_INTAKE_ALERT: { fromName: 'Pepscore Orders', replyTo: ORDERS_EMAIL },
   ADMIN_DELIVERY_FAILURE_ALERT: { fromName: 'Pepscore Orders', replyTo: ORDERS_EMAIL },
@@ -128,6 +130,7 @@ const CUSTOMER_VISIBLE_CATEGORIES: ReadonlySet<MessageCategory> = new Set<Messag
   'REFUND_REQUESTED',
   'ACCOUNT_CREDIT_ISSUED',
   'BALANCE_TRANSFER_NOTICE',
+  'SUPPORT_REQUEST_RECEIVED',
 ])
 
 export function isCustomerVisibleCategory(category: string): boolean {

@@ -54,6 +54,7 @@ describe('routeFor', () => {
 
   it('routes support requests to the support mailbox', () => {
     expect(routeFor('SUPPORT_REQUEST').replyTo).toBe('support@pepscorelab.com')
+    expect(routeFor('SUPPORT_REQUEST_RECEIVED').replyTo).toBe('support@pepscorelab.com')
   })
 
   it('the intake submission confirmation replies to contact, not orders, even though it is sent from the orders identity', () => {
@@ -102,6 +103,7 @@ describe('routeFor', () => {
       'REFUND_REQUESTED',
       'ACCOUNT_CREDIT_ISSUED',
       'BALANCE_TRANSFER_NOTICE',
+      'SUPPORT_REQUEST_RECEIVED',
     ]
     for (const category of customerFacing) {
       expect(isCustomerVisibleCategory(category)).toBe(true)

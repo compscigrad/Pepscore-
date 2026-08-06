@@ -90,3 +90,38 @@ export function buildRefundActionRequiredHtml(props: RefundActionRequiredProps):
     </p>
   `)
 }
+
+// A portal customer requested an email-address change — never applied
+// automatically (see lib/portal/profile.ts's requestEmailChange), an admin
+// must review and apply it via the customer's admin profile page.
+interface ProfileEmailChangeRequestedProps {
+  customerName: string
+  customerId: string
+  currentEmail: string | null
+  requestedEmail: string
+  appUrl: string
+}
+
+export function profileEmailChangeRequestedSubject(): string {
+  return `Customer Requested an Email Change`
+}
+
+export function buildProfileEmailChangeRequestedHtml(props: ProfileEmailChangeRequestedProps): string {
+  const adminLink = `${props.appUrl}/admin/customers/${props.customerId}`
+  return shell(`
+    <h2 style="font-family:Helvetica,sans-serif;font-size:18px;margin:0 0 12px">Email Change Requested</h2>
+    <p style="font-size:14px;line-height:1.6;color:#424242">
+      <strong>${props.customerName}</strong> requested to change their portal account email from
+      <strong>${props.currentEmail ?? '(none on file)'}</strong> to <strong>${props.requestedEmail}</strong>.
+    </p>
+    <p style="font-size:13px;color:#757575;line-height:1.6">
+      This has not been changed automatically. Verify the request is genuine before updating it on the customer's
+      profile — changing this email changes what a future portal login must match to claim or re-claim this account.
+    </p>
+    <p style="text-align:center;margin:22px 0 0">
+      <a href="${adminLink}" style="display:inline-block;background:#C49A1A;color:#1A1A1A;font-family:Helvetica,sans-serif;font-weight:bold;font-size:13px;text-decoration:none;padding:12px 26px;border-radius:8px">
+        Review Customer
+      </a>
+    </p>
+  `)
+}
