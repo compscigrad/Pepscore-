@@ -1,4 +1,12 @@
-// Owner/Admin dashboard — orders, profit metrics, shipping, and CPA export
+// Owner/Admin dashboard. Two independent sections, each fetched and error-
+// handled separately so a failure in one never blanks out the other:
+//   - Operations Summary: the real, currently-operating invoice/CRM
+//     business (lib/adminDashboard.ts) -- reuses the exact same
+//     getInvoiceDashboardStats() query /admin/invoices renders its own KPI
+//     cards from, so the two pages always reconcile by construction.
+//   - Storefront: Order/Expense-based KPIs, legitimately all-zero until the
+//     storefront launches (see docs/ProductRoadmap.md) -- not a bug, a
+//     different, not-yet-populated data source.
 // Access is restricted to the ADMIN_CLERK_USER_ID in .env
 
 export const dynamic = 'force-dynamic'
@@ -8,49 +16,56 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
 import { formatCurrency } from '@/lib/orders'
+import { getAdminOperationsSummary, type AdminOperationsSummary } from '@/lib/adminDashboard'
 import { AdminOrdersTable } from '@/components/admin/AdminOrdersTable'
 import { AdminExportPanel } from '@/components/admin/AdminExportPanel'
 
-async function getAdminStats() {
+async function getStorefrontStats() {
   const now = new Date()
   const startOfYear = new Date(`${now.getFullYear()}-01-01T00:00:00.000Z`)
 
-  const [
-    totalOrders,
-    yearOrders,
-    pendingShipments,
-    yearExpenses,
-  ] = await Promise.all([
-    prisma.order.count({ where: { status: { in: ['PAID','PROCESSING','SHIPPED','DELIVERED'] } } }),
+  const [totalOrders, yearOrders, pendingShipments, yearExpenses] = await Promise.all([
+    prisma.order.count({ where: { status: { in: ['PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED'] } } }),
     prisma.order.findMany({
-      where: {
-        status: { in: ['PAID','PROCESSING','SHIPPED','DELIVERED'] },
-        createdAt: { gte: startOfYear },
-      },
+      where: { status: { in: ['PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED'] }, createdAt: { gte: startOfYear } },
       include: { items: true },
     }),
-    prisma.order.count({ where: { fulfillmentStatus: 'UNFULFILLED', status: { in: ['PAID','PROCESSING'] } } }),
+    prisma.order.count({ where: { fulfillmentStatus: 'UNFULFILLED', status: { in: ['PAID', 'PROCESSING'] } } }),
     prisma.expense.findMany({ where: { date: { gte: startOfYear } } }),
   ])
 
   const yearRevenue = yearOrders.reduce((s, o) => s + o.total, 0)
-  const yearCogs = yearExpenses.filter(e => e.type === 'COGS').reduce((s, e) => s + e.amount, 0)
-  const yearShipping = yearExpenses.filter(e => e.type === 'SHIPPING').reduce((s, e) => s + e.amount, 0)
-  const yearStripeFees = yearExpenses.filter(e => e.type === 'STRIPE_FEE').reduce((s, e) => s + e.amount, 0)
+  const yearCogs = yearExpenses.filter((e) => e.type === 'COGS').reduce((s, e) => s + e.amount, 0)
+  const yearShipping = yearExpenses.filter((e) => e.type === 'SHIPPING').reduce((s, e) => s + e.amount, 0)
+  const yearStripeFees = yearExpenses.filter((e) => e.type === 'STRIPE_FEE').reduce((s, e) => s + e.amount, 0)
   const yearGrossProfit = yearRevenue - yearCogs
   const yearNetProfit = yearGrossProfit - yearShipping - yearStripeFees
 
-  return {
-    totalOrders,
-    pendingShipments,
-    yearRevenue,
-    yearCogs,
-    yearShipping,
-    yearStripeFees,
-    yearGrossProfit,
-    yearNetProfit,
-    year: now.getFullYear(),
+  return { totalOrders, pendingShipments, yearRevenue, yearCogs, yearShipping, yearStripeFees, yearGrossProfit, yearNetProfit, year: now.getFullYear() }
+}
+
+type SectionResult<T> = { ok: true; data: T } | { ok: false; error: string }
+
+async function loadSection<T>(label: string, fn: () => Promise<T>): Promise<SectionResult<T>> {
+  try {
+    return { ok: true, data: await fn() }
+  } catch (err) {
+    // Structured, server-side only -- never swallowed. The admin sees a
+    // plain "failed to load" card (ErrorCard below); this is what an
+    // operator/log search actually needs to diagnose it.
+    console.error(`[admin/dashboard] Failed to load section "${label}":`, err)
+    return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }
   }
+}
+
+function ErrorCard({ label, error }: { label: string; error: string }) {
+  return (
+    <div className="bg-red-50 border border-red-200 rounded-2xl p-6 mb-8">
+      <p className="font-heading text-[13px] font-bold text-red-700">{label} failed to load</p>
+      <p className="text-[12px] text-red-600 mt-1">{error}</p>
+      <p className="text-[12px] text-red-600 mt-1">Check server logs for the full stack trace — this section was not silently skipped.</p>
+    </div>
+  )
 }
 
 export default async function AdminDashboard() {
@@ -59,31 +74,39 @@ export default async function AdminDashboard() {
     redirect('/')
   }
 
-  const stats = await getAdminStats()
-
-  const recentOrders = await prisma.order.findMany({
-    include: {
-      items: true,
-      invoice: { select: { invoiceNumber: true } },
-      shippingLabel: { select: { trackingNumber: true, carrier: true, labelUrl: true } },
-    },
-    orderBy: { createdAt: 'desc' },
-    take: 50,
-  })
+  const [operations, storefront, recentOrdersResult] = await Promise.all([
+    loadSection('Operations Summary', getAdminOperationsSummary),
+    loadSection('Storefront Stats', getStorefrontStats),
+    loadSection('Recent Orders', () =>
+      prisma.order.findMany({
+        include: {
+          items: true,
+          invoice: { select: { invoiceNumber: true } },
+          shippingLabel: { select: { trackingNumber: true, carrier: true, labelUrl: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      })
+    ),
+  ])
 
   return (
     <main className="min-h-screen bg-g100 p-8">
       <div className="max-w-[1400px] mx-auto">
-
-        {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
           <div>
             <h1 className="font-heading text-3xl font-bold text-dark">Pepscore Admin</h1>
-            <p className="text-g500 text-sm mt-1">Owner dashboard · {stats.year} YTD</p>
+            <p className="text-g500 text-sm mt-1">Owner dashboard</p>
           </div>
           <div className="flex items-center gap-6 flex-wrap">
             <Link href="/admin/invoices" className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-g500 hover:text-gold transition-colors">
               Invoices →
+            </Link>
+            <Link href="/admin/intake-queue" className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-g500 hover:text-gold transition-colors">
+              Intake Queue
+            </Link>
+            <Link href="/admin/identity-review" className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-g500 hover:text-gold transition-colors">
+              Identity Review
             </Link>
             <Link href="/" className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-g500 hover:text-gold transition-colors">
               ← Storefront
@@ -91,50 +114,110 @@ export default async function AdminDashboard() {
           </div>
         </div>
 
-        {/* ── KPI Cards ────────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {[
-            { label: 'YTD Revenue', value: formatCurrency(stats.yearRevenue), sub: `${stats.totalOrders} total orders`, color: 'text-green-600' },
-            { label: 'YTD Gross Profit', value: formatCurrency(stats.yearGrossProfit), sub: `After COGS (${formatCurrency(stats.yearCogs)})`, color: 'text-blue-600' },
-            { label: 'YTD Net Profit', value: formatCurrency(stats.yearNetProfit), sub: `After all expenses`, color: 'text-gold-dark' },
-            { label: 'Pending Shipments', value: String(stats.pendingShipments), sub: 'Awaiting label creation', color: stats.pendingShipments > 0 ? 'text-amber-600' : 'text-g500' },
-          ].map(card => (
-            <div key={card.label} className="bg-white rounded-2xl p-5 shadow-sh">
-              <p className="font-heading text-[11px] font-bold tracking-[0.1em] uppercase text-g500 mb-2">{card.label}</p>
-              <p className={`font-heading text-2xl font-extrabold ${card.color}`}>{card.value}</p>
-              <p className="text-[12px] text-g500 mt-1">{card.sub}</p>
-            </div>
-          ))}
-        </div>
+        {/* ── Operations Summary (the real, currently-operating business) ──── */}
+        <h2 className="font-heading text-[15px] font-bold text-dark mb-3">Operations Summary</h2>
+        {operations.ok ? (
+          <OperationsSummarySection data={operations.data} />
+        ) : (
+          <ErrorCard label="Operations Summary" error={operations.error} />
+        )}
 
-        {/* ── Expense Breakdown ─────────────────────────────────────────────── */}
-        <div className="bg-white rounded-2xl p-6 shadow-sh mb-8">
-          <h2 className="font-heading text-[15px] font-bold text-dark mb-4">{stats.year} Expense Breakdown</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {[
-              { label: 'Cost of Goods', amount: stats.yearCogs },
-              { label: 'Shipping Labels', amount: stats.yearShipping },
-              { label: 'Stripe Fees', amount: stats.yearStripeFees },
-            ].map(e => (
-              <div key={e.label} className="bg-g100 rounded-xl p-4">
-                <p className="font-heading text-[11px] font-bold tracking-[0.1em] uppercase text-g500 mb-1">{e.label}</p>
-                <p className="font-heading text-xl font-bold text-dark">{formatCurrency(e.amount)}</p>
-              </div>
-            ))}
-          </div>
-        </div>
+        {/* ── Storefront (Order/Expense-based -- empty until launch) ───────── */}
+        <h2 className="font-heading text-[15px] font-bold text-dark mb-3">Storefront{storefront.ok && storefront.data.totalOrders === 0 ? ' (not yet launched — 0 orders on file)' : ''}</h2>
+        {storefront.ok ? (
+          <StorefrontSection stats={storefront.data} />
+        ) : (
+          <ErrorCard label="Storefront Stats" error={storefront.error} />
+        )}
 
-        {/* ── Orders Table ──────────────────────────────────────────────────── */}
         <div className="bg-white rounded-2xl shadow-sh mb-8 overflow-hidden">
           <div className="p-6 border-b border-g100">
             <h2 className="font-heading text-[17px] font-bold text-dark">All Orders</h2>
           </div>
-          <AdminOrdersTable orders={recentOrders} />
+          {recentOrdersResult.ok ? (
+            <AdminOrdersTable orders={recentOrdersResult.data} />
+          ) : (
+            <div className="p-6">
+              <ErrorCard label="Recent Orders" error={recentOrdersResult.error} />
+            </div>
+          )}
         </div>
 
-        {/* ── CPA Export ───────────────────────────────────────────────────── */}
-        <AdminExportPanel currentYear={stats.year} />
+        {storefront.ok && <AdminExportPanel currentYear={storefront.data.year} />}
       </div>
     </main>
+  )
+}
+
+function OperationsSummarySection({ data }: { data: AdminOperationsSummary }) {
+  const { invoices, customers, refunds, credits, backorders, correspondence } = data
+  return (
+    <>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+        {[
+          { label: 'Revenue (active + archived)', value: formatCurrency(invoices.revenue), sub: `${invoices.totalInvoices} active invoices`, color: 'text-green-600' },
+          { label: 'Outstanding Balance', value: formatCurrency(invoices.outstandingBalance), sub: `${invoices.paidInvoices} paid, ${invoices.partiallyPaidInvoices} partial`, color: 'text-amber-600' },
+          { label: 'Pending Shipments', value: String(invoices.pendingShipments), sub: `${invoices.deliveredOrders} delivered`, color: invoices.pendingShipments > 0 ? 'text-amber-600' : 'text-g500' },
+          { label: 'Customers', value: String(customers.total), sub: `${customers.claimed} claimed · ${customers.unclaimed} unclaimed`, color: 'text-blue-600' },
+        ].map((card) => (
+          <div key={card.label} className="bg-white rounded-2xl p-5 shadow-sh">
+            <p className="font-heading text-[11px] font-bold tracking-[0.1em] uppercase text-g500 mb-2">{card.label}</p>
+            <p className={`font-heading text-2xl font-extrabold ${card.color}`}>{card.value}</p>
+            <p className="text-[12px] text-g500 mt-1">{card.sub}</p>
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        {[
+          { label: 'Pending Refunds', value: `${refunds.pendingCount} (${formatCurrency(refunds.pendingAmount)})`, sub: `${formatCurrency(refunds.completedTotal)} completed all-time` },
+          { label: 'Active Account Credits', value: String(credits.activeCount), sub: `${formatCurrency(credits.activeTotal)} outstanding` },
+          { label: 'Active Backorders', value: String(backorders.activeCount), sub: 'Awaiting resolution' },
+          { label: 'Correspondence (7d)', value: `${correspondence.last7DaysSent} sent`, sub: `${correspondence.last7DaysFailed} failed`, color: correspondence.last7DaysFailed > 0 ? 'text-red-600' : 'text-g500' },
+        ].map((card) => (
+          <div key={card.label} className="bg-white rounded-2xl p-5 shadow-sh">
+            <p className="font-heading text-[11px] font-bold tracking-[0.1em] uppercase text-g500 mb-2">{card.label}</p>
+            <p className={`font-heading text-xl font-extrabold ${card.color ?? 'text-dark'}`}>{card.value}</p>
+            <p className="text-[12px] text-g500 mt-1">{card.sub}</p>
+          </div>
+        ))}
+      </div>
+    </>
+  )
+}
+
+function StorefrontSection({ stats }: { stats: Awaited<ReturnType<typeof getStorefrontStats>> }) {
+  return (
+    <>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        {[
+          { label: 'YTD Revenue', value: formatCurrency(stats.yearRevenue), sub: `${stats.totalOrders} total orders`, color: 'text-green-600' },
+          { label: 'YTD Gross Profit', value: formatCurrency(stats.yearGrossProfit), sub: `After COGS (${formatCurrency(stats.yearCogs)})`, color: 'text-blue-600' },
+          { label: 'YTD Net Profit', value: formatCurrency(stats.yearNetProfit), sub: 'After all expenses', color: 'text-gold-dark' },
+          { label: 'Pending Shipments', value: String(stats.pendingShipments), sub: 'Awaiting label creation', color: stats.pendingShipments > 0 ? 'text-amber-600' : 'text-g500' },
+        ].map((card) => (
+          <div key={card.label} className="bg-white rounded-2xl p-5 shadow-sh">
+            <p className="font-heading text-[11px] font-bold tracking-[0.1em] uppercase text-g500 mb-2">{card.label}</p>
+            <p className={`font-heading text-2xl font-extrabold ${card.color}`}>{card.value}</p>
+            <p className="text-[12px] text-g500 mt-1">{card.sub}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="bg-white rounded-2xl p-6 shadow-sh mb-8">
+        <h3 className="font-heading text-[15px] font-bold text-dark mb-4">{stats.year} Expense Breakdown</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {[
+            { label: 'Cost of Goods', amount: stats.yearCogs },
+            { label: 'Shipping Labels', amount: stats.yearShipping },
+            { label: 'Stripe Fees', amount: stats.yearStripeFees },
+          ].map((e) => (
+            <div key={e.label} className="bg-g100 rounded-xl p-4">
+              <p className="font-heading text-[11px] font-bold tracking-[0.1em] uppercase text-g500 mb-1">{e.label}</p>
+              <p className="font-heading text-xl font-bold text-dark">{formatCurrency(e.amount)}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
   )
 }
