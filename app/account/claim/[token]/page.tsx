@@ -4,6 +4,8 @@
 // this renders; the actual ownership check (does the signed-in email match
 // the invited customer) happens server-side in the claim API route, never
 // here or client-side.
+export const dynamic = 'force-dynamic'
+
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import { validatePortalInvite } from '@/lib/portalInvites'
