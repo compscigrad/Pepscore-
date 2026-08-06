@@ -1173,14 +1173,15 @@ model Customer {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  invoices       Invoice[]
-  intakeLinks    IntakeLink[]
-  activityLog    CustomerActivityLog[]
-  notifications  Notification[]
-  accountCredits CustomerAccountCredit[]
-  communications Communication[]
-  portalInvites  CustomerPortalInvite[]
-  accessEvents   CustomerAccessEvent[]
+  invoices            Invoice[]
+  intakeLinks         IntakeLink[]
+  activityLog         CustomerActivityLog[]
+  notifications       Notification[]
+  accountCredits      CustomerAccountCredit[]
+  communications      Communication[]
+  portalInvites       CustomerPortalInvite[]
+  accessEvents        CustomerAccessEvent[]
+  identityReviewCases CustomerIdentityReviewCase[]
 
   @@index([email])
   @@index([phone])
@@ -1210,7 +1211,81 @@ model CustomerPortalInvite {
   revokedAt       DateTime?
   revokedBy       String?
 
+  // Additive fields for the automated-onboarding rollout (Customer Identity
+  // Platform). All default to values that make every pre-existing row behave
+  // exactly as before: EMAIL-only, unreminded, admin-sourced.
+  channel        PortalInviteChannel @default(EMAIL)
+  remindersSent  Int                 @default(0)
+  lastReminderAt DateTime?
+  source         PortalInviteSource  @default(ADMIN)
+
   @@index([customerId])
+}
+
+enum PortalInviteChannel {
+  EMAIL
+  SMS
+  BOTH
+}
+
+enum PortalInviteSource {
+  ADMIN
+  AUTO_ROLLOUT
+}
+
+// Every case where self-service account resolution (see
+// lib/portal/selfServiceResolve.ts) could not safely auto-link a Clerk
+// identity to a Customer record — multiple Customer rows sharing an email,
+// or a link target already claimed by someone else. Deliberately one model
+// for every "needs a human" reason rather than a table per reason, mirroring
+// CustomerActivityLog's single-table-many-eventType-strings philosophy.
+// Never auto-resolved: an admin explicitly approves, manually links, or
+// dismisses each case (see app/api/admin/identity-review/[id]/route.ts).
+model CustomerIdentityReviewCase {
+  id         String    @id @default(cuid())
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  clerkUserId          String
+  verifiedEmail        String
+  reason               IdentityReviewReason
+  candidateCustomerIds Json // string[] of Customer.id — every plausible match, for admin review
+
+  status     IdentityReviewStatus @default(OPEN)
+  resolvedBy String?
+  resolvedAt DateTime?
+  notes      String?
+
+  createdAt DateTime @default(now())
+
+  @@index([customerId])
+  @@index([status])
+  @@index([clerkUserId])
+}
+
+enum IdentityReviewReason {
+  MULTIPLE_MATCHES
+  ALREADY_LINKED_OTHER_USER
+  ALREADY_LINKED_OTHER_CUSTOMER
+}
+
+enum IdentityReviewStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
+}
+
+// Singleton row gating the automated bulk-invitation rollout. Its existence
+// (activatedAt set) is the one explicit, admin-triggered action that turns
+// on real sends — the audience-computation and dry-run logic run regardless,
+// but app/api/cron/portal-invite-rollout/route.ts refuses to send anything
+// for real until this row is activated. Deliberately a DB row, not just an
+// env flag, so activation is itself audited (activatedBy/activatedAt) rather
+// than a redeploy-only toggle.
+model PortalRolloutSettings {
+  id          String    @id @default(cuid())
+  activatedAt DateTime?
+  activatedBy String?
 }
 
 enum PreferredContactMethod {

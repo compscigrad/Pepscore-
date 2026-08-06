@@ -32,6 +32,26 @@ export function isPortalEnabled(): boolean {
   return process.env.PORTAL_ENABLED === 'true'
 }
 
+// Same deliberate-separate-gate convention, one flag per independently
+// rollout-able piece of the Customer Identity Platform — see
+// docs/ProductRoadmap.md and lib/portal/selfServiceResolve.ts. All default
+// to disabled; none of this activates merely because it's merged/deployed.
+export function isSelfRegistrationEnabled(): boolean {
+  return process.env.CUSTOMER_SELF_REGISTRATION_ENABLED === 'true'
+}
+
+export function isAutoInvitesEnabled(): boolean {
+  return process.env.CUSTOMER_AUTO_INVITES_ENABLED === 'true'
+}
+
+export function isSmsInvitesEnabled(): boolean {
+  return process.env.CUSTOMER_SMS_INVITES_ENABLED === 'true'
+}
+
+export function isInviteRemindersEnabled(): boolean {
+  return process.env.CUSTOMER_INVITE_REMINDERS_ENABLED === 'true'
+}
+
 // Null covers every "not authorized" case alike (not signed in, no linked
 // Customer, access disabled, portal not yet enabled) — callers redirect/403
 // uniformly rather than branching on why, so no code path can accidentally
