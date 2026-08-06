@@ -9,6 +9,7 @@ import { redirect } from 'next/navigation'
 import { validatePortalInvite } from '@/lib/portalInvites'
 import { getPortalAuthState } from '@/lib/portalAuth'
 import { PortalClaimButton } from '@/components/account/PortalClaimButton'
+import { PortalStatusShell } from '@/components/account/PortalStatusShell'
 
 const REASON_COPY: Record<string, { heading: string; body: string }> = {
   NOT_FOUND: {
@@ -42,16 +43,7 @@ export default async function ClaimPage({ params }: { params: Promise<{ token: s
 
   if (!validation.valid) {
     const copy = REASON_COPY[validation.reason] ?? REASON_COPY.NOT_FOUND
-    return (
-      <main className="min-h-screen bg-dark flex items-center justify-center px-4">
-        <div className="max-w-md w-full bg-white/[0.03] border border-gold/10 rounded-[18px] p-8 text-center">
-          <h1 className="font-heading text-2xl font-bold text-white mb-2">PEPSCORE</h1>
-          <p className="text-gold text-xs uppercase tracking-[0.2em] mb-6">Account Setup</p>
-          <h2 className="text-lg font-bold text-white mb-3">{copy.heading}</h2>
-          <p className="text-white/60 text-sm leading-relaxed">{copy.body}</p>
-        </div>
-      </main>
-    )
+    return <PortalStatusShell heading={copy.heading} body={copy.body} />
   }
 
   const { customer } = validation
