@@ -273,12 +273,12 @@ model Invoice {
   adminNotifications  Notification[]
 
   // Backorder back-relations — see the Backorders section below.
-  backorderConditions     BackorderCondition[]
-  backorderCompensations  BackorderCompensation[]
-  refunds                 InvoiceRefund[]
+  backorderConditions    BackorderCondition[]
+  backorderCompensations BackorderCompensation[]
+  refunds                InvoiceRefund[]
   // Account credits that *originated from* this invoice (sourceInvoiceId) —
   // not the customer's full credit balance, which is queried via Customer.
-  issuedAccountCredits    CustomerAccountCredit[]
+  issuedAccountCredits   CustomerAccountCredit[]
 
   // Every email/SMS ever sent that referenced this invoice — see the
   // Correspondence History section below.
@@ -300,7 +300,7 @@ model Invoice {
   // moved in from another invoice (as the destination) — added directly into
   // `total` (and therefore balanceDue) so the destination becomes the one
   // place that balance is actually collectible.
-  carriedOverAmount Float @default(0)
+  carriedOverAmount    Float @default(0)
 
   balanceTransfersOut BalanceTransfer[] @relation("BalanceTransferSource")
   balanceTransfersIn  BalanceTransfer[] @relation("BalanceTransferDestination")
@@ -613,9 +613,9 @@ enum PaymentMethod {
 // (productName) so the record stays meaningful even if the InvoiceItem it
 // originally pointed to is later removed.
 model BackorderCondition {
-  id            String          @id @default(cuid())
+  id            String  @id @default(cuid())
   invoiceId     String
-  invoice       Invoice         @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoice       Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   invoiceItemId String
   productName   String
 
@@ -624,7 +624,7 @@ model BackorderCondition {
   appliedAt             DateTime        @default(now())
   appliedBy             String
   resolvedAt            DateTime?
-  resolvedBy             String?
+  resolvedBy            String?
   resolutionNote        String?
   notes                 String?
 
@@ -661,14 +661,14 @@ model BackorderCompensation {
   invoiceId String
   invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
-  totalAmount         Float // the flat policy amount, normally 25.00
-  creditAppliedAmount Float @default(0) // portion applied as an InvoiceDiscount, reducing balance due
+  totalAmount           Float // the flat policy amount, normally 25.00
+  creditAppliedAmount   Float                             @default(0) // portion applied as an InvoiceDiscount, reducing balance due
   // Portion *requested* as a refund of money already collected — a fixed
   // snapshot of the compensation's allocation plan at apply-time, not a
   // live mirror of the linked InvoiceRefund's own lifecycle (that record's
   // completedAmount is the only place "money actually returned" is tracked).
-  refundAmount        Float @default(0)
-  accountCreditAmount Float @default(0) // portion stored as a CustomerAccountCredit (exceeds what was actually paid)
+  refundAmount          Float                             @default(0)
+  accountCreditAmount   Float                             @default(0) // portion stored as a CustomerAccountCredit (exceeds what was actually paid)
   // Admin's chosen disposition for the collected-money portion when both a
   // refund and an account credit are theoretically possible (i.e. some
   // compensation exceeds balanceDue) — 'REFUND' still caps refundAmount at
@@ -686,12 +686,12 @@ model BackorderCompensation {
   // be a pure credit, a pure refund, a pure account credit, or a genuine mix
   // of two or three, matching whatever the invoice's payment state actually
   // supported at the moment compensation was applied.
-  discountId      String?                 @unique
-  discount        InvoiceDiscount?        @relation(fields: [discountId], references: [id])
-  refundId        String?                 @unique
-  refund          InvoiceRefund?          @relation(fields: [refundId], references: [id])
-  accountCreditId String?                 @unique
-  accountCredit   CustomerAccountCredit?  @relation(fields: [accountCreditId], references: [id])
+  discountId      String?                @unique
+  discount        InvoiceDiscount?       @relation(fields: [discountId], references: [id])
+  refundId        String?                @unique
+  refund          InvoiceRefund?         @relation(fields: [refundId], references: [id])
+  accountCreditId String?                @unique
+  accountCredit   CustomerAccountCredit? @relation(fields: [accountCreditId], references: [id])
 
   coveredConditions BackorderConditionCompensation[]
 
@@ -703,12 +703,12 @@ model BackorderCompensation {
 // by the invoice-level compensation" requirement, queryable in either
 // direction.
 model BackorderConditionCompensation {
-  id                       String                 @id @default(cuid())
-  backorderConditionId     String
-  backorderCondition       BackorderCondition     @relation(fields: [backorderConditionId], references: [id], onDelete: Cascade)
-  backorderCompensationId  String
-  backorderCompensation    BackorderCompensation  @relation(fields: [backorderCompensationId], references: [id], onDelete: Cascade)
-  createdAt                DateTime               @default(now())
+  id                      String                @id @default(cuid())
+  backorderConditionId    String
+  backorderCondition      BackorderCondition    @relation(fields: [backorderConditionId], references: [id], onDelete: Cascade)
+  backorderCompensationId String
+  backorderCompensation   BackorderCompensation @relation(fields: [backorderCompensationId], references: [id], onDelete: Cascade)
+  createdAt               DateTime              @default(now())
 
   @@unique([backorderConditionId, backorderCompensationId])
 }
@@ -746,10 +746,10 @@ model InvoiceRefund {
   relatedPaymentId      String?
   relatedPayment        InvoicePayment? @relation(fields: [relatedPaymentId], references: [id])
 
-  requestedAt DateTime  @default(now())
-  requestedBy String
-  completedAt DateTime?
-  completedBy String?
+  requestedAt   DateTime  @default(now())
+  requestedBy   String
+  completedAt   DateTime?
+  completedBy   String?
   failureReason String?
   cancelledAt   DateTime?
   cancelledBy   String?
@@ -1173,13 +1173,14 @@ model Customer {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  invoices      Invoice[]
-  intakeLinks   IntakeLink[]
-  activityLog   CustomerActivityLog[]
-  notifications Notification[]
+  invoices       Invoice[]
+  intakeLinks    IntakeLink[]
+  activityLog    CustomerActivityLog[]
+  notifications  Notification[]
   accountCredits CustomerAccountCredit[]
   communications Communication[]
   portalInvites  CustomerPortalInvite[]
+  accessEvents   CustomerAccessEvent[]
 
   @@index([email])
   @@index([phone])
@@ -1271,6 +1272,96 @@ model CustomerActivityLog {
   createdAt DateTime @default(now())
 
   @@index([customerId, createdAt])
+}
+
+// ─── Customer Access / Auth Audit Trail ──────────────────────────────────────
+// Auditable history of Clerk login/session lifecycle events, populated only
+// by the Clerk webhook handler (app/api/webhooks/clerk/route.ts) — never
+// written to directly. customerId is nullable because a Clerk user can
+// generate events (e.g. sign up, sign in) before ever being linked to a
+// Customer via claimPortalInvite() — those rows still matter for the audit
+// trail and get backfilled conceptually by joining on clerkUserId. Deleting
+// a Customer never deletes this history (no onDelete: Cascade) — same
+// "disabling/unlinking never destroys history" guarantee CustomerActivityLog
+// already gives, extended to auth events.
+//
+// Explicit hard constraint: this table must never store raw session tokens,
+// authentication cookies, passkeys, or other credential material — only
+// metadata about the fact that an event occurred.
+model CustomerAccessEvent {
+  id String @id @default(cuid())
+
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
+  clerkUserId    String?
+  clerkSessionId String?
+
+  eventType CustomerAccessEventType
+
+  // Clerk's own event timestamp vs. when our webhook actually received it —
+  // kept distinct so retry/delivery delay is visible rather than masked.
+  eventTimestamp DateTime
+  receivedAt     DateTime @default(now())
+
+  // Best-effort only — Clerk's webhook payloads do not reliably expose which
+  // strategy (password/passkey/OTP/OAuth) was used for a given sign-in, so
+  // this is frequently null. Documented limitation, not a bug.
+  authMethod String?
+
+  // Genuine end-customer device/location metadata, sourced only from
+  // SessionJSON.latest_activity on session.* events — never from
+  // event_attributes.http_request, which describes Clerk's own delivery
+  // infrastructure calling our webhook, not the customer's client.
+  deviceType     String?
+  browserName    String?
+  browserVersion String?
+  ipAddress      String?
+  city           String?
+  country        String?
+
+  emailAddress String?
+
+  // Free-text outcome description (e.g. "revoked", "ended by user",
+  // "removed") — the eventType already encodes the category; this captures
+  // Clerk's finer-grained status when present.
+  outcome String?
+
+  providerEventId  String                      @unique // svix-id — the idempotency key
+  processingStatus AccessEventProcessingStatus @default(PROCESSED)
+  failureReason    String?
+
+  // Free-text cross-reference to a related admin action (e.g. a
+  // CustomerActivityLog id), when this event was a direct consequence of
+  // one. Left null for ordinary Clerk-originated events.
+  relatedAdminAction String?
+
+  // "development" or "production" — read from the Clerk publishable key
+  // prefix at processing time, not hardcoded, so the same code is correct
+  // if/when the Clerk instance is promoted to production.
+  environment String
+
+  createdAt DateTime @default(now())
+
+  @@index([customerId, createdAt])
+  @@index([clerkUserId, createdAt])
+}
+
+enum CustomerAccessEventType {
+  USER_CREATED
+  USER_UPDATED
+  USER_DELETED
+  SESSION_CREATED
+  SESSION_ENDED
+  SESSION_REMOVED
+  SESSION_REVOKED
+  EMAIL_CREATED
+}
+
+enum AccessEventProcessingStatus {
+  PROCESSED
+  FAILED
+  IGNORED_DUPLICATE
 }
 
 // ─── Customer Intake Links ───────────────────────────────────────────────────
@@ -1501,7 +1592,7 @@ model Communication {
   // as a plain string (not a Prisma enum) so adding a new category never
   // requires a migration, matching InvoiceActivityLog/CustomerActivityLog's
   // existing eventType convention elsewhere in this schema.
-  status CommunicationStatus
+  status   CommunicationStatus
 
   fromAddress String?
   fromName    String?
@@ -1511,7 +1602,7 @@ model Communication {
   // The exact rendered HTML (email) or message text (SMS) that was sent —
   // an immutable snapshot, so "what did the customer actually receive"
   // never depends on the current state of the template that generated it.
-  body String
+  body        String
 
   customerId String?
   customer   Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
@@ -1522,9 +1613,9 @@ model Communication {
   // message was actually about — same "never trust a live FK to survive an
   // unrelated edit or deletion" posture as BackorderCondition.invoiceItemId.
   relatedPaymentId            String?
-  relatedRefundId              String?
+  relatedRefundId             String?
   relatedBackorderConditionId String?
-  relatedIntakeLinkId          String?
+  relatedIntakeLinkId         String?
 
   providerName      String? // 'resend' | 'twilio'
   providerMessageId String?
