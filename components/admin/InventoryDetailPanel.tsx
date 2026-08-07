@@ -289,6 +289,25 @@ export function InventoryDetailPanel({ product, availableUnits, completeCasesAva
               </button>
             </div>
 
+            <button
+              onClick={async () => {
+                setBusy(true)
+                setError(null)
+                try {
+                  await postAction(product.id, { action: 'RECONCILE', reason: 'Reconcile Inventory (admin-triggered)' })
+                  router.refresh()
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : 'Reconcile failed')
+                } finally {
+                  setBusy(false)
+                }
+              }}
+              disabled={busy}
+              className="mb-4 rounded-lg border border-g100 px-3 py-2 text-[12px] font-heading font-bold text-dark hover:bg-g100"
+            >
+              Reconcile Inventory
+            </button>
+
             {product.physicalStockOnHand === null ? (
               <button
                 onClick={() => setActiveAction('INITIALIZE')}

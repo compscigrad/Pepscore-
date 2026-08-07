@@ -1,0 +1,54 @@
+// Admin reservation browser + discrepancy-correction workspace --
+// "Admin must be able to inspect reservations by invoice/invoice line/
+// product/customer/status." Search runs server-side on load with whatever
+// query params are present; corrections happen client-side against
+// /api/admin/inventory/reservations/[id].
+export const dynamic = 'force-dynamic'
+
+import { auth } from '@clerk/nextjs/server'
+import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import { isAdminClerkUser } from '@/lib/isAdmin'
+import { findReservations } from '@/lib/inventory/corrections'
+import { ReservationCorrectionPanel } from '@/components/admin/ReservationCorrectionPanel'
+
+interface Props {
+  searchParams: Promise<{ invoiceId?: string; productId?: string; status?: string }>
+}
+
+export default async function AdminReservationsPage({ searchParams }: Props) {
+  const { userId } = await auth()
+  if (!userId) redirect('/sign-in?redirect_url=/admin/inventory/reservations')
+  if (!isAdminClerkUser(userId)) {
+    return (
+      <main className="min-h-screen bg-g100 flex items-center justify-center p-8">
+        <div className="bg-white rounded-2xl shadow-sh p-8 max-w-md text-center">
+          <h1 className="font-heading text-xl font-bold text-dark mb-2">Access Denied</h1>
+          <p className="text-g500 text-sm">This account isn&apos;t authorized to view the admin dashboard.</p>
+        </div>
+      </main>
+    )
+  }
+
+  const params = await searchParams
+  const status = params.status === 'ACTIVE' || params.status === 'RELEASED' || params.status === 'FULFILLED' ? params.status : undefined
+  const reservations = await findReservations({ invoiceId: params.invoiceId, productId: params.productId, status })
+
+  return (
+    <main className="min-h-screen bg-g100 p-6 md:p-8">
+      <div className="max-w-[1200px] mx-auto">
+        <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
+          <div>
+            <h1 className="font-heading text-2xl font-bold text-dark">Reservations</h1>
+            <p className="text-g500 text-sm mt-0.5">Inspect and correct inventory reservations by invoice, product, or status</p>
+          </div>
+          <Link href="/admin/inventory" className="text-[12px] font-heading font-bold text-gold hover:text-gold-dark uppercase tracking-[0.06em]">
+            ← Inventory
+          </Link>
+        </div>
+
+        <ReservationCorrectionPanel reservations={reservations} defaultStatus={status ?? 'ACTIVE'} />
+      </div>
+    </main>
+  )
+}

@@ -14,6 +14,7 @@ import {
   setExactCount,
   reverseLastAdjustment,
 } from '@/lib/inventory/actions'
+import { reconcileInventory, correctUnitsPerCase } from '@/lib/inventory/corrections'
 import { prisma } from '@/lib/prisma'
 
 function isAdmin(userId: string | null) {
@@ -33,6 +34,12 @@ const actionSchema = z.discriminatedUnion('action', [
     unitsPerCase: z.number().int().positive().nullable().optional(),
     lowStockThreshold: z.number().int().min(0).nullable().optional(),
   }),
+  // Discrepancy-correction actions -- distinct from the routine actions
+  // above in that they always require a reason, and RECONCILE fixes the
+  // reservedUnits cache against the actual sum of ACTIVE reservations
+  // rather than touching physical stock at all.
+  z.object({ action: z.literal('RECONCILE'), reason: z.string().optional() }),
+  z.object({ action: z.literal('CORRECT_UNITS_PER_CASE'), unitsPerCase: z.number().int().positive().nullable(), reason: z.string().min(1) }),
 ])
 
 interface RouteParams {
@@ -77,6 +84,12 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
           where: { id },
           data: { unitsPerCase: payload.unitsPerCase, lowStockThreshold: payload.lowStockThreshold },
         })
+        break
+      case 'RECONCILE':
+        result = await reconcileInventory(id, actor, payload.reason)
+        break
+      case 'CORRECT_UNITS_PER_CASE':
+        result = await correctUnitsPerCase(id, payload.unitsPerCase, actor, payload.reason)
         break
     }
 
