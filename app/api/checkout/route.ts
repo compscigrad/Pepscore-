@@ -8,10 +8,20 @@ import { stripe } from '@/lib/stripe'
 import { prisma } from '@/lib/prisma'
 import { generateOrderNumber, generateInvoiceNumber } from '@/lib/orders'
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
+import { isStorefrontCheckoutEnabled, STOREFRONT_CHECKOUT_DISABLED_MESSAGE } from '@/lib/storefront/checkoutGate'
 import type { CheckoutLineItem, ShippingAddress } from '@/types'
 
 export async function POST(req: NextRequest) {
   try {
+    // Authoritative server-side gate -- checked before any Stripe call, any
+    // rate-limit bookkeeping, or any DB write, so a disabled storefront
+    // never creates a PENDING Order/Invoice row for a checkout that can't
+    // actually complete. The checkout page's own UI gate is a convenience;
+    // this is the real boundary no client request can bypass.
+    if (!isStorefrontCheckoutEnabled()) {
+      return NextResponse.json({ error: STOREFRONT_CHECKOUT_DISABLED_MESSAGE }, { status: 503 })
+    }
+
     const rateLimit = checkRateLimit(`checkout:${getClientIp(req)}`, 10, 60_000)
     if (!rateLimit.allowed) {
       return NextResponse.json(
