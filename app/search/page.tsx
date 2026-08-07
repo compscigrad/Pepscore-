@@ -10,6 +10,7 @@ import { CartSidebar } from '@/components/storefront/CartSidebar'
 import { ProductCard } from '@/components/storefront/ProductCard'
 import { searchProducts } from '@/lib/storefront/search'
 import { groupByName } from '@/lib/storefront/groupByName'
+import { getCurrentCustomerSpaEligible } from '@/lib/storefront/spaEligibility'
 
 export const metadata: Metadata = {
   title: 'Search Results | Pepscore',
@@ -23,8 +24,8 @@ interface PageProps {
 export default async function SearchPage({ searchParams }: PageProps) {
   const { q } = await searchParams
   const query = (q ?? '').trim()
-  const rows = query ? await searchProducts(query) : []
-  const products = groupByName(rows)
+  const [rows, spaEligible] = await Promise.all([query ? searchProducts(query) : Promise.resolve([]), getCurrentCustomerSpaEligible()])
+  const products = groupByName(rows, { spaEligible })
 
   return (
     <>

@@ -16,6 +16,7 @@ import { CorrespondenceHistory } from '@/components/invoices/CorrespondenceHisto
 import { StatusBadge } from '@/components/invoices/StatusBadge'
 import { card, mutedText, sectionHeading, pillPrimary } from '@/components/invoices/theme'
 import { PortalAccessSection } from '@/components/admin/PortalAccessSection'
+import { SpaEligibilitySection } from '@/components/admin/SpaEligibilitySection'
 import { getPortalReadinessStatus, type PortalReadinessStatus } from '@/lib/portal/readiness'
 import { AccessHistorySection } from '@/components/admin/AccessHistorySection'
 import { LocalTimestamp } from '@/components/admin/LocalTimestamp'
@@ -289,6 +290,8 @@ export default async function CustomerProfilePage({ params }: PageProps) {
         </div>
 
         <PortalAccessSection customerId={customer.id} hasEmail={Boolean(customer.email)} />
+
+        <SpaEligibilitySection customerId={customer.id} />
 
         {customer.userId ? <AccessHistorySection customerId={customer.id} /> : null}
 

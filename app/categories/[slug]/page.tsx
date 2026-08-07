@@ -11,6 +11,7 @@ import { CartSidebar } from '@/components/storefront/CartSidebar'
 import { ProductCard } from '@/components/storefront/ProductCard'
 import { categoryToSlug } from '@/lib/storefront/categorySlug'
 import { groupByName } from '@/lib/storefront/groupByName'
+import { getCurrentCustomerSpaEligible } from '@/lib/storefront/spaEligibility'
 
 export const revalidate = 60
 
@@ -47,11 +48,14 @@ export default async function CategoryDetailPage({ params }: PageProps) {
   const category = await resolveCategory(slug)
   if (!category) notFound()
 
-  const rows = await prisma.product.findMany({
-    where: { category, pricingStatus: { not: 'INACTIVE' } },
-    orderBy: { createdAt: 'asc' },
-  })
-  const products = groupByName(rows)
+  const [rows, spaEligible] = await Promise.all([
+    prisma.product.findMany({
+      where: { category, pricingStatus: { not: 'INACTIVE' } },
+      orderBy: { createdAt: 'asc' },
+    }),
+    getCurrentCustomerSpaEligible(),
+  ])
+  const products = groupByName(rows, { spaEligible })
 
   return (
     <>

@@ -1395,6 +1395,14 @@ model Customer {
   // null) is the separate, more drastic action for "this link is wrong."
   portalAccessDisabled Boolean @default(false)
 
+  // Explicit SPA/wholesale pricing eligibility for the storefront (Phase 2B).
+  // Never inferred from email domain, geography, name, or purchase history
+  // -- only ever set by an admin action (lib/customers/spaEligibility.ts),
+  // audited via CustomerActivityLog (SPA_ELIGIBILITY_GRANTED/_REVOKED)
+  // rather than new dedicated columns, matching how every other admin
+  // action in this schema is already audited.
+  spaEligible Boolean @default(false)
+
   billingAddress  Json?
   shippingAddress Json?
 

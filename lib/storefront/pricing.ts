@@ -17,9 +17,19 @@ export interface StorefrontPrice {
   standardCasePrice: number
   unitsPerCase: number | null
   individualVialPrice: number | null
+  // Only ever populated when the caller passes spaEligible: true -- see
+  // lib/storefront/spaEligibility.ts. Never shown to a public/unauthenticated
+  // visitor or a signed-in customer without explicit admin-granted
+  // eligibility (Phase 2B section 4/16).
+  spaCasePrice: number | null
 }
 
-export function getStorefrontPrice(product: Pick<Product, 'pricingStatus' | 'activeStandardCasePrice' | 'unitsPerCase' | 'individualSalesEnabled' | 'activeIndividualVialPrice'>): StorefrontPrice | null {
+type PriceableProduct = Pick<
+  Product,
+  'pricingStatus' | 'activeStandardCasePrice' | 'unitsPerCase' | 'individualSalesEnabled' | 'activeIndividualVialPrice' | 'activeSpaCasePrice'
+>
+
+export function getStorefrontPrice(product: PriceableProduct, options: { spaEligible?: boolean } = {}): StorefrontPrice | null {
   if (product.pricingStatus !== 'ACTIVE') return null
   if (product.activeStandardCasePrice == null) return null
   return {
@@ -29,5 +39,6 @@ export function getStorefrontPrice(product: Pick<Product, 'pricingStatus' | 'act
     // activeIndividualVialPrice alone (e.g. Tesamorelin's hidden $80/$45
     // rows) must never become publicly visible or purchasable.
     individualVialPrice: product.individualSalesEnabled ? (product.activeIndividualVialPrice ?? null) : null,
+    spaCasePrice: options.spaEligible ? (product.activeSpaCasePrice ?? null) : null,
   }
 }

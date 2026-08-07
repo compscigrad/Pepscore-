@@ -31,6 +31,10 @@ export interface ProductVariant {
   // a stored individual price with sales disabled (e.g. Tesamorelin) must
   // never reach this component at all.
   individualVialPrice: number | null
+  // Only ever set when the current visitor is an admin-granted SPA-eligible
+  // customer (lib/storefront/spaEligibility.ts) -- never shown to a public
+  // or standard-eligibility visitor regardless of what's stored.
+  spaCasePrice: number | null
   // Real inventory-derived state, never the exact physical count. See
   // lib/storefront/availability.ts.
   availability: StorefrontAvailability
@@ -160,6 +164,15 @@ export function ProductCard({ name, category, description, imageUrl, badge, vari
                   </div>
                 )}
               </div>
+
+              {/* SPA case price — only ever populated for an admin-granted
+                  eligible signed-in customer, see lib/storefront/pricing.ts */}
+              {v.spaCasePrice != null && (
+                <div className="bg-gold/8 border border-gold/25 rounded-lg p-2.5 flex items-center justify-between">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.06em] text-gold-dark">SPA Price</p>
+                  <p className="font-heading text-[15px] font-bold text-gold-dark">${v.spaCasePrice}</p>
+                </div>
+              )}
 
               {/* Add to Cart CTA — disabled with a plain-language label
                   instead of hidden, so a priced-but-unavailable variant
