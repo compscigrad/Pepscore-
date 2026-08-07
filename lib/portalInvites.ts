@@ -13,6 +13,7 @@ import crypto from 'crypto'
 import type { CustomerPortalInvite, Customer } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { recordCustomerActivity } from '@/lib/customers'
+import { upsertUserByClerkId } from '@/lib/user'
 import { sendCategorizedEmail, sendCategorizedSms } from '@/lib/notifications/log'
 import {
   portalInviteSubject,
@@ -204,11 +205,7 @@ export async function claimPortalInvite(input: ClaimPortalInviteInput): Promise<
     return { ok: false, reason: 'EMAIL_MISMATCH' }
   }
 
-  const user = await prisma.user.upsert({
-    where: { clerkId: input.clerkUserId },
-    update: {},
-    create: { clerkId: input.clerkUserId, email: input.clerkVerifiedEmail },
-  })
+  const user = await upsertUserByClerkId(input.clerkUserId, input.clerkVerifiedEmail)
 
   const userAlreadyLinkedElsewhere = await prisma.customer.findFirst({
     where: { userId: user.id, id: { not: customer.id } },
