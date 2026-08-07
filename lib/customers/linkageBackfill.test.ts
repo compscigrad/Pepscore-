@@ -1,9 +1,19 @@
 import { describe, it, expect } from 'vitest'
-import { planLinkageBackfill, looksLikeTestData, splitName, normalizeEmail, normalizePhone } from './linkageBackfill'
+import { planLinkageBackfill, looksLikeTestData, splitName, normalizeEmail, normalizePhone, pickMostRecentAddress } from './linkageBackfill'
 import type { OrphanInvoiceSnapshot, ExistingCustomerCandidate } from './linkageBackfill'
 
 function invoice(overrides: Partial<OrphanInvoiceSnapshot>): OrphanInvoiceSnapshot {
-  return { id: 'inv1', invoiceNumber: 'PS-0001', customerName: 'Jane Doe', customerEmail: 'jane@example.org', customerPhone: null, ...overrides }
+  return {
+    id: 'inv1',
+    invoiceNumber: 'PS-0001',
+    customerName: 'Jane Doe',
+    customerEmail: 'jane@example.org',
+    customerPhone: null,
+    billingAddress: null,
+    shippingAddress: null,
+    createdAt: new Date('2026-01-01'),
+    ...overrides,
+  }
 }
 
 describe('splitName', () => {
@@ -97,5 +107,43 @@ describe('planLinkageBackfill', () => {
     expect(plan.safeCreateNew).toHaveLength(0)
     expect(plan.safeLinkExisting).toHaveLength(0)
     expect(plan.ambiguous).toHaveLength(0)
+  })
+})
+
+describe('pickMostRecentAddress', () => {
+  const addr1 = { street1: '650 S Spring Street', city: 'Los Angeles' }
+  const addr2 = { street1: '650 South Spring Street', city: 'Los Angeles' }
+
+  it('returns null addresses when no invoice in the group has one', () => {
+    const result = pickMostRecentAddress([invoice({}), invoice({ id: 'inv2' })])
+    expect(result).toEqual({ billingAddress: null, shippingAddress: null, sourceInvoiceNumber: null })
+  })
+
+  it('uses the single address when only one invoice has one', () => {
+    const result = pickMostRecentAddress([invoice({ billingAddress: addr1, shippingAddress: addr1 })])
+    expect(result.billingAddress).toEqual(addr1)
+    expect(result.sourceInvoiceNumber).toBe('PS-0001')
+  })
+
+  it('picks the most-recently-created invoice address when addresses differ (this is Marvin Alexander\'s exact case)', () => {
+    const older = invoice({ id: 'a', invoiceNumber: 'PS-2026-000001', billingAddress: addr1, shippingAddress: addr1, createdAt: new Date('2026-07-20') })
+    const newer = invoice({ id: 'b', invoiceNumber: 'PS-2026-000020', billingAddress: addr2, shippingAddress: addr2, createdAt: new Date('2026-07-28') })
+    const result = pickMostRecentAddress([older, newer])
+    expect(result.billingAddress).toEqual(addr2)
+    expect(result.sourceInvoiceNumber).toBe('PS-2026-000020')
+  })
+
+  it('ignores invoice order in the input array -- always sorts by createdAt', () => {
+    const older = invoice({ id: 'a', invoiceNumber: 'OLD', billingAddress: addr1, createdAt: new Date('2026-01-01') })
+    const newer = invoice({ id: 'b', invoiceNumber: 'NEW', billingAddress: addr2, createdAt: new Date('2026-06-01') })
+    expect(pickMostRecentAddress([newer, older]).sourceInvoiceNumber).toBe('NEW')
+    expect(pickMostRecentAddress([older, newer]).sourceInvoiceNumber).toBe('NEW')
+  })
+
+  it('skips invoices with no address when picking the most recent one that has one', () => {
+    const withNoAddress = invoice({ id: 'a', invoiceNumber: 'NO-ADDR', createdAt: new Date('2026-06-01') })
+    const withAddress = invoice({ id: 'b', invoiceNumber: 'HAS-ADDR', billingAddress: addr1, createdAt: new Date('2026-01-01') })
+    const result = pickMostRecentAddress([withNoAddress, withAddress])
+    expect(result.sourceInvoiceNumber).toBe('HAS-ADDR')
   })
 })

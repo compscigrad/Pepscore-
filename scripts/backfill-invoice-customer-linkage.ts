@@ -13,9 +13,10 @@
 // Categorization logic lives in lib/customers/linkageBackfill.ts (unit
 // tested, DB-free). This script is the thin, once-run I/O wrapper --
 // mirrors scripts/backfill-invoice-status.ts's --dry-run convention.
+import type { Prisma } from '@prisma/client'
 import { prisma } from '../lib/prisma'
 import { createCustomer, syncCustomerFromInvoiceEvent } from '../lib/customers'
-import { planLinkageBackfill, splitName } from '../lib/customers/linkageBackfill'
+import { planLinkageBackfill, splitName, pickMostRecentAddress } from '../lib/customers/linkageBackfill'
 import type { OrphanInvoiceSnapshot, ExistingCustomerCandidate } from '../lib/customers/linkageBackfill'
 
 const ACTOR = 'system-linkage-backfill'
@@ -25,7 +26,16 @@ async function main() {
 
   const orphanInvoices: OrphanInvoiceSnapshot[] = await prisma.invoice.findMany({
     where: { customerId: null },
-    select: { id: true, invoiceNumber: true, customerName: true, customerEmail: true, customerPhone: true },
+    select: {
+      id: true,
+      invoiceNumber: true,
+      customerName: true,
+      customerEmail: true,
+      customerPhone: true,
+      billingAddress: true,
+      shippingAddress: true,
+      createdAt: true,
+    },
   })
   const existingCustomers: ExistingCustomerCandidate[] = await prisma.customer.findMany({
     select: { id: true, firstName: true, lastName: true, email: true, phone: true },
@@ -37,10 +47,21 @@ async function main() {
 
   for (const group of plan.safeCreateNew) {
     const { firstName, lastName } = splitName(group.name)
+    const { billingAddress, shippingAddress, sourceInvoiceNumber } = pickMostRecentAddress(group.invoices)
     let customerId: string
     if (!dryRun) {
-      const customer = await createCustomer({ firstName, lastName, email: group.email, phone: group.phone })
+      const customer = await createCustomer({
+        firstName,
+        lastName,
+        email: group.email,
+        phone: group.phone,
+        billingAddress: billingAddress as Prisma.InputJsonValue | null,
+        shippingAddress: shippingAddress as Prisma.InputJsonValue | null,
+      })
       customerId = customer.id
+      if (sourceInvoiceNumber) {
+        console.log(`  (address for ${firstName} ${lastName} seeded from ${sourceInvoiceNumber})`)
+      }
       for (const inv of group.invoices) {
         await prisma.invoice.update({ where: { id: inv.id }, data: { customerId } })
         await syncCustomerFromInvoiceEvent({

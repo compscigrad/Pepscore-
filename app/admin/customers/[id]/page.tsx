@@ -167,6 +167,8 @@ export default async function CustomerProfilePage({ params }: PageProps) {
               email={customer.email}
               phone={customer.phone}
               company={customer.company}
+              billingAddress={customer.billingAddress}
+              shippingAddress={customer.shippingAddress}
             />
           </div>
 

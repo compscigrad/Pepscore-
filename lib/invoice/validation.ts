@@ -3,7 +3,7 @@
 // render invoices that are still mid-edit) so all hard validation lives here.
 import { z } from 'zod'
 
-const addressSchema = z.object({
+export const addressSchema = z.object({
   street1: z.string().min(1, 'Street address is required'),
   street2: z.string().optional(),
   city: z.string().min(1, 'City is required'),
