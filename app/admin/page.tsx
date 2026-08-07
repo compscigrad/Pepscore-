@@ -30,6 +30,7 @@ import { prisma } from '@/lib/prisma'
 import { formatCurrency } from '@/lib/orders'
 import { isAdminClerkUser } from '@/lib/isAdmin'
 import { getAdminOperationsSummary, getRecentSalesActivity, type AdminOperationsSummary } from '@/lib/adminDashboard'
+import { getDashboardInventoryAlerts } from '@/lib/adminInventory'
 import { AdminOrdersTable } from '@/components/admin/AdminOrdersTable'
 import { AdminSalesActivityTable } from '@/components/admin/AdminSalesActivityTable'
 import { AdminExportPanel } from '@/components/admin/AdminExportPanel'
@@ -101,10 +102,11 @@ export default async function AdminDashboard() {
     )
   }
 
-  const [operations, salesActivity, storefront, recentOrdersResult] = await Promise.all([
+  const [operations, salesActivity, storefront, inventoryAlerts, recentOrdersResult] = await Promise.all([
     loadSection('Operations Summary', getAdminOperationsSummary),
     loadSection('Sales Activity', getRecentSalesActivity),
     loadSection('Storefront Stats', getStorefrontStats),
+    loadSection('Inventory Alerts', getDashboardInventoryAlerts),
     loadSection('Recent Orders', () =>
       prisma.order.findMany({
         include: {
@@ -133,6 +135,9 @@ export default async function AdminDashboard() {
             <Link href="/admin/intake-queue" className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-g500 hover:text-gold transition-colors">
               Intake Queue
             </Link>
+            <Link href="/admin/inventory" className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-g500 hover:text-gold transition-colors">
+              Inventory
+            </Link>
             <Link href="/admin/identity-review" className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-g500 hover:text-gold transition-colors">
               Identity Review
             </Link>
@@ -149,6 +154,31 @@ export default async function AdminDashboard() {
         ) : (
           <ErrorCard label="Operations Summary" error={operations.error} />
         )}
+
+        {/* ── Inventory Alerts (only rendered when there's something to see —
+             a healthy catalog with zero alerts shows nothing here rather than
+             an empty banner) ── */}
+        {inventoryAlerts.ok &&
+          (inventoryAlerts.data.openLowStockAlerts > 0 ||
+            inventoryAlerts.data.awaitingInitializationCount > 0 ||
+            inventoryAlerts.data.outOfStockCount > 0) && (
+            <div className="bg-white rounded-2xl shadow-sh p-5 mb-8 flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-5 flex-wrap text-[13px]">
+                {inventoryAlerts.data.outOfStockCount > 0 && (
+                  <span className="font-heading font-bold text-red-600">{inventoryAlerts.data.outOfStockCount} out of stock</span>
+                )}
+                {inventoryAlerts.data.openLowStockAlerts > 0 && (
+                  <span className="font-heading font-bold text-orange-700">{inventoryAlerts.data.openLowStockAlerts} low-stock alert{inventoryAlerts.data.openLowStockAlerts === 1 ? '' : 's'}</span>
+                )}
+                {inventoryAlerts.data.awaitingInitializationCount > 0 && (
+                  <span className="font-heading font-bold text-amber-700">{inventoryAlerts.data.awaitingInitializationCount} awaiting inventory initialization</span>
+                )}
+              </div>
+              <Link href="/admin/inventory" className="text-[12px] font-heading font-bold text-gold hover:text-gold-dark uppercase tracking-[0.06em]">
+                Manage Inventory →
+              </Link>
+            </div>
+          )}
 
         {/* ── Sales Activity (Invoice-sourced -- the real, populated sales
              history today; Order-sourced storefront rows will join this same

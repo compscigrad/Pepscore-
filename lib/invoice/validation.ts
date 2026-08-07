@@ -27,6 +27,15 @@ const lineItemSchema = z.object({
   unitPrice: z.number().nonnegative('Price cannot be negative'),
   lineDiscount: z.number().nonnegative().default(0),
   sortOrder: z.number().int().default(0),
+  // Inventory & Pricing MVP -- all optional so a free-typed line item (no
+  // catalog product, or a catalog product with no configured sell units)
+  // stays exactly as valid as it was before this sprint.
+  sellUnit: z.enum(['CASE_STANDARD', 'CASE_SPA', 'CASE_BULK', 'INDIVIDUAL_VIAL']).optional().nullable(),
+  unitsPerSellUnit: z.number().int().positive().optional().nullable(),
+  priceTier: z.enum(['STANDARD', 'SPA', 'BULK', 'INDIVIDUAL', 'MANUAL']).optional().nullable(),
+  skuSnapshot: z.string().optional().nullable(),
+  manualPricingOverride: z.boolean().optional(),
+  inventoryQuantityConsumed: z.number().int().nonnegative().optional().nullable(),
 })
 
 const discountSchema = z.object({

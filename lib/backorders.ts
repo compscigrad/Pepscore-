@@ -389,6 +389,14 @@ export async function applyBackorder(input: ApplyBackorderInput) {
         invoiceId: input.invoiceId,
         invoiceItemId: input.invoiceItemId,
         productName: item.name,
+        // Additive (Inventory & Pricing MVP) -- snapshotted here, same
+        // reasoning as productName above: a later change to the product's
+        // unitsPerCase, or the item being edited, must never rewrite what
+        // this specific backorder actually represented at the time it was
+        // applied. Both stay null for a line item with no catalog product
+        // or no inventory-quantity snapshot (e.g. free-typed line items).
+        productId: item.productId ?? undefined,
+        vialsBackordered: item.inventoryQuantityConsumed ?? undefined,
         status: 'ACTIVE',
         expectedAvailableDate: input.expectedAvailableDate ?? undefined,
         appliedAt: new Date(),

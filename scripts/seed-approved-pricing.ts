@@ -1,0 +1,137 @@
+// One-off seed for the two products with fully owner-approved active
+// pricing (2026-08-06 pricing discussion): Tesamorelin 10mg's manual
+// competitive-market override, and GLOW70's locked override (which also
+// requires creating the Product row -- GLOW70 does not exist in the
+// catalog today, confirmed by the pricing-catalog audit run ahead of this
+// sprint).
+//
+// Every other product in the RUO price table is deliberately left alone --
+// see scripts/import-pricing-catalog.ts for the read-only mapping/
+// suggested-pricing pass across the full 119-row catalog. This script only
+// ever touches these two specific rows, and never sets inventoryTrackingEnabled
+// or a physical stock count (opening quantities are never invented; that's
+// a separate, explicit admin action once real counts are available).
+import { prisma } from '../lib/prisma'
+import { seedProductPricing } from '../lib/pricing/service'
+
+async function main() {
+  const dryRun = process.argv.includes('--dry-run')
+  const results: Array<Record<string, unknown>> = []
+
+  // ─── Tesamorelin 10mg — manual competitive-market override ──────────────
+  const tesamorelin = await prisma.product.findUnique({ where: { slug: 'tesamorelin-10mg' } })
+  if (!tesamorelin) {
+    results.push({ product: 'Tesamorelin 10mg', skipped: 'no product with slug tesamorelin-10mg found' })
+  } else {
+    if (!dryRun) {
+      await seedProductPricing(tesamorelin.id, {
+        supplierCaseCost: 177, // RUO price table formula baseline
+        unitsPerCase: 10,
+        activeStandardCasePrice: 775,
+        activeSpaCasePrice: 700,
+        activeBulkPrice: null, // pending owner direction, per instruction
+        activeIndividualVialPrice: 80,
+        individualSalesEnabled: false,
+        manualPricingOverride: true,
+        pricingOverrideReason: 'Manual competitive-market override (2026-08-06) — supersedes the formula-suggested case price ($1,425/$1,004). Individual vial price stored for database completeness only; sales disabled until admin explicitly enables.',
+        pricingNotes: 'Not currently sold by individual vial — only Standard and SPA case.',
+        sku: null,
+      })
+    }
+    results.push({ product: 'Tesamorelin 10mg', productId: tesamorelin.id, applied: !dryRun })
+  }
+
+  // ─── Tesamorelin 5mg — derived from the approved 10mg override ──────────
+  // Formula: (10mg active price / 2) + $5, applied independently per
+  // column: SPA (700/2)+5=355, Individual (80/2)+5=45 -- both kept exactly
+  // as formula-derived. Standard is the one deliberate exception: the
+  // formula gives $392.50, but the owner rounded that to the cleaner
+  // commercial price of $395 (2026-08-06 correction) -- so this seed writes
+  // $395, not $392.50, even though $392.50 is what the formula in this
+  // comment would produce. Never the general Retatrutide-based supplier-
+  // cost multiplier -- that model doesn't apply here since this is a
+  // derived-from-sibling-strength override, not a formula-from-supplier-
+  // cost product.
+  const tesamorelin5mg = await prisma.product.findUnique({ where: { slug: 'tesamorelin-5mg' } })
+  if (!tesamorelin5mg) {
+    results.push({ product: 'Tesamorelin 5mg', skipped: 'no product with slug tesamorelin-5mg found' })
+  } else {
+    if (!dryRun) {
+      await seedProductPricing(tesamorelin5mg.id, {
+        supplierCaseCost: null, // not a supplier-cost-formula product -- see reason below
+        unitsPerCase: 10,
+        activeStandardCasePrice: 395, // rounded from the formula-derived 392.50, see comment above
+        activeSpaCasePrice: 355,
+        activeBulkPrice: null,
+        activeIndividualVialPrice: 45,
+        individualSalesEnabled: false,
+        manualPricingOverride: true,
+        pricingOverrideReason: 'Derived from approved Tesamorelin 10mg competitive pricing (2026-08-06). Formula: (10mg active price / 2) + $5 -- SPA (700/2)+5=355, Individual (80/2)+5=45 kept as formula-derived. Standard case rounded from the formula-derived $392.50 to the cleaner commercial price of $395 per explicit owner instruction. Individual vial price stored for database completeness only; sales disabled until admin explicitly enables.',
+        pricingNotes: 'Not currently sold by individual vial — only Standard and SPA case. Pricing intentionally derived (Standard commercially rounded), not independently formula-calculated or guessed.',
+        sku: null,
+      })
+      await prisma.adminAuditLog.create({
+        data: {
+          action: 'SEED_DERIVED_PRICING',
+          entity: 'Product',
+          entityId: tesamorelin5mg.id,
+          adminId: 'system-pricing-seed',
+          details: {
+            formula: '(Tesamorelin 10mg active price / 2) + 5',
+            derivedFrom: 'tesamorelin-10mg',
+            activeStandardCasePrice: 392.5,
+            activeSpaCasePrice: 355,
+            activeIndividualVialPrice: 45,
+          },
+        },
+      })
+    }
+    results.push({ product: 'Tesamorelin 5mg', productId: tesamorelin5mg.id, applied: !dryRun })
+  }
+
+  // ─── GLOW70 — locked pricing, product row does not exist yet ────────────
+  let glow70 = await prisma.product.findUnique({ where: { slug: 'glow70-70mg' } })
+  if (!glow70 && !dryRun) {
+    glow70 = await prisma.product.create({
+      data: {
+        slug: 'glow70-70mg',
+        name: 'GLOW70',
+        category: 'Combination',
+        size: '70mg',
+        // Legacy flat-price field (storefront / invoice-item datalist) —
+        // set to the approved individual-vial price since individual sales
+        // are enabled for this product, matching how every other
+        // individual-sale-eligible product's legacy `price` field is used.
+        price: 89,
+        description: 'Pre-formulated recovery and wellness blend. [Placeholder description carried over from the sibling GLOW50 product pattern — flag for owner review/replacement with GLOW70-specific copy.]',
+        imageUrl: '/images/ALL.png', // same fallback GLOW50 uses; no GLOW70-specific asset exists yet
+        costOfGoods: 0, // legacy field superseded by supplierCaseCost below for this product
+      },
+    })
+  }
+
+  if (!glow70) {
+    results.push({ product: 'GLOW70', skipped: dryRun ? 'DRY RUN — product would be created' : 'creation failed' })
+  } else {
+    if (!dryRun) {
+      await seedProductPricing(glow70.id, {
+        supplierCaseCost: 186,
+        unitsPerCase: 10,
+        activeStandardCasePrice: 725,
+        activeSpaCasePrice: 565,
+        activeBulkPrice: null,
+        activeIndividualVialPrice: 89,
+        individualSalesEnabled: true,
+        manualPricingOverride: true,
+        pricingOverrideReason: 'Locked GLOW70 pricing (2026-08-06 pricing discussion) — do not replace with formula-generated pricing.',
+        sku: null,
+      })
+    }
+    results.push({ product: 'GLOW70', productId: glow70.id, created: true, applied: !dryRun })
+  }
+
+  console.log(JSON.stringify({ mode: dryRun ? 'DRY RUN — no writes made' : 'APPLIED', results }, null, 2))
+  await prisma.$disconnect()
+}
+
+main().catch((e) => { console.error(e); process.exit(1) })

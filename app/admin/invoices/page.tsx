@@ -37,6 +37,12 @@ export default async function InvoicesDashboard() {
               Intake Queue
             </Link>
             <Link
+              href="/admin/inventory"
+              className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
+            >
+              Inventory
+            </Link>
+            <Link
               href="/admin/identity-review"
               className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
             >
