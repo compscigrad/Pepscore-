@@ -181,7 +181,7 @@ export function SellUnitCorrectionDialog({ invoiceId, itemId, onClose }: Props) 
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-4 mb-4 text-[13px]">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 text-[13px]">
         <div>
           <p className="text-white/40 text-[11px] uppercase tracking-wide mb-1">Current</p>
           <p className="text-white">Sell unit: {data.item.sellUnit ? SELL_UNIT_LABEL[data.item.sellUnit] : '—'}</p>
