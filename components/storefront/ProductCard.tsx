@@ -7,6 +7,7 @@ import toast from 'react-hot-toast'
 import { useCartStore } from '@/lib/cart-store'
 import { SingleVialImage } from './SingleVialImage'
 import { isPurchasable, AVAILABILITY_LABEL, type StorefrontAvailability } from '@/lib/storefront/availability'
+import { categoryToSlug } from '@/lib/storefront/categorySlug'
 
 // Any imageUrl pointing at this path triggers the dynamic SVG vial renderer.
 const GENERIC_PLACEHOLDER = '/images/products/default-single-vial.png'
@@ -93,8 +94,13 @@ export function ProductCard({ name, category, description, imageUrl, badge, vari
 
       {/* Card body — flex column so bottom section always aligns */}
       <div className="p-[18px] flex flex-col flex-1">
-        {/* Category label */}
-        <p className="font-heading text-[10px] font-bold tracking-[0.12em] uppercase text-gold mb-1">{category}</p>
+        {/* Category label — links to the category page */}
+        <Link
+          href={`/categories/${categoryToSlug(category)}`}
+          className="font-heading text-[10px] font-bold tracking-[0.12em] uppercase text-gold mb-1 hover:underline inline-block"
+        >
+          {category}
+        </Link>
 
         {/* Product name — links to the currently selected variant's page */}
         <Link href={`/products/${v.slug}`}>
