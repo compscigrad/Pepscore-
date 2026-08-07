@@ -9,6 +9,7 @@ import { Footer } from '@/components/storefront/Footer'
 import { ContactSection } from '@/components/storefront/ContactSection'
 import { ProductCard, type ProductCardProps } from '@/components/storefront/ProductCard'
 import { CartSidebar } from '@/components/storefront/CartSidebar'
+import { getStorefrontPrice } from '@/lib/storefront/pricing'
 
 // Revalidate every 60 s so product changes reflect quickly without a full deploy
 export const revalidate = 60
@@ -98,17 +99,21 @@ function resolveProductImage(name: string, dbUrl: string | null | undefined): st
 }
 
 // Groups flat product rows by name into consolidated cards with a variants array.
-// Preserves all pricing data — no rows are discarded.
+// Every row is kept regardless of pricing state — a variant with no approved
+// active price still browses, it just can't be added to cart (ProductCard
+// shows a "pricing available on request" state instead of a fabricated
+// number). See lib/storefront/pricing.ts.
 function groupByName(rows: DbProduct[]): ProductCardProps[] {
   const map = new Map<string, ProductCardProps>()
   for (const p of rows) {
+    const price = getStorefrontPrice(p)
     const variant = {
       id: p.id,
       slug: p.slug,
       size: p.size,
-      price: p.price,
-      bulkPrice5: p.bulkPrice5 ?? p.price,
-      bulkPrice10: p.bulkPrice10 ?? p.price,
+      standardCasePrice: price?.standardCasePrice ?? null,
+      unitsPerCase: price?.unitsPerCase ?? null,
+      individualVialPrice: price?.individualVialPrice ?? null,
     }
     const existing = map.get(p.name)
     if (existing) {
@@ -131,6 +136,15 @@ export default async function HomePage() {
   // Gracefully fall back to empty array if DB isn't configured yet
   const rawProducts = await getProducts().catch(() => [])
   const products = groupByName(rawProducts)
+
+  // Flat, priced rows for the reference pricing table below — built from the
+  // same real query, not the old hardcoded PRICING_TABLE. Only products that
+  // have actually been through pricing review and have an approved active
+  // price appear here; the section itself is omitted entirely rather than
+  // ever show a fabricated number.
+  const pricedRows = rawProducts
+    .map((p) => ({ name: p.name, size: p.size, price: getStorefrontPrice(p) }))
+    .filter((r): r is { name: string; size: string; price: NonNullable<ReturnType<typeof getStorefrontPrice>> } => r.price != null)
 
   return (
     <>
@@ -232,44 +246,53 @@ export default async function HomePage() {
         </section>
 
         {/* ── Pricing Table ────────────────────────────────────────────────── */}
-        <section id="pricing" className="py-24 px-6 bg-white">
-          <div className="max-w-[960px] mx-auto">
-            <div className="text-center mb-14">
-              <span className="font-heading text-[11px] font-bold tracking-[0.15em] uppercase text-gold mb-3 block">Transparent Pricing</span>
-              <h2 className="font-heading text-[clamp(26px,4vw,38px)] font-bold text-dark mb-3">Full Pricing Reference</h2>
-              <p className="text-[16px] font-light text-g500 max-w-[540px] mx-auto">Single-unit and bulk pricing for every product. All prices in USD.</p>
-              <div className="w-11 h-[3px] bg-gold mx-auto mt-3.5 rounded-full" />
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse rounded-2xl overflow-hidden shadow-sm2">
-                <thead>
-                  <tr>
-                    {['Product','Vial Size','Online (Single)','Bulk 5','Bulk 10'].map(h => (
-                      <th key={h} className="bg-dark text-white font-heading text-[12px] font-bold tracking-[0.08em] uppercase py-3.5 px-4 text-left first:text-left [&:not(:first-child)]:text-center">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {PRICING_TABLE.map((row, i) => (
-                    <tr key={row[0]} className={i % 2 === 1 ? 'bg-g100' : ''}>
-                      {row.map((cell, j) => (
-                        <td key={j} className={`py-3.5 px-4 text-[14px] border-b border-g100 ${j === 0 ? 'font-heading font-bold text-dark' : 'text-center font-heading font-semibold text-dark'}`}>
-                          {cell}
-                        </td>
+        {/* Omitted entirely, not shown empty, when no product has an
+            approved active price yet — never render a placeholder table
+            with fabricated numbers. */}
+        {pricedRows.length > 0 && (
+          <section id="pricing" className="py-24 px-6 bg-white">
+            <div className="max-w-[960px] mx-auto">
+              <div className="text-center mb-14">
+                <span className="font-heading text-[11px] font-bold tracking-[0.15em] uppercase text-gold mb-3 block">Transparent Pricing</span>
+                <h2 className="font-heading text-[clamp(26px,4vw,38px)] font-bold text-dark mb-3">Full Pricing Reference</h2>
+                <p className="text-[16px] font-light text-g500 max-w-[540px] mx-auto">Standard case pricing for every published product. All prices in USD.</p>
+                <div className="w-11 h-[3px] bg-gold mx-auto mt-3.5 rounded-full" />
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse rounded-2xl overflow-hidden shadow-sm2">
+                  <thead>
+                    <tr>
+                      {['Product', 'Vial Size', 'Standard Case', 'Per Vial'].map((h) => (
+                        <th key={h} className="bg-dark text-white font-heading text-[12px] font-bold tracking-[0.08em] uppercase py-3.5 px-4 text-left first:text-left [&:not(:first-child)]:text-center">
+                          {h}
+                        </th>
                       ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {pricedRows.map((row, i) => (
+                      <tr key={`${row.name}-${row.size}`} className={i % 2 === 1 ? 'bg-g100' : ''}>
+                        <td className="py-3.5 px-4 text-[14px] border-b border-g100 font-heading font-bold text-dark">{row.name}</td>
+                        <td className="py-3.5 px-4 text-[14px] border-b border-g100 text-center font-heading font-semibold text-dark">{row.size}</td>
+                        <td className="py-3.5 px-4 text-[14px] border-b border-g100 text-center font-heading font-semibold text-dark">
+                          ${row.price.standardCasePrice}
+                          {row.price.unitsPerCase ? ` / case of ${row.price.unitsPerCase}` : ''}
+                        </td>
+                        <td className="py-3.5 px-4 text-[14px] border-b border-g100 text-center font-heading font-semibold text-dark">
+                          {row.price.individualVialPrice != null ? `$${row.price.individualVialPrice}` : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-center mt-5 text-[13px] text-g500">
+                All products for research purposes only.{' '}
+                <Link href="#contact" className="text-gold hover:underline">Contact us</Link> for custom bulk quotes.
+              </p>
             </div>
-            <p className="text-center mt-5 text-[13px] text-g500">
-              All products for research purposes only.{' '}
-              <Link href="#contact" className="text-gold hover:underline">Contact us</Link> for custom bulk quotes.
-            </p>
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* ── Bulk Section ─────────────────────────────────────────────────── */}
         <section id="bulk" className="py-20 px-6 bg-gradient-to-br from-dark to-[#2C2620] text-white">
@@ -393,8 +416,13 @@ export default async function HomePage() {
   )
 }
 
-// ─── Static fallback data (used when DB isn't connected yet) ─────────────────
-// Already in consolidated format — each entry has a variants array.
+// ─── Static fallback data (used only when the DB itself is unreachable) ──────
+// Already in consolidated format — each entry has a variants array. Uses the
+// same standardCasePrice/unitsPerCase/individualVialPrice shape ProductCard
+// expects from real data; these numbers are the same outage-fallback values
+// as before, just relabeled to the new field names rather than the old
+// price/bulkPrice5/bulkPrice10 tiers, which no longer correspond to
+// anything in the authoritative pricing model.
 
 const STATIC_PRODUCTS: ProductCardProps[] = [
   {
@@ -402,10 +430,10 @@ const STATIC_PRODUCTS: ProductCardProps[] = [
     imageUrl: '/images/Semaglutide.png',
     description: 'GLP-1 receptor agonist studied for metabolic regulation, glucose homeostasis, and appetite suppression research.',
     variants: [
-      { id:'1a', slug:'semaglutide-5mg',  size:'5mg',  price:138, bulkPrice5:117, bulkPrice10:108 },
-      { id:'1b', slug:'semaglutide-10mg', size:'10mg', price:165, bulkPrice5:144, bulkPrice10:135 },
-      { id:'1c', slug:'semaglutide-20mg', size:'20mg', price:258, bulkPrice5:237, bulkPrice10:228 },
-      { id:'1d', slug:'semaglutide-30mg', size:'30mg', price:318, bulkPrice5:297, bulkPrice10:288 },
+      { id:'1a', slug:'semaglutide-5mg',  size:'5mg',  standardCasePrice:138, unitsPerCase:null, individualVialPrice:null },
+      { id:'1b', slug:'semaglutide-10mg', size:'10mg', standardCasePrice:165, unitsPerCase:null, individualVialPrice:null },
+      { id:'1c', slug:'semaglutide-20mg', size:'20mg', standardCasePrice:258, unitsPerCase:null, individualVialPrice:null },
+      { id:'1d', slug:'semaglutide-30mg', size:'30mg', standardCasePrice:318, unitsPerCase:null, individualVialPrice:null },
     ],
   },
   {
@@ -413,10 +441,10 @@ const STATIC_PRODUCTS: ProductCardProps[] = [
     imageUrl: '/images/Tirzepatide.png',
     description: 'Dual GIP/GLP-1 receptor agonist studied for superior metabolic outcomes and cardiometabolic research applications.',
     variants: [
-      { id:'2a', slug:'tirzepatide-5mg',  size:'5mg',  price:147, bulkPrice5:126, bulkPrice10:117 },
-      { id:'2b', slug:'tirzepatide-10mg', size:'10mg', price:183, bulkPrice5:162, bulkPrice10:153 },
-      { id:'2c', slug:'tirzepatide-20mg', size:'20mg', price:327, bulkPrice5:306, bulkPrice10:297 },
-      { id:'2d', slug:'tirzepatide-60mg', size:'60mg', price:696, bulkPrice5:675, bulkPrice10:666 },
+      { id:'2a', slug:'tirzepatide-5mg',  size:'5mg',  standardCasePrice:147, unitsPerCase:null, individualVialPrice:null },
+      { id:'2b', slug:'tirzepatide-10mg', size:'10mg', standardCasePrice:183, unitsPerCase:null, individualVialPrice:null },
+      { id:'2c', slug:'tirzepatide-20mg', size:'20mg', standardCasePrice:327, unitsPerCase:null, individualVialPrice:null },
+      { id:'2d', slug:'tirzepatide-60mg', size:'60mg', standardCasePrice:696, unitsPerCase:null, individualVialPrice:null },
     ],
   },
   {
@@ -424,10 +452,10 @@ const STATIC_PRODUCTS: ProductCardProps[] = [
     imageUrl: '/images/Retatrutide.png',
     description: 'Triple receptor agonist (GIP/GLP-1/Glucagon) — the next generation of metabolic research compounds.',
     variants: [
-      { id:'3a', slug:'retatrutide-5mg',  size:'5mg',  price:240, bulkPrice5:219, bulkPrice10:210 },
-      { id:'3b', slug:'retatrutide-10mg', size:'10mg', price:327, bulkPrice5:306, bulkPrice10:297 },
-      { id:'3c', slug:'retatrutide-30mg', size:'30mg', price:642, bulkPrice5:621, bulkPrice10:612 },
-      { id:'3d', slug:'retatrutide-60mg', size:'60mg', price:978, bulkPrice5:957, bulkPrice10:948 },
+      { id:'3a', slug:'retatrutide-5mg',  size:'5mg',  standardCasePrice:240, unitsPerCase:null, individualVialPrice:null },
+      { id:'3b', slug:'retatrutide-10mg', size:'10mg', standardCasePrice:327, unitsPerCase:null, individualVialPrice:null },
+      { id:'3c', slug:'retatrutide-30mg', size:'30mg', standardCasePrice:642, unitsPerCase:null, individualVialPrice:null },
+      { id:'3d', slug:'retatrutide-60mg', size:'60mg', standardCasePrice:978, unitsPerCase:null, individualVialPrice:null },
     ],
   },
   {
@@ -435,8 +463,8 @@ const STATIC_PRODUCTS: ProductCardProps[] = [
     imageUrl: '/images/nad.png',
     description: 'Essential coenzyme precursor critical for cellular energy metabolism, DNA repair, and longevity pathway research.',
     variants: [
-      { id:'4a', slug:'nad-plus-100mg', size:'100mg', price:168, bulkPrice5:147, bulkPrice10:138 },
-      { id:'4b', slug:'nad-plus-500mg', size:'500mg', price:264, bulkPrice5:243, bulkPrice10:234 },
+      { id:'4a', slug:'nad-plus-100mg', size:'100mg', standardCasePrice:168, unitsPerCase:null, individualVialPrice:null },
+      { id:'4b', slug:'nad-plus-500mg', size:'500mg', standardCasePrice:264, unitsPerCase:null, individualVialPrice:null },
     ],
   },
   {
@@ -444,8 +472,8 @@ const STATIC_PRODUCTS: ProductCardProps[] = [
     imageUrl: '/images/epithalon.png',
     description: 'Tetrapeptide studied for telomerase activation, circadian regulation, and anti-aging biological processes.',
     variants: [
-      { id:'5a', slug:'epithalon-10mg', size:'10mg', price:144, bulkPrice5:123, bulkPrice10:114 },
-      { id:'5b', slug:'epithalon-50mg', size:'50mg', price:369, bulkPrice5:348, bulkPrice10:339 },
+      { id:'5a', slug:'epithalon-10mg', size:'10mg', standardCasePrice:144, unitsPerCase:null, individualVialPrice:null },
+      { id:'5b', slug:'epithalon-50mg', size:'50mg', standardCasePrice:369, unitsPerCase:null, individualVialPrice:null },
     ],
   },
   {
@@ -453,7 +481,7 @@ const STATIC_PRODUCTS: ProductCardProps[] = [
     imageUrl: '/images/cjc1295.png',
     description: 'Synergistic GHRH analog and selective ghrelin mimetic combination for growth hormone secretion research.',
     variants: [
-      { id:'6a', slug:'cjc1295-ipa-10mg', size:'10mg', price:297, bulkPrice5:276, bulkPrice10:267 },
+      { id:'6a', slug:'cjc1295-ipa-10mg', size:'10mg', standardCasePrice:297, unitsPerCase:null, individualVialPrice:null },
     ],
   },
   {
@@ -461,8 +489,8 @@ const STATIC_PRODUCTS: ProductCardProps[] = [
     imageUrl: '/images/kisspeptin.png',
     description: 'Hypothalamic neuropeptide studied for reproductive endocrinology, LH/FSH regulation, and fertility research.',
     variants: [
-      { id:'7a', slug:'kisspeptin-10-5mg',  size:'5mg',  price:186, bulkPrice5:165, bulkPrice10:156 },
-      { id:'7b', slug:'kisspeptin-10-10mg', size:'10mg', price:285, bulkPrice5:264, bulkPrice10:255 },
+      { id:'7a', slug:'kisspeptin-10-5mg',  size:'5mg',  standardCasePrice:186, unitsPerCase:null, individualVialPrice:null },
+      { id:'7b', slug:'kisspeptin-10-10mg', size:'10mg', standardCasePrice:285, unitsPerCase:null, individualVialPrice:null },
     ],
   },
   {
@@ -470,20 +498,8 @@ const STATIC_PRODUCTS: ProductCardProps[] = [
     imageUrl: '/images/ghk-cu.png',
     description: 'Copper-binding tripeptide widely researched for tissue remodeling, wound healing, and dermal regeneration.',
     variants: [
-      { id:'8a', slug:'ghk-cu-50mg',  size:'50mg',  price:108, bulkPrice5:87,  bulkPrice10:78  },
-      { id:'8b', slug:'ghk-cu-100mg', size:'100mg', price:174, bulkPrice5:153, bulkPrice10:144 },
+      { id:'8a', slug:'ghk-cu-50mg',  size:'50mg',  standardCasePrice:108, unitsPerCase:null, individualVialPrice:null },
+      { id:'8b', slug:'ghk-cu-100mg', size:'100mg', standardCasePrice:174, unitsPerCase:null, individualVialPrice:null },
     ],
   },
-]
-
-const PRICING_TABLE = [
-  ['Semaglutide','30mg','$125.00','$575.00','$1,150.00'],
-  ['Tirzepatide','60mg','$190.00','$900.00','$1,800.00'],
-  ['Retatrutide','60mg','$200.00','$950.00','$1,900.00'],
-  ['NAD+','500mg','$56.00','$230.00','$460.00'],
-  ['Epithalon','50mg','$35.00','$150.00','$280.00'],
-  ['CJC-1295 / Ipamorelin','10mg','$50.00','$225.00','$425.00'],
-  ['Kisspeptin-10','10mg','$35.00','$150.00','$280.00'],
-  ['GHK-Cu','100mg','$35.00','$150.00','$280.00'],
-  ['PT-141','10mg','$24.00','$100.00','$170.00'],
 ]

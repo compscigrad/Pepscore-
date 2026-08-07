@@ -9,6 +9,7 @@ import { prisma } from '@/lib/prisma'
 import { generateOrderNumber, generateInvoiceNumber } from '@/lib/orders'
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
 import { isStorefrontCheckoutEnabled, STOREFRONT_CHECKOUT_DISABLED_MESSAGE } from '@/lib/storefront/checkoutGate'
+import { getStorefrontPrice } from '@/lib/storefront/pricing'
 import type { CheckoutLineItem, ShippingAddress } from '@/types'
 
 export async function POST(req: NextRequest) {
@@ -63,14 +64,21 @@ export async function POST(req: NextRequest) {
     const products = await prisma.product.findMany({ where: { id: { in: productIds } } })
     const productMap = new Map(products.map(p => [p.id, p]))
 
-    // Build validated line items using DB prices (never trust client-side prices)
+    // Build validated line items using DB prices (never trust client-side
+    // prices) -- authoritative Standard Case pricing, matching what the
+    // storefront actually displayed (lib/storefront/pricing.ts), not the
+    // legacy Product.price field. A product with no approved active price
+    // can't be checked out at all, the same rule ProductCard's "Add to
+    // Cart" gating already enforces client-side.
     const lineItems = items.map(i => {
       const product = productMap.get(i.productId)
       if (!product) throw new Error(`Product ${i.productId} not found`)
+      const price = getStorefrontPrice(product)
+      if (price == null) throw new Error(`${product.name} (${product.size}) is not currently available for purchase`)
       return {
         ...i,
-        unitPrice: product.price,
-        total: product.price * i.quantity,
+        unitPrice: price.standardCasePrice,
+        total: price.standardCasePrice * i.quantity,
         costOfGoods: product.costOfGoods * i.quantity,
       }
     })
