@@ -13,7 +13,7 @@
 // the storefront section, which starts reporting real numbers the moment
 // Order rows exist.
 import { prisma } from '@/lib/prisma'
-import { getInvoiceDashboardStats, round2, type InvoiceDashboardStats } from '@/lib/invoices'
+import { getInvoiceDashboardStats, listInvoices, round2, type InvoiceDashboardStats, type InvoiceWithRelations } from '@/lib/invoices'
 
 export interface AdminOperationsSummary {
   invoices: InvoiceDashboardStats
@@ -66,4 +66,57 @@ export async function getAdminOperationsSummary(): Promise<AdminOperationsSummar
     backorders: { activeCount: activeBackorderCount },
     correspondence: { last7DaysSent: correspondenceSent, last7DaysFailed: correspondenceFailed },
   }
+}
+
+// The concise, dashboard-facing view of the same authoritative sales
+// history /admin/invoices manages in full -- deliberately built on
+// listInvoices() (identical query, same 25-row page size as that page's
+// default) rather than a second invoice query, so the two pages can never
+// drift. Root cause this replaces: the dashboard's old "All Orders" table
+// rendered the storefront Order model, which has zero rows until the
+// storefront launches -- Pepscore's actual sales history today lives in
+// Invoice, and that's what a "recent sales activity" table must show.
+export type PortalRowStatus = 'NO_CUSTOMER' | 'UNCLAIMED' | 'CLAIMED' | 'DISABLED'
+
+export interface SalesActivityRow {
+  invoice: InvoiceWithRelations
+  hasActiveBackorder: boolean
+  portalStatus: PortalRowStatus
+}
+
+export interface SalesActivityResult {
+  rows: SalesActivityRow[]
+  total: number
+}
+
+const RECENT_SALES_ACTIVITY_LIMIT = 25
+
+export async function getRecentSalesActivity(): Promise<SalesActivityResult> {
+  const { invoices, total } = await listInvoices({ limit: RECENT_SALES_ACTIVITY_LIMIT, sortBy: 'createdAt', sortDir: 'desc' })
+
+  const invoiceIds = invoices.map((i) => i.id)
+  const customerIds = [...new Set(invoices.map((i) => i.customerId).filter((id): id is string => Boolean(id)))]
+
+  const [activeBackorders, customers] = await Promise.all([
+    invoiceIds.length
+      ? prisma.backorderCondition.findMany({ where: { invoiceId: { in: invoiceIds }, status: 'ACTIVE' }, select: { invoiceId: true } })
+      : Promise.resolve([]),
+    customerIds.length
+      ? prisma.customer.findMany({ where: { id: { in: customerIds } }, select: { id: true, userId: true, portalAccessDisabled: true } })
+      : Promise.resolve([]),
+  ])
+
+  const backorderedInvoiceIds = new Set(activeBackorders.map((b) => b.invoiceId))
+  const customerById = new Map(customers.map((c) => [c.id, c]))
+
+  const rows: SalesActivityRow[] = invoices.map((invoice) => {
+    const customer = invoice.customerId ? customerById.get(invoice.customerId) : undefined
+    let portalStatus: PortalRowStatus = 'NO_CUSTOMER'
+    if (customer) {
+      portalStatus = customer.portalAccessDisabled ? 'DISABLED' : customer.userId ? 'CLAIMED' : 'UNCLAIMED'
+    }
+    return { invoice, hasActiveBackorder: backorderedInvoiceIds.has(invoice.id), portalStatus }
+  })
+
+  return { rows, total }
 }

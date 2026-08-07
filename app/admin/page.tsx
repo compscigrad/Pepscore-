@@ -1,12 +1,24 @@
-// Owner/Admin dashboard. Two independent sections, each fetched and error-
-// handled separately so a failure in one never blanks out the other:
-//   - Operations Summary: the real, currently-operating invoice/CRM
-//     business (lib/adminDashboard.ts) -- reuses the exact same
+// Owner/Admin dashboard. Independent sections, each fetched and error-
+// handled separately so a failure in one never blanks out the others:
+//   - Operations Summary: KPI cards (lib/adminDashboard.ts's
+//     getAdminOperationsSummary()) -- reuses the exact same
 //     getInvoiceDashboardStats() query /admin/invoices renders its own KPI
 //     cards from, so the two pages always reconcile by construction.
-//   - Storefront: Order/Expense-based KPIs, legitimately all-zero until the
-//     storefront launches (see docs/ProductRoadmap.md) -- not a bug, a
-//     different, not-yet-populated data source.
+//   - Sales Activity: the actual recent transaction rows -- Invoice-sourced
+//     (getRecentSalesActivity(), built on the same listInvoices() service
+//     /admin/invoices uses), because Pepscore's real sales history lives in
+//     Invoice today. This replaced an "All Orders" table that queried the
+//     storefront Order model directly and was therefore always empty (Order
+//     has zero rows until the storefront launches) -- that was the root
+//     cause of the dashboard looking empty despite real production data
+//     existing. Order-sourced rows join this same view once real ones exist
+//     (see lib/adminDashboard.ts's header comment on that model).
+//   - Storefront: Order/Expense-based KPIs + the raw storefront order table
+//     (AdminOrdersTable), legitimately all-zero until the storefront
+//     launches (see docs/ProductRoadmap.md) -- not a bug, a different,
+//     not-yet-populated data source, kept visually and semantically
+//     separate from Sales Activity above so the two "orders"-ish tables are
+//     never confused for each other.
 // Access is restricted to the ADMIN_CLERK_USER_ID in .env
 
 export const dynamic = 'force-dynamic'
@@ -17,8 +29,9 @@ import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
 import { formatCurrency } from '@/lib/orders'
 import { isAdminClerkUser } from '@/lib/isAdmin'
-import { getAdminOperationsSummary, type AdminOperationsSummary } from '@/lib/adminDashboard'
+import { getAdminOperationsSummary, getRecentSalesActivity, type AdminOperationsSummary } from '@/lib/adminDashboard'
 import { AdminOrdersTable } from '@/components/admin/AdminOrdersTable'
+import { AdminSalesActivityTable } from '@/components/admin/AdminSalesActivityTable'
 import { AdminExportPanel } from '@/components/admin/AdminExportPanel'
 
 async function getStorefrontStats() {
@@ -88,8 +101,9 @@ export default async function AdminDashboard() {
     )
   }
 
-  const [operations, storefront, recentOrdersResult] = await Promise.all([
+  const [operations, salesActivity, storefront, recentOrdersResult] = await Promise.all([
     loadSection('Operations Summary', getAdminOperationsSummary),
+    loadSection('Sales Activity', getRecentSalesActivity),
     loadSection('Storefront Stats', getStorefrontStats),
     loadSection('Recent Orders', () =>
       prisma.order.findMany({
@@ -136,6 +150,17 @@ export default async function AdminDashboard() {
           <ErrorCard label="Operations Summary" error={operations.error} />
         )}
 
+        {/* ── Sales Activity (Invoice-sourced -- the real, populated sales
+             history today; Order-sourced storefront rows will join this same
+             view once the storefront launches, see lib/adminDashboard.ts) ── */}
+        <div className="mb-8">
+          {salesActivity.ok ? (
+            <AdminSalesActivityTable rows={salesActivity.data.rows} total={salesActivity.data.total} />
+          ) : (
+            <ErrorCard label="Sales Activity" error={salesActivity.error} />
+          )}
+        </div>
+
         {/* ── Storefront (Order/Expense-based -- empty until launch) ───────── */}
         <h2 className="font-heading text-[15px] font-bold text-dark mb-3">Storefront{storefront.ok && storefront.data.totalOrders === 0 ? ' (not yet launched — 0 orders on file)' : ''}</h2>
         {storefront.ok ? (
@@ -146,7 +171,8 @@ export default async function AdminDashboard() {
 
         <div className="bg-white rounded-2xl shadow-sh mb-8 overflow-hidden">
           <div className="p-6 border-b border-g100">
-            <h2 className="font-heading text-[17px] font-bold text-dark">All Orders</h2>
+            <h2 className="font-heading text-[17px] font-bold text-dark">Storefront Orders</h2>
+            <p className="text-[12px] text-g500 mt-0.5">Online storefront checkouts only — see Sales Activity above for invoices.</p>
           </div>
           {recentOrdersResult.ok ? (
             <AdminOrdersTable orders={recentOrdersResult.data} />
