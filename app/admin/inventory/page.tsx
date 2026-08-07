@@ -39,9 +39,14 @@ export default async function AdminInventoryPage() {
             <h1 className="font-heading text-2xl font-bold text-dark">Inventory &amp; Pricing</h1>
             <p className="text-g500 text-sm mt-0.5">{rows.length} product/strength records</p>
           </div>
-          <Link href="/admin" className="text-[12px] font-heading font-bold text-gold hover:text-gold-dark uppercase tracking-[0.06em]">
-            ← Admin Dashboard
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/admin/inventory/reservations" className="text-[12px] font-heading font-bold text-gold hover:text-gold-dark uppercase tracking-[0.06em]">
+              Reservations →
+            </Link>
+            <Link href="/admin" className="text-[12px] font-heading font-bold text-gold hover:text-gold-dark uppercase tracking-[0.06em]">
+              ← Admin Dashboard
+            </Link>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">

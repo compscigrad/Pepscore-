@@ -37,7 +37,15 @@ import {
 } from '@/lib/notifications/paymentWorkflow'
 import { syncCustomerFromInvoiceEvent } from '@/lib/customers'
 import { assertDeliveryStatusAllowed } from '@/lib/backorders'
+import { syncInvoiceReservationsTx, releaseReservationsForDeletedItemsTx, releaseAllReservationsForInvoiceTx } from '@/lib/inventory/invoiceLifecycle'
 import type { PaymentMethod } from '@prisma/client'
+
+// Fixed actor id for reservation events this module triggers automatically
+// as a side effect of a save -- these are never a specific admin's direct
+// inventory action (that's the admin correction workflow, which always
+// passes a real Clerk userId), just this invoice-lifecycle wiring reacting
+// to a status/quantity change.
+const INVENTORY_SYSTEM_ACTOR = 'system-invoice-lifecycle'
 
 const invoiceWithRelations = Prisma.validator<Prisma.InvoiceDefaultArgs>()({
   include: {
@@ -277,6 +285,12 @@ export async function createInvoice(payload: InvoicePayload): Promise<InvoiceWit
           lineDiscount: item.lineDiscount ?? 0,
           total: item.quantity * item.unitPrice - (item.lineDiscount ?? 0),
           sortOrder: item.sortOrder ?? index,
+          sellUnit: item.sellUnit ?? undefined,
+          unitsPerSellUnit: item.unitsPerSellUnit ?? undefined,
+          priceTier: item.priceTier ?? undefined,
+          skuSnapshot: item.skuSnapshot ?? undefined,
+          manualPricingOverride: item.manualPricingOverride ?? undefined,
+          inventoryQuantityConsumed: item.inventoryQuantityConsumed ?? undefined,
         })),
       },
       discounts: {
@@ -287,6 +301,13 @@ export async function createInvoice(payload: InvoicePayload): Promise<InvoiceWit
   })
 
   if (isIssuing) {
+    // A brand-new invoice created directly as ISSUED (skipping DRAFT) is
+    // the same "real customer commitment just happened" moment as a
+    // DRAFT->ISSUED transition in updateInvoice below -- reserve here too,
+    // in its own transaction since createInvoice's own write above isn't
+    // wrapped in one (the invoice row already exists with real item ids
+    // from the `invoiceWithRelations` include, which is all this needs).
+    await prisma.$transaction((tx) => syncInvoiceReservationsTx(tx, invoice.id, invoice.items, INVENTORY_SYSTEM_ACTOR))
     await notifyOnFirstIssuance(invoice)
   }
   if (invoice.customerId) {
@@ -452,8 +473,26 @@ export async function updateInvoice(id: string, payload: InvoicePayload): Promis
         })),
       })
     }
+    // A removed line item's reservation always releases, regardless of
+    // invoice status -- the line no longer exists, so nothing should stay
+    // committed against it.
+    await releaseReservationsForDeletedItemsTx(tx, itemPlan.toDeleteIds, INVENTORY_SYSTEM_ACTOR)
     if (itemPlan.toDeleteIds.length > 0) {
       await tx.invoiceItem.deleteMany({ where: { id: { in: itemPlan.toDeleteIds } } })
+    }
+
+    // Reservation sync: DRAFT never reserves, however many times it's
+    // saved (matches "do not automatically reserve stock merely because
+    // the draft was saved"). CANCELLED/VOID release everything still
+    // ACTIVE. Any other issued-derived status (ISSUED, and the Pending
+    // overlay once balance is owed) reconciles reservations to the
+    // invoice's current quantities -- a repeated save with unchanged
+    // quantities is a no-op per syncInvoiceReservationsTx itself.
+    if (finalStatus === 'CANCELLED' || finalStatus === 'VOID') {
+      await releaseAllReservationsForInvoiceTx(tx, id, INVENTORY_SYSTEM_ACTOR, `Invoice ${finalStatus.toLowerCase()}`)
+    } else if (hasBeenIssued) {
+      const currentItems = await tx.invoiceItem.findMany({ where: { invoiceId: id }, select: { id: true, productId: true, inventoryQuantityConsumed: true } })
+      await syncInvoiceReservationsTx(tx, id, currentItems, INVENTORY_SYSTEM_ACTOR)
     }
 
     for (const { id: discountId, payload: d } of discountPlan.toUpdate) {

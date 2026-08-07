@@ -18,6 +18,7 @@ import { syncCustomerFromInvoiceEvent } from '@/lib/customers'
 import { hasActiveBackorder } from '@/lib/backorders'
 import { isTrackingBlockedByBackorder, isDeliveryStatusBlockedByBackorder } from '@/lib/invoice/backorder'
 import { getPrimaryShipment } from '@/lib/shipments/primary'
+import { fulfillAllReservationsForInvoice } from '@/lib/inventory/invoiceLifecycle'
 
 // Thrown by addTrackingToInvoice when an active backorder blocks manual
 // tracking entry — a distinct type so the API route can map it to a 409
@@ -161,6 +162,15 @@ export async function registerShipmentForMonitoring(input: RegisterShipmentInput
       lastTrackingUpdate: new Date(),
     },
   })
+
+  // The one shared "a real shipment now exists for this invoice" moment,
+  // reached by both the manual Add Tracking flow and the Shippo
+  // label-purchase flow -- convert every still-ACTIVE reservation on this
+  // invoice into a physical deduction here. Exactly once by construction:
+  // fulfillReservationTx only acts on ACTIVE reservations, so a second
+  // shipment on the same invoice (split package, replaced tracking
+  // number) finds nothing left to deduct.
+  await fulfillAllReservationsForInvoice(input.invoiceId, input.enteredBy ?? 'system-fulfillment')
 
   return shipment
 }
