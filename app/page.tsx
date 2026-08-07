@@ -68,9 +68,10 @@ export default async function HomePage() {
           />
           <div className="max-w-[1200px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-14 items-center relative">
             <div>
-              <div className="overflow-hidden w-[200px] h-[80px] relative mb-6">
-                <Image src="/images/logo.png" alt="Pepscore Lab" fill className="object-cover object-left-top scale-[1.43]" priority />
-              </div>
+              <p className="font-heading text-[28px] font-extrabold tracking-[-0.01em] leading-none mb-6">
+                <span className="text-white">Pepscore</span>{' '}
+                <span className="bg-gradient-to-br from-[#D4AF37] via-[#E8C84A] to-[#D4AF37] bg-clip-text text-transparent">Lab</span>
+              </p>
               <div className="inline-block bg-[#D4AF37]/10 border border-[#D4AF37]/35 rounded-full px-4 py-1.5 font-heading text-[11px] font-bold tracking-[0.12em] uppercase mb-5 text-[#D4AF37]">
                 Holistic Research Peptides
               </div>

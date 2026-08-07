@@ -1,6 +1,5 @@
 // Site footer with RUO disclaimer, product links, contact info
 import Link from 'next/link'
-import Image from 'next/image'
 
 export function Footer() {
   return (
@@ -12,9 +11,10 @@ export function Footer() {
 
           {/* Brand column */}
           <div>
-            <div className="overflow-hidden w-24 h-9 relative mb-3">
-              <Image src="/images/logo.png" alt="Pepscore Lab" fill className="object-cover object-left-top scale-[1.42]" />
-            </div>
+            <p className="font-heading text-[19px] font-extrabold tracking-[-0.01em] leading-none mb-3">
+              <span className="text-white">Pepscore</span>{' '}
+              <span className="bg-gradient-to-br from-[#D4AF37] via-[#E8C84A] to-[#D4AF37] bg-clip-text text-transparent">Lab</span>
+            </p>
             <p className="text-[13px] text-white/55 leading-relaxed mb-4">
               Precision-grade research peptides for laboratories that refuse to compromise on quality or consistency.
             </p>

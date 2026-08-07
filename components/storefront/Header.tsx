@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
 import dynamic from 'next/dynamic'
 import { ShoppingCart, Menu, X, Search } from 'lucide-react'
 import { useCartStore } from '@/lib/cart-store'
@@ -45,18 +44,12 @@ export function Header() {
       }`}
     >
       <nav className="max-w-[1200px] mx-auto px-6 h-[72px] flex items-center justify-between">
-        {/* Logo */}
-        <Link href="/" className="flex-shrink-0">
-          <div className="overflow-hidden w-[112px] h-[44px] relative">
-            <Image
-              src="/images/logo.png"
-              alt="Pepscore Lab"
-              fill
-              className="object-cover object-left-top scale-[1.43]"
-              style={{ marginTop: '-58px', marginLeft: '-24px' }}
-              priority
-            />
-          </div>
+        {/* Logo — text wordmark (the source raster logo.png has an opaque
+            cream background baked in and reads "Pepscore" not "Pepscore
+            Lab"; matches the landing site's own text-only brand mark) */}
+        <Link href="/" className="flex-shrink-0 font-heading text-[19px] font-extrabold tracking-[-0.01em] leading-none">
+          <span className="text-white">Pepscore</span>{' '}
+          <span className="bg-gradient-to-br from-[#D4AF37] via-[#E8C84A] to-[#D4AF37] bg-clip-text text-transparent">Lab</span>
         </Link>
 
         {/* Desktop nav links */}
