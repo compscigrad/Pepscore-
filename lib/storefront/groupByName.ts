@@ -26,13 +26,19 @@ export function groupByName(rows: Product[], options: { spaEligible?: boolean } 
       individualVialPrice: price?.individualVialPrice ?? null,
       spaCasePrice: price?.spaCasePrice ?? null,
       availability: getStorefrontAvailability(p),
+      availabilityMessageOverride: p.availabilityMessageOverride,
     }
     const existing = map.get(p.name)
     if (existing) {
       existing.variants.push(variant)
+      // A card is featured if any of its grouped variants (strengths) is --
+      // featured is set per Product row, but ProductCard shows one card per
+      // product name.
+      if (p.featured) existing.featured = true
     } else {
       map.set(p.name, {
         name: p.name,
+        featured: p.featured,
         category: p.category,
         description: p.description ?? '',
         imageUrl: resolveProductImage(p.name, p.imageUrl),
@@ -41,5 +47,7 @@ export function groupByName(rows: Product[], options: { spaEligible?: boolean } 
       })
     }
   }
-  return Array.from(map.values())
+  // Featured products sort first (Phase 2B item 6), otherwise preserves the
+  // caller's original row order (createdAt asc from every current caller).
+  return Array.from(map.values()).sort((a, b) => Number(b.featured) - Number(a.featured))
 }

@@ -13,7 +13,7 @@ import { groupByName } from '@/lib/storefront/groupByName'
 import { getCurrentCustomerSpaEligible } from '@/lib/storefront/spaEligibility'
 
 export const metadata: Metadata = {
-  title: 'Search Results | Pepscore',
+  title: 'Search Results | Pepscore Lab',
   robots: { index: false, follow: true },
 }
 
@@ -31,20 +31,20 @@ export default async function SearchPage({ searchParams }: PageProps) {
     <>
       <CartSidebar />
       <Header />
-      <main className="bg-cream min-h-screen">
+      <main className="bg-black min-h-screen">
         <div className="max-w-[1200px] mx-auto px-6 py-10">
-          <h1 className="font-heading text-[clamp(24px,3.5vw,32px)] font-bold text-dark mb-2">
+          <h1 className="font-heading text-[clamp(24px,3.5vw,32px)] font-bold text-white mb-2">
             {query ? <>Search results for &ldquo;{query}&rdquo;</> : 'Search'}
           </h1>
           {query && (
-            <p className="text-[14px] text-g500 mb-10">
+            <p className="text-[14px] text-white/50 mb-10">
               {rows.length} product{rows.length === 1 ? '' : 's'} found
             </p>
           )}
 
           {!query ? (
-            <p className="text-[14px] text-g500">
-              Enter a search term above, or <Link href="/categories" className="text-gold hover:underline">browse by category</Link>.
+            <p className="text-[14px] text-white/50">
+              Enter a search term above, or <Link href="/categories" className="text-[#D4AF37] hover:underline">browse by category</Link>.
             </p>
           ) : products.length > 0 ? (
             <div className="grid grid-cols-[repeat(auto-fill,minmax(258px,1fr))] gap-6">
@@ -53,9 +53,9 @@ export default async function SearchPage({ searchParams }: PageProps) {
               ))}
             </div>
           ) : (
-            <p className="text-[14px] text-g500">
+            <p className="text-[14px] text-white/50">
               No products matched &ldquo;{query}&rdquo;. Try a different strength, product name, or{' '}
-              <Link href="/categories" className="text-gold hover:underline">browse by category</Link>.
+              <Link href="/categories" className="text-[#D4AF37] hover:underline">browse by category</Link>.
             </p>
           )}
         </div>

@@ -14,7 +14,7 @@ export function organizationSchema() {
   return {
     '@context': 'https://schema.org',
     '@type': 'Organization',
-    name: 'Pepscore',
+    name: 'Pepscore Lab',
     url: APP_URL,
     logo: `${APP_URL}/images/logo.png`,
     email: 'contact@pepscorelab.com',
@@ -45,7 +45,7 @@ export function productSchema(input: {
     name: `${input.name} ${input.size}`,
     description: input.description,
     image: `${APP_URL}${input.imageUrl}`,
-    brand: { '@type': 'Brand', name: 'Pepscore' },
+    brand: { '@type': 'Brand', name: 'Pepscore Lab' },
     url: `${APP_URL}/products/${input.slug}`,
   }
   if (input.sku) base.sku = input.sku
@@ -63,6 +63,18 @@ export function productSchema(input: {
     }
   }
   return base
+}
+
+export function faqSchema(entries: { question: string; answer: string }[]) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: entries.map((e) => ({
+      '@type': 'Question',
+      name: e.question,
+      acceptedAnswer: { '@type': 'Answer', text: e.answer },
+    })),
+  }
 }
 
 export function breadcrumbSchema(items: { name: string; url: string }[]) {

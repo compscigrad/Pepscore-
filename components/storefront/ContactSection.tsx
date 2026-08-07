@@ -10,7 +10,7 @@ import { useState } from 'react'
 type Status = 'idle' | 'submitting' | 'success' | 'error'
 
 const inputClass =
-  'w-full rounded-md border border-g100 bg-white px-4 py-3 text-[14px] text-dark placeholder:text-g500/70 focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold/40'
+  'w-full rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3 text-[14px] text-white placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/30 focus:border-[#D4AF37]/50 transition-colors'
 
 export function ContactSection() {
   const [name, setName] = useState('')
@@ -50,21 +50,21 @@ export function ContactSection() {
   }
 
   return (
-    <section id="contact" className="py-24 px-6 bg-white">
+    <section id="contact" className="py-24 px-6 bg-black">
       <div className="max-w-[640px] mx-auto">
         <div className="text-center mb-11">
-          <span className="font-heading text-[11px] font-bold tracking-[0.15em] uppercase text-gold mb-3 block">Get In Touch</span>
-          <h2 className="font-heading text-[clamp(26px,4vw,38px)] font-bold text-dark mb-3">Contact Us</h2>
-          <p className="text-[16px] font-light text-g500 max-w-[480px] mx-auto leading-[1.7]">
+          <span className="font-heading text-[11px] font-bold tracking-[0.15em] uppercase text-[#D4AF37] mb-3 block">Get In Touch</span>
+          <h2 className="font-heading text-[clamp(26px,4vw,38px)] font-bold text-white mb-3">Contact Us</h2>
+          <p className="text-[16px] font-light text-white/55 max-w-[480px] mx-auto leading-[1.7]">
             Questions, bulk pricing, or a custom research quote — send us a message and our team will follow up.
           </p>
-          <div className="w-11 h-[3px] bg-gold mx-auto mt-3.5 rounded-full" />
+          <div className="w-11 h-[3px] bg-gradient-to-r from-[#D4AF37] to-[#E8C84A] mx-auto mt-3.5 rounded-full" />
         </div>
 
         {status === 'success' ? (
-          <div className="bg-gold/10 border border-gold/30 rounded-2xl p-8 text-center">
-            <p className="font-heading text-[16px] font-bold text-dark mb-1.5">Message sent</p>
-            <p className="text-[14px] text-g700">Thanks for reaching out — we&apos;ll be in touch shortly.</p>
+          <div className="bg-[#D4AF37]/10 border border-[#D4AF37]/30 rounded-2xl p-8 text-center">
+            <p className="font-heading text-[16px] font-bold text-white mb-1.5">Message sent</p>
+            <p className="text-[14px] text-white/60">Thanks for reaching out — we&apos;ll be in touch shortly.</p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -128,13 +128,13 @@ export function ContactSection() {
             />
 
             {status === 'error' && errorMessage ? (
-              <p className="text-[13px] text-red-600">{errorMessage}</p>
+              <p className="text-[13px] text-red-400">{errorMessage}</p>
             ) : null}
 
             <button
               type="submit"
               disabled={status === 'submitting'}
-              className="w-full bg-gold hover:bg-gold-dark text-white font-heading text-[13px] font-bold tracking-[0.08em] uppercase px-8 py-4 rounded-md transition-all hover:-translate-y-0.5 hover:shadow-gold disabled:opacity-60 disabled:hover:translate-y-0"
+              className="w-full bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] text-black font-heading text-[13px] font-bold tracking-[0.08em] uppercase px-8 py-4 rounded-full transition-all hover:-translate-y-0.5 hover:shadow-[0_10px_32px_rgba(212,175,55,0.45)] disabled:opacity-60 disabled:hover:translate-y-0"
             >
               {status === 'submitting' ? 'Sending…' : 'Send Message'}
             </button>

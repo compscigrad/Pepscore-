@@ -100,16 +100,62 @@ model Product {
   lowStockThreshold        Int?
   inventoryStatus          ProductInventoryStatus @default(TRACKING_DISABLED)
 
+  // ─── SEO / Content Management (Phase 2B item 6) ─────────────────────────
+  // All admin-editable via the storefront content editor
+  // (components/admin/ProductContentSection.tsx) -- none of this requires a
+  // code deployment to change. `description` (above) remains the short
+  // description used on cards/list views and as the metaDescription
+  // fallback; fullDescription is optional, longer detail-page copy that
+  // falls back to `description` when unset so no existing product needs
+  // re-entry. Never populated with supplier cost, suggested/internal
+  // pricing, or admin notes -- this is the one editor whose output is
+  // always publicly visible.
+  seoTitle                    String?
+  metaDescription              String?
+  fullDescription              String?
+  imageAltText                 String?
+  // Comma-separated extra search terms (e.g. common abbreviations) --
+  // matched alongside name/size/category in lib/storefront/search.ts.
+  searchSynonyms                String?
+  // Array of { question, answer } objects, also used to emit FAQPage
+  // structured data on the product detail page when non-empty.
+  faq                           Json?
+  // Slugs of other products to show in a "Related Products" section --
+  // distinct from the automatic same-name sibling-strength list.
+  relatedProductSlugs           String[] @default([])
+  featured                      Boolean  @default(false)
+  // Manual override, independent of the automatic completeness guard in
+  // generateMetadata (a too-short/placeholder description forces noindex
+  // regardless of this flag -- see app/products/[slug]/page.tsx).
+  noindex                       Boolean  @default(false)
+  // Replaces the computed AVAILABILITY_LABEL text when set (e.g.
+  // "Restocking mid-August" instead of the generic "Coming Soon") --
+  // never changes the underlying availability state itself.
+  availabilityMessageOverride String?
+
   orderItems             OrderItem[]
   invoiceItems           InvoiceItem[]
   inventoryLedgerEntries InventoryLedgerEntry[]
   inventoryReservations  InventoryReservation[]
   lowStockAlerts         LowStockAlert[]
   backorderConditions    BackorderCondition[]
+  slugRedirects          ProductSlugRedirect[]
 
   @@index([slug])
   @@index([inventoryStatus])
   @@index([pricingStatus])
+}
+
+// Preserves the prior canonical URL when an admin changes a product's slug
+// via the content editor -- app/products/[slug]/page.tsx checks this table
+// on a lookup miss and redirects rather than 404ing a URL that used to be
+// real and may already be indexed/bookmarked/linked externally.
+model ProductSlugRedirect {
+  id        String   @id @default(cuid())
+  oldSlug   String   @unique
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
 }
 
 enum ProductPricingStatus {

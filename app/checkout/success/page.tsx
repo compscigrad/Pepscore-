@@ -35,40 +35,40 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
   return (
     <>
       <Header />
-      <main className="bg-cream min-h-screen flex items-center justify-center px-6 py-20">
-        <div className="bg-white rounded-2xl shadow-sl max-w-lg w-full p-10 text-center">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-5 text-3xl">
+      <main className="bg-black min-h-screen flex items-center justify-center px-6 py-20">
+        <div className="bg-[#0d0d0d] border border-[#D4AF37]/15 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] max-w-lg w-full p-10 text-center">
+          <div className="w-16 h-16 bg-green-400/10 border border-green-400/25 rounded-full flex items-center justify-center mx-auto mb-5 text-3xl text-green-400">
             ✓
           </div>
-          <h1 className="font-heading text-2xl font-bold text-dark mb-2">Order Confirmed!</h1>
-          <p className="text-g500 text-[15px] mb-6 leading-relaxed">
+          <h1 className="font-heading text-2xl font-bold text-white mb-2">Order Confirmed!</h1>
+          <p className="text-white/55 text-[15px] mb-6 leading-relaxed">
             Thank you for your order. A confirmation email with your invoice has been sent
             {customerEmail ? ` to ${customerEmail}` : ''}.
           </p>
 
           {orderNumber && (
-            <div className="bg-g100 rounded-xl p-4 mb-6">
-              <p className="font-heading text-[11px] font-bold tracking-[0.1em] uppercase text-g500 mb-1">Order Number</p>
-              <p className="font-heading text-[20px] font-bold text-gold-dark">{orderNumber}</p>
+            <div className="bg-white/[0.04] border border-[#D4AF37]/15 rounded-xl p-4 mb-6">
+              <p className="font-heading text-[11px] font-bold tracking-[0.1em] uppercase text-white/45 mb-1">Order Number</p>
+              <p className="font-heading text-[20px] font-bold text-[#D4AF37]">{orderNumber}</p>
             </div>
           )}
 
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-7 text-left">
-            <p className="text-[12px] text-g700 leading-relaxed">
-              ⚠️ <strong>Reminder:</strong> All Pepscore products are For Research Use Only. Not intended for human use, consumption, diagnostic use, therapeutic use, or veterinary use.
+          <div className="bg-amber-400/10 border border-amber-400/25 rounded-xl p-4 mb-7 text-left">
+            <p className="text-[12px] text-white/70 leading-relaxed">
+              ⚠️ <strong className="text-white">Reminder:</strong> All Pepscore Lab products are For Research Use Only. Not intended for human use, consumption, diagnostic use, therapeutic use, or veterinary use.
             </p>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3">
             <Link
               href="/account"
-              className="flex-1 bg-gold hover:bg-gold-dark text-white font-heading text-[13px] font-bold tracking-[0.08em] uppercase py-3 rounded-md text-center transition-colors"
+              className="flex-1 bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] text-black font-heading text-[13px] font-bold tracking-[0.08em] uppercase py-3 rounded-full text-center transition-all hover:shadow-[0_4px_16px_rgba(212,175,55,0.4)]"
             >
               View My Orders
             </Link>
             <Link
               href="/"
-              className="flex-1 border border-g300 text-g700 font-heading text-[13px] font-bold tracking-[0.08em] uppercase py-3 rounded-md text-center hover:bg-g100 transition-colors"
+              className="flex-1 border border-white/20 text-white/70 font-heading text-[13px] font-bold tracking-[0.08em] uppercase py-3 rounded-full text-center hover:bg-white/5 transition-colors"
             >
               Continue Shopping
             </Link>

@@ -26,6 +26,11 @@ export async function searchProducts(query: string): Promise<Product[]> {
           { name: { contains: token, mode: 'insensitive' as const } },
           { size: { contains: token, mode: 'insensitive' as const } },
           { category: { contains: token, mode: 'insensitive' as const } },
+          // Admin-editable extra terms (Phase 2B item 6, e.g. common
+          // abbreviations) -- stored as one comma-separated string, so a
+          // substring match here is intentionally loose rather than
+          // splitting/comparing individual synonym entries.
+          { searchSynonyms: { contains: token, mode: 'insensitive' as const } },
         ],
       })),
     },
