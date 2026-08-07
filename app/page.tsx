@@ -53,52 +53,57 @@ export default async function HomePage() {
       <CartSidebar />
 
       {/* Announcement bar */}
-      <div className="bg-gold text-white text-center py-2 px-6 font-heading text-[12px] font-bold tracking-[0.08em] uppercase">
+      <div className="bg-gradient-to-r from-[#8A6B1A] via-[#D4AF37] to-[#8A6B1A] text-black text-center py-2 px-6 font-heading text-[12px] font-bold tracking-[0.08em] uppercase">
         🔬 Free Shipping on Orders Over $150 &nbsp;|&nbsp; For Research Purposes Only &nbsp;|&nbsp; Lab-Verified Purity ≥98%
       </div>
 
       <Header />
 
-      <main>
+      <main className="bg-black">
         {/* ── Hero ──────────────────────────────────────────────────────────── */}
-        <section className="bg-gradient-to-br from-cream via-[#F5EFE0] to-[#EDE0C8] py-20 px-6">
-          <div className="max-w-[1200px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-14 items-center">
+        <section className="relative overflow-hidden bg-black py-20 px-6">
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{ background: 'radial-gradient(ellipse 640px 640px at 15% 50%, rgba(212,175,55,0.08) 0%, transparent 65%)' }}
+          />
+          <div className="max-w-[1200px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-14 items-center relative">
             <div>
-              <div className="overflow-hidden w-[200px] h-[80px] relative mb-6">
-                <Image src="/images/logo.png" alt="Pepscore" fill className="object-cover object-left-top scale-[1.43]" priority />
-              </div>
-              <div className="inline-block bg-gold/12 text-gold-dark border border-gold/30 rounded-full px-4 py-1.5 font-heading text-[11px] font-bold tracking-[0.12em] uppercase mb-5">
+              <p className="font-heading text-[28px] font-extrabold tracking-[-0.01em] leading-none mb-6">
+                <span className="text-white">Pepscore</span>{' '}
+                <span className="bg-gradient-to-br from-[#D4AF37] via-[#E8C84A] to-[#D4AF37] bg-clip-text text-transparent">Lab</span>
+              </p>
+              <div className="inline-block bg-[#D4AF37]/10 border border-[#D4AF37]/35 rounded-full px-4 py-1.5 font-heading text-[11px] font-bold tracking-[0.12em] uppercase mb-5 text-[#D4AF37]">
                 Holistic Research Peptides
               </div>
-              <h1 className="font-heading text-[clamp(34px,5vw,54px)] font-extrabold leading-[1.1] text-dark mb-5">
+              <h1 className="font-heading text-[clamp(34px,5vw,54px)] font-extrabold leading-[1.1] text-white mb-5">
                 Precision-Grade<br />
-                <span className="text-gold">Peptides</span> for<br />
+                <span className="bg-gradient-to-br from-[#D4AF37] via-[#E8C84A] to-[#D4AF37] bg-clip-text text-transparent">Peptides</span> for<br />
                 Serious Research
               </h1>
-              <p className="text-[17px] font-light text-g700 leading-[1.7] mb-9 max-w-[480px]">
-                Pepscore delivers pharmaceutical-quality research peptides with independently verified purity above 98%. Trusted by laboratories worldwide for consistent, reliable compounds.
+              <p className="text-[17px] font-light text-white/60 leading-[1.7] mb-9 max-w-[480px]">
+                Pepscore Lab delivers pharmaceutical-quality research peptides with independently verified purity above 98%. Trusted by laboratories worldwide for consistent, reliable compounds.
               </p>
               <div className="flex gap-4 flex-wrap">
                 <Link
                   href="#products"
-                  className="bg-gold hover:bg-gold-dark text-white font-heading text-[13px] font-bold tracking-[0.08em] uppercase px-8 py-4 rounded-md transition-all hover:-translate-y-0.5 hover:shadow-gold"
+                  className="bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] text-black font-heading text-[13px] font-bold tracking-[0.08em] uppercase px-8 py-4 rounded-full transition-all hover:-translate-y-0.5 hover:shadow-[0_10px_32px_rgba(212,175,55,0.45)]"
                 >
                   Shop All Products
                 </Link>
                 <Link
                   href="#about"
-                  className="border-2 border-dark text-dark font-heading text-[13px] font-bold tracking-[0.08em] uppercase px-8 py-4 rounded-md transition-all hover:bg-dark hover:text-white hover:-translate-y-0.5"
+                  className="border border-white/25 text-white font-heading text-[13px] font-bold tracking-[0.08em] uppercase px-8 py-4 rounded-full transition-all hover:bg-white/10 hover:-translate-y-0.5"
                 >
                   Our Story
                 </Link>
               </div>
 
               {/* Stats */}
-              <div className="flex gap-9 mt-11 pt-7 border-t border-gold/20 flex-wrap">
+              <div className="flex gap-9 mt-11 pt-7 border-t border-[#D4AF37]/15 flex-wrap">
                 {[['≥98%','Verified Purity'],['8+','Peptide Compounds'],['Bulk','Pricing Available']].map(([v,l]) => (
                   <div key={l}>
-                    <h3 className="font-heading text-[26px] font-extrabold text-gold">{v}</h3>
-                    <p className="text-[12px] text-g500 m-0">{l}</p>
+                    <h3 className="font-heading text-[26px] font-extrabold bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] bg-clip-text text-transparent">{v}</h3>
+                    <p className="text-[12px] text-white/40 m-0">{l}</p>
                   </div>
                 ))}
               </div>
@@ -108,10 +113,10 @@ export default async function HomePage() {
             <div className="flex justify-center items-center">
               <Image
                 src="/images/hero-vials.jpeg"
-                alt="Pepscore Research Peptide Collection"
+                alt="Pepscore Lab Research Peptide Collection"
                 width={540}
                 height={540}
-                className="w-full max-w-[540px] rounded-2xl drop-shadow-xl animate-float"
+                className="w-full max-w-[540px] rounded-2xl drop-shadow-[0_20px_60px_rgba(0,0,0,0.6)] animate-float"
                 priority
               />
             </div>
@@ -119,15 +124,15 @@ export default async function HomePage() {
         </section>
 
         {/* ── Products ─────────────────────────────────────────────────────── */}
-        <section id="products" className="py-24 px-6 bg-white">
+        <section id="products" className="py-24 px-6 bg-black">
           <div className="max-w-[1200px] mx-auto">
             <div className="text-center mb-14">
-              <span className="font-heading text-[11px] font-bold tracking-[0.15em] uppercase text-gold mb-3 block">Research Catalog</span>
-              <h2 className="font-heading text-[clamp(26px,4vw,38px)] font-bold text-dark mb-3">Premium Research Peptides</h2>
-              <p className="text-[16px] font-light text-g500 max-w-[540px] mx-auto leading-[1.7]">
+              <span className="font-heading text-[11px] font-bold tracking-[0.15em] uppercase text-[#D4AF37] mb-3 block">Research Catalog</span>
+              <h2 className="font-heading text-[clamp(26px,4vw,38px)] font-bold text-white mb-3">Premium Research Peptides</h2>
+              <p className="text-[16px] font-light text-white/55 max-w-[540px] mx-auto leading-[1.7]">
                 Every compound is third-party tested, precisely dosed, and formulated for research excellence.
               </p>
-              <div className="w-11 h-[3px] bg-gold mx-auto mt-3.5 rounded-full" />
+              <div className="w-11 h-[3px] bg-gradient-to-r from-[#D4AF37] to-[#E8C84A] mx-auto mt-3.5 rounded-full" />
             </div>
 
             {products.length > 0 ? (
@@ -152,20 +157,20 @@ export default async function HomePage() {
             approved active price yet — never render a placeholder table
             with fabricated numbers. */}
         {pricedRows.length > 0 && (
-          <section id="pricing" className="py-24 px-6 bg-white">
+          <section id="pricing" className="py-24 px-6 bg-black">
             <div className="max-w-[960px] mx-auto">
               <div className="text-center mb-14">
-                <span className="font-heading text-[11px] font-bold tracking-[0.15em] uppercase text-gold mb-3 block">Transparent Pricing</span>
-                <h2 className="font-heading text-[clamp(26px,4vw,38px)] font-bold text-dark mb-3">Full Pricing Reference</h2>
-                <p className="text-[16px] font-light text-g500 max-w-[540px] mx-auto">Standard case pricing for every published product. All prices in USD.</p>
-                <div className="w-11 h-[3px] bg-gold mx-auto mt-3.5 rounded-full" />
+                <span className="font-heading text-[11px] font-bold tracking-[0.15em] uppercase text-[#D4AF37] mb-3 block">Transparent Pricing</span>
+                <h2 className="font-heading text-[clamp(26px,4vw,38px)] font-bold text-white mb-3">Full Pricing Reference</h2>
+                <p className="text-[16px] font-light text-white/55 max-w-[540px] mx-auto">Standard case pricing for every published product. All prices in USD.</p>
+                <div className="w-11 h-[3px] bg-gradient-to-r from-[#D4AF37] to-[#E8C84A] mx-auto mt-3.5 rounded-full" />
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse rounded-2xl overflow-hidden shadow-sm2">
+              <div className="overflow-x-auto rounded-2xl border border-[#D4AF37]/15">
+                <table className="w-full border-collapse">
                   <thead>
                     <tr>
                       {['Product', 'Vial Size', 'Standard Case', 'Per Vial'].map((h) => (
-                        <th key={h} className="bg-dark text-white font-heading text-[12px] font-bold tracking-[0.08em] uppercase py-3.5 px-4 text-left first:text-left [&:not(:first-child)]:text-center">
+                        <th key={h} className="bg-white/[0.04] text-white font-heading text-[12px] font-bold tracking-[0.08em] uppercase py-3.5 px-4 text-left first:text-left [&:not(:first-child)]:text-center">
                           {h}
                         </th>
                       ))}
@@ -173,14 +178,14 @@ export default async function HomePage() {
                   </thead>
                   <tbody>
                     {pricedRows.map((row, i) => (
-                      <tr key={`${row.name}-${row.size}`} className={i % 2 === 1 ? 'bg-g100' : ''}>
-                        <td className="py-3.5 px-4 text-[14px] border-b border-g100 font-heading font-bold text-dark">{row.name}</td>
-                        <td className="py-3.5 px-4 text-[14px] border-b border-g100 text-center font-heading font-semibold text-dark">{row.size}</td>
-                        <td className="py-3.5 px-4 text-[14px] border-b border-g100 text-center font-heading font-semibold text-dark">
+                      <tr key={`${row.name}-${row.size}`} className={i % 2 === 1 ? 'bg-white/[0.02]' : ''}>
+                        <td className="py-3.5 px-4 text-[14px] border-t border-[#D4AF37]/10 font-heading font-bold text-white">{row.name}</td>
+                        <td className="py-3.5 px-4 text-[14px] border-t border-[#D4AF37]/10 text-center font-heading font-semibold text-white/80">{row.size}</td>
+                        <td className="py-3.5 px-4 text-[14px] border-t border-[#D4AF37]/10 text-center font-heading font-semibold text-white/80">
                           ${row.price.standardCasePrice}
                           {row.price.unitsPerCase ? ` / case of ${row.price.unitsPerCase}` : ''}
                         </td>
-                        <td className="py-3.5 px-4 text-[14px] border-b border-g100 text-center font-heading font-semibold text-dark">
+                        <td className="py-3.5 px-4 text-[14px] border-t border-[#D4AF37]/10 text-center font-heading font-semibold text-white/80">
                           {row.price.individualVialPrice != null ? `$${row.price.individualVialPrice}` : '—'}
                         </td>
                       </tr>
@@ -188,22 +193,22 @@ export default async function HomePage() {
                   </tbody>
                 </table>
               </div>
-              <p className="text-center mt-5 text-[13px] text-g500">
+              <p className="text-center mt-5 text-[13px] text-white/45">
                 All products for research purposes only.{' '}
-                <Link href="#contact" className="text-gold hover:underline">Contact us</Link> for custom bulk quotes.
+                <Link href="#contact" className="text-[#D4AF37] hover:underline">Contact us</Link> for custom bulk quotes.
               </p>
             </div>
           </section>
         )}
 
         {/* ── Bulk Section ─────────────────────────────────────────────────── */}
-        <section id="bulk" className="py-20 px-6 bg-gradient-to-br from-dark to-[#2C2620] text-white">
+        <section id="bulk" className="py-20 px-6 bg-gradient-to-br from-[#0d0d0d] to-black text-white">
           <div className="max-w-[1000px] mx-auto">
             <div className="text-center mb-11">
-              <span className="font-heading text-[11px] font-bold tracking-[0.15em] uppercase text-gold-light mb-3 block">Volume Savings</span>
+              <span className="font-heading text-[11px] font-bold tracking-[0.15em] uppercase text-[#D4AF37]/70 mb-3 block">Volume Savings</span>
               <h2 className="font-heading text-[clamp(26px,4vw,38px)] font-bold text-white mb-3">Bulk Pricing for Researchers</h2>
-              <p className="text-[16px] font-light text-white/70 max-w-[540px] mx-auto">Scale your research without scaling your costs.</p>
-              <div className="w-11 h-[3px] bg-gold mx-auto mt-3.5 rounded-full" />
+              <p className="text-[16px] font-light text-white/60 max-w-[540px] mx-auto">Scale your research without scaling your costs.</p>
+              <div className="w-11 h-[3px] bg-gradient-to-r from-[#D4AF37] to-[#E8C84A] mx-auto mt-3.5 rounded-full" />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-10">
               {[
@@ -211,19 +216,19 @@ export default async function HomePage() {
                 { icon:'📦', title:'Bulk 5', disc:'Save ~54%', desc:'Order 5 units and unlock significant per-unit savings. Ideal for ongoing research programs.', featured: false },
                 { icon:'🏆', title:'Bulk 10', disc:'Lowest Price', desc:'Our best value tier. Maximize your research budget with the lowest per-unit pricing available.', featured: true },
               ].map(c => (
-                <div key={c.title} className={`relative overflow-hidden rounded-2xl p-7 text-center border transition-all hover:-translate-y-1 ${c.featured ? 'border-gold bg-gold/12' : 'border-gold/30 bg-white/6'}`}>
+                <div key={c.title} className={`relative overflow-hidden rounded-2xl p-7 text-center border transition-all hover:-translate-y-1 ${c.featured ? 'border-[#D4AF37]/50 bg-[#D4AF37]/10' : 'border-[#D4AF37]/20 bg-white/[0.03]'}`}>
                   {c.featured && (
-                    <div className="absolute top-3.5 right-[-22px] bg-gold text-white text-[9px] font-bold tracking-[0.1em] px-8 py-1 rotate-45">BEST VALUE</div>
+                    <div className="absolute top-3.5 right-[-22px] bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] text-black text-[9px] font-bold tracking-[0.1em] px-8 py-1 rotate-45">BEST VALUE</div>
                   )}
                   <div className="text-4xl mb-3">{c.icon}</div>
                   <h3 className="font-heading text-[19px] font-bold text-white mb-1.5">{c.title}</h3>
-                  <div className="font-heading text-[34px] font-extrabold text-gold mb-1.5">{c.disc}</div>
-                  <p className="text-[13px] text-white/65 leading-relaxed">{c.desc}</p>
+                  <div className="font-heading text-[34px] font-extrabold bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] bg-clip-text text-transparent mb-1.5">{c.disc}</div>
+                  <p className="text-[13px] text-white/55 leading-relaxed">{c.desc}</p>
                 </div>
               ))}
             </div>
             <div className="text-center">
-              <Link href="#contact" className="inline-block bg-gold hover:bg-gold-dark text-white font-heading text-[13px] font-bold tracking-[0.08em] uppercase px-8 py-4 rounded-md transition-all hover:-translate-y-0.5">
+              <Link href="#contact" className="inline-block bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] text-black font-heading text-[13px] font-bold tracking-[0.08em] uppercase px-8 py-4 rounded-full transition-all hover:-translate-y-0.5 hover:shadow-[0_10px_32px_rgba(212,175,55,0.45)]">
                 Inquire About Bulk Orders
               </Link>
             </div>
@@ -231,13 +236,13 @@ export default async function HomePage() {
         </section>
 
         {/* ── Features ─────────────────────────────────────────────────────── */}
-        <section id="features" className="py-24 px-6 bg-cream">
+        <section id="features" className="py-24 px-6 bg-black">
           <div className="max-w-[1200px] mx-auto">
             <div className="text-center mb-14">
-              <span className="font-heading text-[11px] font-bold tracking-[0.15em] uppercase text-gold mb-3 block">Why Researchers Choose Us</span>
-              <h2 className="font-heading text-[clamp(26px,4vw,38px)] font-bold text-dark mb-3">The Pepscore Standard</h2>
-              <p className="text-[16px] font-light text-g500 max-w-[540px] mx-auto">Every vial is backed by rigorous quality assurance and a commitment to research excellence.</p>
-              <div className="w-11 h-[3px] bg-gold mx-auto mt-3.5 rounded-full" />
+              <span className="font-heading text-[11px] font-bold tracking-[0.15em] uppercase text-[#D4AF37] mb-3 block">Why Researchers Choose Us</span>
+              <h2 className="font-heading text-[clamp(26px,4vw,38px)] font-bold text-white mb-3">The Pepscore Lab Standard</h2>
+              <p className="text-[16px] font-light text-white/55 max-w-[540px] mx-auto">Every vial is backed by rigorous quality assurance and a commitment to research excellence.</p>
+              <div className="w-11 h-[3px] bg-gradient-to-r from-[#D4AF37] to-[#E8C84A] mx-auto mt-3.5 rounded-full" />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-7">
               {[
@@ -246,10 +251,10 @@ export default async function HomePage() {
                 { icon:'📋', title:'Certificates of Analysis', body:'Full COAs accompany every order, providing complete transparency on composition, purity, and testing results.' },
                 { icon:'⚡', title:'Fast Fulfillment', body:'Orders processed and shipped within 24–48 hours. Bulk orders receive priority handling and a dedicated account contact.' },
               ].map(f => (
-                <div key={f.title} className="bg-white border border-gold/12 rounded-2xl p-8 text-center transition-all hover:-translate-y-1 hover:shadow-sm2 hover:border-gold">
-                  <div className="w-[62px] h-[62px] bg-gold/10 rounded-full flex items-center justify-center mx-auto mb-4 text-[26px]">{f.icon}</div>
-                  <h3 className="font-heading text-[16px] font-bold text-dark mb-2.5">{f.title}</h3>
-                  <p className="text-[13px] text-g500 leading-[1.7]">{f.body}</p>
+                <div key={f.title} className="bg-[#0d0d0d] border border-[#D4AF37]/15 rounded-2xl p-8 text-center transition-all hover:-translate-y-1 hover:border-[#D4AF37]/40">
+                  <div className="w-[62px] h-[62px] bg-[#D4AF37]/10 rounded-full flex items-center justify-center mx-auto mb-4 text-[26px]">{f.icon}</div>
+                  <h3 className="font-heading text-[16px] font-bold text-white mb-2.5">{f.title}</h3>
+                  <p className="text-[13px] text-white/55 leading-[1.7]">{f.body}</p>
                 </div>
               ))}
             </div>
@@ -257,20 +262,20 @@ export default async function HomePage() {
         </section>
 
         {/* ── About ────────────────────────────────────────────────────────── */}
-        <section id="about" className="py-24 px-6 bg-cream">
+        <section id="about" className="py-24 px-6 bg-black">
           <div className="max-w-[1200px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-[72px] items-center">
             <div className="relative">
-              <Image src="/images/hero-vials.jpeg" alt="Pepscore Peptide Collection" width={600} height={500} className="w-full rounded-2xl shadow-sl" />
-              <div className="absolute inset-[-14px_-14px_14px_14px] border-2 border-gold/30 rounded-2xl -z-10 hidden md:block" />
+              <Image src="/images/hero-vials.jpeg" alt="Pepscore Lab Peptide Collection" width={600} height={500} className="w-full rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.5)]" />
+              <div className="absolute inset-[-14px_-14px_14px_14px] border border-[#D4AF37]/30 rounded-2xl -z-10 hidden md:block" />
             </div>
             <div>
-              <span className="font-heading text-[11px] font-bold tracking-[0.15em] uppercase text-gold mb-3 block">Our Mission</span>
-              <h2 className="font-heading text-[clamp(26px,4vw,38px)] font-bold text-dark mb-2">Holistic Peptides Rooted in Science</h2>
-              <div className="w-11 h-[3px] bg-gold mb-6 rounded-full" />
-              <p className="text-[15px] text-g700 leading-[1.8] mb-4">
-                At Pepscore, we believe breakthrough research begins with reliable raw materials. Founded by scientists with a passion for precision biochemistry, we supply research-grade peptides to laboratories that demand the highest standards of purity and consistency.
+              <span className="font-heading text-[11px] font-bold tracking-[0.15em] uppercase text-[#D4AF37] mb-3 block">Our Mission</span>
+              <h2 className="font-heading text-[clamp(26px,4vw,38px)] font-bold text-white mb-2">Holistic Peptides Rooted in Science</h2>
+              <div className="w-11 h-[3px] bg-gradient-to-r from-[#D4AF37] to-[#E8C84A] mb-6 rounded-full" />
+              <p className="text-[15px] text-white/65 leading-[1.8] mb-4">
+                At Pepscore Lab, we believe breakthrough research begins with reliable raw materials. Founded by scientists with a passion for precision biochemistry, we supply research-grade peptides to laboratories that demand the highest standards of purity and consistency.
               </p>
-              <p className="text-[15px] text-g700 leading-[1.8] mb-6">
+              <p className="text-[15px] text-white/65 leading-[1.8] mb-6">
                 Our catalog spans the most studied peptide classes — from metabolic regulators like Semaglutide and Tirzepatide, to longevity compounds like Epithalon and NAD+. Each product is synthesized under GMP-compliant conditions and independently verified before it reaches your bench.
               </p>
               <div className="space-y-3.5">
@@ -280,10 +285,10 @@ export default async function HomePage() {
                   { icon:'🔒', title:'Discreet & Compliant', body:'Shipped in professional packaging with full compliance documentation included.' },
                 ].map(v => (
                   <div key={v.title} className="flex gap-3 items-start">
-                    <div className="w-[34px] h-[34px] bg-gold/10 rounded-lg flex items-center justify-center text-[15px] flex-shrink-0">{v.icon}</div>
+                    <div className="w-[34px] h-[34px] bg-[#D4AF37]/10 rounded-lg flex items-center justify-center text-[15px] flex-shrink-0">{v.icon}</div>
                     <div>
-                      <h4 className="font-heading text-[13px] font-bold text-dark mb-0.5">{v.title}</h4>
-                      <p className="text-[12px] text-g500 leading-[1.5]">{v.body}</p>
+                      <h4 className="font-heading text-[13px] font-bold text-white mb-0.5">{v.title}</h4>
+                      <p className="text-[12px] text-white/50 leading-[1.5]">{v.body}</p>
                     </div>
                   </div>
                 ))}
@@ -293,17 +298,17 @@ export default async function HomePage() {
         </section>
 
         {/* ── CTA Banner ───────────────────────────────────────────────────── */}
-        <section className="py-[72px] px-6 bg-gradient-to-br from-gold-dark via-gold to-gold-light text-center">
+        <section className="py-[72px] px-6 bg-gradient-to-br from-[#8A6B1A] via-[#D4AF37] to-[#E8C84A] text-center">
           <div className="max-w-[680px] mx-auto">
-            <h2 className="font-heading text-[clamp(26px,4vw,40px)] font-extrabold text-white mb-3.5">
+            <h2 className="font-heading text-[clamp(26px,4vw,40px)] font-extrabold text-black mb-3.5">
               Ready to Elevate Your Research?
             </h2>
-            <p className="text-[16px] text-white/85 mb-8 leading-[1.7]">
-              Join laboratories sourcing premium peptides from Pepscore. Bulk pricing available — contact us for a custom quote tailored to your program.
+            <p className="text-[16px] text-black/70 mb-8 leading-[1.7]">
+              Join laboratories sourcing premium peptides from Pepscore Lab. Bulk pricing available — contact us for a custom quote tailored to your program.
             </p>
             <Link
               href="#products"
-              className="inline-block bg-white text-gold-dark font-heading text-[13px] font-bold tracking-[0.08em] uppercase px-10 py-4 rounded-md hover:-translate-y-0.5 hover:shadow-lg transition-all"
+              className="inline-block bg-black text-[#D4AF37] font-heading text-[13px] font-bold tracking-[0.08em] uppercase px-10 py-4 rounded-full hover:-translate-y-0.5 hover:shadow-lg transition-all"
             >
               Browse the Catalog
             </Link>
@@ -332,10 +337,10 @@ const STATIC_PRODUCTS: ProductCardProps[] = [
     imageUrl: '/images/Semaglutide.png',
     description: 'GLP-1 receptor agonist studied for metabolic regulation, glucose homeostasis, and appetite suppression research.',
     variants: [
-      { id:'1a', slug:'semaglutide-5mg',  size:'5mg',  standardCasePrice:138, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE' },
-      { id:'1b', slug:'semaglutide-10mg', size:'10mg', standardCasePrice:165, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE' },
-      { id:'1c', slug:'semaglutide-20mg', size:'20mg', standardCasePrice:258, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE' },
-      { id:'1d', slug:'semaglutide-30mg', size:'30mg', standardCasePrice:318, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE' },
+      { id:'1a', slug:'semaglutide-5mg',  size:'5mg',  standardCasePrice:138, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE', availabilityMessageOverride:null },
+      { id:'1b', slug:'semaglutide-10mg', size:'10mg', standardCasePrice:165, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE', availabilityMessageOverride:null },
+      { id:'1c', slug:'semaglutide-20mg', size:'20mg', standardCasePrice:258, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE', availabilityMessageOverride:null },
+      { id:'1d', slug:'semaglutide-30mg', size:'30mg', standardCasePrice:318, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE', availabilityMessageOverride:null },
     ],
   },
   {
@@ -343,10 +348,10 @@ const STATIC_PRODUCTS: ProductCardProps[] = [
     imageUrl: '/images/Tirzepatide.png',
     description: 'Dual GIP/GLP-1 receptor agonist studied for superior metabolic outcomes and cardiometabolic research applications.',
     variants: [
-      { id:'2a', slug:'tirzepatide-5mg',  size:'5mg',  standardCasePrice:147, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE' },
-      { id:'2b', slug:'tirzepatide-10mg', size:'10mg', standardCasePrice:183, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE' },
-      { id:'2c', slug:'tirzepatide-20mg', size:'20mg', standardCasePrice:327, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE' },
-      { id:'2d', slug:'tirzepatide-60mg', size:'60mg', standardCasePrice:696, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE' },
+      { id:'2a', slug:'tirzepatide-5mg',  size:'5mg',  standardCasePrice:147, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE', availabilityMessageOverride:null },
+      { id:'2b', slug:'tirzepatide-10mg', size:'10mg', standardCasePrice:183, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE', availabilityMessageOverride:null },
+      { id:'2c', slug:'tirzepatide-20mg', size:'20mg', standardCasePrice:327, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE', availabilityMessageOverride:null },
+      { id:'2d', slug:'tirzepatide-60mg', size:'60mg', standardCasePrice:696, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE', availabilityMessageOverride:null },
     ],
   },
   {
@@ -354,10 +359,10 @@ const STATIC_PRODUCTS: ProductCardProps[] = [
     imageUrl: '/images/Retatrutide.png',
     description: 'Triple receptor agonist (GIP/GLP-1/Glucagon) — the next generation of metabolic research compounds.',
     variants: [
-      { id:'3a', slug:'retatrutide-5mg',  size:'5mg',  standardCasePrice:240, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE' },
-      { id:'3b', slug:'retatrutide-10mg', size:'10mg', standardCasePrice:327, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE' },
-      { id:'3c', slug:'retatrutide-30mg', size:'30mg', standardCasePrice:642, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE' },
-      { id:'3d', slug:'retatrutide-60mg', size:'60mg', standardCasePrice:978, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE' },
+      { id:'3a', slug:'retatrutide-5mg',  size:'5mg',  standardCasePrice:240, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE', availabilityMessageOverride:null },
+      { id:'3b', slug:'retatrutide-10mg', size:'10mg', standardCasePrice:327, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE', availabilityMessageOverride:null },
+      { id:'3c', slug:'retatrutide-30mg', size:'30mg', standardCasePrice:642, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE', availabilityMessageOverride:null },
+      { id:'3d', slug:'retatrutide-60mg', size:'60mg', standardCasePrice:978, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE', availabilityMessageOverride:null },
     ],
   },
   {
@@ -365,8 +370,8 @@ const STATIC_PRODUCTS: ProductCardProps[] = [
     imageUrl: '/images/nad.png',
     description: 'Essential coenzyme precursor critical for cellular energy metabolism, DNA repair, and longevity pathway research.',
     variants: [
-      { id:'4a', slug:'nad-plus-100mg', size:'100mg', standardCasePrice:168, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE' },
-      { id:'4b', slug:'nad-plus-500mg', size:'500mg', standardCasePrice:264, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE' },
+      { id:'4a', slug:'nad-plus-100mg', size:'100mg', standardCasePrice:168, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE', availabilityMessageOverride:null },
+      { id:'4b', slug:'nad-plus-500mg', size:'500mg', standardCasePrice:264, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE', availabilityMessageOverride:null },
     ],
   },
   {
@@ -374,8 +379,8 @@ const STATIC_PRODUCTS: ProductCardProps[] = [
     imageUrl: '/images/epithalon.png',
     description: 'Tetrapeptide studied for telomerase activation, circadian regulation, and anti-aging biological processes.',
     variants: [
-      { id:'5a', slug:'epithalon-10mg', size:'10mg', standardCasePrice:144, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE' },
-      { id:'5b', slug:'epithalon-50mg', size:'50mg', standardCasePrice:369, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE' },
+      { id:'5a', slug:'epithalon-10mg', size:'10mg', standardCasePrice:144, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE', availabilityMessageOverride:null },
+      { id:'5b', slug:'epithalon-50mg', size:'50mg', standardCasePrice:369, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE', availabilityMessageOverride:null },
     ],
   },
   {
@@ -383,7 +388,7 @@ const STATIC_PRODUCTS: ProductCardProps[] = [
     imageUrl: '/images/cjc1295.png',
     description: 'Synergistic GHRH analog and selective ghrelin mimetic combination for growth hormone secretion research.',
     variants: [
-      { id:'6a', slug:'cjc1295-ipa-10mg', size:'10mg', standardCasePrice:297, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE' },
+      { id:'6a', slug:'cjc1295-ipa-10mg', size:'10mg', standardCasePrice:297, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE', availabilityMessageOverride:null },
     ],
   },
   {
@@ -391,8 +396,8 @@ const STATIC_PRODUCTS: ProductCardProps[] = [
     imageUrl: '/images/kisspeptin.png',
     description: 'Hypothalamic neuropeptide studied for reproductive endocrinology, LH/FSH regulation, and fertility research.',
     variants: [
-      { id:'7a', slug:'kisspeptin-10-5mg',  size:'5mg',  standardCasePrice:186, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE' },
-      { id:'7b', slug:'kisspeptin-10-10mg', size:'10mg', standardCasePrice:285, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE' },
+      { id:'7a', slug:'kisspeptin-10-5mg',  size:'5mg',  standardCasePrice:186, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE', availabilityMessageOverride:null },
+      { id:'7b', slug:'kisspeptin-10-10mg', size:'10mg', standardCasePrice:285, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE', availabilityMessageOverride:null },
     ],
   },
   {
@@ -400,8 +405,8 @@ const STATIC_PRODUCTS: ProductCardProps[] = [
     imageUrl: '/images/ghk-cu.png',
     description: 'Copper-binding tripeptide widely researched for tissue remodeling, wound healing, and dermal regeneration.',
     variants: [
-      { id:'8a', slug:'ghk-cu-50mg',  size:'50mg',  standardCasePrice:108, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE' },
-      { id:'8b', slug:'ghk-cu-100mg', size:'100mg', standardCasePrice:174, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE' },
+      { id:'8a', slug:'ghk-cu-50mg',  size:'50mg',  standardCasePrice:108, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE', availabilityMessageOverride:null },
+      { id:'8b', slug:'ghk-cu-100mg', size:'100mg', standardCasePrice:174, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, availability:'AVAILABLE', availabilityMessageOverride:null },
     ],
   },
 ]

@@ -10,13 +10,13 @@ import './globals.css'
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'https://pepscorelab.com'),
-  title: 'Pepscore — Holistic Research Peptides',
+  title: 'Pepscore Lab — Holistic Research Peptides',
   description:
     'Precision-grade research peptides with independently verified purity above 98%. For Research Use Only.',
   keywords: ['research peptides', 'semaglutide', 'tirzepatide', 'NAD+', 'epithalon', 'RUO'],
   alternates: { canonical: '/' },
   openGraph: {
-    title: 'Pepscore — Holistic Research Peptides',
+    title: 'Pepscore Lab — Holistic Research Peptides',
     description: 'Pharmaceutical-quality research peptides. ≥98% purity. For Research Use Only.',
     images: [{ url: '/images/hero-vials.jpeg' }],
     type: 'website',

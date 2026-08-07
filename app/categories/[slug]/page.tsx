@@ -36,10 +36,10 @@ async function resolveCategory(slug: string): Promise<string | null> {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params
   const category = await resolveCategory(slug)
-  if (!category) return { title: 'Category Not Found | Pepscore' }
+  if (!category) return { title: 'Category Not Found | Pepscore Lab' }
   return {
-    title: `${category} Research Peptides | Pepscore`,
-    description: `Browse Pepscore's ${category} research peptides — supplied for laboratory research use only.`,
+    title: `${category} Research Peptides | Pepscore Lab`,
+    description: `Browse Pepscore Lab's ${category} research peptides — supplied for laboratory research use only.`,
     alternates: { canonical: `/categories/${slug}` },
   }
 }
@@ -68,21 +68,21 @@ export default async function CategoryDetailPage({ params }: PageProps) {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <CartSidebar />
       <Header />
-      <main className="bg-cream min-h-screen">
+      <main className="bg-black min-h-screen">
         <div className="max-w-[1200px] mx-auto px-6 pt-6 pb-2">
-          <nav aria-label="Breadcrumb" className="text-[12px] text-g500 flex items-center gap-2">
-            <Link href="/" className="hover:text-gold transition-colors">Home</Link>
+          <nav aria-label="Breadcrumb" className="text-[12px] text-white/45 flex items-center gap-2">
+            <Link href="/" className="hover:text-[#D4AF37] transition-colors">Home</Link>
             <span>/</span>
-            <Link href="/categories" className="hover:text-gold transition-colors">Categories</Link>
+            <Link href="/categories" className="hover:text-[#D4AF37] transition-colors">Categories</Link>
             <span>/</span>
-            <span className="text-dark font-semibold">{category}</span>
+            <span className="text-white font-semibold">{category}</span>
           </nav>
         </div>
 
         <div className="max-w-[1200px] mx-auto px-6 py-10">
-          <h1 className="font-heading text-[clamp(26px,4vw,38px)] font-bold text-dark mb-3">{category} Research Peptides</h1>
-          <p className="text-[15px] text-g500 font-light mb-10 max-w-[640px]">
-            Browse Pepscore&apos;s {category.toLowerCase()} research peptides — {rows.length} product{rows.length === 1 ? '' : 's'} available, supplied for laboratory research use only.
+          <h1 className="font-heading text-[clamp(26px,4vw,38px)] font-bold text-white mb-3">{category} Research Peptides</h1>
+          <p className="text-[15px] text-white/55 font-light mb-10 max-w-[640px]">
+            Browse Pepscore Lab&apos;s {category.toLowerCase()} research peptides — {rows.length} product{rows.length === 1 ? '' : 's'} available, supplied for laboratory research use only.
           </p>
 
           {products.length > 0 ? (
@@ -92,7 +92,7 @@ export default async function CategoryDetailPage({ params }: PageProps) {
               ))}
             </div>
           ) : (
-            <p className="text-[14px] text-g500">No products currently listed in this category.</p>
+            <p className="text-[14px] text-white/50">No products currently listed in this category.</p>
           )}
         </div>
       </main>

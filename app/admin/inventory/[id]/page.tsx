@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { isAdminClerkUser } from '@/lib/isAdmin'
 import { getInventoryDetail } from '@/lib/adminInventory'
 import { InventoryDetailPanel } from '@/components/admin/InventoryDetailPanel'
+import { ProductContentSection } from '@/components/admin/ProductContentSection'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -62,6 +63,10 @@ export default async function AdminInventoryDetailPage({ params }: Props) {
 
         <div className="mb-6">
           <InventoryDetailPanel product={product} availableUnits={availableUnits} completeCasesAvailable={completeCasesAvailable} />
+        </div>
+
+        <div className="mb-6">
+          <ProductContentSection productId={product.id} />
         </div>
 
         {reservations.length > 0 && (

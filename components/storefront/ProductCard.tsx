@@ -14,9 +14,9 @@ const GENERIC_PLACEHOLDER = '/images/products/default-single-vial.png'
 
 const AVAILABILITY_BADGE_CLASS: Record<StorefrontAvailability, string> = {
   AVAILABLE: '', // default state -- no badge needed, keeps the common case uncluttered
-  LIMITED: 'bg-amber-100 text-amber-800 border border-amber-300',
-  OUT_OF_STOCK: 'bg-g100 text-g700 border border-g300',
-  COMING_SOON: 'bg-g100 text-g700 border border-g300',
+  LIMITED: 'bg-amber-400/10 text-amber-300 border border-amber-400/30',
+  OUT_OF_STOCK: 'bg-white/5 text-white/50 border border-white/15',
+  COMING_SOON: 'bg-white/5 text-white/50 border border-white/15',
 }
 
 export interface ProductVariant {
@@ -38,10 +38,15 @@ export interface ProductVariant {
   // Real inventory-derived state, never the exact physical count. See
   // lib/storefront/availability.ts.
   availability: StorefrontAvailability
+  // Admin-editable text (Phase 2B item 6) shown instead of the generic
+  // AVAILABILITY_LABEL when set -- never changes the underlying
+  // availability/purchasability itself.
+  availabilityMessageOverride: string | null
 }
 
 export interface ProductCardProps {
   name: string
+  featured?: boolean
   category: string
   description: string
   imageUrl: string
@@ -49,7 +54,7 @@ export interface ProductCardProps {
   variants: ProductVariant[]
 }
 
-export function ProductCard({ name, category, description, imageUrl, badge, variants }: ProductCardProps) {
+export function ProductCard({ name, featured, category, description, imageUrl, badge, variants }: ProductCardProps) {
   const [selectedIdx, setSelectedIdx] = useState(0)
   const { addItem, openCart } = useCartStore()
 
@@ -65,17 +70,27 @@ export function ProductCard({ name, category, description, imageUrl, badge, vari
   }
 
   return (
-    <article className="bg-white border border-gold/15 rounded-card overflow-hidden relative flex flex-col transition-all duration-300 hover:-translate-y-1.5 hover:shadow-sl hover:border-gold group">
-      {/* Badge */}
+    <article className="bg-[#0d0d0d] border border-[#D4AF37]/15 rounded-card overflow-hidden relative flex flex-col transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:border-[#D4AF37]/40 group">
+      {/* Badges — marketing badge (e.g. "Best Seller") takes the left corner;
+          Featured (admin-set, Phase 2B item 6) takes the right so both can
+          show at once without overlapping. */}
       {badge && (
-        <div className="absolute top-3 left-3 z-10 bg-gold text-white font-heading text-[10px] font-bold tracking-[0.08em] uppercase px-2.5 py-1 rounded">
+        <div className="absolute top-3 left-3 z-10 bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] text-black font-heading text-[10px] font-bold tracking-[0.08em] uppercase px-2.5 py-1 rounded-full">
           {badge}
+        </div>
+      )}
+      {featured && (
+        <div className="absolute top-3 right-3 z-10 bg-black/70 border border-[#D4AF37]/40 text-[#D4AF37] font-heading text-[9px] font-bold tracking-[0.08em] uppercase px-2.5 py-1 rounded-full backdrop-blur">
+          ★ Featured
         </div>
       )}
 
       {/* Image — single-vial only, never the lineup. Links to the currently
-          selected variant's canonical detail page. */}
-      <Link href={`/products/${v.slug}`} className="bg-gradient-to-br from-cream to-[#F5EFE0] h-[200px] flex items-center justify-center p-5 shrink-0">
+          selected variant's canonical detail page. Container kept
+          compatible with the upcoming standardized vial photography --
+          only the background/border treatment changed here, not the
+          image logic itself. */}
+      <Link href={`/products/${v.slug}`} className="bg-gradient-to-br from-[#161616] to-[#0a0a0a] h-[200px] flex items-center justify-center p-5 shrink-0">
         {imageUrl === GENERIC_PLACEHOLDER ? (
           /* Dynamic SVG vial with product name on the label */
           <SingleVialImage
@@ -101,18 +116,18 @@ export function ProductCard({ name, category, description, imageUrl, badge, vari
         {/* Category label — links to the category page */}
         <Link
           href={`/categories/${categoryToSlug(category)}`}
-          className="font-heading text-[10px] font-bold tracking-[0.12em] uppercase text-gold mb-1 hover:underline inline-block"
+          className="font-heading text-[10px] font-bold tracking-[0.12em] uppercase text-[#D4AF37] mb-1 hover:underline inline-block w-fit"
         >
           {category}
         </Link>
 
         {/* Product name — links to the currently selected variant's page */}
         <Link href={`/products/${v.slug}`}>
-          <h3 className="font-heading text-[17px] font-bold text-dark leading-tight mb-2 hover:text-gold transition-colors">{name}</h3>
+          <h3 className="font-heading text-[17px] font-bold text-white leading-tight mb-2 hover:text-[#D4AF37] transition-colors">{name}</h3>
         </Link>
 
         {/* Description — flex-1 so it absorbs variable space, keeping bottom section aligned */}
-        <p className="text-[12px] text-g700 leading-relaxed flex-1 mb-3">{description}</p>
+        <p className="text-[12px] text-white/55 leading-relaxed flex-1 mb-3">{description}</p>
 
         {/* ── Bottom section — always pinned via flex-1 on description above ── */}
         <div className="flex flex-col gap-2.5">
@@ -120,16 +135,16 @@ export function ProductCard({ name, category, description, imageUrl, badge, vari
           {/* Size selector pills */}
           {variants.length > 1 && (
             <div>
-              <p className="text-[10px] font-bold tracking-[0.08em] uppercase text-g500 mb-1.5">Select size</p>
+              <p className="text-[10px] font-bold tracking-[0.08em] uppercase text-white/40 mb-1.5">Select size</p>
               <div className="flex flex-wrap gap-1.5">
                 {variants.map((variant, i) => (
                   <button
                     key={variant.slug}
                     onClick={() => setSelectedIdx(i)}
-                    className={`px-2.5 py-1 rounded text-[11px] font-heading font-bold tracking-[0.04em] transition-all ${
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-heading font-bold tracking-[0.04em] transition-all ${
                       i === selectedIdx
-                        ? 'bg-gold text-white shadow-sm'
-                        : 'border border-gold/30 text-g700 hover:border-gold hover:text-gold'
+                        ? 'bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] text-black'
+                        : 'border border-[#D4AF37]/25 text-white/60 hover:border-[#D4AF37] hover:text-[#D4AF37]'
                     }`}
                   >
                     {variant.size}
@@ -143,24 +158,24 @@ export function ProductCard({ name, category, description, imageUrl, badge, vari
               keep the common case uncluttered; only shown for the exceptions. */}
           {v.availability !== 'AVAILABLE' && (
             <div className={`inline-flex w-fit items-center rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.07em] ${AVAILABILITY_BADGE_CLASS[v.availability]}`}>
-              {AVAILABILITY_LABEL[v.availability]}
+              {v.availabilityMessageOverride || AVAILABILITY_LABEL[v.availability]}
             </div>
           )}
 
           {hasPrice ? (
             <>
               {/* Standard case price */}
-              <div className="bg-[#FDFAF5] border border-gold/15 rounded-lg p-3 flex items-center justify-between">
+              <div className="bg-white/[0.03] border border-[#D4AF37]/15 rounded-lg p-3 flex items-center justify-between">
                 <div>
-                  <p className="text-[9px] font-bold text-g500 uppercase tracking-[0.07em] mb-0.5">
+                  <p className="text-[9px] font-bold text-white/40 uppercase tracking-[0.07em] mb-0.5">
                     {v.unitsPerCase ? `Case of ${v.unitsPerCase}` : 'Standard Case'}
                   </p>
-                  <p className="font-heading text-[18px] font-extrabold text-dark">${v.standardCasePrice}</p>
+                  <p className="font-heading text-[18px] font-extrabold text-white">${v.standardCasePrice}</p>
                 </div>
                 {v.individualVialPrice != null && (
                   <div className="text-right">
-                    <p className="text-[9px] font-bold text-g500 uppercase tracking-[0.07em] mb-0.5">Per Vial</p>
-                    <p className="font-heading text-[14px] font-bold text-gold">${v.individualVialPrice}</p>
+                    <p className="text-[9px] font-bold text-white/40 uppercase tracking-[0.07em] mb-0.5">Per Vial</p>
+                    <p className="font-heading text-[14px] font-bold text-[#D4AF37]">${v.individualVialPrice}</p>
                   </div>
                 )}
               </div>
@@ -168,9 +183,9 @@ export function ProductCard({ name, category, description, imageUrl, badge, vari
               {/* SPA case price — only ever populated for an admin-granted
                   eligible signed-in customer, see lib/storefront/pricing.ts */}
               {v.spaCasePrice != null && (
-                <div className="bg-gold/8 border border-gold/25 rounded-lg p-2.5 flex items-center justify-between">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.06em] text-gold-dark">SPA Price</p>
-                  <p className="font-heading text-[15px] font-bold text-gold-dark">${v.spaCasePrice}</p>
+                <div className="bg-[#D4AF37]/8 border border-[#D4AF37]/25 rounded-lg p-2.5 flex items-center justify-between">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.06em] text-[#D4AF37]">SPA Price</p>
+                  <p className="font-heading text-[15px] font-bold text-[#D4AF37]">${v.spaCasePrice}</p>
                 </div>
               )}
 
@@ -180,20 +195,20 @@ export function ProductCard({ name, category, description, imageUrl, badge, vari
               <button
                 onClick={handleAdd}
                 disabled={!canPurchase}
-                className="bg-gold hover:bg-gold-dark text-white font-heading text-[11px] font-bold tracking-[0.05em] uppercase w-full py-2.5 rounded-md transition-all hover:scale-[1.02] disabled:bg-g300 disabled:text-g700 disabled:cursor-not-allowed disabled:hover:scale-100"
+                className="bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] hover:shadow-[0_4px_16px_rgba(212,175,55,0.4)] text-black font-heading text-[11px] font-bold tracking-[0.05em] uppercase w-full py-2.5 rounded-full transition-all hover:scale-[1.02] disabled:bg-white/10 disabled:bg-none disabled:text-white/40 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:shadow-none"
               >
-                {canPurchase ? `Add to Cart${variants.length > 1 ? ` · ${v.size}` : ''}` : AVAILABILITY_LABEL[v.availability]}
+                {canPurchase ? `Add to Cart${variants.length > 1 ? ` · ${v.size}` : ''}` : v.availabilityMessageOverride || AVAILABILITY_LABEL[v.availability]}
               </button>
             </>
           ) : (
             <>
               {/* No approved public price yet — never invent one */}
-              <div className="bg-[#FDFAF5] border border-gold/15 rounded-lg p-3 text-center">
-                <p className="text-[12px] font-heading font-semibold text-g700">Pricing available on request</p>
+              <div className="bg-white/[0.03] border border-[#D4AF37]/15 rounded-lg p-3 text-center">
+                <p className="text-[12px] font-heading font-semibold text-white/60">Pricing available on request</p>
               </div>
               <Link
                 href="/#contact"
-                className="block border-2 border-gold text-gold-dark hover:bg-gold hover:text-white font-heading text-[11px] font-bold tracking-[0.05em] uppercase w-full py-2.5 rounded-md transition-all text-center"
+                className="block border border-[#D4AF37]/45 text-[#D4AF37] hover:bg-[#D4AF37] hover:text-black font-heading text-[11px] font-bold tracking-[0.05em] uppercase w-full py-2.5 rounded-full transition-all text-center"
               >
                 Request Pricing
               </Link>

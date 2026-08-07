@@ -16,15 +16,26 @@ import type { StorefrontPrice } from '@/lib/storefront/pricing'
 const GENERIC_PLACEHOLDER = '/images/products/default-single-vial.png'
 
 const AVAILABILITY_BADGE_CLASS: Record<StorefrontAvailability, string> = {
-  AVAILABLE: 'bg-green-50 text-green-700 border border-green-200',
-  LIMITED: 'bg-amber-100 text-amber-800 border border-amber-300',
-  OUT_OF_STOCK: 'bg-g100 text-g700 border border-g300',
-  COMING_SOON: 'bg-g100 text-g700 border border-g300',
+  AVAILABLE: 'bg-green-400/10 text-green-300 border border-green-400/25',
+  LIMITED: 'bg-amber-400/10 text-amber-300 border border-amber-400/30',
+  OUT_OF_STOCK: 'bg-white/5 text-white/50 border border-white/15',
+  COMING_SOON: 'bg-white/5 text-white/50 border border-white/15',
 }
 
 export interface RelatedStrength {
   slug: string
   size: string
+}
+
+export interface RelatedProduct {
+  slug: string
+  name: string
+  size: string
+}
+
+export interface FaqEntry {
+  question: string
+  answer: string
 }
 
 export interface ProductDetailProps {
@@ -34,14 +45,34 @@ export interface ProductDetailProps {
   size: string
   category: string
   imageUrl: string
+  imageAlt: string
   description: string
   price: StorefrontPrice | null
   availability: StorefrontAvailability
+  availabilityMessageOverride: string | null
   relatedStrengths: RelatedStrength[]
+  relatedProducts: RelatedProduct[]
+  faq: FaqEntry[]
   sku: string | null
 }
 
-export function ProductDetail({ id, slug, name, size, category, imageUrl, description, price, availability, relatedStrengths, sku }: ProductDetailProps) {
+export function ProductDetail({
+  id,
+  slug,
+  name,
+  size,
+  category,
+  imageUrl,
+  imageAlt,
+  description,
+  price,
+  availability,
+  availabilityMessageOverride,
+  relatedStrengths,
+  relatedProducts,
+  faq,
+  sku,
+}: ProductDetailProps) {
   const { addItem, openCart } = useCartStore()
   const canPurchase = price != null && isPurchasable(availability)
 
@@ -53,59 +84,59 @@ export function ProductDetail({ id, slug, name, size, category, imageUrl, descri
   }
 
   return (
-    <main className="bg-cream min-h-screen">
+    <main className="bg-black min-h-screen">
       {/* Breadcrumbs */}
       <div className="max-w-[1200px] mx-auto px-6 pt-6 pb-2">
-        <nav aria-label="Breadcrumb" className="text-[12px] text-g500 flex items-center gap-2 flex-wrap">
-          <Link href="/" className="hover:text-gold transition-colors">Home</Link>
+        <nav aria-label="Breadcrumb" className="text-[12px] text-white/45 flex items-center gap-2 flex-wrap">
+          <Link href="/" className="hover:text-[#D4AF37] transition-colors">Home</Link>
           <span>/</span>
-          <Link href="/#products" className="hover:text-gold transition-colors">Products</Link>
+          <Link href="/#products" className="hover:text-[#D4AF37] transition-colors">Products</Link>
           <span>/</span>
-          <span className="text-dark font-semibold">{name} {size}</span>
+          <span className="text-white font-semibold">{name} {size}</span>
         </nav>
       </div>
 
       <div className="max-w-[1200px] mx-auto px-6 py-10 grid grid-cols-1 lg:grid-cols-2 gap-14">
         {/* Image */}
-        <div className="bg-gradient-to-br from-cream to-[#F5EFE0] rounded-card border border-gold/15 flex items-center justify-center p-10 h-[380px] lg:h-[460px]">
+        <div className="bg-gradient-to-br from-[#161616] to-[#0a0a0a] rounded-card border border-[#D4AF37]/15 flex items-center justify-center p-10 h-[380px] lg:h-[460px]">
           {imageUrl === GENERIC_PLACEHOLDER ? (
             <SingleVialImage productName={name} className="h-[280px] w-auto drop-shadow-md" />
           ) : (
             <div className="relative h-[300px] w-full">
-              <Image src={imageUrl} alt={`${name} ${size}`} fill className="object-contain drop-shadow-md" priority />
+              <Image src={imageUrl} alt={imageAlt} fill className="object-contain drop-shadow-md" priority />
             </div>
           )}
         </div>
 
         {/* Info */}
         <div>
-          <p className="font-heading text-[11px] font-bold tracking-[0.12em] uppercase text-gold mb-2">{category}</p>
-          <h1 className="font-heading text-[clamp(26px,3.5vw,36px)] font-bold text-dark leading-tight mb-1">{name}</h1>
-          <p className="text-[16px] text-g500 font-light mb-4">{size}</p>
+          <p className="font-heading text-[11px] font-bold tracking-[0.12em] uppercase text-[#D4AF37] mb-2">{category}</p>
+          <h1 className="font-heading text-[clamp(26px,3.5vw,36px)] font-bold text-white leading-tight mb-1">{name}</h1>
+          <p className="text-[16px] text-white/50 font-light mb-4">{size}</p>
 
           {availability !== 'AVAILABLE' && (
             <div className={`inline-flex w-fit items-center rounded-full px-3 py-1 mb-4 text-[10px] font-bold uppercase tracking-[0.07em] ${AVAILABILITY_BADGE_CLASS[availability]}`}>
-              {AVAILABILITY_LABEL[availability]}
+              {availabilityMessageOverride || AVAILABILITY_LABEL[availability]}
             </div>
           )}
 
-          <p className="text-[15px] text-g700 leading-[1.8] mb-6">{description}</p>
+          <p className="text-[15px] text-white/65 leading-[1.8] mb-6 whitespace-pre-line">{description}</p>
 
           {/* Pricing + CTA */}
-          <div className="bg-white border border-gold/15 rounded-2xl p-6 mb-6">
+          <div className="bg-white/[0.03] border border-[#D4AF37]/15 rounded-2xl p-6 mb-6">
             {price ? (
               <>
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <p className="text-[10px] font-bold text-g500 uppercase tracking-[0.07em] mb-1">
+                    <p className="text-[10px] font-bold text-white/40 uppercase tracking-[0.07em] mb-1">
                       {price.unitsPerCase ? `Standard Case — Case of ${price.unitsPerCase}` : 'Standard Case'}
                     </p>
-                    <p className="font-heading text-[28px] font-extrabold text-dark">${price.standardCasePrice}</p>
+                    <p className="font-heading text-[28px] font-extrabold text-white">${price.standardCasePrice}</p>
                   </div>
                   {price.individualVialPrice != null && (
                     <div className="text-right">
-                      <p className="text-[10px] font-bold text-g500 uppercase tracking-[0.07em] mb-1">Per Vial</p>
-                      <p className="font-heading text-[20px] font-bold text-gold">${price.individualVialPrice}</p>
+                      <p className="text-[10px] font-bold text-white/40 uppercase tracking-[0.07em] mb-1">Per Vial</p>
+                      <p className="font-heading text-[20px] font-bold text-[#D4AF37]">${price.individualVialPrice}</p>
                     </div>
                   )}
                 </div>
@@ -113,26 +144,26 @@ export function ProductDetail({ id, slug, name, size, category, imageUrl, descri
                 {/* SPA case price — only ever populated for an admin-granted
                     eligible signed-in customer, see lib/storefront/pricing.ts */}
                 {price.spaCasePrice != null && (
-                  <div className="bg-gold/8 border border-gold/25 rounded-lg p-3 flex items-center justify-between mb-4">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-gold-dark">SPA Price</p>
-                    <p className="font-heading text-[18px] font-bold text-gold-dark">${price.spaCasePrice}</p>
+                  <div className="bg-[#D4AF37]/8 border border-[#D4AF37]/25 rounded-lg p-3 flex items-center justify-between mb-4">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#D4AF37]">SPA Price</p>
+                    <p className="font-heading text-[18px] font-bold text-[#D4AF37]">${price.spaCasePrice}</p>
                   </div>
                 )}
 
                 <button
                   onClick={handleAdd}
                   disabled={!canPurchase}
-                  className="w-full bg-gold hover:bg-gold-dark text-white font-heading text-[13px] font-bold tracking-[0.08em] uppercase py-3.5 rounded-md transition-all disabled:bg-g300 disabled:text-g700 disabled:cursor-not-allowed"
+                  className="w-full bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] hover:shadow-[0_4px_16px_rgba(212,175,55,0.4)] text-black font-heading text-[13px] font-bold tracking-[0.08em] uppercase py-3.5 rounded-full transition-all disabled:bg-white/10 disabled:bg-none disabled:text-white/40 disabled:cursor-not-allowed disabled:shadow-none"
                 >
-                  {canPurchase ? 'Add to Cart' : AVAILABILITY_LABEL[availability]}
+                  {canPurchase ? 'Add to Cart' : availabilityMessageOverride || AVAILABILITY_LABEL[availability]}
                 </button>
               </>
             ) : (
               <>
-                <p className="text-[14px] font-heading font-semibold text-g700 mb-4 text-center">Pricing available on request</p>
+                <p className="text-[14px] font-heading font-semibold text-white/60 mb-4 text-center">Pricing available on request</p>
                 <Link
                   href="/#contact"
-                  className="block text-center border-2 border-gold text-gold-dark hover:bg-gold hover:text-white font-heading text-[13px] font-bold tracking-[0.08em] uppercase py-3.5 rounded-md transition-all"
+                  className="block text-center border border-[#D4AF37]/45 text-[#D4AF37] hover:bg-[#D4AF37] hover:text-black font-heading text-[13px] font-bold tracking-[0.08em] uppercase py-3.5 rounded-full transition-all"
                 >
                   Request Pricing
                 </Link>
@@ -141,42 +172,76 @@ export function ProductDetail({ id, slug, name, size, category, imageUrl, descri
           </div>
 
           {/* Specifications */}
-          <div className="border-t border-g100 pt-5 mb-6">
-            <h2 className="font-heading text-[13px] font-bold tracking-[0.08em] uppercase text-dark mb-3">Specifications</h2>
+          <div className="border-t border-white/10 pt-5 mb-6">
+            <h2 className="font-heading text-[13px] font-bold tracking-[0.08em] uppercase text-white mb-3">Specifications</h2>
             <dl className="grid grid-cols-2 gap-y-2 text-[13px]">
-              <dt className="text-g500">Category</dt>
-              <dd className="text-dark font-semibold">{category}</dd>
-              <dt className="text-g500">Strength</dt>
-              <dd className="text-dark font-semibold">{size}</dd>
+              <dt className="text-white/45">Category</dt>
+              <dd className="text-white font-semibold">{category}</dd>
+              <dt className="text-white/45">Strength</dt>
+              <dd className="text-white font-semibold">{size}</dd>
               {sku && (
                 <>
-                  <dt className="text-g500">SKU</dt>
-                  <dd className="text-dark font-semibold">{sku}</dd>
+                  <dt className="text-white/45">SKU</dt>
+                  <dd className="text-white font-semibold">{sku}</dd>
                 </>
               )}
             </dl>
           </div>
 
           {/* RUO notice */}
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3 items-start mb-6">
+          <div className="bg-amber-400/10 border border-amber-400/25 rounded-xl p-4 flex gap-3 items-start mb-6">
             <span className="text-lg flex-shrink-0 mt-0.5">⚠️</span>
-            <p className="text-[13px] text-g700 leading-relaxed">
-              <strong>Research Use Only:</strong> Not intended for human use, consumption, diagnostic use, therapeutic use, or veterinary use. Must be handled by qualified researchers in appropriate laboratory environments.
+            <p className="text-[13px] text-white/70 leading-relaxed">
+              <strong className="text-white">Research Use Only:</strong> Not intended for human use, consumption, diagnostic use, therapeutic use, or veterinary use. Must be handled by qualified researchers in appropriate laboratory environments.
             </p>
           </div>
 
-          {/* Related strengths */}
+          {/* FAQ (admin-editable, Phase 2B item 6) */}
+          {faq.length > 0 && (
+            <div className="border-t border-white/10 pt-5 mb-6">
+              <h2 className="font-heading text-[13px] font-bold tracking-[0.08em] uppercase text-white mb-3">Frequently Asked Questions</h2>
+              <div className="space-y-4">
+                {faq.map((f, i) => (
+                  <div key={i}>
+                    <p className="text-[13px] font-heading font-bold text-white mb-1">{f.question}</p>
+                    <p className="text-[13px] text-white/60 leading-relaxed">{f.answer}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Related strengths — same product name, other Product rows */}
           {relatedStrengths.length > 0 && (
-            <div>
-              <h2 className="font-heading text-[13px] font-bold tracking-[0.08em] uppercase text-dark mb-3">Other Strengths</h2>
+            <div className="mb-6">
+              <h2 className="font-heading text-[13px] font-bold tracking-[0.08em] uppercase text-white mb-3">Other Strengths</h2>
               <div className="flex flex-wrap gap-2">
                 {relatedStrengths.map((r) => (
                   <Link
                     key={r.slug}
                     href={`/products/${r.slug}`}
-                    className="px-3.5 py-2 rounded-md border border-gold/30 text-[12px] font-heading font-bold text-g700 hover:border-gold hover:text-gold transition-all"
+                    className="px-3.5 py-2 rounded-full border border-[#D4AF37]/25 text-[12px] font-heading font-bold text-white/70 hover:border-[#D4AF37] hover:text-[#D4AF37] transition-all"
                   >
                     {r.size}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Related products — admin-curated (Phase 2B item 6), distinct
+              products entirely, e.g. a reconstitution water for a peptide */}
+          {relatedProducts.length > 0 && (
+            <div>
+              <h2 className="font-heading text-[13px] font-bold tracking-[0.08em] uppercase text-white mb-3">Related Products</h2>
+              <div className="flex flex-wrap gap-2">
+                {relatedProducts.map((r) => (
+                  <Link
+                    key={r.slug}
+                    href={`/products/${r.slug}`}
+                    className="px-3.5 py-2 rounded-full border border-[#D4AF37]/25 text-[12px] font-heading font-bold text-white/70 hover:border-[#D4AF37] hover:text-[#D4AF37] transition-all"
+                  >
+                    {r.name} {r.size}
                   </Link>
                 ))}
               </div>

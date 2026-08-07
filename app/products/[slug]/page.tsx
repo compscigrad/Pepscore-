@@ -8,12 +8,12 @@ import { prisma } from '@/lib/prisma'
 import { Header } from '@/components/storefront/Header'
 import { Footer } from '@/components/storefront/Footer'
 import { CartSidebar } from '@/components/storefront/CartSidebar'
-import { ProductDetail } from '@/components/storefront/ProductDetail'
+import { ProductDetail, type FaqEntry } from '@/components/storefront/ProductDetail'
 import { getStorefrontPrice } from '@/lib/storefront/pricing'
 import { getStorefrontAvailability } from '@/lib/storefront/availability'
 import { resolveProductImage } from '@/lib/storefront/productImages'
 import { getCurrentCustomerSpaEligible } from '@/lib/storefront/spaEligibility'
-import { productSchema, breadcrumbSchema } from '@/lib/storefront/structuredData'
+import { productSchema, breadcrumbSchema, faqSchema } from '@/lib/storefront/structuredData'
 
 export const revalidate = 60
 
@@ -29,7 +29,23 @@ const DISCONTINUED_REDIRECTS: Record<string, string> = {
   'glow50-50mg': 'glow70-70mg',
 }
 
+// Below this length a description reads as a placeholder/incomplete stub
+// rather than real content -- forces noindex regardless of the admin's
+// manual noindex flag, so an accidentally-thin page never gets indexed
+// (Phase 2B item 6: "do not let incomplete/placeholder content become
+// indexable").
+const MIN_INDEXABLE_DESCRIPTION_LENGTH = 20
+
 async function getProduct(slug: string) {
+  // A slug that used to belong to a product (admin renamed it via the
+  // content editor, lib/productContent.ts) redirects to the product's
+  // current slug -- checked before the discontinued-product table so a
+  // renamed-then-discontinued product still resolves correctly either way.
+  const redirectRow = await prisma.productSlugRedirect.findUnique({ where: { oldSlug: slug }, select: { product: { select: { slug: true, pricingStatus: true } } } })
+  if (redirectRow && redirectRow.product.pricingStatus !== 'INACTIVE') {
+    redirect(`/products/${redirectRow.product.slug}`)
+  }
+
   const redirectTarget = DISCONTINUED_REDIRECTS[slug]
   if (redirectTarget) redirect(`/products/${redirectTarget}`)
 
@@ -42,16 +58,21 @@ async function getProduct(slug: string) {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params
   const product = await getProduct(slug)
-  if (!product) return { title: 'Product Not Found | Pepscore' }
+  if (!product) return { title: 'Product Not Found | Pepscore Lab' }
 
-  const title = `${product.name} ${product.size} | Pepscore Research Peptides`
-  const description = product.description?.slice(0, 155) || `${product.name} ${product.size} — research-use-only peptide from Pepscore.`
+  const title = product.seoTitle || `${product.name} ${product.size} | Pepscore Lab Research Peptides`
+  const shortDescription = product.metaDescription || product.description
+  const description = shortDescription?.slice(0, 155) || `${product.name} ${product.size} — research-use-only peptide from Pepscore Lab.`
+
+  const contentLength = (product.fullDescription || product.description || '').trim().length
+  const noindex = product.noindex || contentLength < MIN_INDEXABLE_DESCRIPTION_LENGTH
 
   return {
     title,
     description,
     alternates: { canonical: `/products/${product.slug}` },
     openGraph: { title, description, type: 'website' },
+    robots: noindex ? { index: false, follow: true } : undefined,
   }
 }
 
@@ -60,17 +81,26 @@ export default async function ProductDetailPage({ params }: PageProps) {
   const product = await getProduct(slug)
   if (!product) notFound()
 
-  const [siblings, spaEligible] = await Promise.all([
+  const [siblings, relatedProductRows, spaEligible] = await Promise.all([
     prisma.product.findMany({
       where: { name: product.name, pricingStatus: { not: 'INACTIVE' }, slug: { not: product.slug } },
       select: { slug: true, size: true },
       orderBy: { size: 'asc' },
     }),
+    product.relatedProductSlugs.length > 0
+      ? prisma.product.findMany({
+          where: { slug: { in: product.relatedProductSlugs }, pricingStatus: { not: 'INACTIVE' } },
+          select: { slug: true, name: true, size: true },
+        })
+      : Promise.resolve([]),
     getCurrentCustomerSpaEligible(),
   ])
 
   const imageUrl = resolveProductImage(product.name, product.imageUrl)
+  const imageAlt = product.imageAltText || `${product.name} ${product.size}`
   const availability = getStorefrontAvailability(product)
+  const displayDescription = product.fullDescription || product.description || ''
+  const faq = (product.faq as unknown as FaqEntry[] | null) ?? []
 
   // Structured data always uses the public (non-SPA) price -- a search
   // engine crawler is never an authenticated SPA-eligible customer, so the
@@ -91,6 +121,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
       { name: 'Products', url: '/#products' },
       { name: `${product.name} ${product.size}`, url: `/products/${product.slug}` },
     ]),
+    ...(faq.length > 0 ? [faqSchema(faq)] : []),
   ]
 
   return (
@@ -107,10 +138,14 @@ export default async function ProductDetailPage({ params }: PageProps) {
         size={product.size}
         category={product.category}
         imageUrl={imageUrl}
-        description={product.description ?? ''}
+        imageAlt={imageAlt}
+        description={displayDescription}
         price={getStorefrontPrice(product, { spaEligible })}
         availability={availability}
+        availabilityMessageOverride={product.availabilityMessageOverride}
         relatedStrengths={siblings}
+        relatedProducts={relatedProductRows}
+        faq={faq}
         sku={product.sku}
       />
       <Footer />
