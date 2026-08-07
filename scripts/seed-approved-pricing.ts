@@ -89,6 +89,14 @@ async function main() {
     results.push({ product: 'Tesamorelin 5mg', productId: tesamorelin5mg.id, applied: !dryRun })
   }
 
+  // GLOW70's approved, real (non-placeholder) storefront description. Exact
+  // composition/technical spec for GLOW70 has not been confirmed in any
+  // catalog/pricing source this script has access to -- this deliberately
+  // doesn't invent one. Update once real GLOW70-specific composition
+  // details are supplied.
+  const GLOW70_DESCRIPTION =
+    'GLOW70 is a pre-formulated research blend supplied for laboratory research use only. Detailed composition and technical specifications are available on request. Not for human use, consumption, diagnostic use, therapeutic use, or veterinary use.'
+
   // ─── GLOW70 — locked pricing, product row does not exist yet ────────────
   let glow70 = await prisma.product.findUnique({ where: { slug: 'glow70-70mg' } })
   if (!glow70 && !dryRun) {
@@ -103,11 +111,18 @@ async function main() {
         // are enabled for this product, matching how every other
         // individual-sale-eligible product's legacy `price` field is used.
         price: 89,
-        description: 'Pre-formulated recovery and wellness blend. [Placeholder description carried over from the sibling GLOW50 product pattern — flag for owner review/replacement with GLOW70-specific copy.]',
-        imageUrl: '/images/ALL.png', // same fallback GLOW50 uses; no GLOW70-specific asset exists yet
+        description: GLOW70_DESCRIPTION,
+        imageUrl: '/images/ALL.png', // no GLOW70-specific product photo exists yet
         costOfGoods: 0, // legacy field superseded by supplierCaseCost below for this product
       },
     })
+  } else if (glow70 && !dryRun && glow70.description !== GLOW70_DESCRIPTION) {
+    // Re-runnable correction: an earlier run of this script wrote a
+    // placeholder description ("...carried over from the sibling GLOW50
+    // product pattern — flag for owner review...") that was never meant to
+    // be customer-visible but was live on the public storefront. Fix it in
+    // place rather than leaving a stale row around.
+    glow70 = await prisma.product.update({ where: { id: glow70.id }, data: { description: GLOW70_DESCRIPTION } })
   }
 
   if (!glow70) {
@@ -128,6 +143,36 @@ async function main() {
       })
     }
     results.push({ product: 'GLOW70', productId: glow70.id, created: true, applied: !dryRun })
+  }
+
+  // ─── GLOW50 — discontinued by the pharmaceutical lab, GLOW70 is its
+  // approved replacement. Deactivated, never deleted: pricingStatus goes to
+  // INACTIVE (the storefront query excludes INACTIVE products entirely —
+  // not shown in browse/search/pricing table/sitemap once that lands), but
+  // the row itself, and any historical invoice/order line items that
+  // reference it, are left completely untouched. Confirmed via a one-time
+  // read-only check before this was written: zero invoice items and zero
+  // order items currently reference GLOW50, so this has no historical-data
+  // impact today.
+  const glow50 = await prisma.product.findUnique({ where: { slug: 'glow50-50mg' } })
+  if (!glow50) {
+    results.push({ product: 'GLOW50', skipped: 'no product with slug glow50-50mg found' })
+  } else if (glow50.pricingStatus === 'INACTIVE') {
+    results.push({ product: 'GLOW50', productId: glow50.id, alreadyInactive: true })
+  } else {
+    if (!dryRun) {
+      await prisma.product.update({ where: { id: glow50.id }, data: { pricingStatus: 'INACTIVE' } })
+      await prisma.adminAuditLog.create({
+        data: {
+          action: 'PRODUCT_DEACTIVATED',
+          entity: 'Product',
+          entityId: glow50.id,
+          adminId: 'system-pricing-seed',
+          details: { reason: 'GLOW50 discontinued by the pharmaceutical lab; GLOW70 is the approved replacement.', productName: 'GLOW50' },
+        },
+      })
+    }
+    results.push({ product: 'GLOW50', productId: glow50.id, deactivated: !dryRun })
   }
 
   console.log(JSON.stringify({ mode: dryRun ? 'DRY RUN — no writes made' : 'APPLIED', results }, null, 2))

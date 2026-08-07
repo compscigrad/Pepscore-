@@ -6,9 +6,17 @@ import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { useCartStore } from '@/lib/cart-store'
 import { SingleVialImage } from './SingleVialImage'
+import { isPurchasable, AVAILABILITY_LABEL, type StorefrontAvailability } from '@/lib/storefront/availability'
 
 // Any imageUrl pointing at this path triggers the dynamic SVG vial renderer.
 const GENERIC_PLACEHOLDER = '/images/products/default-single-vial.png'
+
+const AVAILABILITY_BADGE_CLASS: Record<StorefrontAvailability, string> = {
+  AVAILABLE: '', // default state -- no badge needed, keeps the common case uncluttered
+  LIMITED: 'bg-amber-100 text-amber-800 border border-amber-300',
+  OUT_OF_STOCK: 'bg-g100 text-g700 border border-g300',
+  COMING_SOON: 'bg-g100 text-g700 border border-g300',
+}
 
 export interface ProductVariant {
   id: string
@@ -22,6 +30,9 @@ export interface ProductVariant {
   // a stored individual price with sales disabled (e.g. Tesamorelin) must
   // never reach this component at all.
   individualVialPrice: number | null
+  // Real inventory-derived state, never the exact physical count. See
+  // lib/storefront/availability.ts.
+  availability: StorefrontAvailability
 }
 
 export interface ProductCardProps {
@@ -39,9 +50,10 @@ export function ProductCard({ name, category, description, imageUrl, badge, vari
 
   const v = variants[selectedIdx]
   const hasPrice = v.standardCasePrice != null
+  const canPurchase = hasPrice && isPurchasable(v.availability)
 
   function handleAdd() {
-    if (v.standardCasePrice == null) return
+    if (!canPurchase || v.standardCasePrice == null) return
     addItem({ id: v.id, slug: v.slug, name, size: v.size, price: v.standardCasePrice, imageUrl })
     toast.success(`${name} ${v.size} added to cart`)
     openCart()
@@ -114,6 +126,14 @@ export function ProductCard({ name, category, description, imageUrl, badge, vari
             </div>
           )}
 
+          {/* Availability badge — omitted for the default AVAILABLE state to
+              keep the common case uncluttered; only shown for the exceptions. */}
+          {v.availability !== 'AVAILABLE' && (
+            <div className={`inline-flex w-fit items-center rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.07em] ${AVAILABILITY_BADGE_CLASS[v.availability]}`}>
+              {AVAILABILITY_LABEL[v.availability]}
+            </div>
+          )}
+
           {hasPrice ? (
             <>
               {/* Standard case price */}
@@ -132,12 +152,15 @@ export function ProductCard({ name, category, description, imageUrl, badge, vari
                 )}
               </div>
 
-              {/* Add to Cart CTA */}
+              {/* Add to Cart CTA — disabled with a plain-language label
+                  instead of hidden, so a priced-but-unavailable variant
+                  still reads clearly rather than looking broken. */}
               <button
                 onClick={handleAdd}
-                className="bg-gold hover:bg-gold-dark text-white font-heading text-[11px] font-bold tracking-[0.05em] uppercase w-full py-2.5 rounded-md transition-all hover:scale-[1.02]"
+                disabled={!canPurchase}
+                className="bg-gold hover:bg-gold-dark text-white font-heading text-[11px] font-bold tracking-[0.05em] uppercase w-full py-2.5 rounded-md transition-all hover:scale-[1.02] disabled:bg-g300 disabled:text-g700 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
-                Add to Cart{variants.length > 1 ? ` · ${v.size}` : ''}
+                {canPurchase ? `Add to Cart${variants.length > 1 ? ` · ${v.size}` : ''}` : AVAILABILITY_LABEL[v.availability]}
               </button>
             </>
           ) : (

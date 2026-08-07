@@ -10,13 +10,21 @@ import { ContactSection } from '@/components/storefront/ContactSection'
 import { ProductCard, type ProductCardProps } from '@/components/storefront/ProductCard'
 import { CartSidebar } from '@/components/storefront/CartSidebar'
 import { getStorefrontPrice } from '@/lib/storefront/pricing'
+import { getStorefrontAvailability } from '@/lib/storefront/availability'
 
 // Revalidate every 60 s so product changes reflect quickly without a full deploy
 export const revalidate = 60
 
 async function getProducts() {
   return prisma.product.findMany({
-    where: { inStock: true },
+    // Discontinued products (pricingStatus INACTIVE -- e.g. GLOW50,
+    // replaced by GLOW70) are excluded from every customer-facing surface
+    // entirely, not just deprioritized. inStock is intentionally NOT
+    // filtered here anymore: a temporarily out-of-stock or upcoming
+    // product still browses, with ProductCard showing its real
+    // availability state (lib/storefront/availability.ts) instead of
+    // disappearing from the catalog.
+    where: { pricingStatus: { not: 'INACTIVE' } },
     orderBy: { createdAt: 'asc' },
   })
 }
@@ -99,10 +107,12 @@ function resolveProductImage(name: string, dbUrl: string | null | undefined): st
 }
 
 // Groups flat product rows by name into consolidated cards with a variants array.
-// Every row is kept regardless of pricing state — a variant with no approved
-// active price still browses, it just can't be added to cart (ProductCard
-// shows a "pricing available on request" state instead of a fabricated
-// number). See lib/storefront/pricing.ts.
+// Every row is kept regardless of pricing or stock state — a variant with no
+// approved active price still browses (ProductCard shows a "pricing
+// available on request" state instead of a fabricated number, see
+// lib/storefront/pricing.ts), and an out-of-stock/limited/coming-soon
+// variant still browses too, with its real availability state shown instead
+// of disappearing from the catalog (lib/storefront/availability.ts).
 function groupByName(rows: DbProduct[]): ProductCardProps[] {
   const map = new Map<string, ProductCardProps>()
   for (const p of rows) {
@@ -114,6 +124,7 @@ function groupByName(rows: DbProduct[]): ProductCardProps[] {
       standardCasePrice: price?.standardCasePrice ?? null,
       unitsPerCase: price?.unitsPerCase ?? null,
       individualVialPrice: price?.individualVialPrice ?? null,
+      availability: getStorefrontAvailability(p),
     }
     const existing = map.get(p.name)
     if (existing) {
@@ -430,10 +441,10 @@ const STATIC_PRODUCTS: ProductCardProps[] = [
     imageUrl: '/images/Semaglutide.png',
     description: 'GLP-1 receptor agonist studied for metabolic regulation, glucose homeostasis, and appetite suppression research.',
     variants: [
-      { id:'1a', slug:'semaglutide-5mg',  size:'5mg',  standardCasePrice:138, unitsPerCase:null, individualVialPrice:null },
-      { id:'1b', slug:'semaglutide-10mg', size:'10mg', standardCasePrice:165, unitsPerCase:null, individualVialPrice:null },
-      { id:'1c', slug:'semaglutide-20mg', size:'20mg', standardCasePrice:258, unitsPerCase:null, individualVialPrice:null },
-      { id:'1d', slug:'semaglutide-30mg', size:'30mg', standardCasePrice:318, unitsPerCase:null, individualVialPrice:null },
+      { id:'1a', slug:'semaglutide-5mg',  size:'5mg',  standardCasePrice:138, unitsPerCase:null, individualVialPrice:null, availability:'AVAILABLE' },
+      { id:'1b', slug:'semaglutide-10mg', size:'10mg', standardCasePrice:165, unitsPerCase:null, individualVialPrice:null, availability:'AVAILABLE' },
+      { id:'1c', slug:'semaglutide-20mg', size:'20mg', standardCasePrice:258, unitsPerCase:null, individualVialPrice:null, availability:'AVAILABLE' },
+      { id:'1d', slug:'semaglutide-30mg', size:'30mg', standardCasePrice:318, unitsPerCase:null, individualVialPrice:null, availability:'AVAILABLE' },
     ],
   },
   {
@@ -441,10 +452,10 @@ const STATIC_PRODUCTS: ProductCardProps[] = [
     imageUrl: '/images/Tirzepatide.png',
     description: 'Dual GIP/GLP-1 receptor agonist studied for superior metabolic outcomes and cardiometabolic research applications.',
     variants: [
-      { id:'2a', slug:'tirzepatide-5mg',  size:'5mg',  standardCasePrice:147, unitsPerCase:null, individualVialPrice:null },
-      { id:'2b', slug:'tirzepatide-10mg', size:'10mg', standardCasePrice:183, unitsPerCase:null, individualVialPrice:null },
-      { id:'2c', slug:'tirzepatide-20mg', size:'20mg', standardCasePrice:327, unitsPerCase:null, individualVialPrice:null },
-      { id:'2d', slug:'tirzepatide-60mg', size:'60mg', standardCasePrice:696, unitsPerCase:null, individualVialPrice:null },
+      { id:'2a', slug:'tirzepatide-5mg',  size:'5mg',  standardCasePrice:147, unitsPerCase:null, individualVialPrice:null, availability:'AVAILABLE' },
+      { id:'2b', slug:'tirzepatide-10mg', size:'10mg', standardCasePrice:183, unitsPerCase:null, individualVialPrice:null, availability:'AVAILABLE' },
+      { id:'2c', slug:'tirzepatide-20mg', size:'20mg', standardCasePrice:327, unitsPerCase:null, individualVialPrice:null, availability:'AVAILABLE' },
+      { id:'2d', slug:'tirzepatide-60mg', size:'60mg', standardCasePrice:696, unitsPerCase:null, individualVialPrice:null, availability:'AVAILABLE' },
     ],
   },
   {
@@ -452,10 +463,10 @@ const STATIC_PRODUCTS: ProductCardProps[] = [
     imageUrl: '/images/Retatrutide.png',
     description: 'Triple receptor agonist (GIP/GLP-1/Glucagon) — the next generation of metabolic research compounds.',
     variants: [
-      { id:'3a', slug:'retatrutide-5mg',  size:'5mg',  standardCasePrice:240, unitsPerCase:null, individualVialPrice:null },
-      { id:'3b', slug:'retatrutide-10mg', size:'10mg', standardCasePrice:327, unitsPerCase:null, individualVialPrice:null },
-      { id:'3c', slug:'retatrutide-30mg', size:'30mg', standardCasePrice:642, unitsPerCase:null, individualVialPrice:null },
-      { id:'3d', slug:'retatrutide-60mg', size:'60mg', standardCasePrice:978, unitsPerCase:null, individualVialPrice:null },
+      { id:'3a', slug:'retatrutide-5mg',  size:'5mg',  standardCasePrice:240, unitsPerCase:null, individualVialPrice:null, availability:'AVAILABLE' },
+      { id:'3b', slug:'retatrutide-10mg', size:'10mg', standardCasePrice:327, unitsPerCase:null, individualVialPrice:null, availability:'AVAILABLE' },
+      { id:'3c', slug:'retatrutide-30mg', size:'30mg', standardCasePrice:642, unitsPerCase:null, individualVialPrice:null, availability:'AVAILABLE' },
+      { id:'3d', slug:'retatrutide-60mg', size:'60mg', standardCasePrice:978, unitsPerCase:null, individualVialPrice:null, availability:'AVAILABLE' },
     ],
   },
   {
@@ -463,8 +474,8 @@ const STATIC_PRODUCTS: ProductCardProps[] = [
     imageUrl: '/images/nad.png',
     description: 'Essential coenzyme precursor critical for cellular energy metabolism, DNA repair, and longevity pathway research.',
     variants: [
-      { id:'4a', slug:'nad-plus-100mg', size:'100mg', standardCasePrice:168, unitsPerCase:null, individualVialPrice:null },
-      { id:'4b', slug:'nad-plus-500mg', size:'500mg', standardCasePrice:264, unitsPerCase:null, individualVialPrice:null },
+      { id:'4a', slug:'nad-plus-100mg', size:'100mg', standardCasePrice:168, unitsPerCase:null, individualVialPrice:null, availability:'AVAILABLE' },
+      { id:'4b', slug:'nad-plus-500mg', size:'500mg', standardCasePrice:264, unitsPerCase:null, individualVialPrice:null, availability:'AVAILABLE' },
     ],
   },
   {
@@ -472,8 +483,8 @@ const STATIC_PRODUCTS: ProductCardProps[] = [
     imageUrl: '/images/epithalon.png',
     description: 'Tetrapeptide studied for telomerase activation, circadian regulation, and anti-aging biological processes.',
     variants: [
-      { id:'5a', slug:'epithalon-10mg', size:'10mg', standardCasePrice:144, unitsPerCase:null, individualVialPrice:null },
-      { id:'5b', slug:'epithalon-50mg', size:'50mg', standardCasePrice:369, unitsPerCase:null, individualVialPrice:null },
+      { id:'5a', slug:'epithalon-10mg', size:'10mg', standardCasePrice:144, unitsPerCase:null, individualVialPrice:null, availability:'AVAILABLE' },
+      { id:'5b', slug:'epithalon-50mg', size:'50mg', standardCasePrice:369, unitsPerCase:null, individualVialPrice:null, availability:'AVAILABLE' },
     ],
   },
   {
@@ -481,7 +492,7 @@ const STATIC_PRODUCTS: ProductCardProps[] = [
     imageUrl: '/images/cjc1295.png',
     description: 'Synergistic GHRH analog and selective ghrelin mimetic combination for growth hormone secretion research.',
     variants: [
-      { id:'6a', slug:'cjc1295-ipa-10mg', size:'10mg', standardCasePrice:297, unitsPerCase:null, individualVialPrice:null },
+      { id:'6a', slug:'cjc1295-ipa-10mg', size:'10mg', standardCasePrice:297, unitsPerCase:null, individualVialPrice:null, availability:'AVAILABLE' },
     ],
   },
   {
@@ -489,8 +500,8 @@ const STATIC_PRODUCTS: ProductCardProps[] = [
     imageUrl: '/images/kisspeptin.png',
     description: 'Hypothalamic neuropeptide studied for reproductive endocrinology, LH/FSH regulation, and fertility research.',
     variants: [
-      { id:'7a', slug:'kisspeptin-10-5mg',  size:'5mg',  standardCasePrice:186, unitsPerCase:null, individualVialPrice:null },
-      { id:'7b', slug:'kisspeptin-10-10mg', size:'10mg', standardCasePrice:285, unitsPerCase:null, individualVialPrice:null },
+      { id:'7a', slug:'kisspeptin-10-5mg',  size:'5mg',  standardCasePrice:186, unitsPerCase:null, individualVialPrice:null, availability:'AVAILABLE' },
+      { id:'7b', slug:'kisspeptin-10-10mg', size:'10mg', standardCasePrice:285, unitsPerCase:null, individualVialPrice:null, availability:'AVAILABLE' },
     ],
   },
   {
@@ -498,8 +509,8 @@ const STATIC_PRODUCTS: ProductCardProps[] = [
     imageUrl: '/images/ghk-cu.png',
     description: 'Copper-binding tripeptide widely researched for tissue remodeling, wound healing, and dermal regeneration.',
     variants: [
-      { id:'8a', slug:'ghk-cu-50mg',  size:'50mg',  standardCasePrice:108, unitsPerCase:null, individualVialPrice:null },
-      { id:'8b', slug:'ghk-cu-100mg', size:'100mg', standardCasePrice:174, unitsPerCase:null, individualVialPrice:null },
+      { id:'8a', slug:'ghk-cu-50mg',  size:'50mg',  standardCasePrice:108, unitsPerCase:null, individualVialPrice:null, availability:'AVAILABLE' },
+      { id:'8b', slug:'ghk-cu-100mg', size:'100mg', standardCasePrice:174, unitsPerCase:null, individualVialPrice:null, availability:'AVAILABLE' },
     ],
   },
 ]
