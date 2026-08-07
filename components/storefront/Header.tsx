@@ -50,6 +50,7 @@ export function Header() {
         <ul className="hidden md:flex gap-7 items-center list-none">
           {[
             ['Products', '/#products'],
+            ['Categories', '/categories'],
             ['Pricing', '/#pricing'],
             ['Bulk Orders', '/#bulk'],
             ['Why Us', '/#features'],
@@ -103,6 +104,7 @@ export function Header() {
         <div className="md:hidden bg-white border-t border-g100 px-6 py-4 flex flex-col gap-4 shadow-sm2">
           {[
             ['Products', '/#products'],
+            ['Categories', '/categories'],
             ['Pricing', '/#pricing'],
             ['Bulk Orders', '/#bulk'],
             ['Why Us', '/#features'],
