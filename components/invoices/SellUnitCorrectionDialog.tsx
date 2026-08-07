@@ -89,14 +89,14 @@ export function SellUnitCorrectionDialog({ invoiceId, itemId, onClose }: Props) 
 
   if (loadError) {
     return (
-      <Modal onClose={onClose}>
+      <Modal onClose={onClose} ariaLabel="Correct Sell Unit">
         <p className="text-red-400 text-sm">{loadError}</p>
       </Modal>
     )
   }
   if (!data) {
     return (
-      <Modal onClose={onClose}>
+      <Modal onClose={onClose} ariaLabel="Correct Sell Unit">
         <p className="text-white/60 text-sm">Loading…</p>
       </Modal>
     )
@@ -166,8 +166,8 @@ export function SellUnitCorrectionDialog({ invoiceId, itemId, onClose }: Props) 
   }
 
   return (
-    <Modal onClose={onClose}>
-      <h2 className="font-heading text-lg font-bold text-white mb-1">Correct Sell Unit</h2>
+    <Modal onClose={onClose} labelledBy="correct-sell-unit-heading">
+      <h2 id="correct-sell-unit-heading" className="font-heading text-lg font-bold text-white mb-1">Correct Sell Unit</h2>
       <p className="text-white/50 text-xs mb-4">
         {data.product.name} {data.product.size} — line: {data.item.name}
       </p>
@@ -195,8 +195,8 @@ export function SellUnitCorrectionDialog({ invoiceId, itemId, onClose }: Props) 
         </div>
         <div>
           <p className="text-white/40 text-[11px] uppercase tracking-wide mb-1">Proposed</p>
-          <label className={labelCls}>Sell unit</label>
-          <select className={input} value={proposedSellUnit} onChange={(e) => setProposedSellUnit(e.target.value)}>
+          <label className={labelCls} htmlFor="correct-sell-unit-select">Sell unit</label>
+          <select id="correct-sell-unit-select" className={input} value={proposedSellUnit} onChange={(e) => setProposedSellUnit(e.target.value)}>
             {selectableOptions.map((o) => (
               <option key={o.sellUnit} value={o.sellUnit} className="bg-white text-dark">
                 {SELL_UNIT_LABEL[o.sellUnit]}
@@ -243,6 +243,7 @@ export function SellUnitCorrectionDialog({ invoiceId, itemId, onClose }: Props) 
               min={0}
               step="0.01"
               placeholder="New unit price"
+              aria-label="New unit price"
               value={newUnitPrice}
               onChange={(e) => setNewUnitPrice(e.target.value)}
             />
@@ -251,8 +252,8 @@ export function SellUnitCorrectionDialog({ invoiceId, itemId, onClose }: Props) 
       </div>
 
       <div className="mb-4">
-        <label className={labelCls}>Reason (required)</label>
-        <input className={input} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Why this line's sell unit is being corrected" />
+        <label className={labelCls} htmlFor="correct-sell-unit-reason">Reason (required)</label>
+        <input id="correct-sell-unit-reason" className={input} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Why this line's sell unit is being corrected" />
       </div>
 
       <label className="flex items-center gap-2 text-[12px] text-white/70 mb-4">
@@ -274,10 +275,35 @@ export function SellUnitCorrectionDialog({ invoiceId, itemId, onClose }: Props) 
   )
 }
 
-function Modal({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+function Modal({
+  children,
+  onClose,
+  labelledBy,
+  ariaLabel,
+}: {
+  children: React.ReactNode
+  onClose: () => void
+  labelledBy?: string
+  ariaLabel?: string
+}) {
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
-      <div className={`${card} max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto`} onClick={(e) => e.stopPropagation()}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={labelledBy}
+        aria-label={ariaLabel}
+        className={`${card} max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto`}
+        onClick={(e) => e.stopPropagation()}
+      >
         {children}
       </div>
     </div>
