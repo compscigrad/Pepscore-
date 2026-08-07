@@ -11,20 +11,47 @@ import { isAdminClerkUser } from '@/lib/isAdmin'
 import { checkRateLimit } from '@/lib/rateLimit'
 import { resolveSelfServiceIdentity } from '@/lib/portal/selfServiceResolve'
 import { getPortalDashboardData } from '@/lib/portal/dashboard'
+import { shouldRedirectAdminToAdminDashboard, isAdminViewingCustomerPortal } from '@/lib/portal/accountRouting'
 import { formatMoney, formatDate } from '@/lib/invoice/format'
 import { StatusBadge } from '@/components/invoices/StatusBadge'
 import { PortalStatusShell } from '@/components/account/PortalStatusShell'
 import { getCategoryLabel } from '@/lib/notifications/categoryLabels'
 
-export default async function AccountPage() {
-  // The admin's own Clerk identity must never fall through to customer
-  // messaging ("No account found", claim/setup copy, etc.) — this check
-  // runs before getPortalAuthState() does any Customer-linkage lookup at
-  // all, so an admin landing here (a stale bookmark, a shared /sign-in
-  // link without ?redirect_url) is sent straight to /admin instead of
-  // being told they have no account.
+interface Props {
+  searchParams: Promise<{ portal?: string }>
+}
+
+export default async function AccountPage({ searchParams }: Props) {
   const { userId } = await auth()
-  if (isAdminClerkUser(userId)) redirect('/admin')
+  const isAdmin = isAdminClerkUser(userId)
+  // Set only by the landing page's "Customer Portal" button
+  // (redirect_url=/account?portal=customer) -- the explicit signal that
+  // this visit is a deliberate customer-intent click-through, never
+  // inferred from session state. Portal intent is determined by the button
+  // selected, not by the role attached to whatever Clerk session happens
+  // to already exist.
+  const customerIntent = (await searchParams).portal === 'customer'
+
+  // A stale admin bookmark to /account (no customer intent) still bounces
+  // straight to /admin instead of showing confusing customer messaging --
+  // that's the original behavior this replaces, preserved for the one case
+  // it was actually built for.
+  if (shouldRedirectAdminToAdminDashboard(isAdmin, customerIntent)) redirect('/admin')
+
+  // Explicit customer intent from an admin session: never silently reinterpret
+  // this as an admin request, and never run customer-identity resolution
+  // against the admin's own Clerk user (which would try to match/create a
+  // Customer record for the admin's email) -- show a clear, honest state
+  // instead. This is the exact fix for the production bug where clicking
+  // Customer Portal while already signed in as admin landed on /admin.
+  if (isAdminViewingCustomerPortal(isAdmin, customerIntent)) {
+    return (
+      <PortalStatusShell
+        heading="You're signed in as the site admin"
+        body="This browser session is signed in with the Pepscore admin account, not a customer account. Sign out and sign back in with a customer account to view the Customer Portal."
+      />
+    )
+  }
 
   const authState = await getPortalAuthState()
 
