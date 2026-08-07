@@ -13,6 +13,7 @@ import { getStorefrontPrice } from '@/lib/storefront/pricing'
 import { getStorefrontAvailability } from '@/lib/storefront/availability'
 import { resolveProductImage } from '@/lib/storefront/productImages'
 import { getCurrentCustomerSpaEligible } from '@/lib/storefront/spaEligibility'
+import { productSchema, breadcrumbSchema } from '@/lib/storefront/structuredData'
 
 export const revalidate = 60
 
@@ -68,8 +69,35 @@ export default async function ProductDetailPage({ params }: PageProps) {
     getCurrentCustomerSpaEligible(),
   ])
 
+  const imageUrl = resolveProductImage(product.name, product.imageUrl)
+  const availability = getStorefrontAvailability(product)
+
+  // Structured data always uses the public (non-SPA) price -- a search
+  // engine crawler is never an authenticated SPA-eligible customer, so the
+  // Offer block must reflect what an anonymous visitor would actually pay.
+  const jsonLd = [
+    productSchema({
+      name: product.name,
+      size: product.size,
+      slug: product.slug,
+      sku: product.sku,
+      description: product.description ?? '',
+      imageUrl,
+      price: getStorefrontPrice(product),
+      availability,
+    }),
+    breadcrumbSchema([
+      { name: 'Home', url: '/' },
+      { name: 'Products', url: '/#products' },
+      { name: `${product.name} ${product.size}`, url: `/products/${product.slug}` },
+    ]),
+  ]
+
   return (
     <>
+      {jsonLd.map((schema, i) => (
+        <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+      ))}
       <CartSidebar />
       <Header />
       <ProductDetail
@@ -78,10 +106,10 @@ export default async function ProductDetailPage({ params }: PageProps) {
         name={product.name}
         size={product.size}
         category={product.category}
-        imageUrl={resolveProductImage(product.name, product.imageUrl)}
+        imageUrl={imageUrl}
         description={product.description ?? ''}
         price={getStorefrontPrice(product, { spaEligible })}
-        availability={getStorefrontAvailability(product)}
+        availability={availability}
         relatedStrengths={siblings}
         sku={product.sku}
       />

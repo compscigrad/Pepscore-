@@ -8,6 +8,7 @@ import { Header } from '@/components/storefront/Header'
 import { Footer } from '@/components/storefront/Footer'
 import { CartSidebar } from '@/components/storefront/CartSidebar'
 import { categoryToSlug } from '@/lib/storefront/categorySlug'
+import { breadcrumbSchema } from '@/lib/storefront/structuredData'
 
 export const revalidate = 60
 
@@ -25,8 +26,14 @@ export default async function CategoriesIndexPage() {
     orderBy: { category: 'asc' },
   })
 
+  const jsonLd = breadcrumbSchema([
+    { name: 'Home', url: '/' },
+    { name: 'Categories', url: '/categories' },
+  ])
+
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <CartSidebar />
       <Header />
       <main className="bg-cream min-h-screen">

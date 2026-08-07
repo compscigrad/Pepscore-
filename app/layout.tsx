@@ -5,6 +5,7 @@ import type { Metadata } from 'next'
 import { ClerkProvider } from '@clerk/nextjs'
 import { Toaster } from 'react-hot-toast'
 import { clerkAppearance } from '@/lib/clerkAppearance'
+import { organizationSchema } from '@/lib/storefront/structuredData'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -13,11 +14,17 @@ export const metadata: Metadata = {
   description:
     'Precision-grade research peptides with independently verified purity above 98%. For Research Use Only.',
   keywords: ['research peptides', 'semaglutide', 'tirzepatide', 'NAD+', 'epithalon', 'RUO'],
+  alternates: { canonical: '/' },
   openGraph: {
     title: 'Pepscore — Holistic Research Peptides',
     description: 'Pharmaceutical-quality research peptides. ≥98% purity. For Research Use Only.',
     images: [{ url: '/images/hero-vials.jpeg' }],
+    type: 'website',
   },
+  // Belt-and-suspenders alongside app/robots.ts's env-based rules -- this
+  // covers the meta-tag-level signal too, in case a crawler ignores
+  // robots.txt but respects the page's own noindex meta tag.
+  robots: process.env.VERCEL_ENV === 'production' ? undefined : { index: false, follow: false },
 }
 
 const toasterProps = {
@@ -34,6 +41,8 @@ const toasterProps = {
   },
 }
 
+const organizationJsonLd = JSON.stringify(organizationSchema())
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   // Skip ClerkProvider at build time when credentials aren't set yet.
   // Auth features (UserButton, sign-in) require a real key at runtime.
@@ -43,6 +52,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <body>
           {children}
           <Toaster {...toasterProps} />
+          <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: organizationJsonLd }} />
         </body>
       </html>
     )
@@ -54,6 +64,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <body>
           {children}
           <Toaster {...toasterProps} />
+          <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: organizationJsonLd }} />
         </body>
       </html>
     </ClerkProvider>
