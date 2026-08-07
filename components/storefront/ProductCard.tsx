@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { useCartStore } from '@/lib/cart-store'
 import { SingleVialImage } from './SingleVialImage'
@@ -13,9 +14,14 @@ export interface ProductVariant {
   id: string
   slug: string
   size: string
-  price: number
-  bulkPrice5: number
-  bulkPrice10: number
+  // null when the product has no approved active pricing yet -- never a
+  // formula-suggested/guessed number. See lib/storefront/pricing.ts.
+  standardCasePrice: number | null
+  unitsPerCase: number | null
+  // Only ever set when individualSalesEnabled is true for this product --
+  // a stored individual price with sales disabled (e.g. Tesamorelin) must
+  // never reach this component at all.
+  individualVialPrice: number | null
 }
 
 export interface ProductCardProps {
@@ -32,9 +38,11 @@ export function ProductCard({ name, category, description, imageUrl, badge, vari
   const { addItem, openCart } = useCartStore()
 
   const v = variants[selectedIdx]
+  const hasPrice = v.standardCasePrice != null
 
   function handleAdd() {
-    addItem({ id: v.id, slug: v.slug, name, size: v.size, price: v.price, imageUrl })
+    if (v.standardCasePrice == null) return
+    addItem({ id: v.id, slug: v.slug, name, size: v.size, price: v.standardCasePrice, imageUrl })
     toast.success(`${name} ${v.size} added to cart`)
     openCart()
   }
@@ -106,38 +114,46 @@ export function ProductCard({ name, category, description, imageUrl, badge, vari
             </div>
           )}
 
-          {/* 3-tier pricing table */}
-          <div className="bg-[#FDFAF5] border border-gold/15 rounded-lg p-3">
-            <div className="grid grid-cols-3 text-center divide-x divide-gold/15">
-              <div className="px-1">
-                <p className="text-[9px] font-bold text-g500 uppercase tracking-[0.07em] mb-0.5">1 box</p>
-                <p className="font-heading text-[14px] font-extrabold text-dark">${v.price}</p>
+          {hasPrice ? (
+            <>
+              {/* Standard case price */}
+              <div className="bg-[#FDFAF5] border border-gold/15 rounded-lg p-3 flex items-center justify-between">
+                <div>
+                  <p className="text-[9px] font-bold text-g500 uppercase tracking-[0.07em] mb-0.5">
+                    {v.unitsPerCase ? `Case of ${v.unitsPerCase}` : 'Standard Case'}
+                  </p>
+                  <p className="font-heading text-[18px] font-extrabold text-dark">${v.standardCasePrice}</p>
+                </div>
+                {v.individualVialPrice != null && (
+                  <div className="text-right">
+                    <p className="text-[9px] font-bold text-g500 uppercase tracking-[0.07em] mb-0.5">Per Vial</p>
+                    <p className="font-heading text-[14px] font-bold text-gold">${v.individualVialPrice}</p>
+                  </div>
+                )}
               </div>
-              <div className="px-1">
-                <p className="text-[9px] font-bold text-g500 uppercase tracking-[0.07em] mb-0.5">10 boxes</p>
-                <p className="font-heading text-[14px] font-extrabold text-gold">${v.bulkPrice5}</p>
-              </div>
-              <div className="px-1">
-                <p className="text-[9px] font-bold text-g500 uppercase tracking-[0.07em] mb-0.5">50 boxes</p>
-                <p className="font-heading text-[14px] font-extrabold text-gold">${v.bulkPrice10}</p>
-              </div>
-            </div>
-          </div>
 
-          {/* Bulk discount badge — consistent position across all cards */}
-          <div className="inline-flex w-fit items-center gap-1.5 rounded-full border border-gold/30 bg-gold/8 px-3 py-1">
-            <span className="text-[9px] font-bold uppercase tracking-[0.07em] text-gold-dark">
-              Bulk discounts at 10+ &amp; 50+ boxes
-            </span>
-          </div>
-
-          {/* Add to Cart CTA */}
-          <button
-            onClick={handleAdd}
-            className="bg-gold hover:bg-gold-dark text-white font-heading text-[11px] font-bold tracking-[0.05em] uppercase w-full py-2.5 rounded-md transition-all hover:scale-[1.02]"
-          >
-            Add to Cart{variants.length > 1 ? ` · ${v.size}` : ''}
-          </button>
+              {/* Add to Cart CTA */}
+              <button
+                onClick={handleAdd}
+                className="bg-gold hover:bg-gold-dark text-white font-heading text-[11px] font-bold tracking-[0.05em] uppercase w-full py-2.5 rounded-md transition-all hover:scale-[1.02]"
+              >
+                Add to Cart{variants.length > 1 ? ` · ${v.size}` : ''}
+              </button>
+            </>
+          ) : (
+            <>
+              {/* No approved public price yet — never invent one */}
+              <div className="bg-[#FDFAF5] border border-gold/15 rounded-lg p-3 text-center">
+                <p className="text-[12px] font-heading font-semibold text-g700">Pricing available on request</p>
+              </div>
+              <Link
+                href="/#contact"
+                className="block border-2 border-gold text-gold-dark hover:bg-gold hover:text-white font-heading text-[11px] font-bold tracking-[0.05em] uppercase w-full py-2.5 rounded-md transition-all text-center"
+              >
+                Request Pricing
+              </Link>
+            </>
+          )}
 
         </div>
       </div>
