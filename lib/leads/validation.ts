@@ -26,13 +26,18 @@ const baseLeadCaptureSchema = z.object({
   productSize: z.string().trim().max(100).optional(),
   message: z.string().trim().max(2000).optional(),
   sourcePage: z.string().trim().min(1).max(500),
-  referrer: z.string().trim().max(500).optional(),
-  landingUrl: z.string().trim().max(500).optional(),
-  utmSource: z.string().trim().max(200).optional(),
-  utmMedium: z.string().trim().max(200).optional(),
-  utmCampaign: z.string().trim().max(200).optional(),
-  utmTerm: z.string().trim().max(200).optional(),
-  utmContent: z.string().trim().max(200).optional(),
+  // Sourced from lib/storefront/attribution.ts's AttributionData, whose
+  // fields are `string | null` (URLSearchParams.get()'s own return type)
+  // -- .nullable() alongside .optional() so a literal JSON `null` (not
+  // just an absent key) validates instead of failing every submission
+  // that has no referrer/UTM params to report.
+  referrer: z.string().trim().max(500).nullable().optional(),
+  landingUrl: z.string().trim().max(500).nullable().optional(),
+  utmSource: z.string().trim().max(200).nullable().optional(),
+  utmMedium: z.string().trim().max(200).nullable().optional(),
+  utmCampaign: z.string().trim().max(200).nullable().optional(),
+  utmTerm: z.string().trim().max(200).nullable().optional(),
+  utmContent: z.string().trim().max(200).nullable().optional(),
   consent: z.boolean(),
   // Honeypot -- real visitors never see this field (hidden via CSS in the
   // form). A bot that fills it gets a fake success, never processed.
