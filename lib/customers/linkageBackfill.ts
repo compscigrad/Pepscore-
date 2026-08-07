@@ -16,6 +16,9 @@ export interface OrphanInvoiceSnapshot {
   customerName: string
   customerEmail: string | null
   customerPhone: string | null
+  billingAddress: unknown
+  shippingAddress: unknown
+  createdAt: Date
 }
 
 export interface ExistingCustomerCandidate {
@@ -48,6 +51,26 @@ export function looksLikeTestData(name: string, email: string | null): boolean {
   if (TEST_DATA_MARKERS.some((re) => re.test(name))) return true
   const domain = email?.split('@')[1]?.toLowerCase()
   return Boolean(domain && TEST_EMAIL_DOMAINS.includes(domain))
+}
+
+// When a group has more than one invoice (the same person billed more than
+// once before ever being linked), their addresses can differ slightly --
+// formatting drift ("650 S Spring Street" vs "650 South Spring Street"),
+// or a genuine move. Never averages or guesses: the most-recently-created
+// invoice's address is treated as the person's current one, same as any
+// other "latest wins" convention already used elsewhere in this codebase
+// (see lib/invoices.ts's paidAt-anchored archive countdown). Every
+// snapshot this reads from stays untouched regardless -- this only decides
+// what a *new* Customer record gets seeded with.
+export function pickMostRecentAddress(invoices: OrphanInvoiceSnapshot[]): {
+  billingAddress: unknown
+  shippingAddress: unknown
+  sourceInvoiceNumber: string | null
+} {
+  const withAddress = invoices.filter((i) => i.billingAddress || i.shippingAddress)
+  if (withAddress.length === 0) return { billingAddress: null, shippingAddress: null, sourceInvoiceNumber: null }
+  const mostRecent = [...withAddress].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]
+  return { billingAddress: mostRecent.billingAddress, shippingAddress: mostRecent.shippingAddress, sourceInvoiceNumber: mostRecent.invoiceNumber }
 }
 
 // "Marvin Alexander" -> { firstName: "Marvin", lastName: "Alexander" }
