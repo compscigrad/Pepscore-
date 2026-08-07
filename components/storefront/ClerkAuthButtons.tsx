@@ -26,7 +26,7 @@ function AdminLink() {
   return (
     <Link
       href="/admin/invoices"
-      className="font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-gold-dark hover:text-gold transition-colors"
+      className="font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-[#D4AF37] hover:text-[#E8C84A] transition-colors"
     >
       Admin
     </Link>
@@ -42,7 +42,7 @@ export function ClerkAuthButtons() {
       </SignedIn>
       <SignedOut>
         <SignInButton mode="modal">
-          <button className="font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-dark hover:text-gold transition-colors">
+          <button className="font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/80 hover:text-[#D4AF37] transition-colors">
             Sign In
           </button>
         </SignInButton>

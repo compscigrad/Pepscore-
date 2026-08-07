@@ -123,7 +123,7 @@ export default async function HomePage() {
         </section>
 
         {/* ── Products ─────────────────────────────────────────────────────── */}
-        <section id="products" className="py-24 px-6 bg-white">
+        <section id="products" className="py-24 px-6 bg-black">
           <div className="max-w-[1200px] mx-auto">
             <div className="text-center mb-14">
               <span className="font-heading text-[11px] font-bold tracking-[0.15em] uppercase text-[#D4AF37] mb-3 block">Research Catalog</span>
