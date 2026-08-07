@@ -1,5 +1,6 @@
 // Site footer with RUO disclaimer, product links, contact info
 import Link from 'next/link'
+import { LeadCaptureTrigger } from './LeadCaptureTrigger'
 
 export function Footer() {
   return (
@@ -19,9 +20,16 @@ export function Footer() {
               Precision-grade research peptides for laboratories that refuse to compromise on quality or consistency.
             </p>
             {/* RUO disclaimer box */}
-            <div className="text-[11px] text-white/35 leading-relaxed border border-white/10 p-3 rounded-md">
+            <div className="text-[11px] text-white/35 leading-relaxed border border-white/10 p-3 rounded-md mb-4">
               ⚠️ All Pepscore Lab products are for research purposes only. Not intended for human use, consumption, diagnostic use, therapeutic use, or veterinary use. Must be handled by qualified researchers in appropriate laboratory environments.
             </div>
+            <LeadCaptureTrigger
+              interestType="GENERAL_UPDATES"
+              modalTitle="Get Updates"
+              modalDescription="Leave your email and we'll keep you posted on new products, restocks, and pricing."
+              triggerLabel="Get Updates →"
+              triggerClassName="text-[12px] font-heading font-bold tracking-[0.06em] uppercase text-[#D4AF37] hover:text-[#E8C84A] transition-colors"
+            />
           </div>
 
           {/* Products */}

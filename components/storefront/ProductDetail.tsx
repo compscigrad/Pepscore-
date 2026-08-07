@@ -10,6 +10,7 @@ import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { useCartStore } from '@/lib/cart-store'
 import { SingleVialImage } from './SingleVialImage'
+import { LeadCaptureTrigger } from './LeadCaptureTrigger'
 import { AVAILABILITY_LABEL, isPurchasable, type StorefrontAvailability } from '@/lib/storefront/availability'
 import type { StorefrontPrice } from '@/lib/storefront/pricing'
 
@@ -157,16 +158,38 @@ export function ProductDetail({
                 >
                   {canPurchase ? 'Add to Cart' : availabilityMessageOverride || AVAILABILITY_LABEL[availability]}
                 </button>
+
+                {!canPurchase && (availability === 'OUT_OF_STOCK' || availability === 'COMING_SOON') && (
+                  <LeadCaptureTrigger
+                    interestType={availability === 'OUT_OF_STOCK' ? 'OUT_OF_STOCK_INTEREST' : 'NOTIFY_WHEN_AVAILABLE'}
+                    productSlug={slug}
+                    productName={name}
+                    productSize={size}
+                    modalTitle={`Get notified — ${name} ${size}`}
+                    modalDescription={
+                      availability === 'OUT_OF_STOCK'
+                        ? "This item is currently out of stock. Leave your info and we'll let you know when it's back."
+                        : "This item isn't available yet. Leave your info and we'll let you know when it launches."
+                    }
+                    triggerLabel="Notify Me"
+                    triggerClassName="w-full mt-2.5 border border-[#D4AF37]/45 text-[#D4AF37] hover:bg-[#D4AF37] hover:text-black font-heading text-[13px] font-bold tracking-[0.08em] uppercase py-3 rounded-full transition-all"
+                  />
+                )}
               </>
             ) : (
               <>
                 <p className="text-[14px] font-heading font-semibold text-white/60 mb-4 text-center">Pricing available on request</p>
-                <Link
-                  href="/#contact"
-                  className="block text-center border border-[#D4AF37]/45 text-[#D4AF37] hover:bg-[#D4AF37] hover:text-black font-heading text-[13px] font-bold tracking-[0.08em] uppercase py-3.5 rounded-full transition-all"
-                >
-                  Request Pricing
-                </Link>
+                <LeadCaptureTrigger
+                  interestType="PRICING_REVIEW_INTEREST"
+                  productSlug={slug}
+                  productName={name}
+                  productSize={size}
+                  modalTitle={`Request pricing — ${name} ${size}`}
+                  modalDescription="This product is still going through pricing review. Leave your info and we'll follow up with pricing details."
+                  showMessageField
+                  triggerLabel="Request Pricing"
+                  triggerClassName="block w-full text-center border border-[#D4AF37]/45 text-[#D4AF37] hover:bg-[#D4AF37] hover:text-black font-heading text-[13px] font-bold tracking-[0.08em] uppercase py-3.5 rounded-full transition-all"
+                />
               </>
             )}
           </div>

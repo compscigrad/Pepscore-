@@ -40,6 +40,10 @@ export type MessageCategory =
   | 'BALANCE_TRANSFER_NOTICE' // a prior invoice's balance was moved onto a new invoice
   // Contact — pre-purchase / general inquiries
   | 'CONTACT_INQUIRY'
+  // Admin-facing: a storefront lead-capture form was submitted (Phase 2B
+  // item 7) -- general updates, product interest, pricing review,
+  // SPA/wholesale inquiry, etc.
+  | 'LEAD_CAPTURED'
   // Support — existing-customer problems, access issues
   | 'SUPPORT_REQUEST'
   | 'SUPPORT_REQUEST_RECEIVED' // customer-facing: acknowledges their submission
@@ -85,6 +89,7 @@ const ROUTING: Record<MessageCategory, RoutedSender> = {
   BALANCE_TRANSFER_NOTICE: { fromName: 'Pepscore Billing', replyTo: BILLING_EMAIL },
 
   CONTACT_INQUIRY: { fromName: 'Pepscore', replyTo: CONTACT_EMAIL },
+  LEAD_CAPTURED: { fromName: 'Pepscore', replyTo: CONTACT_EMAIL },
   SUPPORT_REQUEST: { fromName: 'Pepscore Support', replyTo: SUPPORT_EMAIL },
   SUPPORT_REQUEST_RECEIVED: { fromName: 'Pepscore Support', replyTo: SUPPORT_EMAIL },
 

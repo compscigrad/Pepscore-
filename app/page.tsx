@@ -9,6 +9,7 @@ import { Footer } from '@/components/storefront/Footer'
 import { ContactSection } from '@/components/storefront/ContactSection'
 import { ProductCard, type ProductCardProps } from '@/components/storefront/ProductCard'
 import { CartSidebar } from '@/components/storefront/CartSidebar'
+import { LeadCaptureTrigger } from '@/components/storefront/LeadCaptureTrigger'
 import { getStorefrontPrice } from '@/lib/storefront/pricing'
 import { groupByName } from '@/lib/storefront/groupByName'
 import { getCurrentCustomerSpaEligible } from '@/lib/storefront/spaEligibility'
@@ -228,9 +229,14 @@ export default async function HomePage() {
               ))}
             </div>
             <div className="text-center">
-              <Link href="#contact" className="inline-block bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] text-black font-heading text-[13px] font-bold tracking-[0.08em] uppercase px-8 py-4 rounded-full transition-all hover:-translate-y-0.5 hover:shadow-[0_10px_32px_rgba(212,175,55,0.45)]">
-                Inquire About Bulk Orders
-              </Link>
+              <LeadCaptureTrigger
+                interestType="SPA_WHOLESALE_INQUIRY"
+                modalTitle="Inquire About Bulk Orders"
+                modalDescription="Tell us about your research volume needs and a member of our team will follow up with SPA/wholesale pricing."
+                showMessageField
+                triggerLabel="Inquire About Bulk Orders"
+                triggerClassName="inline-block bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] text-black font-heading text-[13px] font-bold tracking-[0.08em] uppercase px-8 py-4 rounded-full transition-all hover:-translate-y-0.5 hover:shadow-[0_10px_32px_rgba(212,175,55,0.45)]"
+              />
             </div>
           </div>
         </section>

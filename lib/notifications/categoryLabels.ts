@@ -30,6 +30,7 @@ const CATEGORY_LABELS: Record<MessageCategory, string> = {
   REFUND_ACTION_REQUIRED: 'Refund Update',
   BALANCE_TRANSFER_NOTICE: 'Balance Transfer',
   CONTACT_INQUIRY: 'Inquiry',
+  LEAD_CAPTURED: 'Inquiry',
   SUPPORT_REQUEST: 'Support Request',
   SUPPORT_REQUEST_RECEIVED: 'Support Request',
   ADMIN_INTAKE_ALERT: 'Account Update',
