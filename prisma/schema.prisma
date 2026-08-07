@@ -111,23 +111,23 @@ model Product {
   // pricing, or admin notes -- this is the one editor whose output is
   // always publicly visible.
   seoTitle                    String?
-  metaDescription              String?
-  fullDescription              String?
-  imageAltText                 String?
+  metaDescription             String?
+  fullDescription             String?
+  imageAltText                String?
   // Comma-separated extra search terms (e.g. common abbreviations) --
   // matched alongside name/size/category in lib/storefront/search.ts.
-  searchSynonyms                String?
+  searchSynonyms              String?
   // Array of { question, answer } objects, also used to emit FAQPage
   // structured data on the product detail page when non-empty.
-  faq                           Json?
+  faq                         Json?
   // Slugs of other products to show in a "Related Products" section --
   // distinct from the automatic same-name sibling-strength list.
-  relatedProductSlugs           String[] @default([])
-  featured                      Boolean  @default(false)
+  relatedProductSlugs         String[] @default([])
+  featured                    Boolean  @default(false)
   // Manual override, independent of the automatic completeness guard in
   // generateMetadata (a too-short/placeholder description forces noindex
   // regardless of this flag -- see app/products/[slug]/page.tsx).
-  noindex                       Boolean  @default(false)
+  noindex                     Boolean  @default(false)
   // Replaces the computed AVAILABILITY_LABEL text when set (e.g.
   // "Restocking mid-August" instead of the generic "Coming Soon") --
   // never changes the underlying availability state itself.
@@ -1474,10 +1474,72 @@ model Customer {
   portalInvites       CustomerPortalInvite[]
   accessEvents        CustomerAccessEvent[]
   identityReviewCases CustomerIdentityReviewCase[]
+  leadCaptures        LeadCapture[]
 
   @@index([email])
   @@index([phone])
   @@index([status])
+}
+
+// Phase 2B item 7 -- one row per storefront lead-capture submission
+// (contextual interest forms: general updates, launch notification,
+// product/strength interest, notify-when-available, out-of-stock
+// interest, pricing-review interest, SPA/wholesale inquiry). Always
+// linked to a Customer via lib/leads/service.ts's captureLead(), which
+// reuses the existing upsertCustomerFromIntake() find-or-create logic
+// (lib/customers.ts) so a repeat submitter by the same email/phone never
+// creates a second Customer row -- multiple LeadCapture rows can (and
+// should) point at the same Customer over time, one per submission, so
+// interest history is never overwritten.
+model LeadCapture {
+  id           String           @id @default(cuid())
+  customerId   String
+  customer     Customer         @relation(fields: [customerId], references: [id])
+  interestType LeadInterestType
+
+  // Product/strength context -- denormalized (name/size snapshotted, not
+  // just a Product relation) so a lead's context stays legible even if the
+  // product is later renamed, re-sized, or deactivated. productSlug is kept
+  // for an admin to still jump to the live product when it still exists.
+  productSlug String?
+  productName String?
+  productSize String?
+
+  message String?
+
+  // Attribution -- captured client-side at submission time (see
+  // lib/storefront/attribution.ts's first-touch localStorage capture).
+  // sourcePage is the page the form was actually submitted from (always
+  // present); the rest describe how the visitor originally arrived, which
+  // is often a different page/session than the submission itself.
+  sourcePage  String
+  referrer    String?
+  landingUrl  String?
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  utmTerm     String?
+  utmContent  String?
+
+  // Captured at the same instant as this row, so no separate timestamp
+  // column is needed -- createdAt below is the consent timestamp.
+  consent Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([customerId])
+  @@index([interestType])
+  @@index([createdAt])
+}
+
+enum LeadInterestType {
+  GENERAL_UPDATES
+  LAUNCH_NOTIFICATION
+  PRODUCT_INTEREST
+  NOTIFY_WHEN_AVAILABLE
+  OUT_OF_STOCK_INTEREST
+  PRICING_REVIEW_INTEREST
+  SPA_WHOLESALE_INQUIRY
 }
 
 // Single-purpose, expiring, revocable, admin-initiated invite that binds one

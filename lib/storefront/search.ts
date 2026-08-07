@@ -1,39 +1,26 @@
-// Storefront product search -- matches name, strength (size), and category.
-// Splits the query into tokens and requires every token to match at least
-// one field (AND across tokens, OR within a token's field candidates), so
-// "Tesamorelin 10mg" resolves to the single correct 10mg product rather
-// than an ambiguous list of every Tesamorelin strength -- "Tesamorelin"
-// matches every row's name, but only the 10mg row's `size` also matches
-// "10mg", so the AND narrows correctly.
+// Storefront product search — fetches the active catalog (small at today's
+// scale, ~100 rows) and ranks it in-process via lib/storefront/searchRank.ts's
+// pure, unit-tested tiered matching (exact name -> exact name+strength ->
+// exact alias -> normalized formatting -> prefix/token -> typo/fuzzy).
 //
-// This is substring matching (Prisma/Postgres ILIKE), not true fuzzy/typo
-// tolerance -- real typo tolerance would need trigram similarity
-// (pg_trgm) or a dedicated search service, a real infrastructure decision
-// this PR doesn't make unilaterally. Substring matching already covers
-// the common case (partial words, case-insensitivity, word order) well.
+// Only pricingStatus excludes a product from search results -- never
+// availability/stock. An active product that's out of stock, low stock,
+// backordered, or awaiting restock must stay discoverable; availability
+// only changes the fulfillment messaging shown on its own page, never
+// whether it can be found at all. Only INACTIVE (discontinued, or
+// temporarily unpublished pending pricing input) products are excluded.
 import { prisma } from '@/lib/prisma'
 import type { Product } from '@prisma/client'
+import { rankSearch } from './searchRank'
 
 export async function searchProducts(query: string): Promise<Product[]> {
-  const tokens = query.trim().split(/\s+/).filter(Boolean)
-  if (tokens.length === 0) return []
+  const trimmed = query.trim()
+  if (!trimmed) return []
 
-  return prisma.product.findMany({
-    where: {
-      pricingStatus: { not: 'INACTIVE' },
-      AND: tokens.map((token) => ({
-        OR: [
-          { name: { contains: token, mode: 'insensitive' as const } },
-          { size: { contains: token, mode: 'insensitive' as const } },
-          { category: { contains: token, mode: 'insensitive' as const } },
-          // Admin-editable extra terms (Phase 2B item 6, e.g. common
-          // abbreviations) -- stored as one comma-separated string, so a
-          // substring match here is intentionally loose rather than
-          // splitting/comparing individual synonym entries.
-          { searchSynonyms: { contains: token, mode: 'insensitive' as const } },
-        ],
-      })),
-    },
+  const candidates = await prisma.product.findMany({
+    where: { pricingStatus: { not: 'INACTIVE' } },
     orderBy: { createdAt: 'asc' },
   })
+
+  return rankSearch(trimmed, candidates).map((r) => r.product)
 }

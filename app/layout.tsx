@@ -6,6 +6,7 @@ import { ClerkProvider } from '@clerk/nextjs'
 import { Toaster } from 'react-hot-toast'
 import { clerkAppearance } from '@/lib/clerkAppearance'
 import { organizationSchema } from '@/lib/storefront/structuredData'
+import { AttributionCapture } from '@/components/storefront/AttributionCapture'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -50,6 +51,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     return (
       <html lang="en">
         <body>
+          <AttributionCapture />
           {children}
           <Toaster {...toasterProps} />
           <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: organizationJsonLd }} />
@@ -62,6 +64,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <ClerkProvider appearance={clerkAppearance}>
       <html lang="en">
         <body>
+          <AttributionCapture />
           {children}
           <Toaster {...toasterProps} />
           <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: organizationJsonLd }} />
