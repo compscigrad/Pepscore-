@@ -68,8 +68,9 @@ export function ProductCard({ name, category, description, imageUrl, badge, vari
         </div>
       )}
 
-      {/* Image — single-vial only, never the lineup */}
-      <div className="bg-gradient-to-br from-cream to-[#F5EFE0] h-[200px] flex items-center justify-center p-5 shrink-0">
+      {/* Image — single-vial only, never the lineup. Links to the currently
+          selected variant's canonical detail page. */}
+      <Link href={`/products/${v.slug}`} className="bg-gradient-to-br from-cream to-[#F5EFE0] h-[200px] flex items-center justify-center p-5 shrink-0">
         {imageUrl === GENERIC_PLACEHOLDER ? (
           /* Dynamic SVG vial with product name on the label */
           <SingleVialImage
@@ -88,15 +89,17 @@ export function ProductCard({ name, category, description, imageUrl, badge, vari
             />
           </div>
         )}
-      </div>
+      </Link>
 
       {/* Card body — flex column so bottom section always aligns */}
       <div className="p-[18px] flex flex-col flex-1">
         {/* Category label */}
         <p className="font-heading text-[10px] font-bold tracking-[0.12em] uppercase text-gold mb-1">{category}</p>
 
-        {/* Product name */}
-        <h3 className="font-heading text-[17px] font-bold text-dark leading-tight mb-2">{name}</h3>
+        {/* Product name — links to the currently selected variant's page */}
+        <Link href={`/products/${v.slug}`}>
+          <h3 className="font-heading text-[17px] font-bold text-dark leading-tight mb-2 hover:text-gold transition-colors">{name}</h3>
+        </Link>
 
         {/* Description — flex-1 so it absorbs variable space, keeping bottom section aligned */}
         <p className="text-[12px] text-g700 leading-relaxed flex-1 mb-3">{description}</p>
