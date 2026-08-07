@@ -41,6 +41,49 @@ async function main() {
     results.push({ product: 'Tesamorelin 10mg', productId: tesamorelin.id, applied: !dryRun })
   }
 
+  // ─── Tesamorelin 5mg — derived from the approved 10mg override ──────────
+  // Formula: (10mg active price / 2) + $5, applied independently per
+  // column: (775/2)+5=392.50, (700/2)+5=355, (80/2)+5=45. Never the general
+  // Retatrutide-based supplier-cost multiplier -- that model doesn't apply
+  // here since this is a derived-from-sibling-strength override, not a
+  // formula-from-supplier-cost product.
+  const tesamorelin5mg = await prisma.product.findUnique({ where: { slug: 'tesamorelin-5mg' } })
+  if (!tesamorelin5mg) {
+    results.push({ product: 'Tesamorelin 5mg', skipped: 'no product with slug tesamorelin-5mg found' })
+  } else {
+    if (!dryRun) {
+      await seedProductPricing(tesamorelin5mg.id, {
+        supplierCaseCost: null, // not a supplier-cost-formula product -- see reason below
+        unitsPerCase: 10,
+        activeStandardCasePrice: 392.5,
+        activeSpaCasePrice: 355,
+        activeBulkPrice: null,
+        activeIndividualVialPrice: 45,
+        individualSalesEnabled: false,
+        manualPricingOverride: true,
+        pricingOverrideReason: 'Derived from approved Tesamorelin 10mg competitive pricing (2026-08-06). Formula: (10mg active price / 2) + $5 -- Standard (775/2)+5=392.50, SPA (700/2)+5=355, Individual (80/2)+5=45. Individual vial price stored for database completeness only; sales disabled until admin explicitly enables.',
+        pricingNotes: 'Not currently sold by individual vial — only Standard and SPA case. Pricing intentionally derived, not independently formula-calculated or guessed.',
+        sku: null,
+      })
+      await prisma.adminAuditLog.create({
+        data: {
+          action: 'SEED_DERIVED_PRICING',
+          entity: 'Product',
+          entityId: tesamorelin5mg.id,
+          adminId: 'system-pricing-seed',
+          details: {
+            formula: '(Tesamorelin 10mg active price / 2) + 5',
+            derivedFrom: 'tesamorelin-10mg',
+            activeStandardCasePrice: 392.5,
+            activeSpaCasePrice: 355,
+            activeIndividualVialPrice: 45,
+          },
+        },
+      })
+    }
+    results.push({ product: 'Tesamorelin 5mg', productId: tesamorelin5mg.id, applied: !dryRun })
+  }
+
   // ─── GLOW70 — locked pricing, product row does not exist yet ────────────
   let glow70 = await prisma.product.findUnique({ where: { slug: 'glow70-70mg' } })
   if (!glow70 && !dryRun) {
