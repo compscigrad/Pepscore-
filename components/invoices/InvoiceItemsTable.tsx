@@ -4,24 +4,32 @@
 // spec's "Glow70" sample, which isn't in the seeded catalog) stay supported.
 'use client'
 
+import { useState } from 'react'
 import { lineItemTotal } from '@/lib/invoice/calculations'
 import { formatMoney, formatProductLabel } from '@/lib/invoice/format'
 import { getAvailableSellUnits } from '@/lib/pricing/sellUnits'
 import { makeKey } from './types'
 import { card, input, pillSecondary, sectionHeading } from './theme'
+import { SellUnitCorrectionDialog } from './SellUnitCorrectionDialog'
 import type { InvoiceItemDraft, Product } from './types'
 
 interface Props {
   items: InvoiceItemDraft[]
   onChange: (items: InvoiceItemDraft[]) => void
   products: Product[]
+  // Only set in edit mode (a real, already-saved invoice) -- the
+  // "Correct Sell Unit" admin action only applies to a line item that
+  // already exists in the database, never to a row still being composed
+  // in a brand-new invoice draft that hasn't been saved yet.
+  invoiceId?: string
 }
 
 function emptyItem(): InvoiceItemDraft {
   return { key: makeKey(), id: null, productId: null, name: '', description: '', quantity: 1, unitPrice: 0, lineDiscount: 0 }
 }
 
-export function InvoiceItemsTable({ items, onChange, products }: Props) {
+export function InvoiceItemsTable({ items, onChange, products, invoiceId }: Props) {
+  const [correctingItemId, setCorrectingItemId] = useState<string | null>(null)
   function updateItem(key: string, patch: Partial<InvoiceItemDraft>) {
     onChange(items.map((item) => (item.key === key ? { ...item, ...patch } : item)))
   }
@@ -206,6 +214,15 @@ export function InvoiceItemsTable({ items, onChange, products }: Props) {
                     {formatMoney(lineItemTotal(item))}
                   </td>
                   <td className="py-2 whitespace-nowrap text-right">
+                    {invoiceId && item.id && item.productId && (
+                      <button
+                        type="button"
+                        onClick={() => setCorrectingItemId(item.id)}
+                        className="px-2 py-0.5 mr-1 rounded border border-amber-400/40 text-amber-300 text-[11px] font-bold uppercase tracking-wide hover:bg-amber-400/10"
+                      >
+                        Correct Sell Unit
+                      </button>
+                    )}
                     <button type="button" onClick={() => moveItem(item.key, -1)} disabled={index === 0} className="px-1 text-white/50 disabled:opacity-30" aria-label="Move up">↑</button>
                     <button type="button" onClick={() => moveItem(item.key, 1)} disabled={index === items.length - 1} className="px-1 text-white/50 disabled:opacity-30" aria-label="Move down">↓</button>
                     <button type="button" onClick={() => duplicateItem(item.key)} className="px-1 text-gold-light" aria-label="Duplicate">⧉</button>
@@ -217,6 +234,10 @@ export function InvoiceItemsTable({ items, onChange, products }: Props) {
             </tbody>
           </table>
         </div>
+      )}
+
+      {invoiceId && correctingItemId && (
+        <SellUnitCorrectionDialog invoiceId={invoiceId} itemId={correctingItemId} onClose={() => setCorrectingItemId(null)} />
       )}
     </div>
   )

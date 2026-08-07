@@ -19,9 +19,14 @@ import {
   restoreReservation,
   reverseFulfillment,
   reapplyFulfillment,
+  fulfillReservationTx,
+  reverseFulfillmentTx,
 } from './reservations'
 import { setExactCount } from './actions'
-import type { InventoryReservation } from '@prisma/client'
+import { calculateInvoiceTotals, type InvoiceLineItemInput, type InvoiceDiscountInput } from '@/lib/invoice/calculations'
+import { deriveInvoicePaymentAmounts } from '@/lib/invoice/status'
+import { getAvailableSellUnits } from '@/lib/pricing/sellUnits'
+import type { InventoryReservation, InvoiceItemSellUnit } from '@prisma/client'
 
 // ─── Reservation corrections ────────────────────────────────────────────
 
@@ -187,25 +192,118 @@ export async function correctUnitsPerCase(productId: string, unitsPerCase: numbe
 // the reservation representing the pre-correction sell unit. Never
 // rewrites unitPrice/name/total (the historical sale snapshot) -- purely a
 // catalog-classification fix for the inventory-consumption side.
-export async function correctInvoiceItemSellUnit(
-  invoiceItemId: string,
-  input: { sellUnit: 'CASE_STANDARD' | 'CASE_SPA' | 'CASE_BULK' | 'INDIVIDUAL_VIAL'; unitsPerSellUnit: number; inventoryQuantityConsumed: number },
-  actor: string,
-  reason: string
-) {
+export interface CorrectSellUnitInput {
+  sellUnit: InvoiceItemSellUnit
+  unitsPerSellUnit: number
+  // Explicit admin override to allow selecting INDIVIDUAL_VIAL for a
+  // product whose individualSalesEnabled is false -- e.g. correcting a
+  // historical line that really was sold that way, per the Tesamorelin
+  // rule. Never enables public/customer-facing individual sales; only
+  // affects what this one correction is allowed to record.
+  individualSalesOverride?: boolean
+  priceBehavior: 'INVENTORY_ONLY' | 'RECALCULATE_PRICING'
+  // Required when priceBehavior is RECALCULATE_PRICING.
+  newUnitPrice?: number
+}
+
+export interface CorrectSellUnitResult {
+  item: Awaited<ReturnType<typeof prisma.invoiceItem.findUniqueOrThrow>>
+  reservationOutcome: 'NONE' | 'ADJUSTED_ACTIVE' | 'RECONCILED_FULFILLED'
+  shortfall: number
+  priceChanged: boolean
+}
+
+// The one function behind the "Correct Sell Unit" admin action. Never
+// touches unitPrice/total unless priceBehavior is explicitly
+// RECALCULATE_PRICING (default across the UI is INVENTORY_ONLY) --
+// correcting the inventory interpretation of a historical line must never
+// silently change what the customer was actually charged. When pricing IS
+// recalculated, reuses the exact same pure calculateInvoiceTotals/
+// deriveInvoicePaymentAmounts functions lib/invoices.ts's updateInvoice
+// uses, so the invoice's subtotal/discountTotal/total/balanceDue/
+// paymentStatus stay internally consistent -- but deliberately does NOT
+// go through updateInvoice() itself, so it never fires the real customer-
+// facing "invoice revised" email as a side effect of a backend data
+// correction; if the admin wants the customer notified, that's a separate,
+// deliberate action through the existing invoice email tools.
+export async function correctInvoiceItemSellUnit(invoiceItemId: string, input: CorrectSellUnitInput, actor: string, reason: string): Promise<CorrectSellUnitResult> {
   if (!reason.trim()) throw new Error('A reason is required to correct a sell unit')
+  if (input.priceBehavior === 'RECALCULATE_PRICING' && input.newUnitPrice === undefined) {
+    throw new Error('newUnitPrice is required when recalculating pricing')
+  }
 
   return prisma.$transaction(async (tx) => {
     const item = await tx.invoiceItem.findUniqueOrThrow({ where: { id: invoiceItemId } })
+    if (!item.productId) throw new Error('Cannot correct sell unit for a line item with no linked catalog product')
+    const product = await tx.product.findUniqueOrThrow({ where: { id: item.productId } })
+
+    if (input.sellUnit === 'INDIVIDUAL_VIAL' && !product.individualSalesEnabled && !input.individualSalesOverride) {
+      throw new Error(`Individual vial sales are disabled for ${product.name} ${product.size} -- an explicit override is required to record a historical line at this sell unit`)
+    }
+    // Every other sell unit must actually be configured (an active price
+    // must exist) -- never lets an admin record a line against a tier the
+    // product doesn't have pricing for at all.
+    if (input.sellUnit !== 'INDIVIDUAL_VIAL') {
+      const available = getAvailableSellUnits(product)
+      if (!available.some((o) => o.sellUnit === input.sellUnit)) {
+        throw new Error(`${product.name} ${product.size} has no active price configured for ${input.sellUnit}`)
+      }
+    }
+
+    const newInventoryQuantityConsumed = item.quantity * input.unitsPerSellUnit
+    const before = {
+      sellUnit: item.sellUnit,
+      unitsPerSellUnit: item.unitsPerSellUnit,
+      inventoryQuantityConsumed: item.inventoryQuantityConsumed,
+      unitPrice: item.unitPrice,
+      total: item.total,
+    }
+
+    // ─── Price behavior ───────────────────────────────────────────────
+    const priceChanged = input.priceBehavior === 'RECALCULATE_PRICING'
+    const newTotal = priceChanged ? round2(item.quantity * input.newUnitPrice! - item.lineDiscount) : item.total
+
     await tx.invoiceItem.update({
       where: { id: invoiceItemId },
-      data: { sellUnit: input.sellUnit, unitsPerSellUnit: input.unitsPerSellUnit, inventoryQuantityConsumed: input.inventoryQuantityConsumed },
+      data: {
+        sellUnit: input.sellUnit,
+        unitsPerSellUnit: input.unitsPerSellUnit,
+        inventoryQuantityConsumed: newInventoryQuantityConsumed,
+        ...(priceChanged ? { unitPrice: input.newUnitPrice, total: newTotal } : {}),
+      },
     })
 
-    const existing = await tx.inventoryReservation.findFirst({ where: { invoiceItemId, status: 'ACTIVE' } })
-    if (existing) {
-      await adjustReservationQuantityTx(tx, existing.id, input.inventoryQuantityConsumed, actor, reason)
-    } else if (item.productId) {
+    if (priceChanged) {
+      const invoice = await tx.invoice.findUniqueOrThrow({ where: { id: item.invoiceId }, include: { items: true, discounts: true } })
+      const recalculatedItems: InvoiceLineItemInput[] = invoice.items.map((i) =>
+        i.id === invoiceItemId ? { quantity: i.quantity, unitPrice: input.newUnitPrice!, lineDiscount: i.lineDiscount } : { quantity: i.quantity, unitPrice: i.unitPrice, lineDiscount: i.lineDiscount }
+      )
+      const discountInputs: InvoiceDiscountInput[] = invoice.discounts.map((d) => ({ type: d.type, amount: d.amount }))
+      const totals = calculateInvoiceTotals(recalculatedItems, discountInputs, invoice.shippingCost, invoice.amountPaid)
+      const paymentAmounts = deriveInvoicePaymentAmounts(invoice.amountPaid, totals.total)
+      await tx.invoice.update({
+        where: { id: invoice.id },
+        data: {
+          subtotal: totals.subtotal,
+          discountTotal: totals.discountTotal,
+          total: totals.total,
+          balanceDue: paymentAmounts.balanceDue,
+          paymentStatus: paymentAmounts.paymentStatus,
+          overpaidAmount: paymentAmounts.overpaidAmount,
+        },
+      })
+    }
+
+    // ─── Reservation/fulfillment reconciliation ────────────────────────
+    const existing = await tx.inventoryReservation.findFirst({ where: { invoiceItemId, status: { in: ['ACTIVE', 'FULFILLED'] } } })
+    let reservationOutcome: CorrectSellUnitResult['reservationOutcome'] = 'NONE'
+    let shortfall = 0
+
+    if (!existing) {
+      // Draft, or an issued line whose product isn't inventory-tracked --
+      // nothing to reconcile, but still worth a product-side audit trail
+      // entry so the correction is discoverable from the inventory ledger
+      // too, not just the invoice's own activity log.
       await tx.inventoryLedgerEntry.create({
         data: {
           productId: item.productId,
@@ -218,14 +316,60 @@ export async function correctInvoiceItemSellUnit(
           actor,
           actorType: 'ADMIN',
           reason,
-          notes: `Sell unit corrected to ${input.sellUnit} (${input.inventoryQuantityConsumed} vial(s)) -- no active reservation to adjust`,
+          notes: `Sell unit corrected to ${input.sellUnit} (${newInventoryQuantityConsumed} vial(s)) -- no reservation to adjust (draft or untracked product)`,
           idempotencyKey: randomUUID(),
         },
       })
+    } else if (existing.status === 'ACTIVE') {
+      const result = await adjustReservationQuantityTx(tx, existing.id, newInventoryQuantityConsumed, actor, `Sell unit correction: ${reason}`)
+      reservationOutcome = 'ADJUSTED_ACTIVE'
+      shortfall = result.shortfall
+    } else {
+      // FULFILLED: the physical deduction already happened under the OLD
+      // vial count. Reverse it (restores the old quantity to physical
+      // stock, reservation -> ACTIVE), adjust the reservation to the
+      // corrected quantity (capped at real availability, exactly like any
+      // other reservation change), then re-fulfill at the corrected
+      // quantity. Three real, honest ledger events -- never a single
+      // silent balance edit -- and the Shipment record itself is never
+      // touched, so no shipment/fulfillment record is ever duplicated.
+      await reverseFulfillmentTx(tx, existing.id, actor, `Sell unit correction (reconciling prior fulfillment): ${reason}`)
+      const adjustResult = await adjustReservationQuantityTx(tx, existing.id, newInventoryQuantityConsumed, actor, `Sell unit correction: ${reason}`)
+      shortfall = adjustResult.shortfall
+      const refreshed = await tx.inventoryReservation.findUniqueOrThrow({ where: { id: existing.id } })
+      if (refreshed.status === 'ACTIVE') {
+        await fulfillReservationTx(tx, existing.id, actor)
+      }
+      reservationOutcome = 'RECONCILED_FULFILLED'
     }
 
-    return tx.invoiceItem.findUniqueOrThrow({ where: { id: invoiceItemId } })
+    await tx.invoiceActivityLog.create({
+      data: {
+        invoiceId: item.invoiceId,
+        eventType: 'SELL_UNIT_CORRECTED',
+        previousValue: JSON.stringify(before),
+        newValue: JSON.stringify({
+          sellUnit: input.sellUnit,
+          unitsPerSellUnit: input.unitsPerSellUnit,
+          inventoryQuantityConsumed: newInventoryQuantityConsumed,
+          priceBehavior: input.priceBehavior,
+          unitPrice: priceChanged ? input.newUnitPrice : item.unitPrice,
+          total: priceChanged ? newTotal : item.total,
+          reservationOutcome,
+          shortfall,
+        }),
+        source: 'MANUAL',
+        userId: actor,
+      },
+    })
+
+    const updatedItem = await tx.invoiceItem.findUniqueOrThrow({ where: { id: invoiceItemId } })
+    return { item: updatedItem, reservationOutcome, shortfall, priceChanged }
   })
+}
+
+function round2(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100
 }
 
 // ─── Reconcile Inventory ──────────────────────────────────────────────────

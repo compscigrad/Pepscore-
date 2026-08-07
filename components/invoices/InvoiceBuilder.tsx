@@ -403,6 +403,7 @@ export function InvoiceBuilder({
           items={draft.items}
           onChange={(items) => setDraft((d) => ({ ...d, items }))}
           products={products}
+          invoiceId={invoice?.id}
         />
         <DiscountsSection
           discounts={draft.discounts}
