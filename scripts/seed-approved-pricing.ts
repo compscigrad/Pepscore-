@@ -43,10 +43,15 @@ async function main() {
 
   // ─── Tesamorelin 5mg — derived from the approved 10mg override ──────────
   // Formula: (10mg active price / 2) + $5, applied independently per
-  // column: (775/2)+5=392.50, (700/2)+5=355, (80/2)+5=45. Never the general
-  // Retatrutide-based supplier-cost multiplier -- that model doesn't apply
-  // here since this is a derived-from-sibling-strength override, not a
-  // formula-from-supplier-cost product.
+  // column: SPA (700/2)+5=355, Individual (80/2)+5=45 -- both kept exactly
+  // as formula-derived. Standard is the one deliberate exception: the
+  // formula gives $392.50, but the owner rounded that to the cleaner
+  // commercial price of $395 (2026-08-06 correction) -- so this seed writes
+  // $395, not $392.50, even though $392.50 is what the formula in this
+  // comment would produce. Never the general Retatrutide-based supplier-
+  // cost multiplier -- that model doesn't apply here since this is a
+  // derived-from-sibling-strength override, not a formula-from-supplier-
+  // cost product.
   const tesamorelin5mg = await prisma.product.findUnique({ where: { slug: 'tesamorelin-5mg' } })
   if (!tesamorelin5mg) {
     results.push({ product: 'Tesamorelin 5mg', skipped: 'no product with slug tesamorelin-5mg found' })
@@ -55,14 +60,14 @@ async function main() {
       await seedProductPricing(tesamorelin5mg.id, {
         supplierCaseCost: null, // not a supplier-cost-formula product -- see reason below
         unitsPerCase: 10,
-        activeStandardCasePrice: 392.5,
+        activeStandardCasePrice: 395, // rounded from the formula-derived 392.50, see comment above
         activeSpaCasePrice: 355,
         activeBulkPrice: null,
         activeIndividualVialPrice: 45,
         individualSalesEnabled: false,
         manualPricingOverride: true,
-        pricingOverrideReason: 'Derived from approved Tesamorelin 10mg competitive pricing (2026-08-06). Formula: (10mg active price / 2) + $5 -- Standard (775/2)+5=392.50, SPA (700/2)+5=355, Individual (80/2)+5=45. Individual vial price stored for database completeness only; sales disabled until admin explicitly enables.',
-        pricingNotes: 'Not currently sold by individual vial — only Standard and SPA case. Pricing intentionally derived, not independently formula-calculated or guessed.',
+        pricingOverrideReason: 'Derived from approved Tesamorelin 10mg competitive pricing (2026-08-06). Formula: (10mg active price / 2) + $5 -- SPA (700/2)+5=355, Individual (80/2)+5=45 kept as formula-derived. Standard case rounded from the formula-derived $392.50 to the cleaner commercial price of $395 per explicit owner instruction. Individual vial price stored for database completeness only; sales disabled until admin explicitly enables.',
+        pricingNotes: 'Not currently sold by individual vial — only Standard and SPA case. Pricing intentionally derived (Standard commercially rounded), not independently formula-calculated or guessed.',
         sku: null,
       })
       await prisma.adminAuditLog.create({
