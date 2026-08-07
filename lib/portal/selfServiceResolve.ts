@@ -17,6 +17,7 @@
 import type { Customer } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { recordCustomerActivity } from '@/lib/customers'
+import { upsertUserByClerkId } from '@/lib/user'
 
 export interface ResolveSelfServiceIdentityInput {
   clerkUserId: string
@@ -41,11 +42,7 @@ export type SelfServiceResolution =
 export async function resolveSelfServiceIdentity(input: ResolveSelfServiceIdentityInput): Promise<SelfServiceResolution> {
   const normalizedEmail = input.clerkVerifiedEmail.trim().toLowerCase()
 
-  const user = await prisma.user.upsert({
-    where: { clerkId: input.clerkUserId },
-    update: {},
-    create: { clerkId: input.clerkUserId, email: input.clerkVerifiedEmail },
-  })
+  const user = await upsertUserByClerkId(input.clerkUserId, input.clerkVerifiedEmail)
 
   // Idempotent re-entry: this Clerk user already resolved to a Customer on a
   // prior visit (e.g. they refreshed the setup page, or signed in again

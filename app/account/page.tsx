@@ -8,6 +8,7 @@ import { redirect } from 'next/navigation'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { getPortalAuthState, isSelfRegistrationEnabled } from '@/lib/portalAuth'
 import { isAdminClerkUser } from '@/lib/isAdmin'
+import { checkRateLimit } from '@/lib/rateLimit'
 import { resolveSelfServiceIdentity } from '@/lib/portal/selfServiceResolve'
 import { getPortalDashboardData } from '@/lib/portal/dashboard'
 import { formatMoney, formatDate } from '@/lib/invoice/format'
@@ -207,6 +208,16 @@ async function tryResolveNotLinked(): Promise<ResolveOutcome> {
   const { userId: clerkUserId } = await auth()
   if (!clerkUserId) return 'SKIPPED'
   if (clerkUserId === process.env.ADMIN_CLERK_USER_ID) return 'SKIPPED'
+
+  // Every /account visit for a not-yet-linked user re-runs matching against
+  // the Customer table -- a legitimate visitor rarely reloads more than a
+  // couple of times, but nothing otherwise stops rapid repeated requests
+  // from probing outcomes. Keyed per Clerk user (already authenticated),
+  // not per IP -- this is behind auth, not a public endpoint. Failing the
+  // rate limit returns 'SKIPPED', identical to every other unresolvable
+  // case, so hitting the limit is never itself a distinguishable signal.
+  const rateLimit = checkRateLimit(`self-service-resolve:${clerkUserId}`, 10, 5 * 60_000)
+  if (!rateLimit.allowed) return 'SKIPPED'
 
   const clerkUser = await currentUser()
   const primaryEmail = clerkUser?.primaryEmailAddress

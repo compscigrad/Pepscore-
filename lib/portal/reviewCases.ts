@@ -18,6 +18,7 @@
 import type { CustomerIdentityReviewCase } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { recordCustomerActivity } from '@/lib/customers'
+import { upsertUserByClerkId } from '@/lib/user'
 
 export class ReviewCaseError extends Error {}
 
@@ -38,11 +39,7 @@ export async function approveIdentityReviewCase(
     throw new ReviewCaseError('That customer was not one of the flagged candidates for this case.')
   }
 
-  const user = await prisma.user.upsert({
-    where: { clerkId: reviewCase.clerkUserId },
-    update: {},
-    create: { clerkId: reviewCase.clerkUserId, email: reviewCase.verifiedEmail },
-  })
+  const user = await upsertUserByClerkId(reviewCase.clerkUserId, reviewCase.verifiedEmail)
 
   const linked = await prisma.$transaction(async (tx) => {
     const fresh = await tx.customer.findUniqueOrThrow({ where: { id: chosenCustomerId } })
