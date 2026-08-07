@@ -12,6 +12,7 @@ import { ProductCard } from '@/components/storefront/ProductCard'
 import { categoryToSlug } from '@/lib/storefront/categorySlug'
 import { groupByName } from '@/lib/storefront/groupByName'
 import { getCurrentCustomerSpaEligible } from '@/lib/storefront/spaEligibility'
+import { breadcrumbSchema } from '@/lib/storefront/structuredData'
 
 export const revalidate = 60
 
@@ -56,9 +57,15 @@ export default async function CategoryDetailPage({ params }: PageProps) {
     getCurrentCustomerSpaEligible(),
   ])
   const products = groupByName(rows, { spaEligible })
+  const jsonLd = breadcrumbSchema([
+    { name: 'Home', url: '/' },
+    { name: 'Categories', url: '/categories' },
+    { name: category, url: `/categories/${slug}` },
+  ])
 
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <CartSidebar />
       <Header />
       <main className="bg-cream min-h-screen">
