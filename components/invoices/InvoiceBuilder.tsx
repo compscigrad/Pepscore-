@@ -101,6 +101,11 @@ function itemsToDraft(items: InvoiceWithRelations['items']): InvoiceDraft['items
     quantity: item.quantity,
     unitPrice: item.unitPrice,
     lineDiscount: item.lineDiscount,
+    sellUnit: item.sellUnit,
+    unitsPerSellUnit: item.unitsPerSellUnit,
+    priceTier: item.priceTier,
+    skuSnapshot: item.skuSnapshot,
+    inventoryQuantityConsumed: item.inventoryQuantityConsumed,
   }))
 }
 
@@ -227,6 +232,11 @@ export function InvoiceBuilder({
           unitPrice: item.unitPrice,
           lineDiscount: item.lineDiscount,
           sortOrder: index,
+          sellUnit: item.sellUnit ?? undefined,
+          unitsPerSellUnit: item.unitsPerSellUnit ?? undefined,
+          priceTier: item.priceTier ?? undefined,
+          skuSnapshot: item.skuSnapshot ?? undefined,
+          inventoryQuantityConsumed: item.inventoryQuantityConsumed ?? undefined,
         })),
         discounts: draft.discounts.map((d) => ({
           promotionId: d.promotionId || undefined,

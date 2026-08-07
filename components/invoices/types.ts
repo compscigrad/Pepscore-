@@ -2,7 +2,7 @@
 // carry a `key` (client-generated, stable across re-renders) separate from
 // `id`/`productId`/`promotionId` — a brand-new row has no server id yet, but
 // still needs a stable React key for reordering/deleting to work correctly.
-import type { Product, Promotion, InvoiceStatus, ShippingCarrier, DeliveryStatus, PromotionType } from '@prisma/client'
+import type { Product, Promotion, InvoiceStatus, ShippingCarrier, DeliveryStatus, PromotionType, InvoiceItemSellUnit, InvoiceItemPriceTier } from '@prisma/client'
 
 export interface AddressDraft {
   street1: string
@@ -49,6 +49,15 @@ export interface InvoiceItemDraft {
   quantity: number
   unitPrice: number
   lineDiscount: number
+  // Inventory & Pricing MVP -- undefined/null for a free-typed line item or
+  // a catalog product with no configured sell units (still the vast
+  // majority of the catalog); only set when the admin picked a real case/
+  // SPA/bulk/individual-vial option for a product that has one.
+  sellUnit?: InvoiceItemSellUnit | null
+  unitsPerSellUnit?: number | null
+  priceTier?: InvoiceItemPriceTier | null
+  skuSnapshot?: string | null
+  inventoryQuantityConsumed?: number | null
 }
 
 export interface InvoiceDiscountDraft {

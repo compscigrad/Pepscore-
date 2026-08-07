@@ -422,6 +422,12 @@ export async function updateInvoice(id: string, payload: InvoicePayload): Promis
           lineDiscount: item.lineDiscount ?? 0,
           total: item.quantity * item.unitPrice - (item.lineDiscount ?? 0),
           sortOrder: item.sortOrder,
+          sellUnit: item.sellUnit ?? undefined,
+          unitsPerSellUnit: item.unitsPerSellUnit ?? undefined,
+          priceTier: item.priceTier ?? undefined,
+          skuSnapshot: item.skuSnapshot ?? undefined,
+          manualPricingOverride: item.manualPricingOverride ?? undefined,
+          inventoryQuantityConsumed: item.inventoryQuantityConsumed ?? undefined,
         },
       })
     }
@@ -437,6 +443,12 @@ export async function updateInvoice(id: string, payload: InvoicePayload): Promis
           lineDiscount: item.lineDiscount ?? 0,
           total: item.quantity * item.unitPrice - (item.lineDiscount ?? 0),
           sortOrder: item.sortOrder,
+          sellUnit: item.sellUnit ?? undefined,
+          unitsPerSellUnit: item.unitsPerSellUnit ?? undefined,
+          priceTier: item.priceTier ?? undefined,
+          skuSnapshot: item.skuSnapshot ?? undefined,
+          manualPricingOverride: item.manualPricingOverride ?? undefined,
+          inventoryQuantityConsumed: item.inventoryQuantityConsumed ?? undefined,
         })),
       })
     }

@@ -6,6 +6,7 @@
 
 import { lineItemTotal } from '@/lib/invoice/calculations'
 import { formatMoney, formatProductLabel } from '@/lib/invoice/format'
+import { getAvailableSellUnits } from '@/lib/pricing/sellUnits'
 import { makeKey } from './types'
 import { card, input, pillSecondary, sectionHeading } from './theme'
 import type { InvoiceItemDraft, Product } from './types'
@@ -62,10 +63,48 @@ export function InvoiceItemsTable({ items, onChange, products }: Props) {
   function pickProduct(key: string, typedValue: string) {
     const product = products.find((p) => formatProductLabel(p) === typedValue)
     if (!product) {
-      updateItem(key, { productId: null, name: typedValue })
+      updateItem(key, { productId: null, name: typedValue, sellUnit: null, unitsPerSellUnit: null, priceTier: null, skuSnapshot: null, inventoryQuantityConsumed: null })
       return
     }
-    updateItem(key, { productId: product.id, name: formatProductLabel(product), unitPrice: product.price })
+    // Reset sell-unit selection on every new product pick -- a previous
+    // row's Standard Case choice must never silently carry over onto a
+    // different product that may not even offer that sell unit.
+    updateItem(key, {
+      productId: product.id,
+      name: formatProductLabel(product),
+      unitPrice: product.price,
+      sellUnit: null,
+      unitsPerSellUnit: null,
+      priceTier: null,
+      skuSnapshot: null,
+      inventoryQuantityConsumed: null,
+    })
+  }
+
+  function pickSellUnit(key: string, item: InvoiceItemDraft, product: Product, sellUnitValue: string) {
+    if (sellUnitValue === '') {
+      updateItem(key, { unitPrice: product.price, sellUnit: null, unitsPerSellUnit: null, priceTier: null, skuSnapshot: null, inventoryQuantityConsumed: null })
+      return
+    }
+    const options = getAvailableSellUnits(product)
+    const option = options.find((o) => o.sellUnit === sellUnitValue)
+    if (!option) return
+    const priceTier =
+      option.sellUnit === 'CASE_STANDARD' ? 'STANDARD' : option.sellUnit === 'CASE_SPA' ? 'SPA' : option.sellUnit === 'CASE_BULK' ? 'BULK' : 'INDIVIDUAL'
+    updateItem(key, {
+      unitPrice: option.price,
+      sellUnit: option.sellUnit,
+      unitsPerSellUnit: option.unitsPerSellUnit,
+      priceTier,
+      skuSnapshot: product.sku,
+      inventoryQuantityConsumed: item.quantity * option.unitsPerSellUnit,
+    })
+  }
+
+  function updateQuantity(key: string, item: InvoiceItemDraft, quantity: number) {
+    const patch: Partial<InvoiceItemDraft> = { quantity }
+    if (item.unitsPerSellUnit) patch.inventoryQuantityConsumed = quantity * item.unitsPerSellUnit
+    updateItem(key, patch)
   }
 
   return (
@@ -103,7 +142,10 @@ export function InvoiceItemsTable({ items, onChange, products }: Props) {
               </tr>
             </thead>
             <tbody>
-              {items.map((item, index) => (
+              {items.map((item, index) => {
+                const matchedProduct = item.productId ? products.find((p) => p.id === item.productId) : undefined
+                const sellUnitOptions = matchedProduct ? getAvailableSellUnits(matchedProduct) : []
+                return (
                 <tr key={item.key} className="border-b border-white/10">
                   <td className="py-2 pr-2">
                     <input
@@ -113,6 +155,20 @@ export function InvoiceItemsTable({ items, onChange, products }: Props) {
                       placeholder="Product name"
                       onChange={(e) => pickProduct(item.key, e.target.value)}
                     />
+                    {sellUnitOptions.length > 0 && (
+                      <select
+                        className={`${input} mt-1`}
+                        value={item.sellUnit ?? ''}
+                        onChange={(e) => pickSellUnit(item.key, item, matchedProduct!, e.target.value)}
+                      >
+                        <option value="">Select sell unit…</option>
+                        {sellUnitOptions.map((o) => (
+                          <option key={o.sellUnit} value={o.sellUnit}>
+                            {o.label} — {formatMoney(o.price)}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </td>
                   <td className="py-2 pr-2">
                     <input
@@ -120,8 +176,11 @@ export function InvoiceItemsTable({ items, onChange, products }: Props) {
                       min={1}
                       className={input}
                       value={item.quantity}
-                      onChange={(e) => updateItem(item.key, { quantity: Number(e.target.value) })}
+                      onChange={(e) => updateQuantity(item.key, item, Number(e.target.value))}
                     />
+                    {item.unitsPerSellUnit ? (
+                      <p className="text-[10px] text-white/40 mt-1">{item.quantity * item.unitsPerSellUnit} vial(s)</p>
+                    ) : null}
                   </td>
                   <td className="py-2 pr-2">
                     <input
@@ -153,7 +212,8 @@ export function InvoiceItemsTable({ items, onChange, products }: Props) {
                     <button type="button" onClick={() => deleteItem(item.key)} className="px-1 text-red-400" aria-label="Delete">✕</button>
                   </td>
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         </div>
