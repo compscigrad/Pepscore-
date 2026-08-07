@@ -12,6 +12,7 @@ import { ProductDetail } from '@/components/storefront/ProductDetail'
 import { getStorefrontPrice } from '@/lib/storefront/pricing'
 import { getStorefrontAvailability } from '@/lib/storefront/availability'
 import { resolveProductImage } from '@/lib/storefront/productImages'
+import { getCurrentCustomerSpaEligible } from '@/lib/storefront/spaEligibility'
 
 export const revalidate = 60
 
@@ -58,11 +59,14 @@ export default async function ProductDetailPage({ params }: PageProps) {
   const product = await getProduct(slug)
   if (!product) notFound()
 
-  const siblings = await prisma.product.findMany({
-    where: { name: product.name, pricingStatus: { not: 'INACTIVE' }, slug: { not: product.slug } },
-    select: { slug: true, size: true },
-    orderBy: { size: 'asc' },
-  })
+  const [siblings, spaEligible] = await Promise.all([
+    prisma.product.findMany({
+      where: { name: product.name, pricingStatus: { not: 'INACTIVE' }, slug: { not: product.slug } },
+      select: { slug: true, size: true },
+      orderBy: { size: 'asc' },
+    }),
+    getCurrentCustomerSpaEligible(),
+  ])
 
   return (
     <>
@@ -76,7 +80,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
         category={product.category}
         imageUrl={resolveProductImage(product.name, product.imageUrl)}
         description={product.description ?? ''}
-        price={getStorefrontPrice(product)}
+        price={getStorefrontPrice(product, { spaEligible })}
         availability={getStorefrontAvailability(product)}
         relatedStrengths={siblings}
         sku={product.sku}

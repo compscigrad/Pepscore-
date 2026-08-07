@@ -13,10 +13,10 @@ import { getStorefrontPrice } from './pricing'
 import { getStorefrontAvailability } from './availability'
 import { resolveProductImage } from './productImages'
 
-export function groupByName(rows: Product[]): ProductCardProps[] {
+export function groupByName(rows: Product[], options: { spaEligible?: boolean } = {}): ProductCardProps[] {
   const map = new Map<string, ProductCardProps>()
   for (const p of rows) {
-    const price = getStorefrontPrice(p)
+    const price = getStorefrontPrice(p, options)
     const variant = {
       id: p.id,
       slug: p.slug,
@@ -24,6 +24,7 @@ export function groupByName(rows: Product[]): ProductCardProps[] {
       standardCasePrice: price?.standardCasePrice ?? null,
       unitsPerCase: price?.unitsPerCase ?? null,
       individualVialPrice: price?.individualVialPrice ?? null,
+      spaCasePrice: price?.spaCasePrice ?? null,
       availability: getStorefrontAvailability(p),
     }
     const existing = map.get(p.name)

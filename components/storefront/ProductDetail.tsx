@@ -109,6 +109,16 @@ export function ProductDetail({ id, slug, name, size, category, imageUrl, descri
                     </div>
                   )}
                 </div>
+
+                {/* SPA case price — only ever populated for an admin-granted
+                    eligible signed-in customer, see lib/storefront/pricing.ts */}
+                {price.spaCasePrice != null && (
+                  <div className="bg-gold/8 border border-gold/25 rounded-lg p-3 flex items-center justify-between mb-4">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-gold-dark">SPA Price</p>
+                    <p className="font-heading text-[18px] font-bold text-gold-dark">${price.spaCasePrice}</p>
+                  </div>
+                )}
+
                 <button
                   onClick={handleAdd}
                   disabled={!canPurchase}
