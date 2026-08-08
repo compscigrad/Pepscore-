@@ -12,7 +12,9 @@ import { isStorefrontCheckoutEnabled, STOREFRONT_CHECKOUT_DISABLED_MESSAGE } fro
 import { getStorefrontPrice } from '@/lib/storefront/pricing'
 import { getStorefrontAvailability, isPurchasable } from '@/lib/storefront/availability'
 import { reserveForOrderItemTx, releaseAllOrderReservationsTx } from '@/lib/inventory/orderReservations'
+import { getPaymentSettings } from '@/lib/payments/settings'
 import type { CheckoutLineItem, ShippingAddress } from '@/types'
+import type Stripe from 'stripe'
 
 export async function POST(req: NextRequest) {
   try {
@@ -174,6 +176,19 @@ export async function POST(req: NextRequest) {
       },
     })
 
+    // Which methods actually show on Stripe's hosted Checkout page --
+    // admin-configurable (Settings > Payments), never hardcoded. Falls
+    // back to card-only in the pathological case every toggle is somehow
+    // off (updatePaymentSettings itself refuses to save that state, but a
+    // checkout request should never 500 with an empty array regardless).
+    const paymentSettings = await getPaymentSettings()
+    const paymentMethodTypes: Stripe.Checkout.SessionCreateParams.PaymentMethodType[] = [
+      ...(paymentSettings.cardEnabled ? (['card'] as const) : []),
+      ...(paymentSettings.achEnabled ? (['us_bank_account'] as const) : []),
+      ...(paymentSettings.cashAppEnabled ? (['cashapp'] as const) : []),
+    ]
+    if (paymentMethodTypes.length === 0) paymentMethodTypes.push('card')
+
     // Build Stripe line items
     const stripeLineItems = lineItems.map(i => ({
       price_data: {
@@ -193,6 +208,7 @@ export async function POST(req: NextRequest) {
     // leaving stock held against an order that will never actually pay.
     try {
       const session = await stripe.checkout.sessions.create({
+        // Admin-configurable (Settings > Payments) -- never hardcoded.
         // 'us_bank_account' is Stripe's ACH Direct Debit payment method --
         // Stripe's own hosted Checkout page collects and verifies the bank
         // account (Financial Connections or manual micro-deposits) and
@@ -201,8 +217,10 @@ export async function POST(req: NextRequest) {
         // comment). An ACH payment doesn't settle synchronously the way a
         // card does -- app/api/webhooks/stripe/route.ts branches on
         // session.payment_status to hold the order at PROCESSING instead
-        // of marking it paid immediately.
-        payment_method_types: ['card', 'us_bank_account'],
+        // of marking it paid immediately. Apple Pay/Google Pay aren't
+        // separate entries here -- Stripe surfaces them automatically
+        // whenever 'card' is enabled and the browser/device supports them.
+        payment_method_types: paymentMethodTypes,
         mode: 'payment',
         customer_email: customerEmail,
         line_items: stripeLineItems,
