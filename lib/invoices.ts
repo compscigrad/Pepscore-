@@ -38,8 +38,9 @@ import {
 import { syncCustomerFromInvoiceEvent } from '@/lib/customers'
 import { assertDeliveryStatusAllowed } from '@/lib/backorders'
 import { syncInvoiceReservationsTx, releaseReservationsForDeletedItemsTx, releaseAllReservationsForInvoiceTx } from '@/lib/inventory/invoiceLifecycle'
-import { getPrimaryShipment } from '@/lib/shipments/primary'
-import type { PaymentMethod, RefundStatus } from '@prisma/client'
+import { isEligibleForAutoArchive } from '@/lib/invoice/autoArchiveEligibility'
+import { parseAmountSearchTerm } from '@/lib/invoice/search'
+import type { PaymentMethod } from '@prisma/client'
 
 // Fixed actor id for reservation events this module triggers automatically
 // as a side effect of a save -- these are never a specific admin's direct
@@ -105,7 +106,7 @@ export interface ListInvoicesParams {
 
 const OPEN_STATUSES: Prisma.EnumInvoiceStatusFilter = { notIn: ['CANCELLED', 'VOID'] }
 
-function buildFilterClause(filter: InvoiceListFilter): Prisma.InvoiceWhereInput {
+export function buildFilterClause(filter: InvoiceListFilter): Prisma.InvoiceWhereInput {
   switch (filter) {
     case 'archived':
       return { archivedAt: { not: null } }
@@ -132,7 +133,7 @@ export async function listInvoices(params: ListInvoicesParams = {}) {
   // A bare number (e.g. "150" or "150.00") also matches an exact total or
   // balance due -- covers "search by amount" without pretending to support
   // a range query or currency-formatted matching.
-  const numericSearch = search && /^\d+(\.\d{1,2})?$/.test(search.trim()) ? Number(search.trim()) : null
+  const numericSearch = search ? parseAmountSearchTerm(search) : null
 
   const searchClause: Prisma.InvoiceWhereInput = search
     ? {
@@ -719,8 +720,6 @@ export async function sweepAutoArchive(
   const cutoff = new Date()
   cutoff.setUTCDate(cutoff.getUTCDate() - archiveAfterDays)
 
-  const nonTerminalRefundStatuses: RefundStatus[] = ['PENDING', 'AWAITING_MANUAL_PROCESSING', 'PROCESSING']
-
   const candidates = await prisma.invoice.findMany({
     where: {
       orderStatus: 'COMPLETED',
@@ -740,15 +739,7 @@ export async function sweepAutoArchive(
 
   let archivedCount = 0
   for (const invoice of candidates) {
-    if (invoice.backorderConditions.some((b) => b.status === 'ACTIVE')) continue
-    if (invoice.refunds.some((r) => nonTerminalRefundStatuses.includes(r.status))) continue
-
-    const primaryShipment = getPrimaryShipment(invoice.shipments)
-    const anchor =
-      invoice.paidAt && primaryShipment?.deliveredAt && primaryShipment.deliveredAt > invoice.paidAt
-        ? primaryShipment.deliveredAt
-        : invoice.paidAt
-    if (!anchor || anchor > cutoff) continue
+    if (!isEligibleForAutoArchive(invoice, cutoff)) continue
 
     await archiveInvoice(invoice.id, null, 'SYSTEM', `Automatically archived ${archiveAfterDays} days after payment and delivery`)
     archivedCount++
