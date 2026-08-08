@@ -113,6 +113,7 @@ export default async function AdminDashboard() {
           items: true,
           invoice: { select: { invoiceNumber: true } },
           shippingLabel: { select: { trackingNumber: true, carrier: true, labelUrl: true } },
+          payments: { select: { amount: true, stripeFee: true, status: true, provider: true, methodType: true } },
         },
         orderBy: { createdAt: 'desc' },
         take: 50,

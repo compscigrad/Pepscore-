@@ -388,6 +388,7 @@ model Order {
   complianceLogs         ComplianceAcknowledgment[]
   reservations           OrderReservation[]
   inventoryLedgerEntries InventoryLedgerEntry[]
+  achAuthorizations      AchAuthorization[]
 
   @@index([customerEmail])
   @@index([stripeSessionId])
@@ -1291,9 +1292,61 @@ model Payment {
   disputedAt          DateTime?
   completedAt         DateTime?
 
+  // [Roadmap] ACH (Phase 2) -- safe DISPLAY metadata only, sourced from
+  // Stripe's own payment_method_details.us_bank_account object (returned
+  // to us, never entered by Pepscore Lab). Never the account/routing
+  // number itself -- see AchAuthorization below for why raw bank
+  // credentials never touch this database at all. Null for every
+  // non-ACH payment.
+  bankName         String?
+  bankAccountLast4 String?
+  bankAccountType  String?
+
+  achAuthorization AchAuthorization?
+
   @@index([orderId])
   @@index([provider])
   @@index([status])
+}
+
+// [Roadmap] ACH (Phase 2) -- one row per ACH payment attempt, recording
+// the evidence that this specific debit was actually authorized, per the
+// owner spec's "Do not initiate an ACH debit without the required
+// authorization" requirement. Every field here is either a provider-side
+// reference (mandateId, stripePaymentMethodId) or metadata Stripe already
+// returns (bank name/last4 live on Payment instead, since they're display
+// concerns, not authorization evidence) -- Pepscore Lab never collects or
+// stores a raw account/routing number, online-banking username/password,
+// or Financial Connections credential; Stripe's own Checkout Session
+// (Financial Connections or manual micro-deposit flow) is what actually
+// collects and verifies the bank account, and only hands back these safe
+// references.
+model AchAuthorization {
+  id        String  @id @default(cuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id])
+  paymentId String  @unique
+  payment   Payment @relation(fields: [paymentId], references: [id])
+
+  stripePaymentMethodId String?
+  mandateId             String?
+
+  // Bumped only if the authorization language/flow itself changes --
+  // lets a later audit distinguish which version of the ACH consent
+  // language a given customer actually agreed to.
+  authorizationVersion String   @default("stripe-checkout-ach-v1")
+  authorizedAt         DateTime @default(now())
+  ipAddress            String?
+  userAgent            String?
+
+  // Never actually deleted -- a revoked authorization is evidence too
+  // (proof Pepscore Lab stopped debiting once consent was withdrawn).
+  revokedAt DateTime?
+  revokedBy String?
+
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
 }
 
 enum PaymentProvider {

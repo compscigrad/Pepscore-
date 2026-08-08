@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
         items: true,
         invoice: { select: { invoiceNumber: true, status: true } },
         shippingLabel: { select: { trackingNumber: true, carrier: true, labelUrl: true } },
-        payments: { select: { amount: true, stripeFee: true, status: true } },
+        payments: { select: { amount: true, stripeFee: true, status: true, provider: true, methodType: true } },
       },
       orderBy: { createdAt: 'desc' },
       skip: (page - 1) * limit,

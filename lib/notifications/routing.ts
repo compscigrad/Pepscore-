@@ -18,6 +18,7 @@ export type MessageCategory =
   | 'INVOICE_ISSUED'
   | 'INVOICE_REVISED'
   | 'ORDER_CONFIRMATION'
+  | 'ACH_PAYMENT_PROCESSING' // customer-facing: ACH debit submitted, awaiting bank confirmation -- never implies paid
   | 'INTAKE_REQUEST'
   | 'INTAKE_SUBMISSION_CONFIRMATION'
   | 'BACKORDER_NOTICE'
@@ -66,6 +67,7 @@ const ROUTING: Record<MessageCategory, RoutedSender> = {
   INVOICE_ISSUED: { fromName: 'Pepscore Orders', replyTo: ORDERS_EMAIL },
   INVOICE_REVISED: { fromName: 'Pepscore Orders', replyTo: ORDERS_EMAIL },
   ORDER_CONFIRMATION: { fromName: 'Pepscore Orders', replyTo: ORDERS_EMAIL },
+  ACH_PAYMENT_PROCESSING: { fromName: 'Pepscore Orders', replyTo: ORDERS_EMAIL },
   INTAKE_REQUEST: { fromName: 'Pepscore Orders', replyTo: ORDERS_EMAIL },
   INTAKE_SUBMISSION_CONFIRMATION: { fromName: 'Pepscore Orders', replyTo: CONTACT_EMAIL },
   BACKORDER_NOTICE: { fromName: 'Pepscore Orders', replyTo: ORDERS_EMAIL },
@@ -126,6 +128,7 @@ const CUSTOMER_VISIBLE_CATEGORIES: ReadonlySet<MessageCategory> = new Set<Messag
   'INVOICE_ISSUED',
   'INVOICE_REVISED',
   'ORDER_CONFIRMATION',
+  'ACH_PAYMENT_PROCESSING',
   'INTAKE_REQUEST',
   'INTAKE_SUBMISSION_CONFIRMATION',
   'BACKORDER_NOTICE',
