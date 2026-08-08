@@ -46,6 +46,7 @@ import {
   buildBackorderAccommodationHtml,
 } from '@/emails/BackorderNotice'
 import { backorderFinancialActionRequiredSubject, buildBackorderFinancialActionRequiredHtml } from '@/emails/AdminBackorderAlerts'
+import { invalidateStaleCheckoutSessionForInvoice } from '@/lib/payments/staleSessionGuard'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? ''
 
@@ -188,6 +189,13 @@ export async function applyCompensation(invoiceId: string, input: ApplyCompensat
   if (result.newRefund) {
     await notifyAdminFinancialActionRequired(invoiceId, result.newRefund)
   }
+  // [Roadmap] Payment-change safety -- a backorder compensation changes
+  // the invoice balance; if a storefront Order is still PENDING on an
+  // open Stripe Checkout Session for this same invoice, that session's
+  // fixed amount is now stale and must never remain payable. No-ops
+  // immediately for the ordinary case (no linked Order, or one that's
+  // already paid/settled). See lib/payments/staleSessionGuard.ts.
+  await invalidateStaleCheckoutSessionForInvoice(invoiceId, 'Backorder compensation applied')
   return result.compensation
 }
 
@@ -524,6 +532,8 @@ export async function applyBackorder(input: ApplyBackorderInput) {
     })
   }
   await sendBackorderNoticeEmail(invoice, condition, compensationResult.compensation)
+  // [Roadmap] Payment-change safety -- see applyCompensation's identical call.
+  await invalidateStaleCheckoutSessionForInvoice(input.invoiceId, 'Backorder applied')
 
   return condition
 }
@@ -676,6 +686,8 @@ export async function applyDiscretionaryAccommodation(
   if (result.newRefund) {
     await notifyAdminFinancialActionRequired(invoiceId, result.newRefund)
   }
+  // [Roadmap] Payment-change safety -- see applyCompensation's identical call.
+  await invalidateStaleCheckoutSessionForInvoice(invoiceId, 'Discretionary backorder accommodation applied')
 
   return compensation
 }
@@ -755,6 +767,8 @@ export async function adjustDiscretionaryAccommodation(
   if (result.newRefund) {
     await notifyAdminFinancialActionRequired(invoiceId, result.newRefund)
   }
+  // [Roadmap] Payment-change safety -- see applyCompensation's identical call.
+  await invalidateStaleCheckoutSessionForInvoice(invoiceId, 'Discretionary backorder accommodation adjusted')
 
   return compensation
 }
@@ -800,6 +814,8 @@ export async function removeDiscretionaryAccommodation(
     `${formatMoney(existing.totalAmount)} — ${input.reason} — revised balance ${formatMoney(invoice.balanceDue)}`,
     input.actor
   )
+  // [Roadmap] Payment-change safety -- see applyCompensation's identical call.
+  await invalidateStaleCheckoutSessionForInvoice(invoiceId, 'Discretionary backorder accommodation removed')
 }
 
 export interface ResolveBackorderInput {
