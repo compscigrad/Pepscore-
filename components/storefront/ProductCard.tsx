@@ -6,6 +6,7 @@ import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { useCartStore } from '@/lib/cart-store'
 import { SingleVialImage } from './SingleVialImage'
+import { BackorderIndicator } from './BackorderIndicator'
 import { isPurchasable, AVAILABILITY_LABEL, type StorefrontAvailability } from '@/lib/storefront/availability'
 import { categoryToSlug } from '@/lib/storefront/categorySlug'
 
@@ -15,6 +16,12 @@ const GENERIC_PLACEHOLDER = '/images/products/default-single-vial.png'
 const AVAILABILITY_BADGE_CLASS: Record<StorefrontAvailability, string> = {
   AVAILABLE: '', // default state -- no badge needed, keeps the common case uncluttered
   LIMITED: 'bg-amber-400/10 text-amber-300 border border-amber-400/30',
+  // Purchasable (unlike OUT_OF_STOCK below) -- a distinct amber/gold tint
+  // signals "still orderable, just delayed" rather than "unavailable."
+  // The BackorderIndicator dot next to the product name is the primary
+  // marker per the design spec; this badge is the existing
+  // text-label mechanism every other non-AVAILABLE state already uses.
+  BACKORDERED: 'bg-amber-400/10 text-amber-300 border border-amber-400/30',
   OUT_OF_STOCK: 'bg-white/5 text-white/50 border border-white/15',
   COMING_SOON: 'bg-white/5 text-white/50 border border-white/15',
 }
@@ -64,7 +71,7 @@ export function ProductCard({ name, featured, category, description, imageUrl, b
 
   function handleAdd() {
     if (!canPurchase || v.standardCasePrice == null) return
-    addItem({ id: v.id, slug: v.slug, name, size: v.size, price: v.standardCasePrice, imageUrl })
+    addItem({ id: v.id, slug: v.slug, name, size: v.size, price: v.standardCasePrice, imageUrl, backordered: v.availability === 'BACKORDERED' })
     toast.success(`${name} ${v.size} added to cart`)
     openCart()
   }
@@ -122,8 +129,9 @@ export function ProductCard({ name, featured, category, description, imageUrl, b
         </Link>
 
         {/* Product name — links to the currently selected variant's page */}
-        <Link href={`/products/${v.slug}`}>
-          <h3 className="font-heading text-[17px] font-bold text-white leading-tight mb-2 hover:text-[#D4AF37] transition-colors">{name}</h3>
+        <Link href={`/products/${v.slug}`} className="flex items-center gap-1.5 mb-2 w-fit">
+          <h3 className="font-heading text-[17px] font-bold text-white leading-tight hover:text-[#D4AF37] transition-colors">{name}</h3>
+          {v.availability === 'BACKORDERED' && <BackorderIndicator />}
         </Link>
 
         {/* Description — flex-1 so it absorbs variable space, keeping bottom section aligned */}

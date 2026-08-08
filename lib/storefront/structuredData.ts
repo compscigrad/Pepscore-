@@ -25,6 +25,7 @@ export function organizationSchema() {
 const AVAILABILITY_SCHEMA_URL: Record<StorefrontAvailability, string> = {
   AVAILABLE: 'https://schema.org/InStock',
   LIMITED: 'https://schema.org/LimitedAvailability',
+  BACKORDERED: 'https://schema.org/BackOrder',
   OUT_OF_STOCK: 'https://schema.org/OutOfStock',
   COMING_SOON: 'https://schema.org/PreOrder',
 }

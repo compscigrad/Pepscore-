@@ -5,9 +5,14 @@
 // [id]/actions or /pricing, then router.refresh() re-pulls the server-
 // rendered detail page so the ledger/status shown is always the real DB
 // state, never optimistic local state drifting from it.
+//
+// Dark PepScore Lab admin theme (2026-08-07 admin brand migration) --
+// reuses components/invoices/theme.ts's tokens rather than reinventing a
+// second dark palette.
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Product } from '@prisma/client'
+import { card, input as inputCls, label as labelClass, mutedText, pillPrimary, pillOutline, sectionHeading } from '@/components/invoices/theme'
 
 interface Props {
   product: Product
@@ -57,13 +62,13 @@ const ACTION_LABEL: Record<Exclude<ActionKey, null>, string> = {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="text-[11px] font-heading font-bold uppercase tracking-wide text-g500">{label}</span>
+      <span className={labelClass}>{label}</span>
       <div className="mt-1">{children}</div>
     </label>
   )
 }
 
-const inputCls = 'w-full rounded-lg border border-g100 px-3 py-2 text-[13px]'
+const smallBtn = 'rounded-lg border border-white/10 px-3 py-2 text-[12px] font-heading font-bold text-white/80 hover:bg-white/5 whitespace-nowrap transition-colors disabled:opacity-50'
 
 export function InventoryDetailPanel({ product, availableUnits, completeCasesAvailable }: Props) {
   const router = useRouter()
@@ -77,6 +82,8 @@ export function InventoryDetailPanel({ product, availableUnits, completeCasesAva
 
   const [unitsPerCase, setUnitsPerCase] = useState(product.unitsPerCase?.toString() ?? '')
   const [lowStockThreshold, setLowStockThreshold] = useState(product.lowStockThreshold?.toString() ?? '')
+  const [backorderEnabled, setBackorderEnabled] = useState(product.backorderEnabled)
+  const [backorderBusy, setBackorderBusy] = useState(false)
 
   const [supplierCost, setSupplierCost] = useState(product.supplierCaseCost?.toString() ?? '')
   const [activeStandard, setActiveStandard] = useState(product.activeStandardCasePrice?.toString() ?? '')
@@ -151,6 +158,21 @@ export function InventoryDetailPanel({ product, availableUnits, completeCasesAva
     }
   }
 
+  async function toggleBackorderEnabled(next: boolean) {
+    setBackorderEnabled(next)
+    setBackorderBusy(true)
+    setError(null)
+    try {
+      await postAction(product.id, { action: 'SET_BACKORDER_ENABLED', backorderEnabled: next })
+      router.refresh()
+    } catch (e) {
+      setBackorderEnabled(!next)
+      setError(e instanceof Error ? e.message : 'Failed to update backorder setting')
+    } finally {
+      setBackorderBusy(false)
+    }
+  }
+
   async function recalculateSuggested() {
     if (supplierCost === '') return
     setPricingBusy(true)
@@ -190,18 +212,18 @@ export function InventoryDetailPanel({ product, availableUnits, completeCasesAva
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* ─── Pricing ─── */}
-      <div className="bg-white rounded-2xl shadow-sh p-6">
-        <h2 className="font-heading text-[15px] font-bold text-dark mb-4">Pricing</h2>
+      <div className={`${card} p-6`}>
+        <h2 className={`${sectionHeading} mb-4`}>Pricing</h2>
 
         <div className="flex gap-2 items-end mb-4">
           <Field label="Supplier Case Cost">
             <input className={inputCls} type="number" value={supplierCost} onChange={(e) => setSupplierCost(e.target.value)} placeholder="—" />
           </Field>
-          <button onClick={recalculateSuggested} disabled={pricingBusy} className="rounded-lg border border-g100 px-3 py-2 text-[12px] font-heading font-bold text-dark hover:bg-g100 whitespace-nowrap">
+          <button onClick={recalculateSuggested} disabled={pricingBusy} className={smallBtn}>
             Recalculate Suggested
           </button>
         </div>
-        <p className="text-[11px] text-g500 -mt-2 mb-4">
+        <p className={`text-[11px] ${mutedText} -mt-2 mb-4`}>
           Suggested: Standard {product.suggestedStandardCasePrice ?? '—'} · SPA {product.suggestedSpaCasePrice ?? '—'} · Individual {product.suggestedIndividualVialPrice ?? '—'}
         </p>
 
@@ -221,14 +243,14 @@ export function InventoryDetailPanel({ product, availableUnits, completeCasesAva
         </div>
 
         {activeIndividual !== '' && !individualSalesEnabled && (
-          <p className="text-[11px] font-bold text-amber-700 bg-amber-50 rounded-lg px-3 py-2 mb-3">Individual price stored — sales currently disabled</p>
+          <p className="text-[11px] font-bold text-amber-300 bg-amber-400/10 border border-amber-400/25 rounded-lg px-3 py-2 mb-3">Individual price stored — sales currently disabled</p>
         )}
 
-        <label className="flex items-center gap-2 text-[13px] text-dark mb-2">
+        <label className="flex items-center gap-2 text-[13px] text-white mb-2">
           <input type="checkbox" checked={individualSalesEnabled} onChange={(e) => setIndividualSalesEnabled(e.target.checked)} />
           Individual sales enabled
         </label>
-        <label className="flex items-center gap-2 text-[13px] text-dark mb-3">
+        <label className="flex items-center gap-2 text-[13px] text-white mb-3">
           <input type="checkbox" checked={manualOverride} onChange={(e) => setManualOverride(e.target.checked)} />
           Manual pricing override
         </label>
@@ -242,20 +264,43 @@ export function InventoryDetailPanel({ product, availableUnits, completeCasesAva
           </Field>
         </div>
 
-        {pricingError && <p className="text-[12px] text-red-600 mt-3">{pricingError}</p>}
-        <button onClick={savePricing} disabled={pricingBusy} className="mt-4 rounded-lg bg-gold px-4 py-2 text-[13px] font-heading font-bold text-dark hover:bg-gold-dark">
+        {pricingError && <p className="text-[12px] text-red-400 mt-3">{pricingError}</p>}
+        <button onClick={savePricing} disabled={pricingBusy} className={`${pillPrimary} mt-4 px-4 py-2`}>
           Save Pricing
         </button>
       </div>
 
       {/* ─── Inventory ─── */}
-      <div className="bg-white rounded-2xl shadow-sh p-6">
-        <h2 className="font-heading text-[15px] font-bold text-dark mb-4">Inventory</h2>
+      <div className={`${card} p-6`}>
+        <h2 className={`${sectionHeading} mb-4`}>Inventory</h2>
+
+        {/* Catalog-level backorder configuration -- distinct from any
+            specific invoice's BackorderCondition. Explicit per
+            product/strength, admin-editable with no code deployment.
+            See lib/storefront/availability.ts. */}
+        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 mb-4">
+          <label className="flex items-center justify-between gap-3">
+            <span>
+              <span className="block text-[13px] font-heading font-bold text-white">Allow Backorders</span>
+              <span className={`block text-[11px] ${mutedText} mt-0.5`}>
+                When available inventory reaches zero, this product/strength stays orderable via the backorder workflow instead of showing Out of Stock.
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              checked={backorderEnabled}
+              disabled={backorderBusy}
+              onChange={(e) => toggleBackorderEnabled(e.target.checked)}
+              className="w-5 h-5 shrink-0 accent-gold"
+              aria-label="Allow backorders for this product"
+            />
+          </label>
+        </div>
 
         {!product.inventoryTrackingEnabled ? (
           <div>
-            <p className="text-[13px] text-g500 mb-3">Inventory tracking is off for this product.</p>
-            <button onClick={enableTracking} disabled={busy} className="rounded-lg bg-gold px-4 py-2 text-[13px] font-heading font-bold text-dark hover:bg-gold-dark">
+            <p className={`text-[13px] ${mutedText} mb-3`}>Inventory tracking is off for this product.</p>
+            <button onClick={enableTracking} disabled={busy} className={`${pillPrimary} px-4 py-2`}>
               Enable Inventory Tracking
             </button>
           </div>
@@ -263,19 +308,19 @@ export function InventoryDetailPanel({ product, availableUnits, completeCasesAva
           <>
             <div className="grid grid-cols-3 gap-3 mb-4">
               <div>
-                <p className="text-[11px] font-heading font-bold uppercase tracking-wide text-g500">On Hand</p>
-                <p className="text-xl font-heading font-bold text-dark">{product.physicalStockOnHand ?? '—'}</p>
+                <p className={labelClass}>On Hand</p>
+                <p className="text-xl font-heading font-bold text-white">{product.physicalStockOnHand ?? '—'}</p>
               </div>
               <div>
-                <p className="text-[11px] font-heading font-bold uppercase tracking-wide text-g500">Reserved</p>
-                <p className="text-xl font-heading font-bold text-dark">{product.reservedUnits}</p>
+                <p className={labelClass}>Reserved</p>
+                <p className="text-xl font-heading font-bold text-white">{product.reservedUnits}</p>
               </div>
               <div>
-                <p className="text-[11px] font-heading font-bold uppercase tracking-wide text-g500">Available</p>
-                <p className="text-xl font-heading font-bold text-dark">{availableUnits ?? '—'}</p>
+                <p className={labelClass}>Available</p>
+                <p className="text-xl font-heading font-bold text-white">{availableUnits ?? '—'}</p>
               </div>
             </div>
-            <p className="text-[12px] text-g500 mb-4">Complete cases available: {completeCasesAvailable ?? '—'}</p>
+            <p className={`text-[12px] ${mutedText} mb-4`}>Complete cases available: {completeCasesAvailable ?? '—'}</p>
 
             <div className="flex gap-2 items-end mb-4">
               <Field label="Units Per Case">
@@ -284,7 +329,7 @@ export function InventoryDetailPanel({ product, availableUnits, completeCasesAva
               <Field label="Low-Stock Threshold">
                 <input className={inputCls} type="number" value={lowStockThreshold} onChange={(e) => setLowStockThreshold(e.target.value)} />
               </Field>
-              <button onClick={saveThresholds} disabled={busy} className="rounded-lg border border-g100 px-3 py-2 text-[12px] font-heading font-bold text-dark hover:bg-g100 whitespace-nowrap">
+              <button onClick={saveThresholds} disabled={busy} className={smallBtn}>
                 Save
               </button>
             </div>
@@ -303,7 +348,7 @@ export function InventoryDetailPanel({ product, availableUnits, completeCasesAva
                 }
               }}
               disabled={busy}
-              className="mb-4 rounded-lg border border-g100 px-3 py-2 text-[12px] font-heading font-bold text-dark hover:bg-g100"
+              className={`${smallBtn} mb-4`}
             >
               Reconcile Inventory
             </button>
@@ -311,7 +356,7 @@ export function InventoryDetailPanel({ product, availableUnits, completeCasesAva
             {product.physicalStockOnHand === null ? (
               <button
                 onClick={() => setActiveAction('INITIALIZE')}
-                className="rounded-lg bg-gold px-4 py-2 text-[13px] font-heading font-bold text-dark hover:bg-gold-dark"
+                className={`${pillPrimary} px-4 py-2`}
               >
                 Initialize Inventory
               </button>
@@ -321,7 +366,7 @@ export function InventoryDetailPanel({ product, availableUnits, completeCasesAva
                   <button
                     key={key}
                     onClick={() => setActiveAction(key)}
-                    className="rounded-lg border border-g100 px-3 py-2 text-[12px] font-heading font-bold text-dark hover:bg-g100"
+                    className={smallBtn}
                   >
                     {ACTION_LABEL[key]}
                   </button>
@@ -330,8 +375,8 @@ export function InventoryDetailPanel({ product, availableUnits, completeCasesAva
             )}
 
             {activeAction && (
-              <div className="mt-4 border border-g100 rounded-xl p-4">
-                <p className="font-heading text-[13px] font-bold text-dark mb-3">{ACTION_LABEL[activeAction]}</p>
+              <div className="mt-4 border border-white/10 rounded-xl p-4">
+                <p className="font-heading text-[13px] font-bold text-white mb-3">{ACTION_LABEL[activeAction]}</p>
                 {activeAction !== 'REVERSE_LAST' && (
                   <Field label={activeAction === 'SET_EXACT_COUNT' ? 'New Exact Count' : 'Quantity'}>
                     <input className={inputCls} type="number" min={0} value={quantity} onChange={(e) => setQuantity(e.target.value)} />
@@ -351,19 +396,19 @@ export function InventoryDetailPanel({ product, availableUnits, completeCasesAva
                 </div>
 
                 {DESTRUCTIVE_ACTIONS.includes(activeAction) && (
-                  <label className="flex items-center gap-2 text-[12px] text-dark mt-3">
+                  <label className="flex items-center gap-2 text-[12px] text-white mt-3">
                     <input type="checkbox" checked={confirmChecked} onChange={(e) => setConfirmChecked(e.target.checked)} />
                     I confirm this change is correct.
                   </label>
                 )}
 
-                {error && <p className="text-[12px] text-red-600 mt-3">{error}</p>}
+                {error && <p className="text-[12px] text-red-400 mt-3">{error}</p>}
 
                 <div className="flex gap-2 mt-4">
-                  <button onClick={runAction} disabled={busy} className="rounded-lg bg-gold px-4 py-2 text-[13px] font-heading font-bold text-dark hover:bg-gold-dark">
+                  <button onClick={runAction} disabled={busy} className={`${pillPrimary} px-4 py-2`}>
                     Save
                   </button>
-                  <button onClick={resetActionForm} className="rounded-lg border border-g100 px-4 py-2 text-[13px] font-heading font-bold text-dark hover:bg-g100">
+                  <button onClick={resetActionForm} className={`${pillOutline} px-4 py-2`}>
                     Cancel
                   </button>
                 </div>

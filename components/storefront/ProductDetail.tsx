@@ -11,6 +11,7 @@ import toast from 'react-hot-toast'
 import { useCartStore } from '@/lib/cart-store'
 import { SingleVialImage } from './SingleVialImage'
 import { LeadCaptureTrigger } from './LeadCaptureTrigger'
+import { BackorderIndicator } from './BackorderIndicator'
 import { AVAILABILITY_LABEL, isPurchasable, type StorefrontAvailability } from '@/lib/storefront/availability'
 import type { StorefrontPrice } from '@/lib/storefront/pricing'
 
@@ -19,6 +20,7 @@ const GENERIC_PLACEHOLDER = '/images/products/default-single-vial.png'
 const AVAILABILITY_BADGE_CLASS: Record<StorefrontAvailability, string> = {
   AVAILABLE: 'bg-green-400/10 text-green-300 border border-green-400/25',
   LIMITED: 'bg-amber-400/10 text-amber-300 border border-amber-400/30',
+  BACKORDERED: 'bg-amber-400/10 text-amber-300 border border-amber-400/30',
   OUT_OF_STOCK: 'bg-white/5 text-white/50 border border-white/15',
   COMING_SOON: 'bg-white/5 text-white/50 border border-white/15',
 }
@@ -79,7 +81,7 @@ export function ProductDetail({
 
   function handleAdd() {
     if (!canPurchase || price == null) return
-    addItem({ id, slug, name, size, price: price.standardCasePrice, imageUrl })
+    addItem({ id, slug, name, size, price: price.standardCasePrice, imageUrl, backordered: availability === 'BACKORDERED' })
     toast.success(`${name} ${size} added to cart`)
     openCart()
   }
@@ -112,7 +114,10 @@ export function ProductDetail({
         {/* Info */}
         <div>
           <p className="font-heading text-[11px] font-bold tracking-[0.12em] uppercase text-[#D4AF37] mb-2">{category}</p>
-          <h1 className="font-heading text-[clamp(26px,3.5vw,36px)] font-bold text-white leading-tight mb-1">{name}</h1>
+          <h1 className="font-heading text-[clamp(26px,3.5vw,36px)] font-bold text-white leading-tight mb-1 flex items-center gap-2">
+            {name}
+            {availability === 'BACKORDERED' && <BackorderIndicator />}
+          </h1>
           <p className="text-[16px] text-white/50 font-light mb-4">{size}</p>
 
           {availability !== 'AVAILABLE' && (
@@ -158,6 +163,12 @@ export function ProductDetail({
                 >
                   {canPurchase ? 'Add to Cart' : availabilityMessageOverride || AVAILABILITY_LABEL[availability]}
                 </button>
+
+                {availability === 'BACKORDERED' && (
+                  <p className="text-[11px] text-amber-300/80 mt-2 text-center">
+                    This item is on backorder and may require additional fulfillment time.
+                  </p>
+                )}
 
                 {!canPurchase && (availability === 'OUT_OF_STOCK' || availability === 'COMING_SOON') && (
                   <LeadCaptureTrigger
