@@ -38,7 +38,8 @@ import {
 import { syncCustomerFromInvoiceEvent } from '@/lib/customers'
 import { assertDeliveryStatusAllowed } from '@/lib/backorders'
 import { syncInvoiceReservationsTx, releaseReservationsForDeletedItemsTx, releaseAllReservationsForInvoiceTx } from '@/lib/inventory/invoiceLifecycle'
-import type { PaymentMethod } from '@prisma/client'
+import { getPrimaryShipment } from '@/lib/shipments/primary'
+import type { PaymentMethod, RefundStatus } from '@prisma/client'
 
 // Fixed actor id for reservation events this module triggers automatically
 // as a side effect of a save -- these are never a specific admin's direct
@@ -680,28 +681,65 @@ export async function restoreInvoice(id: string, actor: string): Promise<Invoice
   return invoice
 }
 
-// Auto-archive sweep: archives every fully-paid, not-yet-archived invoice
-// whose paidAt countdown has elapsed. Run daily by the Vercel Cron-triggered
-// route (app/api/cron/archive-invoices) — see docs/Decisions.md #21 for why
-// paidAt itself (not a separately-stored "archive on" date) is the single
-// source of truth this compares against.
-export async function sweepAutoArchive(archiveAfterDays: number | null): Promise<{ archivedCount: number }> {
+// Auto-archive sweep: archives every invoice that's actually finished --
+// orderStatus COMPLETED (lib/tracking/orderStatus.ts's "paid AND delivered"
+// rule; the old paymentStatus-only check would sweep up paid-but-not-yet-
+// delivered invoices) -- once its countdown has elapsed. Run daily by the
+// Vercel Cron-triggered route (app/api/cron/archive-invoices). The countdown
+// starts at the LATER of paidAt or the primary shipment's deliveredAt
+// (falling back to paidAt alone when no shipment carries a deliveredAt --
+// never inventing a date that isn't on the record), and an invoice is held
+// back regardless of that date if it still has an unresolved backorder or an
+// unfinished refund in flight.
+// onlyInvoiceIds exists solely so tests can rehearse this against real,
+// disposable rows without risking a real sweep of the shared prod DB's
+// actual invoices -- the cron route never passes it, so production
+// behavior (process every eligible invoice) is unchanged.
+export async function sweepAutoArchive(
+  archiveAfterDays: number | null,
+  options?: { onlyInvoiceIds?: string[] }
+): Promise<{ archivedCount: number }> {
   if (archiveAfterDays === null) return { archivedCount: 0 }
 
   const cutoff = new Date()
   cutoff.setUTCDate(cutoff.getUTCDate() - archiveAfterDays)
 
-  const result = await prisma.invoice.updateMany({
+  const nonTerminalRefundStatuses: RefundStatus[] = ['PENDING', 'AWAITING_MANUAL_PROCESSING', 'PROCESSING']
+
+  const candidates = await prisma.invoice.findMany({
     where: {
-      paymentStatus: 'PAID',
+      orderStatus: 'COMPLETED',
       archivedAt: null,
       deletedAt: null,
-      paidAt: { lte: cutoff },
+      paidAt: { not: null, lte: cutoff },
+      ...(options?.onlyInvoiceIds ? { id: { in: options.onlyInvoiceIds } } : {}),
     },
-    data: { archivedAt: new Date() },
+    select: {
+      id: true,
+      paidAt: true,
+      shipments: { select: { createdAt: true, voidedAt: true, deliveredAt: true } },
+      backorderConditions: { select: { status: true } },
+      refunds: { select: { status: true } },
+    },
   })
 
-  return { archivedCount: result.count }
+  let archivedCount = 0
+  for (const invoice of candidates) {
+    if (invoice.backorderConditions.some((b) => b.status === 'ACTIVE')) continue
+    if (invoice.refunds.some((r) => nonTerminalRefundStatuses.includes(r.status))) continue
+
+    const primaryShipment = getPrimaryShipment(invoice.shipments)
+    const anchor =
+      invoice.paidAt && primaryShipment?.deliveredAt && primaryShipment.deliveredAt > invoice.paidAt
+        ? primaryShipment.deliveredAt
+        : invoice.paidAt
+    if (!anchor || anchor > cutoff) continue
+
+    await archiveInvoice(invoice.id, null, 'SYSTEM', `Automatically archived ${archiveAfterDays} days after payment and delivery`)
+    archivedCount++
+  }
+
+  return { archivedCount }
 }
 
 // Soft-delete: moves an invoice into the Trash view. Recoverable via
