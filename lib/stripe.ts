@@ -19,9 +19,18 @@ export const stripe = new Proxy({} as Stripe, {
   },
 })
 
+// Published Stripe pricing constants -- exported (not just inlined into
+// the two estimate functions below) so lib/payments/analytics.ts can
+// compute "what would this ACH volume have cost as card" using the exact
+// same numbers, rather than a second hardcoded copy that could drift.
+export const STRIPE_CARD_FEE_PERCENT = 0.029
+export const STRIPE_CARD_FEE_FIXED = 0.3
+export const STRIPE_ACH_FEE_PERCENT = 0.008
+export const STRIPE_ACH_FEE_CAP = 5
+
 // Calculate Stripe fee (2.9% + $0.30 per successful charge)
 export function estimateStripeFee(amount: number): number {
-  return Math.round((amount * 0.029 + 0.30) * 100) / 100
+  return Math.round((amount * STRIPE_CARD_FEE_PERCENT + STRIPE_CARD_FEE_FIXED) * 100) / 100
 }
 
 // [Roadmap] ACH (Phase 2) -- Stripe's published ACH Direct Debit pricing:
@@ -33,5 +42,5 @@ export function estimateStripeFee(amount: number): number {
 // Payment.processorFeePercent/processorFeeFixed/estimateAchFee's result
 // get compared against in admin cost-analytics reporting.
 export function estimateAchFee(amount: number): number {
-  return Math.round(Math.min(amount * 0.008, 5) * 100) / 100
+  return Math.round(Math.min(amount * STRIPE_ACH_FEE_PERCENT, STRIPE_ACH_FEE_CAP) * 100) / 100
 }

@@ -1388,6 +1388,38 @@ enum PaymentStatus {
   DISPUTED
 }
 
+// [Roadmap] Admin Payment Settings -- a single-row table (fixed id
+// 'singleton', same upsert pattern as InvoiceSettings above) rather than
+// per-flag env vars, since these need to be admin-editable at runtime
+// without a redeploy. cardEnabled/achEnabled/cashAppEnabled are REAL
+// gates: app/api/checkout/route.ts reads them to build Stripe Checkout's
+// payment_method_types array ('card'/'us_bank_account'/'cashapp'
+// respectively). applePayEnabled/googlePayEnabled are deliberately NOT
+// independent Stripe Checkout parameters -- Stripe surfaces Apple Pay/
+// Google Pay automatically whenever 'card' is enabled and the visitor's
+// browser/device supports them, there's no separate opt-in for a Checkout
+// Session. Those two fields exist so the settings page can show accurate
+// readiness status (and so a future embedded Payment Element integration,
+// which DOES let them be toggled independently, has a real place to read
+// from) -- never pass them to Stripe as if they were their own flag today.
+// paypalEnabled/venmoEnabled are pure readiness flags: no PayPal/Venmo
+// integration exists yet (task #170), so these can never be true through
+// any code path that actually does anything yet.
+model PaymentSettings {
+  id String @id @default("singleton")
+
+  cardEnabled      Boolean @default(true)
+  achEnabled       Boolean @default(true)
+  cashAppEnabled   Boolean @default(false)
+  applePayEnabled  Boolean @default(false)
+  googlePayEnabled Boolean @default(false)
+  paypalEnabled    Boolean @default(false)
+  venmoEnabled     Boolean @default(false)
+
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+}
+
 // ─── Shipping ────────────────────────────────────────────────────────────────
 
 model ShippingLabel {
