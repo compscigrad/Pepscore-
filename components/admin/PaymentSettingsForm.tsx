@@ -98,26 +98,26 @@ export function PaymentSettingsForm({ initialSettings, providerStatus, analytics
       <div className={`${card} p-6`}>
         <h2 className={`${sectionHeading} mb-1`}>Checkout Payment Methods</h2>
         <p className={`text-xs ${mutedText} mb-4`}>
-          Card, Pay by Bank, and Cash App Pay directly control what Stripe Checkout offers. Apple Pay / Google Pay ride on Card
-          automatically (no separate Stripe toggle exists for hosted Checkout) — shown here for status only. PayPal and Venmo
-          have no integration built yet.
+          Card, Pay by Bank, Cash App Pay, and PayPal directly control what Stripe Checkout offers. Apple Pay / Google Pay ride
+          on Card automatically (no separate Stripe toggle exists) — shown here for status only. Venmo has no Stripe Checkout
+          integration at all.
         </p>
         <div className={`divide-y ${divider}`}>
           {(
             [
-              ['cardEnabled', 'CARD', true],
-              ['achEnabled', 'ACH', true],
-              ['cashAppEnabled', 'CASH_APP', true],
-              ['applePayEnabled', 'APPLE_PAY', false],
-              ['googlePayEnabled', 'GOOGLE_PAY', false],
-              ['paypalEnabled', 'PAYPAL', false],
-              ['venmoEnabled', 'VENMO', false],
+              ['cardEnabled', 'CARD', null],
+              ['achEnabled', 'ACH', null],
+              ['cashAppEnabled', 'CASH_APP', null],
+              ['paypalEnabled', 'PAYPAL', 'Also requires PayPal enabled for this Stripe account (Stripe Dashboard) before it actually works'],
+              ['applePayEnabled', 'APPLE_PAY', 'Readiness only — rides on Card automatically, not an independent toggle'],
+              ['googlePayEnabled', 'GOOGLE_PAY', 'Readiness only — rides on Card automatically, not an independent toggle'],
+              ['venmoEnabled', 'VENMO', 'Readiness only — no Stripe Checkout payment method exists for Venmo'],
             ] as const
-          ).map(([key, methodKey, isRealGate]) => (
+          ).map(([key, methodKey, note]) => (
             <label key={key} className="flex items-center justify-between gap-4 py-3 cursor-pointer">
               <div>
                 <p className="text-sm text-white/80">{METHOD_LABEL[methodKey]}</p>
-                {!isRealGate && <p className={`text-[11px] ${mutedText}`}>Readiness only — not yet wired to checkout</p>}
+                {note && <p className={`text-[11px] ${mutedText}`}>{note}</p>}
               </div>
               <input type="checkbox" checked={settings[key]} disabled={saving} onChange={() => toggle(key)} className="accent-gold" />
             </label>

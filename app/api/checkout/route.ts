@@ -176,16 +176,21 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    // Which methods actually show on Stripe's hosted Checkout page --
+    // Which methods actually show on Stripe's embedded Checkout --
     // admin-configurable (Settings > Payments), never hardcoded. Falls
     // back to card-only in the pathological case every toggle is somehow
     // off (updatePaymentSettings itself refuses to save that state, but a
     // checkout request should never 500 with an empty array regardless).
+    // paypalEnabled only actually works once PayPal is turned on for this
+    // Stripe account in the Stripe Dashboard (an owner action) -- if it
+    // isn't, Stripe rejects session creation and the catch block below
+    // handles it the same as any other Stripe API failure.
     const paymentSettings = await getPaymentSettings()
     const paymentMethodTypes: Stripe.Checkout.SessionCreateParams.PaymentMethodType[] = [
       ...(paymentSettings.cardEnabled ? (['card'] as const) : []),
       ...(paymentSettings.achEnabled ? (['us_bank_account'] as const) : []),
       ...(paymentSettings.cashAppEnabled ? (['cashapp'] as const) : []),
+      ...(paymentSettings.paypalEnabled ? (['paypal'] as const) : []),
     ]
     if (paymentMethodTypes.length === 0) paymentMethodTypes.push('card')
 
@@ -207,10 +212,17 @@ export async function POST(req: NextRequest) {
     // this order's transaction above already committed, rather than
     // leaving stock held against an order that will never actually pay.
     try {
+      // ui_mode: 'embedded' -- renders in-page via @stripe/react-stripe-js's
+      // EmbeddedCheckout instead of redirecting to Stripe's hosted page
+      // (the previous behavior). Embedded mode uses a single return_url
+      // (Stripe top-navigates the parent page there once payment
+      // completes) rather than separate success_url/cancel_url -- there's
+      // no page-level "cancel" event in embedded mode, the customer just
+      // stays on /checkout if they abandon partway through.
       const session = await stripe.checkout.sessions.create({
         // Admin-configurable (Settings > Payments) -- never hardcoded.
         // 'us_bank_account' is Stripe's ACH Direct Debit payment method --
-        // Stripe's own hosted Checkout page collects and verifies the bank
+        // Stripe's own embedded Checkout collects and verifies the bank
         // account (Financial Connections or manual micro-deposits) and
         // handles ACH mandate collection itself; Pepscore Lab never sees a
         // raw account/routing number (see AchAuthorization's schema
@@ -222,6 +234,7 @@ export async function POST(req: NextRequest) {
         // whenever 'card' is enabled and the browser/device supports them.
         payment_method_types: paymentMethodTypes,
         mode: 'payment',
+        ui_mode: 'embedded',
         customer_email: customerEmail,
         line_items: stripeLineItems,
         // Add shipping as a line item if applicable
@@ -244,8 +257,7 @@ export async function POST(req: NextRequest) {
           userId: userId ?? '',
           customerEmail,
         },
-        success_url: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${appUrl}/checkout`,
+        return_url: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       })
 
       // Save the session ID to the order so the webhook can find it
@@ -254,7 +266,7 @@ export async function POST(req: NextRequest) {
         data: { stripeSessionId: session.id },
       })
 
-      return NextResponse.json({ url: session.url })
+      return NextResponse.json({ clientSecret: session.client_secret })
     } catch (stripeErr) {
       await prisma.$transaction((tx) => releaseAllOrderReservationsTx(tx, order.id, 'storefront-checkout', 'Stripe session creation failed'))
       await prisma.order.update({ where: { id: order.id }, data: { status: 'CANCELLED' } })
