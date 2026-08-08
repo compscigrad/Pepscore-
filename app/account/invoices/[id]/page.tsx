@@ -53,6 +53,15 @@ export default async function InvoiceDetailPage({ params }: PageProps) {
           </div>
         </div>
 
+        {invoice.order ? (
+          <Link
+            href={`/account/orders/${invoice.order.id}`}
+            className="block text-xs text-gold-light hover:text-gold font-heading font-bold uppercase tracking-[0.08em]"
+          >
+            View Order {invoice.order.orderNumber} →
+          </Link>
+        ) : null}
+
         {/* Line items + totals */}
         <div className="bg-white/[0.03] border border-white/10 rounded-[18px] p-6">
           <div className="divide-y divide-white/10">
