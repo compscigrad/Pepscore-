@@ -16,6 +16,12 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
 
   let orderNumber: string | null = null
   let customerEmail: string | null = null
+  // ACH doesn't settle synchronously -- an order reaching this page may
+  // still be PROCESSING (Payment.status), not actually PAID. Never claim
+  // "confirmed" for a debit that hasn't cleared yet (see docs/Decisions.md's
+  // ACH entry) -- this page's copy branches on the real Order status
+  // instead of assuming every arrival here means payment succeeded.
+  let paymentStillProcessing = false
 
   if (session_id) {
     try {
@@ -24,9 +30,10 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
       // Look up order by Stripe session ID
       const order = await prisma.order.findUnique({
         where: { stripeSessionId: session_id },
-        select: { orderNumber: true },
+        select: { orderNumber: true, status: true },
       })
       orderNumber = order?.orderNumber ?? null
+      paymentStillProcessing = order?.status === 'PENDING'
     } catch {
       // Session not found or DB unavailable — still show a success message
     }
@@ -37,13 +44,22 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
       <Header />
       <main className="bg-black min-h-screen flex items-center justify-center px-6 py-20">
         <div className="bg-[#0d0d0d] border border-[#D4AF37]/15 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] max-w-lg w-full p-10 text-center">
-          <div className="w-16 h-16 bg-green-400/10 border border-green-400/25 rounded-full flex items-center justify-center mx-auto mb-5 text-3xl text-green-400">
-            ✓
+          <div
+            className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-5 text-3xl ${
+              paymentStillProcessing ? 'bg-amber-400/10 border border-amber-400/25 text-amber-300' : 'bg-green-400/10 border border-green-400/25 text-green-400'
+            }`}
+          >
+            {paymentStillProcessing ? '⏳' : '✓'}
           </div>
-          <h1 className="font-heading text-2xl font-bold text-white mb-2">Order Confirmed!</h1>
+          <h1 className="font-heading text-2xl font-bold text-white mb-2">
+            {paymentStillProcessing ? 'Payment Processing' : 'Order Confirmed!'}
+          </h1>
           <p className="text-white/55 text-[15px] mb-6 leading-relaxed">
-            Thank you for your order. A confirmation email with your invoice has been sent
-            {customerEmail ? ` to ${customerEmail}` : ''}.
+            {paymentStillProcessing
+              ? "Thanks — we've submitted your bank payment and are waiting for your bank to confirm it. This can take a few business days; we'll email you the moment it clears."
+              : 'Thank you for your order. A confirmation email with your invoice has been sent'}
+            {!paymentStillProcessing && customerEmail ? ` to ${customerEmail}` : ''}
+            {!paymentStillProcessing ? '.' : ''}
           </p>
 
           {orderNumber && (

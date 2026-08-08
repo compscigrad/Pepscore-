@@ -1,12 +1,14 @@
-// Checkout page — shows cart summary, collects shipping address,
-// shows RUO acknowledgment modal, then redirects to Stripe Checkout.
-// Rendered only when the storefront checkout kill switch is on
-// (app/checkout/page.tsx is the server-side gate) -- see lib/storefront/checkoutGate.ts.
+// Checkout page — shows cart summary, collects shipping address, shows
+// RUO acknowledgment modal, then renders Stripe's embedded Checkout
+// in-page (no more full-page redirect to a Stripe-hosted URL). Rendered
+// only when the storefront checkout kill switch is on (app/checkout/
+// page.tsx is the server-side gate) -- see lib/storefront/checkoutGate.ts.
 'use client'
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
+import { EmbeddedCheckoutProvider, EmbeddedCheckout } from '@stripe/react-stripe-js'
 import { useCartStore } from '@/lib/cart-store'
 import { Header } from '@/components/storefront/Header'
 import { Footer } from '@/components/storefront/Footer'
@@ -15,6 +17,7 @@ import { CartSidebar } from '@/components/storefront/CartSidebar'
 import { BackorderIndicator } from '@/components/storefront/BackorderIndicator'
 import { BackorderLegend } from '@/components/storefront/BackorderLegend'
 import { STOREFRONT_BACKORDER_CREDIT_AMOUNT, STOREFRONT_BACKORDER_MINIMUM_ORDER_TOTAL } from '@/lib/storefront/backorderPolicy'
+import { getStripeClient } from '@/lib/stripe-client'
 
 const fieldInput =
   'w-full border border-white/15 bg-white/[0.04] rounded-lg px-4 py-3 text-[14px] text-white placeholder:text-white/35 focus:outline-none focus:border-[#D4AF37]/50 transition-colors'
@@ -51,6 +54,7 @@ export function CheckoutForm() {
   const [form, setForm] = useState<AddressForm>(EMPTY_FORM)
   const [showRuo, setShowRuo] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [clientSecret, setClientSecret] = useState<string | null>(null)
 
   if (items.length === 0) {
     return (
@@ -128,13 +132,16 @@ export function CheckoutForm() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Checkout failed')
 
-      // Redirect to Stripe Checkout
-      window.location.href = data.url
+      // Mounts Stripe's embedded Checkout in-page below instead of a
+      // full-page redirect to a Stripe-hosted URL.
+      setClientSecret(data.clientSecret)
+      setShowRuo(false)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Something went wrong'
       toast.error(msg)
-      setIsLoading(false)
       setShowRuo(false)
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -154,6 +161,20 @@ export function CheckoutForm() {
         <div className="max-w-[1100px] mx-auto">
           <h1 className="font-heading text-3xl font-bold text-white mb-10">Checkout</h1>
 
+          {clientSecret ? (
+            // Stripe's own embedded Checkout iframe -- Pay by Bank, Card,
+            // and Cash App Pay (whichever the admin has enabled, see
+            // Settings > Payments) all render here, in whatever
+            // presentation Stripe's own embedded UI gives them. No further
+            // shipping/order-summary UI below this point -- Stripe's
+            // embedded page includes its own order summary.
+            <div className="bg-[#0d0d0d] border border-[#D4AF37]/15 rounded-2xl p-2 sm:p-6">
+              <EmbeddedCheckoutProvider stripe={getStripeClient()} options={{ clientSecret }}>
+                <EmbeddedCheckout />
+              </EmbeddedCheckoutProvider>
+            </div>
+          ) : (
+          <>
           {/* RUO Notice */}
           <div className="bg-amber-400/10 border border-amber-400/25 rounded-xl p-4 mb-8 flex gap-3 items-start">
             <span className="text-lg flex-shrink-0 mt-0.5">⚠️</span>
@@ -297,6 +318,8 @@ export function CheckoutForm() {
               </div>
             </div>
           </div>
+          </>
+          )}
         </div>
       </main>
 
