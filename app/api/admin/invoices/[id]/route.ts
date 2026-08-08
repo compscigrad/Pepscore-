@@ -53,7 +53,16 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       return NextResponse.json(copy, { status: 201 })
     }
     if (body?.action === 'restore') {
-      const restored = await restoreInvoice(id)
+      const restored = await restoreInvoice(id, userId!)
+      await prisma.adminAuditLog.create({
+        data: {
+          action: 'RESTORE_INVOICE',
+          entity: 'Invoice',
+          entityId: id,
+          adminId: userId!,
+          details: { invoiceNumber: restored.invoiceNumber },
+        },
+      })
       return NextResponse.json(restored)
     }
     if (body?.action === 'trash') {
@@ -117,7 +126,18 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
   const { id } = await params
 
   try {
-    const invoice = await archiveInvoice(id)
+    // DELETE requests from the UI today send no body, but the route accepts
+    // an optional { reason } so a future "why are you archiving this"
+    // prompt can be added without another route change.
+    let reason: string | undefined
+    try {
+      const body = await req.json()
+      reason = typeof body?.reason === 'string' ? body.reason : undefined
+    } catch {
+      // no body sent -- fine, reason stays undefined
+    }
+
+    const invoice = await archiveInvoice(id, userId!, 'ADMIN', reason)
 
     await prisma.adminAuditLog.create({
       data: {
@@ -125,7 +145,7 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
         entity: 'Invoice',
         entityId: id,
         adminId: userId!,
-        details: { invoiceNumber: invoice.invoiceNumber },
+        details: { invoiceNumber: invoice.invoiceNumber, reason },
       },
     })
 
