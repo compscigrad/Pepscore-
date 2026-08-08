@@ -132,20 +132,32 @@ describe('findDuplicateContactCustomerIds', () => {
 })
 
 describe('isLeadStage', () => {
-  it('is true for LEAD, INTAKE_SENT, and INTAKE_COMPLETED -- no invoice has ever been issued', () => {
-    expect(isLeadStage({ status: 'LEAD' })).toBe(true)
-    expect(isLeadStage({ status: 'INTAKE_SENT' })).toBe(true)
-    expect(isLeadStage({ status: 'INTAKE_COMPLETED' })).toBe(true)
+  it('is true for LEAD, INTAKE_SENT, and INTAKE_COMPLETED with leadStatus NEW -- no invoice, not admin-converted', () => {
+    expect(isLeadStage({ status: 'LEAD', leadStatus: 'NEW' })).toBe(true)
+    expect(isLeadStage({ status: 'INTAKE_SENT', leadStatus: 'NEW' })).toBe(true)
+    expect(isLeadStage({ status: 'INTAKE_COMPLETED', leadStatus: 'NEW' })).toBe(true)
   })
 
-  it('is false once an invoice has actually been issued (INVOICE_ISSUED or later)', () => {
-    expect(isLeadStage({ status: 'INVOICE_ISSUED' })).toBe(false)
-    expect(isLeadStage({ status: 'AWAITING_PAYMENT' })).toBe(false)
-    expect(isLeadStage({ status: 'PAID' })).toBe(false)
-    expect(isLeadStage({ status: 'DELIVERED' })).toBe(false)
+  it('is true for LEAD with CONTACTED, QUALIFIED, or CLOSED -- still not an admin-confirmed customer', () => {
+    expect(isLeadStage({ status: 'LEAD', leadStatus: 'CONTACTED' })).toBe(true)
+    expect(isLeadStage({ status: 'LEAD', leadStatus: 'QUALIFIED' })).toBe(true)
+    expect(isLeadStage({ status: 'LEAD', leadStatus: 'CLOSED' })).toBe(true)
+  })
+
+  it('is FALSE for LEAD/INTAKE_SENT/INTAKE_COMPLETED once an admin has explicitly marked them CONVERTED -- a legitimate customer can exist before their first invoice', () => {
+    expect(isLeadStage({ status: 'LEAD', leadStatus: 'CONVERTED' })).toBe(false)
+    expect(isLeadStage({ status: 'INTAKE_SENT', leadStatus: 'CONVERTED' })).toBe(false)
+    expect(isLeadStage({ status: 'INTAKE_COMPLETED', leadStatus: 'CONVERTED' })).toBe(false)
+  })
+
+  it('is false once an invoice has actually been issued (INVOICE_ISSUED or later), regardless of leadStatus', () => {
+    expect(isLeadStage({ status: 'INVOICE_ISSUED', leadStatus: 'NEW' })).toBe(false)
+    expect(isLeadStage({ status: 'AWAITING_PAYMENT', leadStatus: 'NEW' })).toBe(false)
+    expect(isLeadStage({ status: 'PAID', leadStatus: 'NEW' })).toBe(false)
+    expect(isLeadStage({ status: 'DELIVERED', leadStatus: 'NEW' })).toBe(false)
   })
 
   it('is false for ARCHIVED -- a completed historical order, not a raw lead', () => {
-    expect(isLeadStage({ status: 'ARCHIVED' })).toBe(false)
+    expect(isLeadStage({ status: 'ARCHIVED', leadStatus: 'NEW' })).toBe(false)
   })
 })

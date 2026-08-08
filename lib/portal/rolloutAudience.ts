@@ -36,19 +36,29 @@ export interface RolloutAudience {
 // A Customer's status is recomputed from their real invoice history (see
 // lib/customers/status.ts's computeCustomerStatus): LEAD/INTAKE_SENT/
 // INTAKE_COMPLETED all mean "no invoice has ever been issued to this
-// person" -- a lead-capture or in-progress intake record, not someone who
-// has actually transacted. Verified against real production data
-// (2026-08-08 audit): 4 of the then-14 "eligible" customers had never had
-// an invoice issued at all. A portal account only makes sense for someone
-// with something to actually view there (invoices, orders); auto-inviting
-// a bare lead is exactly the "do not assume every raw lead should
-// automatically receive portal credentials" case the rollout spec calls
-// out -- see docs/Decisions.md #35. These are excluded the same
-// conservative way duplicates/test data are: surfaced for admin review,
-// never silently dropped from the report.
+// person" -- but a zero invoice count alone does NOT mean "not a real
+// customer" (an admin arranging an in-person sale, or entering someone
+// ahead of their first invoice, is a legitimate customer before any
+// invoice exists). The authoritative override is `leadStatus` -- a
+// separate, admin-only CRM triage field (schema comment: "never
+// auto-computed, only ever changed by an explicit admin action") that
+// already exists for exactly this purpose. `leadStatus === 'CONVERTED'`
+// is an admin's explicit statement "this is a real customer," and takes
+// priority over the invoice-derived status; NEW/CONTACTED/QUALIFIED/CLOSED
+// with no invoice yet still reads as not-yet-a-customer. See
+// docs/Decisions.md #35/#36 -- #35's original invoice-count-only version
+// was corrected to this after being challenged: verified against real
+// production data (2026-08-08) that the same 4 real exclusions this
+// produces are all genuinely still LeadStatus.NEW, abandoned/unsubmitted
+// admin-sent intake links -- not a converted sale, so the audited outcome
+// didn't change, but the *rule* is now safe for a future CONVERTED case
+// this file's earlier version would have wrongly excluded. Excluded the
+// same conservative way duplicates/test data are: surfaced for admin
+// review, never silently dropped from the report.
 const LEAD_STAGE_STATUSES: Customer['status'][] = ['LEAD', 'INTAKE_SENT', 'INTAKE_COMPLETED']
 
-export function isLeadStage(customer: Pick<Customer, 'status'>): boolean {
+export function isLeadStage(customer: Pick<Customer, 'status' | 'leadStatus'>): boolean {
+  if (customer.leadStatus === 'CONVERTED') return false
   return LEAD_STAGE_STATUSES.includes(customer.status)
 }
 
