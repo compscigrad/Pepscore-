@@ -18,11 +18,11 @@ function shell(bodyHtml: string): string {
 <body style="font-family:Georgia,serif;background:#FAFAF5;color:#1A1A1A;margin:0;padding:0">
   <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden">
     <div style="background:#1A1A1A;padding:28px 36px;text-align:center">
-      <h1 style="color:#C49A1A;font-family:Helvetica,sans-serif;font-size:26px;margin:0;letter-spacing:0.1em">PEPSCORE</h1>
+      <h1 style="font-family:Helvetica,sans-serif;font-size:26px;margin:0;letter-spacing:0.1em"><span style="color:#fff">PEPSCORE</span> <span style="color:#C49A1A">LAB</span></h1>
     </div>
     <div style="padding:32px 36px">${bodyHtml}</div>
     <div style="background:#1A1A1A;padding:20px 36px;text-align:center">
-      <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0">© ${year} Pepscore · ${BILLING_EMAIL}</p>
+      <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0">© ${year} Pepscore Lab · ${BILLING_EMAIL}</p>
     </div>
   </div>
 </body>
@@ -88,6 +88,42 @@ export function buildBackorderResolvedHtml(props: BackorderResolvedProps): strin
     </p>
     <p style="font-size:14px;line-height:1.7;color:#424242">
       You'll get a separate tracking update once it ships. Reach out anytime at ${BILLING_EMAIL} with questions.
+    </p>
+  `)
+}
+
+export interface BackorderAccommodationProps {
+  customerName: string
+  invoiceNumber: string
+  accommodationAmount: number
+  revisedBalanceDue: number
+  reason: string
+  portalUrl: string | null
+}
+
+export function backorderAccommodationSubject(invoiceNumber: string): string {
+  return `Your Invoice Has Been Updated — Invoice #${invoiceNumber}`
+}
+
+// Never includes the admin's internal reason verbatim in customer-facing
+// copy -- only that an accommodation was applied and what it changed.
+export function buildBackorderAccommodationHtml(props: BackorderAccommodationProps): string {
+  return shell(`
+    <h2 style="font-family:Helvetica,sans-serif;font-size:19px;margin:0 0 14px">Hi ${props.customerName},</h2>
+    <p style="font-size:14px;line-height:1.7;color:#424242">
+      Your Pepscore Lab invoice <strong>#${props.invoiceNumber}</strong> has been updated to include a backorder
+      accommodation.
+    </p>
+    <div style="background:#F5F5F0;border-radius:10px;padding:18px 20px;margin:18px 0;font-size:13px;line-height:1.9;color:#424242">
+      <p style="margin:0"><strong>Backorder Accommodation:</strong> -${formatMoney(props.accommodationAmount)}</p>
+      <p style="margin:0"><strong>Revised Balance Due:</strong> ${formatMoney(props.revisedBalanceDue)}</p>
+    </div>
+    ${props.portalUrl ? `
+    <p style="font-size:14px;line-height:1.7;color:#424242">
+      Your revised balance is available in your <a href="${props.portalUrl}" style="color:#C49A1A">Customer Portal</a>.
+    </p>` : ''}
+    <p style="font-size:14px;line-height:1.7;color:#424242">
+      Reach out anytime at ${BILLING_EMAIL} with questions about Invoice #${props.invoiceNumber}.
     </p>
   `)
 }

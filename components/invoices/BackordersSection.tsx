@@ -71,6 +71,23 @@ interface InvoiceItemOption {
   name: string
 }
 
+// Raw BackorderCompensation row shape (lib/backorders.ts's
+// getBackorderCompensationSummary) — distinct from BackorderCompensationSummary
+// above, which is the richer, nested-relation shape the /backorders GET
+// route returns for the automatic-compensation display further down.
+interface RawCompensation {
+  id: string
+  compensationType: 'AUTOMATIC' | 'DISCRETIONARY'
+  totalAmount: number
+  reason: string
+  appliedAt: string
+}
+
+interface AccommodationSummary {
+  automatic: RawCompensation | null
+  discretionary: RawCompensation | null
+}
+
 interface Props {
   invoiceId: string
   items: InvoiceItemOption[]
@@ -92,10 +109,31 @@ export function BackordersSection({ invoiceId, items, deliveryStatus, onBackorde
   const [providerTxnId, setProviderTxnId] = useState('')
   const [failureReason, setFailureReason] = useState('')
 
+  // Admin-discretionary accommodation state — a separate, independently
+  // idempotent workflow from the automatic $25/$100-threshold policy above
+  // (see lib/backorders.ts). Fetched separately since a discretionary
+  // accommodation isn't linked to any specific BackorderCondition the way
+  // the automatic credit is.
+  const [accommodation, setAccommodation] = useState<AccommodationSummary | null>(null)
+  const [accommodationAmount, setAccommodationAmount] = useState('')
+  const [accommodationReason, setAccommodationReason] = useState('')
+  const [accommodationPreview, setAccommodationPreview] = useState<{ projectedTotal: number; projectedBalanceDue: number } | null>(null)
+  const [accommodationSubmitting, setAccommodationSubmitting] = useState(false)
+  const [adjustingId, setAdjustingId] = useState<string | null>(null)
+  const [adjustAmount, setAdjustAmount] = useState('')
+  const [adjustReason, setAdjustReason] = useState('')
+
   const refresh = useCallback(async () => {
     try {
-      const res = await fetch(`/api/admin/invoices/${invoiceId}/backorders`)
-      if (res.ok) setBackorders(await res.json())
+      const [backordersRes, accommodationRes] = await Promise.all([
+        fetch(`/api/admin/invoices/${invoiceId}/backorders`),
+        fetch(`/api/admin/invoices/${invoiceId}/backorder-accommodation`),
+      ])
+      if (backordersRes.ok) setBackorders(await backordersRes.json())
+      if (accommodationRes.ok) {
+        const data = await accommodationRes.json()
+        setAccommodation(data.summary)
+      }
     } finally {
       setLoading(false)
     }
@@ -104,6 +142,117 @@ export function BackordersSection({ invoiceId, items, deliveryStatus, onBackorde
   useEffect(() => {
     refresh()
   }, [refresh])
+
+  // Live preview — debounced by the amount field's own onChange, fires a
+  // fresh read-only preview every time the candidate amount changes so the
+  // admin sees the projected invoice total before confirming.
+  useEffect(() => {
+    const amount = Number(accommodationAmount)
+    if (!accommodationAmount || !Number.isFinite(amount) || amount <= 0) {
+      return
+    }
+    const controller = new AbortController()
+    const timer = setTimeout(() => {
+      fetch(`/api/admin/invoices/${invoiceId}/backorder-accommodation?previewAmount=${amount}`, { signal: controller.signal })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => setAccommodationPreview(data?.preview ?? null))
+        .catch(() => {})
+    }, 300)
+    // Runs before the next effect execution (including when the amount
+    // becomes invalid/empty and the branch above returns early) and on
+    // unmount — clears any stale preview rather than leaving it showing a
+    // now-outdated projection.
+    return () => {
+      clearTimeout(timer)
+      controller.abort()
+      setAccommodationPreview(null)
+    }
+  }, [accommodationAmount, invoiceId])
+
+  async function applyAccommodation(e: React.FormEvent) {
+    e.preventDefault()
+    const amount = Number(accommodationAmount)
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast.error('Enter a valid accommodation amount')
+      return
+    }
+    if (!accommodationReason.trim()) {
+      toast.error('Enter a reason for the accommodation')
+      return
+    }
+    setAccommodationSubmitting(true)
+    try {
+      const res = await fetch(`/api/admin/invoices/${invoiceId}/backorder-accommodation`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount, reason: accommodationReason }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed to apply accommodation')
+      toast.success('Backorder accommodation applied — customer notified')
+      setAccommodationAmount('')
+      setAccommodationReason('')
+      setAccommodationPreview(null)
+      await refresh()
+      onBackorderUpdated()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to apply accommodation')
+    } finally {
+      setAccommodationSubmitting(false)
+    }
+  }
+
+  async function adjustAccommodation(compensationId: string) {
+    const newAmount = Number(adjustAmount)
+    if (!Number.isFinite(newAmount) || newAmount <= 0) {
+      toast.error('Enter a valid amount')
+      return
+    }
+    if (!adjustReason.trim()) {
+      toast.error('Enter a reason for the change')
+      return
+    }
+    setAccommodationSubmitting(true)
+    try {
+      const res = await fetch(`/api/admin/invoices/${invoiceId}/backorder-accommodation/${compensationId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'adjust', newAmount, reason: adjustReason }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed to adjust accommodation')
+      toast.success('Accommodation adjusted — customer notified')
+      setAdjustingId(null)
+      setAdjustAmount('')
+      setAdjustReason('')
+      await refresh()
+      onBackorderUpdated()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to adjust accommodation')
+    } finally {
+      setAccommodationSubmitting(false)
+    }
+  }
+
+  async function removeAccommodation(compensationId: string) {
+    setAccommodationSubmitting(true)
+    try {
+      const res = await fetch(`/api/admin/invoices/${invoiceId}/backorder-accommodation/${compensationId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'remove', reason: 'Removed by admin' }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed to remove accommodation')
+      toast.success('Accommodation removed')
+      await refresh()
+      onBackorderUpdated()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to remove accommodation')
+    } finally {
+      setAccommodationSubmitting(false)
+    }
+  }
 
   const activeBackorders = backorders.filter((b) => b.status === 'ACTIVE')
   const itemsWithActiveBackorder = new Set(activeBackorders.map((b) => b.invoiceItemId))
@@ -302,6 +451,119 @@ export function BackordersSection({ invoiceId, items, deliveryStatus, onBackorde
           <p className={mutedText}>Applied {formatDate(compensation.appliedAt)} — one compensation covers every backorder on this invoice.</p>
         </div>
       ) : null}
+
+      {/* Admin-discretionary accommodation — a separate, independently
+          idempotent workflow from the automatic $25/$100-threshold policy
+          above. Real-time customer-service adjustments (e.g. "$89 vial +
+          backorder → $10 accommodation") that don't need to meet the
+          automatic policy's minimum. */}
+      <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <h4 className="font-heading text-[13px] font-bold text-white">Backorder Accommodation (Discretionary)</h4>
+          {accommodation?.automatic ? (
+            <span className={`text-xs ${mutedText}`}>Automatic Backorder Credit: {formatMoney(accommodation.automatic.totalAmount)}</span>
+          ) : null}
+        </div>
+
+        {accommodation?.discretionary ? (
+          <div className="rounded-lg border border-gold/20 bg-gold/5 p-3 text-xs text-white/70 space-y-2">
+            <p className="font-heading font-bold text-gold-light">
+              Manual Backorder Accommodation: {formatMoney(accommodation.discretionary.totalAmount)}
+            </p>
+            <p>{accommodation.discretionary.reason}</p>
+            <p className={mutedText}>Applied {formatDate(accommodation.discretionary.appliedAt)}</p>
+
+            {adjustingId === accommodation.discretionary.id ? (
+              <div className="flex flex-wrap items-end gap-2 pt-2 border-t border-white/10">
+                <div>
+                  <label className={labelClass} htmlFor="adjustAmount">New Amount ($)</label>
+                  <input
+                    id="adjustAmount"
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    className={`${input} w-28`}
+                    value={adjustAmount}
+                    onChange={(e) => setAdjustAmount(e.target.value)}
+                  />
+                </div>
+                <div className="flex-1 min-w-[160px]">
+                  <label className={labelClass} htmlFor="adjustReason">Reason</label>
+                  <input id="adjustReason" className={input} value={adjustReason} onChange={(e) => setAdjustReason(e.target.value)} />
+                </div>
+                <button
+                  type="button"
+                  className={`${pillPrimary} px-4 py-2`}
+                  disabled={accommodationSubmitting}
+                  onClick={() => adjustAccommodation(accommodation.discretionary!.id)}
+                >
+                  Save
+                </button>
+                <button type="button" className={`${pillOutline} px-4 py-2`} onClick={() => setAdjustingId(null)}>
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  className={`${pillOutline} px-4 py-2`}
+                  onClick={() => {
+                    setAdjustingId(accommodation.discretionary!.id)
+                    setAdjustAmount(String(accommodation.discretionary!.totalAmount))
+                    setAdjustReason('')
+                  }}
+                >
+                  Adjust
+                </button>
+                <button
+                  type="button"
+                  className={`${pillOutline} px-4 py-2`}
+                  disabled={accommodationSubmitting}
+                  onClick={() => removeAccommodation(accommodation.discretionary!.id)}
+                >
+                  Remove
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <form onSubmit={applyAccommodation} className="flex flex-wrap items-end gap-3">
+            <div>
+              <label className={labelClass} htmlFor="accommodationAmount">Amount ($)</label>
+              <input
+                id="accommodationAmount"
+                type="number"
+                min="0.01"
+                step="0.01"
+                className={`${input} w-28`}
+                value={accommodationAmount}
+                onChange={(e) => setAccommodationAmount(e.target.value)}
+                placeholder="10.00"
+              />
+            </div>
+            <div className="flex-1 min-w-[180px]">
+              <label className={labelClass} htmlFor="accommodationReason">Reason</label>
+              <input
+                id="accommodationReason"
+                className={input}
+                value={accommodationReason}
+                onChange={(e) => setAccommodationReason(e.target.value)}
+                placeholder="e.g. In-person customer service adjustment"
+              />
+            </div>
+            <button type="submit" className={`${pillPrimary} px-5 py-2`} disabled={accommodationSubmitting}>
+              Apply Accommodation
+            </button>
+            {accommodationPreview ? (
+              <p className={`w-full text-xs ${mutedText}`}>
+                Preview: invoice becomes {formatMoney(accommodationPreview.projectedTotal)}, balance due{' '}
+                {formatMoney(accommodationPreview.projectedBalanceDue)}.
+              </p>
+            ) : null}
+          </form>
+        )}
+      </div>
 
       {backorders.length > 0 ? (
         <div className="space-y-3">

@@ -21,6 +21,7 @@ export type MessageCategory =
   | 'INTAKE_REQUEST'
   | 'INTAKE_SUBMISSION_CONFIRMATION'
   | 'BACKORDER_NOTICE'
+  | 'BACKORDER_ACCOMMODATION' // customer-facing: admin applied/adjusted a discretionary backorder accommodation
   | 'FULFILLMENT_UPDATE'
   | 'TRACKING_UPDATE'
   | 'PORTAL_INVITE' // customer-facing: admin invited them to claim portal access
@@ -68,6 +69,7 @@ const ROUTING: Record<MessageCategory, RoutedSender> = {
   INTAKE_REQUEST: { fromName: 'Pepscore Orders', replyTo: ORDERS_EMAIL },
   INTAKE_SUBMISSION_CONFIRMATION: { fromName: 'Pepscore Orders', replyTo: CONTACT_EMAIL },
   BACKORDER_NOTICE: { fromName: 'Pepscore Orders', replyTo: ORDERS_EMAIL },
+  BACKORDER_ACCOMMODATION: { fromName: 'Pepscore Billing', replyTo: BILLING_EMAIL },
   FULFILLMENT_UPDATE: { fromName: 'Pepscore Orders', replyTo: ORDERS_EMAIL },
   TRACKING_UPDATE: { fromName: 'Pepscore Orders', replyTo: ORDERS_EMAIL },
   // Account-setup correspondence deliberately routes through admin@, not
@@ -127,6 +129,7 @@ const CUSTOMER_VISIBLE_CATEGORIES: ReadonlySet<MessageCategory> = new Set<Messag
   'INTAKE_REQUEST',
   'INTAKE_SUBMISSION_CONFIRMATION',
   'BACKORDER_NOTICE',
+  'BACKORDER_ACCOMMODATION',
   'FULFILLMENT_UPDATE',
   'TRACKING_UPDATE',
   'PORTAL_INVITE',

@@ -13,6 +13,7 @@ const CATEGORY_LABELS: Record<MessageCategory, string> = {
   INTAKE_REQUEST: 'Information Requested',
   INTAKE_SUBMISSION_CONFIRMATION: 'Information Received',
   BACKORDER_NOTICE: 'Backorder Notice',
+  BACKORDER_ACCOMMODATION: 'Backorder Accommodation',
   FULFILLMENT_UPDATE: 'Fulfillment Update',
   TRACKING_UPDATE: 'Tracking Update',
   PORTAL_INVITE: 'Account Setup',
