@@ -27,6 +27,29 @@ export interface RolloutAudience {
   // has to manually re-include a real customer," never "a test record gets
   // a real invitation."
   testDataFlagged: Customer[]
+  // See isLeadStage()'s comment -- a Customer who has never had an invoice
+  // issued to them (still LEAD/INTAKE_SENT/INTAKE_COMPLETED) is excluded
+  // from the bulk-invite audience the same conservative way.
+  leadStageFlagged: Customer[]
+}
+
+// A Customer's status is recomputed from their real invoice history (see
+// lib/customers/status.ts's computeCustomerStatus): LEAD/INTAKE_SENT/
+// INTAKE_COMPLETED all mean "no invoice has ever been issued to this
+// person" -- a lead-capture or in-progress intake record, not someone who
+// has actually transacted. Verified against real production data
+// (2026-08-08 audit): 4 of the then-14 "eligible" customers had never had
+// an invoice issued at all. A portal account only makes sense for someone
+// with something to actually view there (invoices, orders); auto-inviting
+// a bare lead is exactly the "do not assume every raw lead should
+// automatically receive portal credentials" case the rollout spec calls
+// out -- see docs/Decisions.md #35. These are excluded the same
+// conservative way duplicates/test data are: surfaced for admin review,
+// never silently dropped from the report.
+const LEAD_STAGE_STATUSES: Customer['status'][] = ['LEAD', 'INTAKE_SENT', 'INTAKE_COMPLETED']
+
+export function isLeadStage(customer: Pick<Customer, 'status'>): boolean {
+  return LEAD_STAGE_STATUSES.includes(customer.status)
 }
 
 export function normalizeEmail(email: string | null): string | null {
@@ -97,9 +120,13 @@ export async function computeEligibleInviteAudience(): Promise<RolloutAudience> 
   const testDataIds = new Set(testDataFlagged.map((c) => c.id))
   const nonTestData = nonDuplicate.filter((c) => !testDataIds.has(c.id))
 
+  const leadStageFlagged = nonTestData.filter(isLeadStage)
+  const leadStageIds = new Set(leadStageFlagged.map((c) => c.id))
+  const nonLeadStage = nonTestData.filter((c) => !leadStageIds.has(c.id))
+
   const [openReviewCases, statuses] = await Promise.all([
     prisma.customerIdentityReviewCase.findMany({ where: { status: 'OPEN' } }),
-    Promise.all(nonTestData.map(async (c) => ({ customer: c, status: await getPortalReadinessStatus(c) }))),
+    Promise.all(nonLeadStage.map(async (c) => ({ customer: c, status: await getPortalReadinessStatus(c) }))),
   ])
   const conflictReviewCustomerIds = new Set(
     openReviewCases.map((r) => r.customerId).filter((id): id is string => Boolean(id))
@@ -121,5 +148,6 @@ export async function computeEligibleInviteAudience(): Promise<RolloutAudience> 
     alreadyClaimed: claimedCount,
     conflictReview: openReviewCases.length,
     testDataFlagged,
+    leadStageFlagged,
   }
 }

@@ -16,6 +16,7 @@ import { FROM_EMAIL } from '@/lib/resend'
 import { getRolloutSafetyConfig } from '@/lib/portal/rolloutSafety'
 import { getReminderSafetyConfig } from '@/lib/portal/reminderSafety'
 import { getReminderPreview } from '@/lib/portal/reminderPreview'
+import { computePortalAdoptionOverview, summarizeAdoptionAudit } from '@/lib/portal/adoptionStatus'
 import { PortalRolloutPanel } from '@/components/admin/PortalRolloutPanel'
 import { ReminderPreviewTable } from '@/components/admin/ReminderPreviewTable'
 import { card, mutedText, sectionHeading, divider } from '@/components/invoices/theme'
@@ -33,11 +34,13 @@ export default async function PortalRolloutPage() {
     redirect('/')
   }
 
-  const [audience, settings, reminderPreview] = await Promise.all([
+  const [audience, settings, reminderPreview, adoptionOverview] = await Promise.all([
     computeEligibleInviteAudience(),
     getPortalRolloutSettings(),
     getReminderPreview(),
+    computePortalAdoptionOverview(),
   ])
+  const adoptionAudit = summarizeAdoptionAudit(adoptionOverview)
 
   const resendDomainVerified = FROM_EMAIL !== 'onboarding@resend.dev'
   const smsConfigured = isSmsConfigured()
@@ -69,6 +72,34 @@ export default async function PortalRolloutPage() {
         </div>
 
         <div className={`${card} p-6`}>
+          <h3 className={sectionHeading}>Portal Adoption Audit</h3>
+          <p className={`text-sm ${mutedText} mt-1 mb-4`}>
+            Live, read-only answer to &ldquo;does every eligible customer have a portal account or a valid invitation&rdquo; — recomputed on every page load. Nothing here sends anything; real invitations only ever go out through the Activate control below.
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+            <Stat label="Customers reviewed" value={adoptionAudit.customersReviewed} />
+            <Stat label="Portal active" value={adoptionAudit.portalActive} />
+            <Stat label="Invitation pending" value={adoptionAudit.invitationPending} />
+            <Stat label="Eligible, not yet invited" value={adoptionAudit.eligibleNotYetInvited} highlight />
+            <Stat label="Reminder outstanding" value={adoptionAudit.reminderOutstanding} />
+            <Stat label="Identity review required" value={adoptionAudit.identityReviewRequired} />
+            <Stat label="Not yet eligible" value={adoptionAudit.notEligible} />
+            <Stat label="Excluded (total)" value={adoptionAudit.excludedTotal} />
+          </div>
+          {adoptionAudit.excludedByReason.length > 0 && (
+            <div className={`pt-4 border-t ${divider} space-y-1.5`}>
+              <p className={`text-[11px] font-bold tracking-[0.08em] uppercase ${mutedText} mb-2`}>Excluded, by reason</p>
+              {adoptionAudit.excludedByReason.map((r) => (
+                <div key={r.reason} className="flex justify-between text-sm">
+                  <span className="text-white/70">{r.reason}</span>
+                  <span className="text-white font-medium">{r.count}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className={`${card} p-6`}>
           <h3 className={sectionHeading}>Eligible Audience</h3>
           <p className={`text-sm ${mutedText} mt-1 mb-4`}>
             No invitation has been sent to anyone in this report — these are counts only, computed live and never cached.
@@ -85,6 +116,7 @@ export default async function PortalRolloutPage() {
               href={audience.conflictReview > 0 ? '/admin/identity-review' : undefined}
             />
             <Stat label="Test/QA-flagged (excluded)" value={audience.testDataFlagged.length} />
+            <Stat label="No invoice yet (excluded)" value={audience.leadStageFlagged.length} />
           </div>
         </div>
 
@@ -171,6 +203,23 @@ export default async function PortalRolloutPage() {
             </p>
             <div className="max-h-80 overflow-y-auto space-y-2">
               {audience.testDataFlagged.map((c) => (
+                <div key={c.id} className="flex justify-between text-sm">
+                  <span className="text-white">{`${c.firstName} ${c.lastName}`.trim()}</span>
+                  <span className={mutedText}>{c.email ?? c.phone ?? '—'}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {audience.leadStageFlagged.length > 0 && (
+          <div className={`${card} p-6`}>
+            <h3 className={sectionHeading}>No Invoice Yet — Excluded ({audience.leadStageFlagged.length})</h3>
+            <p className={`text-sm ${mutedText} mt-1 mb-4`}>
+              Still a lead or in-progress intake — no invoice has ever been issued to this customer. A portal account isn&rsquo;t useful until there&rsquo;s something real to show there; invite manually once they&rsquo;ve actually transacted, if appropriate.
+            </p>
+            <div className="max-h-80 overflow-y-auto space-y-2">
+              {audience.leadStageFlagged.map((c) => (
                 <div key={c.id} className="flex justify-between text-sm">
                   <span className="text-white">{`${c.firstName} ${c.lastName}`.trim()}</span>
                   <span className={mutedText}>{c.email ?? c.phone ?? '—'}</span>

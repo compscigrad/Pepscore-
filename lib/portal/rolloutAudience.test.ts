@@ -6,7 +6,7 @@
 // disposable rehearsal test at the time this was written, per this repo's
 // convention of never running DB-mutating tests in the permanent suite.
 import { describe, it, expect } from 'vitest'
-import { classifyByContactInfo, findDuplicateContactCustomerIds, normalizeEmail, normalizePhone } from './rolloutAudience'
+import { classifyByContactInfo, findDuplicateContactCustomerIds, normalizeEmail, normalizePhone, isLeadStage } from './rolloutAudience'
 
 interface FakeCustomer {
   id: string
@@ -128,5 +128,24 @@ describe('findDuplicateContactCustomerIds', () => {
 
   it('an empty batch produces no duplicates', () => {
     expect(findDuplicateContactCustomerIds([])).toEqual(new Set())
+  })
+})
+
+describe('isLeadStage', () => {
+  it('is true for LEAD, INTAKE_SENT, and INTAKE_COMPLETED -- no invoice has ever been issued', () => {
+    expect(isLeadStage({ status: 'LEAD' })).toBe(true)
+    expect(isLeadStage({ status: 'INTAKE_SENT' })).toBe(true)
+    expect(isLeadStage({ status: 'INTAKE_COMPLETED' })).toBe(true)
+  })
+
+  it('is false once an invoice has actually been issued (INVOICE_ISSUED or later)', () => {
+    expect(isLeadStage({ status: 'INVOICE_ISSUED' })).toBe(false)
+    expect(isLeadStage({ status: 'AWAITING_PAYMENT' })).toBe(false)
+    expect(isLeadStage({ status: 'PAID' })).toBe(false)
+    expect(isLeadStage({ status: 'DELIVERED' })).toBe(false)
+  })
+
+  it('is false for ARCHIVED -- a completed historical order, not a raw lead', () => {
+    expect(isLeadStage({ status: 'ARCHIVED' })).toBe(false)
   })
 })
