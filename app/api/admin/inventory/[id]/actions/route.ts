@@ -34,6 +34,11 @@ const actionSchema = z.discriminatedUnion('action', [
     unitsPerCase: z.number().int().positive().nullable().optional(),
     lowStockThreshold: z.number().int().min(0).nullable().optional(),
   }),
+  // Catalog/inventory-level backorder configuration (Phase 2B correction,
+  // 2026-08-07) -- distinct from BackorderCondition (an invoice line's own
+  // fulfillment-shortage record). Changes storefront-facing availability
+  // (lib/storefront/availability.ts) without a code deployment.
+  z.object({ action: z.literal('SET_BACKORDER_ENABLED'), backorderEnabled: z.boolean() }),
   // Discrepancy-correction actions -- distinct from the routine actions
   // above in that they always require a reason, and RECONCILE fixes the
   // reservedUnits cache against the actual sum of ACTIVE reservations
@@ -83,6 +88,18 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         result = await prisma.product.update({
           where: { id },
           data: { unitsPerCase: payload.unitsPerCase, lowStockThreshold: payload.lowStockThreshold },
+        })
+        break
+      case 'SET_BACKORDER_ENABLED':
+        result = await prisma.product.update({ where: { id }, data: { backorderEnabled: payload.backorderEnabled } })
+        await prisma.adminAuditLog.create({
+          data: {
+            action: 'SET_PRODUCT_BACKORDER_ENABLED',
+            entity: 'Product',
+            entityId: id,
+            adminId: actor,
+            details: { backorderEnabled: payload.backorderEnabled },
+          },
         })
         break
       case 'RECONCILE':

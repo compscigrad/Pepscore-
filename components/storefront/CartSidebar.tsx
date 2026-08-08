@@ -6,12 +6,20 @@ import Image from 'next/image'
 import { X, Minus, Plus, Trash2 } from 'lucide-react'
 import { useCartStore } from '@/lib/cart-store'
 import { useRouter } from 'next/navigation'
+import { BackorderIndicator } from './BackorderIndicator'
+import { STOREFRONT_BACKORDER_CREDIT_AMOUNT, STOREFRONT_BACKORDER_MINIMUM_ORDER_TOTAL } from '@/lib/storefront/backorderPolicy'
 
 export function CartSidebar() {
   const { items, isOpen, closeCart, removeItem, updateQuantity, total } = useCartStore()
   const router = useRouter()
 
   const cartTotal = total()
+  const hasBackorderedItem = items.some((item) => item.backordered)
+  // Storefront-side eligibility hint only -- the authoritative check
+  // happens server-side against the real invoice/order once one exists
+  // (lib/invoice/backorder.ts's isAutomaticCompensationEligible), never
+  // decided here.
+  const qualifiesForBackorderCredit = hasBackorderedItem && cartTotal > STOREFRONT_BACKORDER_MINIMUM_ORDER_TOTAL
 
   function handleCheckout() {
     closeCart()
@@ -57,7 +65,10 @@ export function CartSidebar() {
                     <Image src={item.imageUrl} alt={item.name} fill className="object-contain p-1" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-heading text-[13px] font-bold truncate text-white">{item.name}</p>
+                    <p className="font-heading text-[13px] font-bold truncate text-white flex items-center gap-1.5">
+                      {item.name}
+                      {item.backordered && <BackorderIndicator />}
+                    </p>
                     <p className="text-[12px] text-[#D4AF37] font-semibold">${item.price.toFixed(2)} / {item.size}</p>
                     {/* Quantity controls */}
                     <div className="flex items-center gap-2 mt-1.5">
@@ -101,6 +112,17 @@ export function CartSidebar() {
             <p className="text-[11px] text-white/45 mb-3 leading-relaxed">
               Shipping and taxes calculated at checkout. Free shipping on orders over $150.
             </p>
+            {hasBackorderedItem && (
+              <p className="text-[11px] text-amber-300/80 mb-3 leading-relaxed flex items-start gap-1.5">
+                <BackorderIndicator className="mt-1" />
+                <span>
+                  Your cart includes a backordered item — fulfillment may take longer.{' '}
+                  {qualifiesForBackorderCredit
+                    ? `This order qualifies for a one-time $${STOREFRONT_BACKORDER_CREDIT_AMOUNT} backorder credit, applied automatically.`
+                    : `Orders over $${STOREFRONT_BACKORDER_MINIMUM_ORDER_TOTAL} with a backordered item receive a one-time $${STOREFRONT_BACKORDER_CREDIT_AMOUNT} backorder credit.`}
+                </span>
+              </p>
+            )}
             <button
               onClick={handleCheckout}
               className="w-full bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] hover:shadow-[0_4px_16px_rgba(212,175,55,0.4)] text-black font-heading text-[13px] font-bold tracking-[0.08em] uppercase py-3.5 rounded-full transition-all"

@@ -2,16 +2,14 @@
 // public-facing product copy, SEO metadata, search synonyms, FAQ, related
 // products, and index/noindex without a code deployment. Never edits
 // pricing/inventory fields (those already have their own editor on this
-// same page, InventoryDetailPanel.tsx -- this component matches its light
-// admin-inventory theme, not the dark invoice-admin theme used elsewhere).
+// same page, InventoryDetailPanel.tsx -- both share the dark PepScore Lab
+// admin theme, see components/invoices/theme.ts).
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-
-const inputCls = 'w-full rounded-lg border border-g100 px-3 py-2 text-[13px]'
-const fieldLabel = 'text-[11px] font-heading font-bold uppercase tracking-wide text-g500'
+import { input as inputCls, label as fieldLabel, card, sectionHeading, mutedText, pillPrimary } from '@/components/invoices/theme'
 
 interface FaqEntry {
   question: string
@@ -105,10 +103,10 @@ export function ProductContentSection({ productId }: { productId: string }) {
   if (loading || !content) return null
 
   return (
-    <div className="bg-white rounded-2xl shadow-sh p-6 space-y-4">
+    <div className={`${card} p-6 space-y-4`}>
       <div>
-        <h2 className="font-heading text-[15px] font-bold text-dark mb-1">Storefront SEO &amp; Content</h2>
-        <p className="text-[12px] text-g500">
+        <h2 className={`${sectionHeading} mb-1`}>Storefront SEO &amp; Content</h2>
+        <p className={`text-[12px] ${mutedText}`}>
           Public-facing product copy and search metadata. Changes go live immediately, no deployment required. Never enter supplier
           cost, suggested pricing, or internal notes here — this content is always publicly visible.
         </p>
@@ -127,7 +125,7 @@ export function ProductContentSection({ productId }: { productId: string }) {
           <span className={fieldLabel}>Slug (URL) — changing this creates an automatic redirect from the old URL</span>
           <input className={`${inputCls} mt-1`} value={content.slug} onChange={(e) => update('slug', e.target.value)} />
           {redirects.length > 0 && (
-            <p className="text-[11px] text-g500 mt-1">Redirecting from: {redirects.map((r) => r.oldSlug).join(', ')}</p>
+            <p className="text-[11px] text-white/50 mt-1">Redirecting from: {redirects.map((r) => r.oldSlug).join(', ')}</p>
           )}
         </label>
       </div>
@@ -183,11 +181,11 @@ export function ProductContentSection({ productId }: { productId: string }) {
       </div>
 
       <div className="flex gap-6">
-        <label className="flex items-center gap-2 text-[13px] text-dark">
+        <label className="flex items-center gap-2 text-[13px] text-white">
           <input type="checkbox" checked={content.featured} onChange={(e) => update('featured', e.target.checked)} />
           Featured (shown first on the storefront)
         </label>
-        <label className="flex items-center gap-2 text-[13px] text-dark">
+        <label className="flex items-center gap-2 text-[13px] text-white">
           <input type="checkbox" checked={content.noindex} onChange={(e) => update('noindex', e.target.checked)} />
           Noindex (hide from search engines)
         </label>
@@ -206,7 +204,7 @@ export function ProductContentSection({ productId }: { productId: string }) {
               <input className={inputCls} placeholder="Question" value={f.question} onChange={(e) => updateFaqEntry(i, 'question', e.target.value)} />
               <input className={inputCls} placeholder="Answer" value={f.answer} onChange={(e) => updateFaqEntry(i, 'answer', e.target.value)} />
             </div>
-            <button type="button" onClick={() => removeFaqEntry(i)} className="text-red-600 text-[12px] mt-2 font-heading font-bold">
+            <button type="button" onClick={() => removeFaqEntry(i)} className="text-red-400 text-[12px] mt-2 font-heading font-bold">
               Remove
             </button>
           </div>
@@ -218,11 +216,7 @@ export function ProductContentSection({ productId }: { productId: string }) {
         <input className={`${inputCls} mt-1`} value={reason} onChange={(e) => setReason(e.target.value)} />
       </label>
 
-      <button
-        onClick={save}
-        disabled={submitting}
-        className="rounded-lg bg-gold px-4 py-2 text-[13px] font-heading font-bold text-dark hover:bg-gold-dark"
-      >
+      <button onClick={save} disabled={submitting} className={`${pillPrimary} px-4 py-2`}>
         Save Storefront Content
       </button>
     </div>

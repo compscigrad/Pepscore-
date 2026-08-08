@@ -8,6 +8,11 @@ export interface CartItem {
   price: number
   imageUrl: string
   quantity: number
+  // Snapshotted from the product's availability at the moment it was added
+  // -- never re-derived live in the cart (a lightweight client-side store
+  // with no server round-trip), so the cart's own indicator/copy can only
+  // ever be as fresh as the last add. See lib/storefront/availability.ts.
+  backordered?: boolean
 }
 
 export interface ShippingAddress {

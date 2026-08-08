@@ -71,25 +71,25 @@ export function NotificationBell() {
     <div className="fixed top-4 right-4 z-50">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="relative w-11 h-11 rounded-full bg-dark shadow-sl flex items-center justify-center hover:bg-dark/90 transition-colors"
+        className="relative w-11 h-11 rounded-full bg-black border border-gold/20 shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex items-center justify-center hover:border-gold/40 transition-colors"
         aria-label="Notifications"
       >
         <span className="text-gold text-lg">🔔</span>
         {notifications.length > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-gold text-dark text-[10px] font-heading font-bold flex items-center justify-center">
+          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-gold text-white text-[10px] font-heading font-bold flex items-center justify-center">
             {notifications.length > 9 ? '9+' : notifications.length}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-sl overflow-hidden border border-g100">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-g100">
-            <p className="font-heading text-[13px] font-bold text-dark">Notifications</p>
+        <div className="absolute right-0 mt-2 w-80 bg-[#0a0a0a] rounded-[18px] shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden border border-gold/10">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+            <p className="font-heading text-[13px] font-bold text-white">Notifications</p>
             {notifications.length > 0 && (
               <button
                 onClick={handleMarkAllRead}
-                className="font-heading text-[11px] font-bold uppercase tracking-[0.06em] text-g500 hover:text-gold transition-colors"
+                className="font-heading text-[11px] font-bold uppercase tracking-[0.06em] text-white/50 hover:text-gold transition-colors"
               >
                 Mark all read
               </button>
@@ -97,31 +97,31 @@ export function NotificationBell() {
           </div>
           <div className="max-h-96 overflow-y-auto">
             {notifications.length === 0 ? (
-              <p className="px-4 py-6 text-center text-[13px] text-g500">No unread notifications</p>
+              <p className="px-4 py-6 text-center text-[13px] text-white/50">No unread notifications</p>
             ) : (
               notifications.map((n) => (
                 <button
                   key={n.id}
                   onClick={() => handleOpenNotification(n)}
-                  className="w-full text-left px-4 py-3 border-b border-g100 last:border-b-0 hover:bg-g100 transition-colors"
+                  className="w-full text-left px-4 py-3 border-b border-white/10 last:border-b-0 hover:bg-white/5 transition-colors"
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <p className="font-heading text-[13px] font-bold text-dark">
+                    <p className="font-heading text-[13px] font-bold text-white">
                       {n.customer ? `${n.customer.firstName} ${n.customer.lastName}` : 'Unknown customer'}
                     </p>
                     <span
                       className={`text-[10px] font-heading font-bold uppercase tracking-[0.06em] px-1.5 py-0.5 rounded-full ${
-                        n.isNewCustomer ? 'bg-dark text-gold' : 'bg-g100 text-g500'
+                        n.isNewCustomer ? 'bg-gold/15 text-gold' : 'bg-white/5 text-white/50'
                       }`}
                     >
                       {n.isNewCustomer ? 'New' : 'Existing'}
                     </span>
                   </div>
-                  <p className="text-[12px] text-g500">
+                  <p className="text-[12px] text-white/50">
                     {n.invoice ? `Draft ${n.invoice.invoiceNumber}` : 'Draft invoice'} · {formatTimeElapsed(new Date(n.createdAt))} ago
                   </p>
                   {n.possibleDuplicateOf && (
-                    <p className="text-[11px] text-amber-600 mt-1">⚠ Possible duplicate customer</p>
+                    <p className="text-[11px] text-amber-400 mt-1">⚠ Possible duplicate customer</p>
                   )}
                 </button>
               ))

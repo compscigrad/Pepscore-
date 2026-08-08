@@ -24,7 +24,7 @@ export default async function DiscountPresetsPage() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="font-heading text-3xl font-bold text-white">Discount Presets</h1>
-            <p className="text-white/50 text-sm mt-1">Settings · Discounts · Pepscore</p>
+            <p className="text-white/50 text-sm mt-1">Settings · Discounts · Pepscore Lab</p>
           </div>
           <div className="flex items-center gap-6">
             <Link

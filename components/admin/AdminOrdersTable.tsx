@@ -37,13 +37,13 @@ interface Props {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  PENDING: 'bg-gray-100 text-gray-600',
-  PAID: 'bg-blue-100 text-blue-700',
-  PROCESSING: 'bg-yellow-100 text-yellow-700',
-  SHIPPED: 'bg-purple-100 text-purple-700',
-  DELIVERED: 'bg-green-100 text-green-700',
-  CANCELLED: 'bg-red-100 text-red-600',
-  REFUNDED: 'bg-orange-100 text-orange-600',
+  PENDING: 'bg-white/5 text-white/50',
+  PAID: 'bg-blue-400/10 text-blue-300',
+  PROCESSING: 'bg-yellow-400/10 text-yellow-300',
+  SHIPPED: 'bg-purple-400/10 text-purple-300',
+  DELIVERED: 'bg-green-400/10 text-green-300',
+  CANCELLED: 'bg-red-400/10 text-red-300',
+  REFUNDED: 'bg-orange-400/10 text-orange-300',
 }
 
 export function AdminOrdersTable({ orders: initialOrders }: Props) {
@@ -91,9 +91,9 @@ export function AdminOrdersTable({ orders: initialOrders }: Props) {
     <div className="overflow-x-auto">
       <table className="w-full text-[13px]">
         <thead>
-          <tr className="border-b border-g100">
+          <tr className="border-b border-white/10">
             {['Order #','Date','Customer','Status','Fulfillment','Total','Invoice','Tracking','Actions'].map(h => (
-              <th key={h} className="text-left font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-g500 px-4 py-3 whitespace-nowrap">{h}</th>
+              <th key={h} className="text-left font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 px-4 py-3 whitespace-nowrap">{h}</th>
             ))}
           </tr>
         </thead>
@@ -108,34 +108,34 @@ export function AdminOrdersTable({ orders: initialOrders }: Props) {
               <>
                 <tr
                   key={order.id}
-                  className="border-b border-g100 hover:bg-g100/50 cursor-pointer"
+                  className="border-b border-white/10 hover:bg-white/[0.02] cursor-pointer"
                   onClick={() => setExpandedId(isExpanded ? null : order.id)}
                 >
-                  <td className="px-4 py-3 font-heading font-bold text-dark">{order.orderNumber}</td>
-                  <td className="px-4 py-3 text-g500 whitespace-nowrap">
+                  <td className="px-4 py-3 font-heading font-bold text-white">{order.orderNumber}</td>
+                  <td className="px-4 py-3 text-white/50 whitespace-nowrap">
                     {new Date(order.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                   </td>
                   <td className="px-4 py-3">
-                    <p className="font-semibold text-dark">{order.customerName}</p>
-                    <p className="text-[11px] text-g500">{order.customerEmail}</p>
+                    <p className="font-semibold text-white">{order.customerName}</p>
+                    <p className="text-[11px] text-white/50">{order.customerEmail}</p>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`font-heading text-[10px] font-bold tracking-[0.06em] uppercase px-2.5 py-1 rounded-full ${STATUS_COLORS[order.status] ?? 'bg-gray-100 text-gray-500'}`}>
+                    <span className={`font-heading text-[10px] font-bold tracking-[0.06em] uppercase px-2.5 py-1 rounded-full ${STATUS_COLORS[order.status] ?? 'bg-white/5 text-white/50'}`}>
                       {order.status}
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`font-heading text-[10px] font-bold tracking-[0.06em] uppercase px-2.5 py-1 rounded-full ${order.fulfillmentStatus === 'FULFILLED' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                    <span className={`font-heading text-[10px] font-bold tracking-[0.06em] uppercase px-2.5 py-1 rounded-full ${order.fulfillmentStatus === 'FULFILLED' ? 'bg-green-400/10 text-green-300' : 'bg-amber-400/10 text-amber-300'}`}>
                       {order.fulfillmentStatus}
                     </span>
                   </td>
-                  <td className="px-4 py-3 font-heading font-bold text-dark">{formatCurrency(order.total)}</td>
-                  <td className="px-4 py-3 text-g700 font-mono text-[11px]">{order.invoice?.invoiceNumber ?? '—'}</td>
+                  <td className="px-4 py-3 font-heading font-bold text-white">{formatCurrency(order.total)}</td>
+                  <td className="px-4 py-3 text-white/70 font-mono text-[11px]">{order.invoice?.invoiceNumber ?? '—'}</td>
                   <td className="px-4 py-3">
                     {order.shippingLabel ? (
-                      <span className="text-[11px] font-mono text-purple-700">{order.shippingLabel.trackingNumber}</span>
+                      <span className="text-[11px] font-mono text-purple-300">{order.shippingLabel.trackingNumber}</span>
                     ) : (
-                      <span className="text-g300 text-[11px]">—</span>
+                      <span className="text-white/30 text-[11px]">—</span>
                     )}
                   </td>
                   <td className="px-4 py-3">
@@ -152,7 +152,7 @@ export function AdminOrdersTable({ orders: initialOrders }: Props) {
                     ) : order.status === 'PAID' || order.status === 'PROCESSING' ? (
                       <button
                         onClick={e => { e.stopPropagation(); fetchRates(order.id); setExpandedId(order.id) }}
-                        className="text-[11px] font-heading font-bold text-blue-600 hover:text-blue-800"
+                        className="text-[11px] font-heading font-bold text-blue-400 hover:text-blue-300"
                       >
                         Create Label
                       </button>
@@ -162,12 +162,12 @@ export function AdminOrdersTable({ orders: initialOrders }: Props) {
 
                 {/* Expanded row — profit breakdown + rate selection */}
                 {isExpanded && (
-                  <tr key={`${order.id}-expanded`} className="bg-g100/70">
+                  <tr key={`${order.id}-expanded`} className="bg-white/[0.02]">
                     <td colSpan={9} className="px-6 py-4">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Profit metrics */}
                         <div>
-                          <p className="font-heading text-[11px] font-bold tracking-[0.1em] uppercase text-g500 mb-3">Profit Breakdown</p>
+                          <p className="font-heading text-[11px] font-bold tracking-[0.1em] uppercase text-white/50 mb-3">Profit Breakdown</p>
                           <div className="space-y-1.5 text-[13px]">
                             {[
                               ['Subtotal', formatCurrency(order.subtotal)],
@@ -178,7 +178,7 @@ export function AdminOrdersTable({ orders: initialOrders }: Props) {
                               ['Net Profit', formatCurrency(netProfit), 'font-bold text-gold-dark'],
                             ].map(([label, value, cls]) => (
                               <div key={label as string} className="flex justify-between">
-                                <span className="text-g700">{label}</span>
+                                <span className="text-white/70">{label}</span>
                                 <span className={cls as string ?? ''}>{value}</span>
                               </div>
                             ))}
@@ -188,20 +188,20 @@ export function AdminOrdersTable({ orders: initialOrders }: Props) {
                         {/* Shipping rate selection (if label not yet created) */}
                         {!order.shippingLabel && (
                           <div>
-                            <p className="font-heading text-[11px] font-bold tracking-[0.1em] uppercase text-g500 mb-3">Shipping Rates</p>
+                            <p className="font-heading text-[11px] font-bold tracking-[0.1em] uppercase text-white/50 mb-3">Shipping Rates</p>
                             {rates[order.id] ? (
                               rates[order.id].length === 0 ? (
-                                <p className="text-[13px] text-g500">No rates available for this address.</p>
+                                <p className="text-[13px] text-white/50">No rates available for this address.</p>
                               ) : (
                                 <div className="space-y-2">
                                   {rates[order.id].map(rate => (
-                                    <div key={rate.object_id} className="flex items-center justify-between bg-white rounded-lg px-4 py-2.5 border border-g100">
+                                    <div key={rate.object_id} className="flex items-center justify-between bg-white/5 rounded-lg px-4 py-2.5 border border-white/10">
                                       <div>
                                         <p className="font-heading text-[13px] font-bold">{rate.provider} — {rate.servicelevel.name}</p>
-                                        <p className="text-[11px] text-g500">{rate.estimated_days} business day{rate.estimated_days !== 1 ? 's' : ''}</p>
+                                        <p className="text-[11px] text-white/50">{rate.estimated_days} business day{rate.estimated_days !== 1 ? 's' : ''}</p>
                                       </div>
                                       <div className="flex items-center gap-3">
-                                        <span className="font-heading font-bold text-dark">${rate.amount}</span>
+                                        <span className="font-heading font-bold text-white">${rate.amount}</span>
                                         <button
                                           onClick={() => createLabel(order.id, rate.object_id)}
                                           disabled={loadingLabelId === order.id}
@@ -217,7 +217,7 @@ export function AdminOrdersTable({ orders: initialOrders }: Props) {
                             ) : (
                               <button
                                 onClick={() => fetchRates(order.id)}
-                                className="text-[12px] font-heading font-bold text-blue-600 hover:text-blue-800"
+                                className="text-[12px] font-heading font-bold text-blue-400 hover:text-blue-300"
                               >
                                 Load Rates →
                               </button>
@@ -234,7 +234,7 @@ export function AdminOrdersTable({ orders: initialOrders }: Props) {
         </tbody>
       </table>
       {orders.length === 0 && (
-        <div className="text-center py-16 text-g500">
+        <div className="text-center py-16 text-white/50">
           <p className="text-3xl mb-3">📦</p>
           <p>No orders yet.</p>
         </div>

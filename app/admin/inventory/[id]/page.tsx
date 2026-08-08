@@ -31,10 +31,10 @@ export default async function AdminInventoryDetailPage({ params }: Props) {
   if (!userId) redirect('/sign-in?redirect_url=/admin/inventory')
   if (!isAdminClerkUser(userId)) {
     return (
-      <main className="min-h-screen bg-g100 flex items-center justify-center p-8">
-        <div className="bg-white rounded-2xl shadow-sh p-8 max-w-md text-center">
-          <h1 className="font-heading text-xl font-bold text-dark mb-2">Access Denied</h1>
-          <p className="text-g500 text-sm">This account isn&apos;t authorized to view the admin dashboard.</p>
+      <main className="min-h-screen bg-black flex items-center justify-center p-8">
+        <div className="bg-white/[0.03] border border-gold/10 rounded-[18px] p-8 max-w-md text-center">
+          <h1 className="font-heading text-xl font-bold text-white mb-2">Access Denied</h1>
+          <p className="text-white/50 text-sm">This account isn&apos;t authorized to view the admin dashboard.</p>
         </div>
       </main>
     )
@@ -47,14 +47,14 @@ export default async function AdminInventoryDetailPage({ params }: Props) {
   const { product, availableUnits, completeCasesAvailable, backorderedVials, ledgerEntries, reservations, alerts } = detail
 
   return (
-    <main className="min-h-screen bg-g100 p-6 md:p-8">
+    <main className="min-h-screen bg-black p-6 md:p-8">
       <div className="max-w-[1100px] mx-auto">
         <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
           <div>
-            <h1 className="font-heading text-2xl font-bold text-dark">
-              {product.name} <span className="text-g500 font-normal">{product.size}</span>
+            <h1 className="font-heading text-2xl font-bold text-white">
+              {product.name} <span className="text-white/50 font-normal">{product.size}</span>
             </h1>
-            <p className="text-g500 text-sm mt-0.5">{product.sku ?? 'No SKU'} · {backorderedVials > 0 ? `${backorderedVials} vial(s) backordered` : 'No active backorders'}</p>
+            <p className="text-white/50 text-sm mt-0.5">{product.sku ?? 'No SKU'} · {backorderedVials > 0 ? `${backorderedVials} vial(s) backordered` : 'No active backorders'}</p>
           </div>
           <Link href="/admin/inventory" className="text-[12px] font-heading font-bold text-gold hover:text-gold-dark uppercase tracking-[0.06em]">
             ← Inventory
@@ -70,9 +70,9 @@ export default async function AdminInventoryDetailPage({ params }: Props) {
         </div>
 
         {reservations.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-sh p-6 mb-6">
-            <h2 className="font-heading text-[15px] font-bold text-dark mb-3">Active Reservations</h2>
-            <ul className="text-[13px] text-dark space-y-1">
+          <div className="bg-white/[0.03] border border-gold/10 rounded-[18px] p-6 mb-6">
+            <h2 className="font-heading text-[15px] font-bold text-white mb-3">Active Reservations</h2>
+            <ul className="text-[13px] text-white space-y-1">
               {reservations.map((r) => (
                 <li key={r.id}>
                   {r.quantity} vial(s) — reserved {new Date(r.reservedAt).toLocaleString()}
@@ -83,15 +83,15 @@ export default async function AdminInventoryDetailPage({ params }: Props) {
         )}
 
         {alerts.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-sh p-6 mb-6">
-            <h2 className="font-heading text-[15px] font-bold text-dark mb-3">Low-Stock Alert History</h2>
-            <ul className="text-[13px] text-dark space-y-1">
+          <div className="bg-white/[0.03] border border-gold/10 rounded-[18px] p-6 mb-6">
+            <h2 className="font-heading text-[15px] font-bold text-white mb-3">Low-Stock Alert History</h2>
+            <ul className="text-[13px] text-white space-y-1">
               {alerts.map((a) => (
                 <li key={a.id}>
                   {a.status === 'OPEN' ? (
-                    <span className="text-red-600 font-bold">OPEN</span>
+                    <span className="text-red-400 font-bold">OPEN</span>
                   ) : (
-                    <span className="text-green-700 font-bold">RESOLVED</span>
+                    <span className="text-green-400 font-bold">RESOLVED</span>
                   )}{' '}
                   — threshold {a.threshold}, available at alert {a.availableAtAlert} ({new Date(a.createdAt).toLocaleString()})
                 </li>
@@ -100,20 +100,20 @@ export default async function AdminInventoryDetailPage({ params }: Props) {
           </div>
         )}
 
-        <div className="bg-white rounded-2xl shadow-sh overflow-hidden">
-          <div className="p-6 border-b border-g100">
-            <h2 className="font-heading text-[15px] font-bold text-dark">Inventory Ledger</h2>
-            <p className="text-[12px] text-g500 mt-0.5">Most recent {ledgerEntries.length} events</p>
+        <div className="bg-white/[0.03] border border-gold/10 rounded-[18px] overflow-hidden">
+          <div className="p-6 border-b border-white/10">
+            <h2 className="font-heading text-[15px] font-bold text-white">Inventory Ledger</h2>
+            <p className="text-[12px] text-white/50 mt-0.5">Most recent {ledgerEntries.length} events</p>
           </div>
           {ledgerEntries.length === 0 ? (
-            <div className="text-center py-12 text-g500 text-[13px]">No inventory events yet.</div>
+            <div className="text-center py-12 text-white/50 text-[13px]">No inventory events yet.</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-[13px]">
                 <thead>
-                  <tr className="border-b border-g100">
+                  <tr className="border-b border-white/10">
                     {['When', 'Event', 'Delta', 'Balance', 'Actor', 'Reason / Notes'].map((h) => (
-                      <th key={h} className="text-left font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-g500 px-4 py-3 whitespace-nowrap">
+                      <th key={h} className="text-left font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 px-4 py-3 whitespace-nowrap">
                         {h}
                       </th>
                     ))}
@@ -121,17 +121,17 @@ export default async function AdminInventoryDetailPage({ params }: Props) {
                 </thead>
                 <tbody>
                   {ledgerEntries.map((entry) => (
-                    <tr key={entry.id} className="border-b border-g100">
-                      <td className="px-4 py-3 text-g500 whitespace-nowrap">{new Date(entry.createdAt).toLocaleString()}</td>
-                      <td className="px-4 py-3 font-semibold text-dark whitespace-nowrap">{EVENT_LABEL[entry.eventType] ?? entry.eventType}</td>
+                    <tr key={entry.id} className="border-b border-white/10">
+                      <td className="px-4 py-3 text-white/50 whitespace-nowrap">{new Date(entry.createdAt).toLocaleString()}</td>
+                      <td className="px-4 py-3 font-semibold text-white whitespace-nowrap">{EVENT_LABEL[entry.eventType] ?? entry.eventType}</td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <span className={entry.quantityDelta > 0 ? 'text-green-700 font-bold' : entry.quantityDelta < 0 ? 'text-red-600 font-bold' : 'text-g500'}>
+                        <span className={entry.quantityDelta > 0 ? 'text-green-400 font-bold' : entry.quantityDelta < 0 ? 'text-red-400 font-bold' : 'text-white/50'}>
                           {entry.quantityDelta > 0 ? '+' : ''}{entry.quantityDelta}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-g500 whitespace-nowrap">{entry.previousBalance} → {entry.resultingBalance}</td>
-                      <td className="px-4 py-3 text-g500 whitespace-nowrap">{entry.actor}</td>
-                      <td className="px-4 py-3 text-g500 max-w-[280px] truncate">{entry.reason ?? entry.notes ?? '—'}</td>
+                      <td className="px-4 py-3 text-white/50 whitespace-nowrap">{entry.previousBalance} → {entry.resultingBalance}</td>
+                      <td className="px-4 py-3 text-white/50 whitespace-nowrap">{entry.actor}</td>
+                      <td className="px-4 py-3 text-white/50 max-w-[280px] truncate">{entry.reason ?? entry.notes ?? '—'}</td>
                     </tr>
                   ))}
                 </tbody>

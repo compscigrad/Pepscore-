@@ -21,10 +21,10 @@ export default async function AdminReservationsPage({ searchParams }: Props) {
   if (!userId) redirect('/sign-in?redirect_url=/admin/inventory/reservations')
   if (!isAdminClerkUser(userId)) {
     return (
-      <main className="min-h-screen bg-g100 flex items-center justify-center p-8">
-        <div className="bg-white rounded-2xl shadow-sh p-8 max-w-md text-center">
-          <h1 className="font-heading text-xl font-bold text-dark mb-2">Access Denied</h1>
-          <p className="text-g500 text-sm">This account isn&apos;t authorized to view the admin dashboard.</p>
+      <main className="min-h-screen bg-black flex items-center justify-center p-8">
+        <div className="bg-white/[0.03] border border-gold/10 rounded-[18px] p-8 max-w-md text-center">
+          <h1 className="font-heading text-xl font-bold text-white mb-2">Access Denied</h1>
+          <p className="text-white/50 text-sm">This account isn&apos;t authorized to view the admin dashboard.</p>
         </div>
       </main>
     )
@@ -35,12 +35,12 @@ export default async function AdminReservationsPage({ searchParams }: Props) {
   const reservations = await findReservations({ invoiceId: params.invoiceId, productId: params.productId, status })
 
   return (
-    <main className="min-h-screen bg-g100 p-6 md:p-8">
+    <main className="min-h-screen bg-black p-6 md:p-8">
       <div className="max-w-[1200px] mx-auto">
         <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
           <div>
-            <h1 className="font-heading text-2xl font-bold text-dark">Reservations</h1>
-            <p className="text-g500 text-sm mt-0.5">Inspect and correct inventory reservations by invoice, product, or status</p>
+            <h1 className="font-heading text-2xl font-bold text-white">Reservations</h1>
+            <p className="text-white/50 text-sm mt-0.5">Inspect and correct inventory reservations by invoice, product, or status</p>
           </div>
           <Link href="/admin/inventory" className="text-[12px] font-heading font-bold text-gold hover:text-gold-dark uppercase tracking-[0.06em]">
             ← Inventory

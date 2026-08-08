@@ -337,7 +337,7 @@ export function RefundsSection({ invoiceId, hasCustomer }: Props) {
         <p className={`text-xs ${mutedText}`}>
           A refund is created Pending — nothing is recorded as returned, and the customer is told only that it&apos;s
           been requested, until an admin marks it Completed above. Account credit is issued immediately since it is
-          Pepscore&apos;s own store credit, not money moved through an outside provider.
+          Pepscore Lab&apos;s own store credit, not money moved through an outside provider.
         </p>
       </form>
     </div>

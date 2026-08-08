@@ -3,42 +3,42 @@
 // built on the same listInvoices() service /admin/invoices uses), not the
 // empty storefront Order model. Deliberately not a duplicate of the full
 // Invoices workspace: no search/sort/pagination here, just the most recent
-// rows with a link out to the real thing. Light theme to match the rest of
-// this page (/admin/invoices is intentionally dark -- see components/
-// invoices/StatusBadge.tsx's own note that its palette assumes a black
-// background); this table defines its own light-appropriate badge colors
-// for the same underlying enum values rather than reusing that component.
+// rows with a link out to the real thing. Dark PepScore Lab admin theme
+// (2026-08-07 migration) -- this table still defines its own badge color
+// maps rather than importing components/invoices/StatusBadge.tsx, since
+// that component doesn't cover the payment/portal-status variants needed
+// here; both now assume the same black-background palette.
 import Link from 'next/link'
 import { formatCurrency } from '@/lib/orders'
 import { formatCarrierLabel } from '@/lib/invoice/format'
 import type { SalesActivityRow } from '@/lib/adminDashboard'
 
 const INVOICE_STATUS_STYLE: Record<string, string> = {
-  DRAFT: 'bg-gray-100 text-gray-500',
-  PENDING: 'bg-amber-100 text-amber-700',
-  ISSUED: 'bg-blue-100 text-blue-700',
-  CANCELLED: 'bg-red-100 text-red-600',
-  REFUNDED: 'bg-orange-100 text-orange-600',
-  VOID: 'bg-gray-100 text-gray-400',
+  DRAFT: 'bg-white/5 text-white/50',
+  PENDING: 'bg-amber-400/10 text-amber-300',
+  ISSUED: 'bg-blue-400/10 text-blue-300',
+  CANCELLED: 'bg-red-400/10 text-red-300',
+  REFUNDED: 'bg-orange-400/10 text-orange-300',
+  VOID: 'bg-white/5 text-white/40',
 }
 
 const PAYMENT_STATUS_STYLE: Record<string, string> = {
-  UNPAID: 'bg-gray-100 text-gray-500',
-  PARTIALLY_PAID: 'bg-amber-100 text-amber-700',
-  PAID: 'bg-green-100 text-green-700',
-  OVERPAID: 'bg-purple-100 text-purple-700',
-  REFUNDED: 'bg-orange-100 text-orange-600',
+  UNPAID: 'bg-white/5 text-white/50',
+  PARTIALLY_PAID: 'bg-amber-400/10 text-amber-300',
+  PAID: 'bg-green-400/10 text-green-300',
+  OVERPAID: 'bg-purple-400/10 text-purple-300',
+  REFUNDED: 'bg-orange-400/10 text-orange-300',
 }
 
 const DELIVERY_STATUS_STYLE: Record<string, string> = {
-  PREPARING: 'bg-gray-100 text-gray-500',
-  PACKED: 'bg-amber-100 text-amber-700',
-  SHIPPED: 'bg-blue-100 text-blue-700',
-  IN_TRANSIT: 'bg-purple-100 text-purple-700',
-  DELIVERED: 'bg-green-100 text-green-700',
-  RETURNED: 'bg-orange-100 text-orange-600',
-  LOST: 'bg-red-100 text-red-600',
-  DAMAGED: 'bg-red-100 text-red-600',
+  PREPARING: 'bg-white/5 text-white/50',
+  PACKED: 'bg-amber-400/10 text-amber-300',
+  SHIPPED: 'bg-blue-400/10 text-blue-300',
+  IN_TRANSIT: 'bg-purple-400/10 text-purple-300',
+  DELIVERED: 'bg-green-400/10 text-green-300',
+  RETURNED: 'bg-orange-400/10 text-orange-300',
+  LOST: 'bg-red-400/10 text-red-300',
+  DAMAGED: 'bg-red-400/10 text-red-300',
 }
 
 const PORTAL_STATUS_LABEL: Record<string, string> = {
@@ -48,10 +48,10 @@ const PORTAL_STATUS_LABEL: Record<string, string> = {
   DISABLED: 'Disabled',
 }
 const PORTAL_STATUS_STYLE: Record<string, string> = {
-  NO_CUSTOMER: 'bg-gray-100 text-gray-400',
-  UNCLAIMED: 'bg-amber-100 text-amber-700',
-  CLAIMED: 'bg-green-100 text-green-700',
-  DISABLED: 'bg-red-100 text-red-600',
+  NO_CUSTOMER: 'bg-white/5 text-white/40',
+  UNCLAIMED: 'bg-amber-400/10 text-amber-300',
+  CLAIMED: 'bg-green-400/10 text-green-300',
+  DISABLED: 'bg-red-400/10 text-red-300',
 }
 
 function readableLabel(status: string): string {
@@ -72,11 +72,11 @@ function Pill({ label, className }: { label: string; className: string }) {
 
 export function AdminSalesActivityTable({ rows, total }: { rows: SalesActivityRow[]; total: number }) {
   return (
-    <div className="bg-white rounded-2xl shadow-sh overflow-hidden">
-      <div className="p-6 border-b border-g100 flex items-center justify-between flex-wrap gap-3">
+    <div className="bg-white/[0.03] border border-gold/10 rounded-[18px] overflow-hidden">
+      <div className="p-6 border-b border-white/10 flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="font-heading text-[17px] font-bold text-dark">Sales Activity</h2>
-          <p className="text-[12px] text-g500 mt-0.5">
+          <h2 className="font-heading text-[17px] font-bold text-white">Sales Activity</h2>
+          <p className="text-[12px] text-white/50 mt-0.5">
             {rows.length < total
               ? `Showing the ${rows.length} most recent of ${total} invoices — full history, search, and filters are on the Invoices page.`
               : `All ${total} active invoice${total === 1 ? '' : 's'}.`}
@@ -88,7 +88,7 @@ export function AdminSalesActivityTable({ rows, total }: { rows: SalesActivityRo
       </div>
 
       {rows.length === 0 ? (
-        <div className="text-center py-16 text-g500">
+        <div className="text-center py-16 text-white/50">
           <p className="text-3xl mb-3">🧾</p>
           <p>No invoices yet.</p>
         </div>
@@ -96,12 +96,12 @@ export function AdminSalesActivityTable({ rows, total }: { rows: SalesActivityRo
         <div className="overflow-x-auto">
           <table className="w-full text-[13px]">
             <thead>
-              <tr className="border-b border-g100">
+              <tr className="border-b border-white/10">
                 {['Invoice #', 'Date', 'Customer', 'Status', 'Payment', 'Fulfillment', 'Total', 'Balance', 'Tracking', 'Backorder', 'Portal', ''].map(
                   (h, i) => (
                     <th
                       key={h || i}
-                      className={`text-left font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-g500 px-4 py-3 whitespace-nowrap ${
+                      className={`text-left font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 px-4 py-3 whitespace-nowrap ${
                         i === 9 || i === 10 ? 'hidden lg:table-cell' : ''
                       }`}
                     >
@@ -113,48 +113,48 @@ export function AdminSalesActivityTable({ rows, total }: { rows: SalesActivityRo
             </thead>
             <tbody>
               {rows.map(({ invoice, hasActiveBackorder, portalStatus }) => (
-                <tr key={invoice.id} className="border-b border-g100 hover:bg-g100/50">
-                  <td className="px-4 py-3 font-heading font-bold text-dark whitespace-nowrap">{invoice.invoiceNumber}</td>
-                  <td className="px-4 py-3 text-g500 whitespace-nowrap">
+                <tr key={invoice.id} className="border-b border-white/10 hover:bg-white/[0.02]">
+                  <td className="px-4 py-3 font-heading font-bold text-white whitespace-nowrap">{invoice.invoiceNumber}</td>
+                  <td className="px-4 py-3 text-white/50 whitespace-nowrap">
                     {new Date(invoice.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}
                   </td>
                   <td className="px-4 py-3 max-w-[180px]">
                     {invoice.customerId ? (
-                      <Link href={`/admin/customers/${invoice.customerId}`} className="font-semibold text-dark hover:text-gold-dark hover:underline truncate block">
+                      <Link href={`/admin/customers/${invoice.customerId}`} className="font-semibold text-white hover:text-gold-dark hover:underline truncate block">
                         {invoice.customerName}
                       </Link>
                     ) : (
-                      <span className="font-semibold text-dark truncate block">{invoice.customerName}</span>
+                      <span className="font-semibold text-white truncate block">{invoice.customerName}</span>
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <Pill label={readableLabel(invoice.status)} className={INVOICE_STATUS_STYLE[invoice.status] ?? 'bg-gray-100 text-gray-500'} />
+                    <Pill label={readableLabel(invoice.status)} className={INVOICE_STATUS_STYLE[invoice.status] ?? 'bg-white/5 text-white/50'} />
                   </td>
                   <td className="px-4 py-3">
                     <Pill
                       label={readableLabel(invoice.paymentStatus)}
-                      className={PAYMENT_STATUS_STYLE[invoice.paymentStatus] ?? 'bg-gray-100 text-gray-500'}
+                      className={PAYMENT_STATUS_STYLE[invoice.paymentStatus] ?? 'bg-white/5 text-white/50'}
                     />
                   </td>
                   <td className="px-4 py-3">
                     <Pill
                       label={readableLabel(invoice.deliveryStatus)}
-                      className={DELIVERY_STATUS_STYLE[invoice.deliveryStatus] ?? 'bg-gray-100 text-gray-500'}
+                      className={DELIVERY_STATUS_STYLE[invoice.deliveryStatus] ?? 'bg-white/5 text-white/50'}
                     />
                   </td>
-                  <td className="px-4 py-3 font-heading font-bold text-dark whitespace-nowrap">{formatCurrency(invoice.total)}</td>
+                  <td className="px-4 py-3 font-heading font-bold text-white whitespace-nowrap">{formatCurrency(invoice.total)}</td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     {invoice.balanceDue > 0 ? (
-                      <span className="font-heading font-bold text-amber-700">{formatCurrency(invoice.balanceDue)}</span>
+                      <span className="font-heading font-bold text-amber-300">{formatCurrency(invoice.balanceDue)}</span>
                     ) : (
-                      <span className="text-g300">$0.00</span>
+                      <span className="text-white/30">$0.00</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-g700 whitespace-nowrap break-all max-w-[160px]">
+                  <td className="px-4 py-3 text-white/70 whitespace-nowrap break-all max-w-[160px]">
                     {invoice.carrier ? `${formatCarrierLabel(invoice.carrier)} — ${invoice.trackingNumber ?? 'pending'}` : '—'}
                   </td>
                   <td className="px-4 py-3 hidden lg:table-cell">
-                    {hasActiveBackorder ? <Pill label="Active" className="bg-red-100 text-red-600" /> : <span className="text-g300">—</span>}
+                    {hasActiveBackorder ? <Pill label="Active" className="bg-red-400/10 text-red-300" /> : <span className="text-white/30">—</span>}
                   </td>
                   <td className="px-4 py-3 hidden lg:table-cell">
                     <Pill label={PORTAL_STATUS_LABEL[portalStatus]} className={PORTAL_STATUS_STYLE[portalStatus]} />

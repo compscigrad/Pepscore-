@@ -75,10 +75,10 @@ async function loadSection<T>(label: string, fn: () => Promise<T>): Promise<Sect
 
 function ErrorCard({ label, error }: { label: string; error: string }) {
   return (
-    <div className="bg-red-50 border border-red-200 rounded-2xl p-6 mb-8">
-      <p className="font-heading text-[13px] font-bold text-red-700">{label} failed to load</p>
-      <p className="text-[12px] text-red-600 mt-1">{error}</p>
-      <p className="text-[12px] text-red-600 mt-1">Check server logs for the full stack trace — this section was not silently skipped.</p>
+    <div className="bg-red-400/10 border border-red-400/25 rounded-2xl p-6 mb-8">
+      <p className="font-heading text-[13px] font-bold text-red-300">{label} failed to load</p>
+      <p className="text-[12px] text-red-300/80 mt-1">{error}</p>
+      <p className="text-[12px] text-red-300/80 mt-1">Check server logs for the full stack trace — this section was not silently skipped.</p>
     </div>
   )
 }
@@ -93,10 +93,10 @@ export default async function AdminDashboard() {
   // wondering what just happened.
   if (!isAdminClerkUser(userId)) {
     return (
-      <main className="min-h-screen bg-g100 flex items-center justify-center p-8">
-        <div className="bg-white rounded-2xl shadow-sh p-8 max-w-md text-center">
-          <h1 className="font-heading text-xl font-bold text-dark mb-2">Access Denied</h1>
-          <p className="text-g500 text-sm">This account isn&apos;t authorized to view the admin dashboard.</p>
+      <main className="min-h-screen bg-black flex items-center justify-center p-8">
+        <div className="bg-white/[0.03] border border-gold/10 rounded-[18px] p-8 max-w-md text-center">
+          <h1 className="font-heading text-xl font-bold text-white mb-2">Access Denied</h1>
+          <p className="text-white/50 text-sm">This account isn&apos;t authorized to view the admin dashboard.</p>
         </div>
       </main>
     )
@@ -121,34 +121,36 @@ export default async function AdminDashboard() {
   ])
 
   return (
-    <main className="min-h-screen bg-g100 p-8">
+    <main className="min-h-screen bg-black p-8">
       <div className="max-w-[1400px] mx-auto">
         <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
           <div>
-            <h1 className="font-heading text-3xl font-bold text-dark">Pepscore Admin</h1>
-            <p className="text-g500 text-sm mt-1">Owner dashboard</p>
+            <h1 className="font-heading text-3xl font-bold text-white">
+              Pepscore <span className="text-gold">Lab</span> Admin
+            </h1>
+            <p className="text-white/50 text-sm mt-1">Owner dashboard</p>
           </div>
           <div className="flex items-center gap-6 flex-wrap">
-            <Link href="/admin/invoices" className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-g500 hover:text-gold transition-colors">
+            <Link href="/admin/invoices" className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors">
               Invoices →
             </Link>
-            <Link href="/admin/intake-queue" className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-g500 hover:text-gold transition-colors">
+            <Link href="/admin/intake-queue" className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors">
               Intake Queue
             </Link>
-            <Link href="/admin/inventory" className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-g500 hover:text-gold transition-colors">
+            <Link href="/admin/inventory" className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors">
               Inventory
             </Link>
-            <Link href="/admin/identity-review" className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-g500 hover:text-gold transition-colors">
+            <Link href="/admin/identity-review" className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors">
               Identity Review
             </Link>
-            <Link href="/" className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-g500 hover:text-gold transition-colors">
+            <Link href="/" className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors">
               ← Storefront
             </Link>
           </div>
         </div>
 
         {/* ── Operations Summary (the real, currently-operating business) ──── */}
-        <h2 className="font-heading text-[15px] font-bold text-dark mb-3">Operations Summary</h2>
+        <h2 className="font-heading text-[15px] font-bold text-white mb-3">Operations Summary</h2>
         {operations.ok ? (
           <OperationsSummarySection data={operations.data} />
         ) : (
@@ -162,16 +164,16 @@ export default async function AdminDashboard() {
           (inventoryAlerts.data.openLowStockAlerts > 0 ||
             inventoryAlerts.data.awaitingInitializationCount > 0 ||
             inventoryAlerts.data.outOfStockCount > 0) && (
-            <div className="bg-white rounded-2xl shadow-sh p-5 mb-8 flex items-center justify-between flex-wrap gap-3">
+            <div className="bg-white/[0.03] border border-gold/10 rounded-[18px] p-5 mb-8 flex items-center justify-between flex-wrap gap-3">
               <div className="flex items-center gap-5 flex-wrap text-[13px]">
                 {inventoryAlerts.data.outOfStockCount > 0 && (
-                  <span className="font-heading font-bold text-red-600">{inventoryAlerts.data.outOfStockCount} out of stock</span>
+                  <span className="font-heading font-bold text-red-400">{inventoryAlerts.data.outOfStockCount} out of stock</span>
                 )}
                 {inventoryAlerts.data.openLowStockAlerts > 0 && (
-                  <span className="font-heading font-bold text-orange-700">{inventoryAlerts.data.openLowStockAlerts} low-stock alert{inventoryAlerts.data.openLowStockAlerts === 1 ? '' : 's'}</span>
+                  <span className="font-heading font-bold text-orange-400">{inventoryAlerts.data.openLowStockAlerts} low-stock alert{inventoryAlerts.data.openLowStockAlerts === 1 ? '' : 's'}</span>
                 )}
                 {inventoryAlerts.data.awaitingInitializationCount > 0 && (
-                  <span className="font-heading font-bold text-amber-700">{inventoryAlerts.data.awaitingInitializationCount} awaiting inventory initialization</span>
+                  <span className="font-heading font-bold text-amber-400">{inventoryAlerts.data.awaitingInitializationCount} awaiting inventory initialization</span>
                 )}
               </div>
               <Link href="/admin/inventory" className="text-[12px] font-heading font-bold text-gold hover:text-gold-dark uppercase tracking-[0.06em]">
@@ -192,17 +194,17 @@ export default async function AdminDashboard() {
         </div>
 
         {/* ── Storefront (Order/Expense-based -- empty until launch) ───────── */}
-        <h2 className="font-heading text-[15px] font-bold text-dark mb-3">Storefront{storefront.ok && storefront.data.totalOrders === 0 ? ' (not yet launched — 0 orders on file)' : ''}</h2>
+        <h2 className="font-heading text-[15px] font-bold text-white mb-3">Storefront{storefront.ok && storefront.data.totalOrders === 0 ? ' (not yet launched — 0 orders on file)' : ''}</h2>
         {storefront.ok ? (
           <StorefrontSection stats={storefront.data} />
         ) : (
           <ErrorCard label="Storefront Stats" error={storefront.error} />
         )}
 
-        <div className="bg-white rounded-2xl shadow-sh mb-8 overflow-hidden">
-          <div className="p-6 border-b border-g100">
-            <h2 className="font-heading text-[17px] font-bold text-dark">Storefront Orders</h2>
-            <p className="text-[12px] text-g500 mt-0.5">Online storefront checkouts only — see Sales Activity above for invoices.</p>
+        <div className="bg-white/[0.03] border border-gold/10 rounded-[18px] mb-8 overflow-hidden">
+          <div className="p-6 border-b border-white/10">
+            <h2 className="font-heading text-[17px] font-bold text-white">Storefront Orders</h2>
+            <p className="text-[12px] text-white/50 mt-0.5">Online storefront checkouts only — see Sales Activity above for invoices.</p>
           </div>
           {recentOrdersResult.ok ? (
             <AdminOrdersTable orders={recentOrdersResult.data} />
@@ -225,15 +227,15 @@ function OperationsSummarySection({ data }: { data: AdminOperationsSummary }) {
     <>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
         {[
-          { label: 'Revenue (active + archived)', value: formatCurrency(invoices.revenue), sub: `${invoices.totalInvoices} active invoices`, color: 'text-green-600' },
-          { label: 'Outstanding Balance', value: formatCurrency(invoices.outstandingBalance), sub: `${invoices.paidInvoices} paid, ${invoices.partiallyPaidInvoices} partial`, color: 'text-amber-600' },
-          { label: 'Pending Shipments', value: String(invoices.pendingShipments), sub: `${invoices.deliveredOrders} delivered`, color: invoices.pendingShipments > 0 ? 'text-amber-600' : 'text-g500' },
-          { label: 'Customers', value: String(customers.total), sub: `${customers.claimed} claimed · ${customers.unclaimed} unclaimed`, color: 'text-blue-600' },
+          { label: 'Revenue (active + archived)', value: formatCurrency(invoices.revenue), sub: `${invoices.totalInvoices} active invoices`, color: 'text-green-400' },
+          { label: 'Outstanding Balance', value: formatCurrency(invoices.outstandingBalance), sub: `${invoices.paidInvoices} paid, ${invoices.partiallyPaidInvoices} partial`, color: 'text-amber-400' },
+          { label: 'Pending Shipments', value: String(invoices.pendingShipments), sub: `${invoices.deliveredOrders} delivered`, color: invoices.pendingShipments > 0 ? 'text-amber-400' : 'text-white/50' },
+          { label: 'Customers', value: String(customers.total), sub: `${customers.claimed} claimed · ${customers.unclaimed} unclaimed`, color: 'text-blue-400' },
         ].map((card) => (
-          <div key={card.label} className="bg-white rounded-2xl p-5 shadow-sh">
-            <p className="font-heading text-[11px] font-bold tracking-[0.1em] uppercase text-g500 mb-2">{card.label}</p>
+          <div key={card.label} className="bg-white/[0.03] border border-gold/10 rounded-[18px] p-5">
+            <p className="font-heading text-[11px] font-bold tracking-[0.1em] uppercase text-white/50 mb-2">{card.label}</p>
             <p className={`font-heading text-2xl font-extrabold ${card.color}`}>{card.value}</p>
-            <p className="text-[12px] text-g500 mt-1">{card.sub}</p>
+            <p className="text-[12px] text-white/50 mt-1">{card.sub}</p>
           </div>
         ))}
       </div>
@@ -242,12 +244,12 @@ function OperationsSummarySection({ data }: { data: AdminOperationsSummary }) {
           { label: 'Pending Refunds', value: `${refunds.pendingCount} (${formatCurrency(refunds.pendingAmount)})`, sub: `${formatCurrency(refunds.completedTotal)} completed all-time` },
           { label: 'Active Account Credits', value: String(credits.activeCount), sub: `${formatCurrency(credits.activeTotal)} outstanding` },
           { label: 'Active Backorders', value: String(backorders.activeCount), sub: 'Awaiting resolution' },
-          { label: 'Correspondence (7d)', value: `${correspondence.last7DaysSent} sent`, sub: `${correspondence.last7DaysFailed} failed`, color: correspondence.last7DaysFailed > 0 ? 'text-red-600' : 'text-g500' },
+          { label: 'Correspondence (7d)', value: `${correspondence.last7DaysSent} sent`, sub: `${correspondence.last7DaysFailed} failed`, color: correspondence.last7DaysFailed > 0 ? 'text-red-400' : 'text-white/50' },
         ].map((card) => (
-          <div key={card.label} className="bg-white rounded-2xl p-5 shadow-sh">
-            <p className="font-heading text-[11px] font-bold tracking-[0.1em] uppercase text-g500 mb-2">{card.label}</p>
-            <p className={`font-heading text-xl font-extrabold ${card.color ?? 'text-dark'}`}>{card.value}</p>
-            <p className="text-[12px] text-g500 mt-1">{card.sub}</p>
+          <div key={card.label} className="bg-white/[0.03] border border-gold/10 rounded-[18px] p-5">
+            <p className="font-heading text-[11px] font-bold tracking-[0.1em] uppercase text-white/50 mb-2">{card.label}</p>
+            <p className={`font-heading text-xl font-extrabold ${card.color ?? 'text-white'}`}>{card.value}</p>
+            <p className="text-[12px] text-white/50 mt-1">{card.sub}</p>
           </div>
         ))}
       </div>
@@ -260,30 +262,30 @@ function StorefrontSection({ stats }: { stats: Awaited<ReturnType<typeof getStor
     <>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {[
-          { label: 'YTD Revenue', value: formatCurrency(stats.yearRevenue), sub: `${stats.totalOrders} total orders`, color: 'text-green-600' },
-          { label: 'YTD Gross Profit', value: formatCurrency(stats.yearGrossProfit), sub: `After COGS (${formatCurrency(stats.yearCogs)})`, color: 'text-blue-600' },
-          { label: 'YTD Net Profit', value: formatCurrency(stats.yearNetProfit), sub: 'After all expenses', color: 'text-gold-dark' },
-          { label: 'Pending Shipments', value: String(stats.pendingShipments), sub: 'Awaiting label creation', color: stats.pendingShipments > 0 ? 'text-amber-600' : 'text-g500' },
+          { label: 'YTD Revenue', value: formatCurrency(stats.yearRevenue), sub: `${stats.totalOrders} total orders`, color: 'text-green-400' },
+          { label: 'YTD Gross Profit', value: formatCurrency(stats.yearGrossProfit), sub: `After COGS (${formatCurrency(stats.yearCogs)})`, color: 'text-blue-400' },
+          { label: 'YTD Net Profit', value: formatCurrency(stats.yearNetProfit), sub: 'After all expenses', color: 'text-gold' },
+          { label: 'Pending Shipments', value: String(stats.pendingShipments), sub: 'Awaiting label creation', color: stats.pendingShipments > 0 ? 'text-amber-400' : 'text-white/50' },
         ].map((card) => (
-          <div key={card.label} className="bg-white rounded-2xl p-5 shadow-sh">
-            <p className="font-heading text-[11px] font-bold tracking-[0.1em] uppercase text-g500 mb-2">{card.label}</p>
+          <div key={card.label} className="bg-white/[0.03] border border-gold/10 rounded-[18px] p-5">
+            <p className="font-heading text-[11px] font-bold tracking-[0.1em] uppercase text-white/50 mb-2">{card.label}</p>
             <p className={`font-heading text-2xl font-extrabold ${card.color}`}>{card.value}</p>
-            <p className="text-[12px] text-g500 mt-1">{card.sub}</p>
+            <p className="text-[12px] text-white/50 mt-1">{card.sub}</p>
           </div>
         ))}
       </div>
 
-      <div className="bg-white rounded-2xl p-6 shadow-sh mb-8">
-        <h3 className="font-heading text-[15px] font-bold text-dark mb-4">{stats.year} Expense Breakdown</h3>
+      <div className="bg-white/[0.03] border border-gold/10 rounded-[18px] p-6 mb-8">
+        <h3 className="font-heading text-[15px] font-bold text-white mb-4">{stats.year} Expense Breakdown</h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
             { label: 'Cost of Goods', amount: stats.yearCogs },
             { label: 'Shipping Labels', amount: stats.yearShipping },
             { label: 'Stripe Fees', amount: stats.yearStripeFees },
           ].map((e) => (
-            <div key={e.label} className="bg-g100 rounded-xl p-4">
-              <p className="font-heading text-[11px] font-bold tracking-[0.1em] uppercase text-g500 mb-1">{e.label}</p>
-              <p className="font-heading text-xl font-bold text-dark">{formatCurrency(e.amount)}</p>
+            <div key={e.label} className="bg-white/5 rounded-xl p-4">
+              <p className="font-heading text-[11px] font-bold tracking-[0.1em] uppercase text-white/50 mb-1">{e.label}</p>
+              <p className="font-heading text-xl font-bold text-white">{formatCurrency(e.amount)}</p>
             </div>
           ))}
         </div>
