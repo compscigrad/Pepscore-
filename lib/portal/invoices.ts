@@ -8,10 +8,14 @@
 // fields are the same live Invoice columns the admin portal reads; nothing
 // is recomputed here.
 import { prisma } from '@/lib/prisma'
+import { buildPeriodDateFilter, type InvoiceHistoryPeriod } from '@/lib/invoice/historyPeriod'
 
-export async function listPortalInvoices(customerId: string) {
+// period is opt-in: omit it (as the Support page's invoice picker does) to
+// get every invoice regardless of date. The Invoices page passes an
+// explicit period (defaulting to the current month) for its history view.
+export async function listPortalInvoices(customerId: string, period?: InvoiceHistoryPeriod) {
   return prisma.invoice.findMany({
-    where: { customerId, deletedAt: null },
+    where: { customerId, deletedAt: null, ...buildPeriodDateFilter(period) },
     orderBy: { createdAt: 'desc' },
     select: {
       id: true,

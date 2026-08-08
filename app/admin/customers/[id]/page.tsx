@@ -9,11 +9,14 @@ export const dynamic = 'force-dynamic'
 import { auth } from '@clerk/nextjs/server'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
-import { getCustomerProfileData, findPossibleDuplicateCustomers } from '@/lib/customers'
+import { getCustomerProfileData, getCustomerInvoiceHistory, findPossibleDuplicateCustomers } from '@/lib/customers'
+import { currentPeriod, getInvoiceHistoryYearRange } from '@/lib/invoice/historyPeriod'
 import { formatCurrency } from '@/lib/orders'
 import { formatDate, formatCarrierLabel, formatPaymentMethodLabel, formatPhoneDisplay } from '@/lib/invoice/format'
 import { CorrespondenceHistory } from '@/components/invoices/CorrespondenceHistory'
 import { StatusBadge } from '@/components/invoices/StatusBadge'
+import { InvoiceHistoryFilter } from '@/components/invoices/InvoiceHistoryFilter'
+import { InvoiceArchiveButton } from '@/components/invoices/InvoiceArchiveButton'
 import { card, mutedText, sectionHeading, pillPrimary } from '@/components/invoices/theme'
 import { PortalAccessSection } from '@/components/admin/PortalAccessSection'
 import { SpaEligibilitySection } from '@/components/admin/SpaEligibilitySection'
@@ -27,6 +30,7 @@ import { CustomerLeadCaptureHistory } from '@/components/admin/CustomerLeadCaptu
 
 interface PageProps {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ month?: string; year?: string; period?: string }>
 }
 
 const READINESS_LABEL: Record<PortalReadinessStatus, string> = {
@@ -73,7 +77,7 @@ function zipFromAddress(address: unknown): string | null {
   return typeof zip === 'string' ? zip : null
 }
 
-export default async function CustomerProfilePage({ params }: PageProps) {
+export default async function CustomerProfilePage({ params, searchParams }: PageProps) {
   const { userId } = await auth()
   if (!userId || userId !== process.env.ADMIN_CLERK_USER_ID) {
     redirect('/')
@@ -82,6 +86,16 @@ export default async function CustomerProfilePage({ params }: PageProps) {
   const { id } = await params
   const customer = await getCustomerProfileData(id)
   if (!customer) notFound()
+
+  const sp = await searchParams
+  const isAllInvoices = sp.period === 'all'
+  const selectedPeriod = isAllInvoices
+    ? currentPeriod()
+    : { month: Number(sp.month) || currentPeriod().month, year: Number(sp.year) || currentPeriod().year }
+  const [invoiceHistory, invoiceYearRange] = await Promise.all([
+    getCustomerInvoiceHistory(customer.id, isAllInvoices ? undefined : selectedPeriod),
+    getInvoiceHistoryYearRange(customer.id),
+  ])
 
   const portalReadiness = await getPortalReadinessStatus(customer)
 
@@ -232,9 +246,21 @@ export default async function CustomerProfilePage({ params }: PageProps) {
         <CustomerLeadCaptureHistory leads={customer.leadCaptures} />
 
         <div className={`${card} p-6 space-y-4`}>
-          <h3 className={sectionHeading}>Invoices</h3>
-          {customer.invoices.length === 0 ? (
-            <p className={`text-sm ${mutedText}`}>No invoices yet.</p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 className={sectionHeading}>Invoices</h3>
+            <InvoiceHistoryFilter
+              basePath={`/admin/customers/${customer.id}`}
+              month={selectedPeriod.month}
+              year={selectedPeriod.year}
+              isAll={isAllInvoices}
+              minYear={invoiceYearRange?.minYear ?? currentPeriod().year}
+              maxYear={invoiceYearRange?.maxYear ?? currentPeriod().year}
+            />
+          </div>
+          {invoiceHistory.length === 0 ? (
+            <p className={`text-sm ${mutedText}`}>
+              {isAllInvoices ? 'No invoices yet.' : 'No invoices in this month. Try "All" to see full history.'}
+            </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -249,7 +275,7 @@ export default async function CustomerProfilePage({ params }: PageProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {customer.invoices.map((inv) => (
+                  {invoiceHistory.map((inv) => (
                     <tr key={inv.id} className="border-b border-white/5">
                       <td className="py-3 pr-4 font-medium text-white whitespace-nowrap">{inv.invoiceNumber}</td>
                       <td className="py-3 pr-4 text-white/50 whitespace-nowrap">{formatDate(inv.createdAt)}</td>
@@ -258,15 +284,19 @@ export default async function CustomerProfilePage({ params }: PageProps) {
                         <div className="flex flex-wrap gap-1.5">
                           <StatusBadge status={inv.status} />
                           {inv.status !== 'DRAFT' ? <StatusBadge status={inv.paymentStatus} variant="payment" /> : null}
+                          {inv.archivedAt ? <StatusBadge status="ARCHIVED" /> : null}
                         </div>
                       </td>
                       <td className="py-3 text-white/50 whitespace-nowrap">
                         {inv.carrier ? `${formatCarrierLabel(inv.carrier)} — ${inv.trackingNumber ?? 'pending'}` : '—'}
                       </td>
                       <td className="py-3 text-right whitespace-nowrap">
-                        <Link href={`/admin/invoices/${inv.id}`} className="text-gold-light font-bold text-sm hover:underline">
-                          View →
-                        </Link>
+                        <div className="flex items-center justify-end gap-3">
+                          <InvoiceArchiveButton invoiceId={inv.id} archived={Boolean(inv.archivedAt)} />
+                          <Link href={`/admin/invoices/${inv.id}`} className="text-gold-light font-bold text-sm hover:underline">
+                            View →
+                          </Link>
+                        </div>
                       </td>
                     </tr>
                   ))}

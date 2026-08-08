@@ -9,6 +9,7 @@ import { computeCustomerStatus } from '@/lib/customers/status'
 import { generateSequentialInvoiceNumber } from '@/lib/invoice/numbering'
 import { hasActivePaymentArrangement } from '@/lib/paymentArrangements'
 import { digitsOnly, phoneNumbersMatch } from '@/lib/notifications/phoneMatch'
+import { buildPeriodDateFilter, type InvoiceHistoryPeriod } from '@/lib/invoice/historyPeriod'
 
 export interface CustomerInput {
   firstName: string
@@ -408,6 +409,29 @@ export type CustomerProfile = Prisma.CustomerGetPayload<typeof customerProfileIn
 // which stay intentionally cheap for table/lookup use.
 export async function getCustomerProfileData(customerId: string): Promise<CustomerProfile | null> {
   return prisma.customer.findUnique({ where: { id: customerId }, ...customerProfileInclude })
+}
+
+// Separate, lightweight query for the profile page's Invoices table only --
+// deliberately NOT used for the "Total Outstanding"/"Invoices" count stats
+// above it, which stay computed from getCustomerProfileData's unbounded
+// customer.invoices. Scoping this one to a period must never make those
+// lifetime totals look wrong.
+export async function getCustomerInvoiceHistory(customerId: string, period?: InvoiceHistoryPeriod) {
+  return prisma.invoice.findMany({
+    where: { customerId, deletedAt: null, ...buildPeriodDateFilter(period) },
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      invoiceNumber: true,
+      status: true,
+      paymentStatus: true,
+      balanceDue: true,
+      createdAt: true,
+      carrier: true,
+      trackingNumber: true,
+      archivedAt: true,
+    },
+  })
 }
 
 export interface FulfillmentQueueParams {
