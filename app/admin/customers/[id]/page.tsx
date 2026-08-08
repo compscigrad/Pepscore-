@@ -156,7 +156,14 @@ export default async function CustomerProfilePage({ params }: PageProps) {
               </div>
               <div>
                 <dt className={`${mutedText} text-[11px] uppercase tracking-wide`}>Phone</dt>
-                <dd className="text-white">{customer.phone ? formatPhoneDisplay(customer.phone) : '—'}</dd>
+                <dd className="text-white flex items-center gap-2">
+                  {customer.phone ? formatPhoneDisplay(customer.phone) : '—'}
+                  {customer.smsOptedOut && (
+                    <span className="text-[10px] font-heading font-bold uppercase tracking-[0.06em] px-2 py-0.5 rounded-full bg-red-400/10 text-red-300 border border-red-400/20">
+                      SMS Opted Out
+                    </span>
+                  )}
+                </dd>
               </div>
               <div>
                 <dt className={`${mutedText} text-[11px] uppercase tracking-wide`}>Preferred Contact</dt>

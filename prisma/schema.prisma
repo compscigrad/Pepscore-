@@ -1490,6 +1490,16 @@ model Customer {
   // action in this schema is already audited.
   spaEligible Boolean @default(false)
 
+  // [Roadmap] Twilio A2P 10DLC readiness -- set only via an inbound STOP
+  // (or START to reverse) reply on app/api/webhooks/twilio/route.ts, never
+  // directly by an admin. Checked by lib/notifications/log.ts's
+  // sendCategorizedSms() before every customer-facing send (never affects
+  // admin-recipient alerts that merely reference this customer). The "when"
+  // lives on the CustomerActivityLog SMS_OPTED_OUT/SMS_OPTED_IN entry this
+  // always writes alongside it, matching portalAccessDisabled's precedent
+  // of a plain boolean with no redundant companion timestamp column.
+  smsOptedOut Boolean @default(false)
+
   billingAddress  Json?
   shippingAddress Json?
 
