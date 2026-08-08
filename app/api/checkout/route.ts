@@ -11,6 +11,7 @@ import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
 import { isStorefrontCheckoutEnabled, STOREFRONT_CHECKOUT_DISABLED_MESSAGE } from '@/lib/storefront/checkoutGate'
 import { getStorefrontPrice } from '@/lib/storefront/pricing'
 import { getStorefrontAvailability, isPurchasable } from '@/lib/storefront/availability'
+import { reserveForOrderItemTx, releaseAllOrderReservationsTx } from '@/lib/inventory/orderReservations'
 import type { CheckoutLineItem, ShippingAddress } from '@/types'
 
 export async function POST(req: NextRequest) {
@@ -96,42 +97,69 @@ export async function POST(req: NextRequest) {
     const orderNumber = generateOrderNumber()
     const invoiceNumber = generateInvoiceNumber()
 
-    const order = await prisma.order.create({
-      data: {
-        orderNumber,
-        userId: userId ?? undefined,
-        customerEmail,
-        customerName,
-        shippingAddress: JSON.parse(JSON.stringify(shippingAddress)),
-        status: 'PENDING',
-        subtotal,
-        shippingCost,
-        total: subtotal + shippingCost,
-        items: {
-          create: lineItems.map(i => ({
-            productId: i.productId,
-            name: i.name,
-            size: i.size,
-            quantity: i.quantity,
-            unitPrice: i.unitPrice,
-            costOfGoods: (productMap.get(i.productId)?.costOfGoods ?? 0) * i.quantity,
-            total: i.total,
-          })),
-        },
-        invoice: {
-          create: {
-            invoiceNumber,
-            status: 'DRAFT',
-            customerName,
-            customerEmail,
-            shippingAddress: JSON.parse(JSON.stringify(shippingAddress)),
-            subtotal,
-            total: subtotal + shippingCost,
-            balanceDue: subtotal + shippingCost,
-            shippingCost,
+    // Order creation and inventory reservation happen in one transaction:
+    // a shortfall on any non-backordered item rolls the whole order back
+    // rather than leaving a PENDING Order with nothing actually held. A
+    // backordered item (product.backorderEnabled) is EXPECTED to reserve
+    // nothing (physicalStockOnHand is already 0 by definition) -- that's
+    // not a shortfall to block on, it's the whole point of backorder
+    // support (lib/storefront/availability.ts already gated non-purchasable
+    // items out above; this only re-checks the ones that passed that gate).
+    const order = await prisma.$transaction(async (tx) => {
+      const created = await tx.order.create({
+        data: {
+          orderNumber,
+          userId: userId ?? undefined,
+          customerEmail,
+          customerName,
+          shippingAddress: JSON.parse(JSON.stringify(shippingAddress)),
+          status: 'PENDING',
+          subtotal,
+          shippingCost,
+          total: subtotal + shippingCost,
+          items: {
+            create: lineItems.map(i => ({
+              productId: i.productId,
+              name: i.name,
+              size: i.size,
+              quantity: i.quantity,
+              unitPrice: i.unitPrice,
+              costOfGoods: (productMap.get(i.productId)?.costOfGoods ?? 0) * i.quantity,
+              total: i.total,
+            })),
+          },
+          invoice: {
+            create: {
+              invoiceNumber,
+              status: 'DRAFT',
+              customerName,
+              customerEmail,
+              shippingAddress: JSON.parse(JSON.stringify(shippingAddress)),
+              subtotal,
+              total: subtotal + shippingCost,
+              balanceDue: subtotal + shippingCost,
+              shippingCost,
+            },
           },
         },
-      },
+        include: { items: true },
+      })
+
+      for (const orderItem of created.items) {
+        const product = productMap.get(orderItem.productId)
+        const { shortfall } = await reserveForOrderItemTx(tx, {
+          productId: orderItem.productId,
+          orderId: created.id,
+          orderItemId: orderItem.id,
+          quantity: orderItem.quantity,
+          actor: 'storefront-checkout',
+        })
+        if (shortfall > 0 && !product?.backorderEnabled) {
+          throw new Error(`${orderItem.name} (${orderItem.size}) no longer has enough stock available — please update your cart.`)
+        }
+      }
+
+      return created
     })
 
     // Store RUO acknowledgment
@@ -159,43 +187,52 @@ export async function POST(req: NextRequest) {
       quantity: i.quantity,
     }))
 
-    // Create Stripe Checkout Session
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      mode: 'payment',
-      customer_email: customerEmail,
-      line_items: stripeLineItems,
-      // Add shipping as a line item if applicable
-      ...(shippingCost > 0
-        ? {
-            shipping_options: [
-              {
-                shipping_rate_data: {
-                  type: 'fixed_amount',
-                  fixed_amount: { amount: Math.round(shippingCost * 100), currency: 'usd' },
-                  display_name: 'Standard Shipping',
+    // Create Stripe Checkout Session -- own try/catch so a Stripe-side
+    // failure here (network error, API rejection) releases the inventory
+    // this order's transaction above already committed, rather than
+    // leaving stock held against an order that will never actually pay.
+    try {
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ['card'],
+        mode: 'payment',
+        customer_email: customerEmail,
+        line_items: stripeLineItems,
+        // Add shipping as a line item if applicable
+        ...(shippingCost > 0
+          ? {
+              shipping_options: [
+                {
+                  shipping_rate_data: {
+                    type: 'fixed_amount',
+                    fixed_amount: { amount: Math.round(shippingCost * 100), currency: 'usd' },
+                    display_name: 'Standard Shipping',
+                  },
                 },
-              },
-            ],
-          }
-        : {}),
-      metadata: {
-        orderId: order.id,
-        orderNumber,
-        userId: userId ?? '',
-        customerEmail,
-      },
-      success_url: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${appUrl}/checkout`,
-    })
+              ],
+            }
+          : {}),
+        metadata: {
+          orderId: order.id,
+          orderNumber,
+          userId: userId ?? '',
+          customerEmail,
+        },
+        success_url: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${appUrl}/checkout`,
+      })
 
-    // Save the session ID to the order so the webhook can find it
-    await prisma.order.update({
-      where: { id: order.id },
-      data: { stripeSessionId: session.id },
-    })
+      // Save the session ID to the order so the webhook can find it
+      await prisma.order.update({
+        where: { id: order.id },
+        data: { stripeSessionId: session.id },
+      })
 
-    return NextResponse.json({ url: session.url })
+      return NextResponse.json({ url: session.url })
+    } catch (stripeErr) {
+      await prisma.$transaction((tx) => releaseAllOrderReservationsTx(tx, order.id, 'storefront-checkout', 'Stripe session creation failed'))
+      await prisma.order.update({ where: { id: order.id }, data: { status: 'CANCELLED' } })
+      throw stripeErr
+    }
   } catch (err: unknown) {
     console.error('[checkout]', err)
     const message = err instanceof Error ? err.message : 'Internal server error'
