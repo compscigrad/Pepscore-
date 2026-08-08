@@ -15,6 +15,14 @@ interface OrderItem {
   total: number
 }
 
+interface OrderPayment {
+  amount: number
+  stripeFee: number
+  status: string
+  provider: string
+  methodType: string
+}
+
 interface Order {
   id: string
   orderNumber: string
@@ -30,6 +38,30 @@ interface Order {
   items: OrderItem[]
   invoice: { invoiceNumber: string } | null
   shippingLabel: { trackingNumber: string; carrier: string; labelUrl: string } | null
+  payments: OrderPayment[]
+}
+
+const PAYMENT_STATUS_COLORS: Record<string, string> = {
+  PENDING: 'bg-white/5 text-white/50',
+  PROCESSING: 'bg-yellow-400/10 text-yellow-300',
+  AUTHORIZED: 'bg-blue-400/10 text-blue-300',
+  SUCCEEDED: 'bg-green-400/10 text-green-300',
+  PARTIALLY_REFUNDED: 'bg-orange-400/10 text-orange-300',
+  REFUNDED: 'bg-orange-400/10 text-orange-300',
+  FAILED: 'bg-red-400/10 text-red-300',
+  RETURNED: 'bg-red-400/10 text-red-300',
+  CANCELLED: 'bg-white/5 text-white/40',
+  DISPUTED: 'bg-red-400/10 text-red-300',
+}
+
+const METHOD_LABEL: Record<string, string> = {
+  CARD: 'Card',
+  ACH: 'Pay by Bank',
+  APPLE_PAY: 'Apple Pay',
+  GOOGLE_PAY: 'Google Pay',
+  CASH_APP: 'Cash App',
+  PAYPAL: 'PayPal',
+  VENMO: 'Venmo',
 }
 
 interface Props {
@@ -92,7 +124,7 @@ export function AdminOrdersTable({ orders: initialOrders }: Props) {
       <table className="w-full text-[13px]">
         <thead>
           <tr className="border-b border-white/10">
-            {['Order #','Date','Customer','Status','Fulfillment','Total','Invoice','Tracking','Actions'].map(h => (
+            {['Order #','Date','Customer','Status','Payment','Fulfillment','Total','Invoice','Tracking','Actions'].map(h => (
               <th key={h} className="text-left font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 px-4 py-3 whitespace-nowrap">{h}</th>
             ))}
           </tr>
@@ -123,6 +155,23 @@ export function AdminOrdersTable({ orders: initialOrders }: Props) {
                     <span className={`font-heading text-[10px] font-bold tracking-[0.06em] uppercase px-2.5 py-1 rounded-full ${STATUS_COLORS[order.status] ?? 'bg-white/5 text-white/50'}`}>
                       {order.status}
                     </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    {order.payments.length > 0 ? (
+                      (() => {
+                        const latest = order.payments[order.payments.length - 1]
+                        return (
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[11px] text-white/60">{METHOD_LABEL[latest.methodType] ?? latest.methodType}</span>
+                            <span className={`font-heading text-[10px] font-bold tracking-[0.06em] uppercase px-2 py-0.5 rounded-full w-fit ${PAYMENT_STATUS_COLORS[latest.status] ?? 'bg-white/5 text-white/50'}`}>
+                              {latest.status}
+                            </span>
+                          </div>
+                        )
+                      })()
+                    ) : (
+                      <span className="text-white/30 text-[11px]">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <span className={`font-heading text-[10px] font-bold tracking-[0.06em] uppercase px-2.5 py-1 rounded-full ${order.fulfillmentStatus === 'FULFILLED' ? 'bg-green-400/10 text-green-300' : 'bg-amber-400/10 text-amber-300'}`}>
@@ -163,7 +212,7 @@ export function AdminOrdersTable({ orders: initialOrders }: Props) {
                 {/* Expanded row — profit breakdown + rate selection */}
                 {isExpanded && (
                   <tr key={`${order.id}-expanded`} className="bg-white/[0.02]">
-                    <td colSpan={9} className="px-6 py-4">
+                    <td colSpan={10} className="px-6 py-4">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Profit metrics */}
                         <div>

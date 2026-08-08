@@ -10,6 +10,7 @@ const CATEGORY_LABELS: Record<MessageCategory, string> = {
   INVOICE_ISSUED: 'Invoice Issued',
   INVOICE_REVISED: 'Invoice Updated',
   ORDER_CONFIRMATION: 'Order Confirmation',
+  ACH_PAYMENT_PROCESSING: 'Payment Processing',
   INTAKE_REQUEST: 'Information Requested',
   INTAKE_SUBMISSION_CONFIRMATION: 'Information Received',
   BACKORDER_NOTICE: 'Backorder Notice',

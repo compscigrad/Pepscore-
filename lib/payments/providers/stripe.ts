@@ -27,14 +27,42 @@ export function normalizeStripeEvent(rawEvent: unknown): NormalizedPaymentEvent 
       const session = event.data.object as Stripe.Checkout.Session
       const paymentIntentId = session.payment_intent as string | null
       if (!paymentIntentId) return null
+      // 'paid' -- a synchronous method (card) settled immediately. 'unpaid'
+      // -- an async method (ACH) is still processing; Stripe's own
+      // recommended pattern is to wait for checkout.session.async_payment_
+      // succeeded/failed rather than treat session completion itself as
+      // payment received. 'no_payment_required' doesn't apply to this
+      // codebase's paid-cart checkout, so it's treated as PROCESSING too
+      // (never silently as SUCCEEDED) if it's ever seen.
+      return {
+        provider: 'STRIPE',
+        providerTransactionId: paymentIntentId,
+        status: session.payment_status === 'paid' ? 'SUCCEEDED' : 'PROCESSING',
+        methodType: session.payment_status === 'paid' ? 'CARD' : 'ACH',
+        amount: (session.amount_total ?? 0) / 100,
+        occurredAt,
+      }
+    }
+
+    case 'checkout.session.async_payment_succeeded': {
+      const session = event.data.object as Stripe.Checkout.Session
+      const paymentIntentId = session.payment_intent as string | null
+      if (!paymentIntentId) return null
       return {
         provider: 'STRIPE',
         providerTransactionId: paymentIntentId,
         status: 'SUCCEEDED',
-        methodType: 'CARD',
+        methodType: 'ACH',
         amount: (session.amount_total ?? 0) / 100,
         occurredAt,
       }
+    }
+
+    case 'checkout.session.async_payment_failed': {
+      const session = event.data.object as Stripe.Checkout.Session
+      const paymentIntentId = session.payment_intent as string | null
+      if (!paymentIntentId) return null
+      return { provider: 'STRIPE', providerTransactionId: paymentIntentId, status: 'FAILED', methodType: 'ACH', occurredAt }
     }
 
     case 'payment_intent.payment_failed': {

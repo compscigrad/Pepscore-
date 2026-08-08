@@ -193,7 +193,16 @@ export async function POST(req: NextRequest) {
     // leaving stock held against an order that will never actually pay.
     try {
       const session = await stripe.checkout.sessions.create({
-        payment_method_types: ['card'],
+        // 'us_bank_account' is Stripe's ACH Direct Debit payment method --
+        // Stripe's own hosted Checkout page collects and verifies the bank
+        // account (Financial Connections or manual micro-deposits) and
+        // handles ACH mandate collection itself; Pepscore Lab never sees a
+        // raw account/routing number (see AchAuthorization's schema
+        // comment). An ACH payment doesn't settle synchronously the way a
+        // card does -- app/api/webhooks/stripe/route.ts branches on
+        // session.payment_status to hold the order at PROCESSING instead
+        // of marking it paid immediately.
+        payment_method_types: ['card', 'us_bank_account'],
         mode: 'payment',
         customer_email: customerEmail,
         line_items: stripeLineItems,

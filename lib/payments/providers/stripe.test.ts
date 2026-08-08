@@ -6,9 +6,9 @@ function makeEvent(type: string, data: Record<string, unknown>) {
 }
 
 describe('normalizeStripeEvent', () => {
-  it('normalizes checkout.session.completed into SUCCEEDED', () => {
+  it('normalizes a paid checkout.session.completed (card) into SUCCEEDED/CARD', () => {
     const result = normalizeStripeEvent(
-      makeEvent('checkout.session.completed', { payment_intent: 'pi_123', amount_total: 4999 })
+      makeEvent('checkout.session.completed', { payment_intent: 'pi_123', amount_total: 4999, payment_status: 'paid' })
     )
     expect(result).toEqual({
       provider: 'STRIPE',
@@ -20,8 +20,32 @@ describe('normalizeStripeEvent', () => {
     })
   })
 
+  it('normalizes an unpaid checkout.session.completed (ACH still processing) into PROCESSING/ACH', () => {
+    const result = normalizeStripeEvent(
+      makeEvent('checkout.session.completed', { payment_intent: 'pi_ach', amount_total: 5000, payment_status: 'unpaid' })
+    )
+    expect(result).toMatchObject({ status: 'PROCESSING', methodType: 'ACH' })
+  })
+
   it('returns null for checkout.session.completed with no payment_intent', () => {
-    expect(normalizeStripeEvent(makeEvent('checkout.session.completed', { payment_intent: null }))).toBeNull()
+    expect(normalizeStripeEvent(makeEvent('checkout.session.completed', { payment_intent: null, payment_status: 'paid' }))).toBeNull()
+  })
+
+  it('normalizes checkout.session.async_payment_succeeded into SUCCEEDED/ACH', () => {
+    const result = normalizeStripeEvent(
+      makeEvent('checkout.session.async_payment_succeeded', { payment_intent: 'pi_ach', amount_total: 5000 })
+    )
+    expect(result).toMatchObject({ status: 'SUCCEEDED', methodType: 'ACH', amount: 50 })
+  })
+
+  it('normalizes checkout.session.async_payment_failed into FAILED/ACH', () => {
+    const result = normalizeStripeEvent(makeEvent('checkout.session.async_payment_failed', { payment_intent: 'pi_ach' }))
+    expect(result).toMatchObject({ status: 'FAILED', methodType: 'ACH' })
+  })
+
+  it('returns null for the two async events with no payment_intent', () => {
+    expect(normalizeStripeEvent(makeEvent('checkout.session.async_payment_succeeded', { payment_intent: null }))).toBeNull()
+    expect(normalizeStripeEvent(makeEvent('checkout.session.async_payment_failed', { payment_intent: null }))).toBeNull()
   })
 
   it('normalizes payment_intent.payment_failed into FAILED', () => {

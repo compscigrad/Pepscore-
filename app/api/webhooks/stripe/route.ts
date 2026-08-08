@@ -3,17 +3,42 @@
 // logs expenses for accounting. Must be excluded from Clerk auth middleware.
 
 import { NextRequest, NextResponse } from 'next/server'
-import { stripe, estimateStripeFee } from '@/lib/stripe'
+import { stripe } from '@/lib/stripe'
 import { prisma } from '@/lib/prisma'
-import { sendCategorizedEmail } from '@/lib/notifications/log'
-import { buildOrderConfirmationHtml } from '@/emails/OrderConfirmation'
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
 import { normalizeStripeEvent } from '@/lib/payments/providers/stripe'
 import { reconcilePaymentEvent } from '@/lib/payments/reconcile'
-import { fulfillAllOrderReservationsTx, releaseAllOrderReservationsTx } from '@/lib/inventory/orderReservations'
+import { markOrderPaid, markOrderPaymentProcessing, markOrderPaymentFailedOrReturned } from '@/lib/payments/orderFulfillment'
+import type Stripe from 'stripe'
 
 // Required: raw body for Stripe signature verification
 export const runtime = 'nodejs'
+
+// Best-effort lookup of the safe-to-display bank details + mandate
+// reference for an ACH PaymentIntent -- none of this is on the Checkout
+// Session event payload itself, only reachable via the expanded
+// PaymentIntent/PaymentMethod. Never throws: a failure here means the
+// payment still gets recorded as PROCESSING, just without bank/mandate
+// detail filled in yet (a later event or manual lookup can backfill it;
+// it never blocks the payment lifecycle itself).
+async function fetchAchDetails(paymentIntentId: string) {
+  try {
+    const pi = await stripe.paymentIntents.retrieve(paymentIntentId, { expand: ['payment_method'] })
+    const pm = pi.payment_method
+    if (!pm || typeof pm === 'string' || !pm.us_bank_account) return {}
+    const mandateOptions = pi.payment_method_options?.us_bank_account as { mandate_options?: { id?: string } } | undefined
+    return {
+      bankName: pm.us_bank_account.bank_name ?? null,
+      bankAccountLast4: pm.us_bank_account.last4 ?? null,
+      bankAccountType: pm.us_bank_account.account_type ?? null,
+      stripePaymentMethodId: pm.id,
+      mandateId: mandateOptions?.mandate_options?.id ?? null,
+    }
+  } catch (err) {
+    console.error('[webhook] Failed to retrieve ACH PaymentIntent details:', err)
+    return {}
+  }
+}
 
 export async function POST(req: NextRequest) {
   // Generous limit — Stripe's own webhook-sending infrastructure is shared
@@ -32,7 +57,7 @@ export async function POST(req: NextRequest) {
   }
 
   const rawBody = await req.text()
-  let event
+  let event: Stripe.Event
 
   try {
     event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret)
@@ -42,6 +67,11 @@ export async function POST(req: NextRequest) {
   }
 
   // ── checkout.session.completed ──────────────────────────────────────────────
+  // Fires once the customer finishes Stripe's hosted Checkout page --
+  // for a synchronous method (card) this means paid; for an async method
+  // (ACH) it only means the debit was SUBMITTED, not that it cleared.
+  // session.payment_status is the authoritative signal for which case
+  // this is (Stripe's own recommended pattern for async payment methods).
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object
     const orderId = session.metadata?.orderId
@@ -50,122 +80,72 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ received: true })
     }
 
-    // Idempotency guard: Stripe redelivers an event on any non-2xx response
-    // and can occasionally send true duplicates — a retry of this event must
-    // be a safe no-op. Without this check, a redelivery hits the unique
-    // stripePaymentIntentId constraint on Payment below, throws unhandled,
-    // and Stripe retries again — an infinite loop until Stripe gives up.
+    const paymentIntentId = session.payment_intent as string
+    const amountTotal = (session.amount_total ?? 0) / 100
+    const existingPayment = await prisma.payment.findUnique({ where: { stripePaymentIntentId: paymentIntentId } })
+
+    if (session.payment_status === 'paid') {
+      // Idempotency guard: Stripe redelivers an event on any non-2xx
+      // response and can occasionally send true duplicates.
+      if (existingPayment?.status === 'SUCCEEDED') {
+        return NextResponse.json({ received: true, alreadyProcessed: true })
+      }
+      await markOrderPaid({ orderId, paymentIntentId, amountTotal, methodType: 'CARD' })
+    } else {
+      // Async method (ACH) still processing -- never mark paid here.
+      if (existingPayment) {
+        return NextResponse.json({ received: true, alreadyProcessed: true })
+      }
+      const achDetails = await fetchAchDetails(paymentIntentId)
+      await markOrderPaymentProcessing({ orderId, paymentIntentId, amountTotal, ...achDetails })
+    }
+  }
+
+  // ── checkout.session.async_payment_succeeded ────────────────────────────
+  // The authoritative "ACH debit actually cleared" signal -- can arrive
+  // days after checkout.session.completed. Routes through the exact same
+  // markOrderPaid() the synchronous card path uses.
+  if (event.type === 'checkout.session.async_payment_succeeded') {
+    const session = event.data.object
+    const orderId = session.metadata?.orderId
+    if (!orderId) {
+      console.warn('[webhook] checkout.session.async_payment_succeeded missing orderId in metadata')
+      return NextResponse.json({ received: true })
+    }
     const paymentIntentId = session.payment_intent as string
     const existingPayment = await prisma.payment.findUnique({ where: { stripePaymentIntentId: paymentIntentId } })
+    if (existingPayment?.status === 'SUCCEEDED') {
+      return NextResponse.json({ received: true, alreadyProcessed: true })
+    }
+    const amountTotal = (session.amount_total ?? 0) / 100
+    await markOrderPaid({ orderId, paymentIntentId, amountTotal, methodType: 'ACH' })
+  }
+
+  // ── checkout.session.async_payment_failed ───────────────────────────────
+  // The ACH debit was rejected (insufficient funds, invalid account,
+  // revoked authorization, etc.) -- releases the reservation this order's
+  // checkout was holding.
+  if (event.type === 'checkout.session.async_payment_failed') {
+    const session = event.data.object
+    const orderId = session.metadata?.orderId
+    if (!orderId) {
+      console.warn('[webhook] checkout.session.async_payment_failed missing orderId in metadata')
+      return NextResponse.json({ received: true })
+    }
+    const existingPayment = await prisma.payment.findFirst({ where: { orderId, status: { in: ['FAILED', 'RETURNED'] } } })
     if (existingPayment) {
       return NextResponse.json({ received: true, alreadyProcessed: true })
     }
-
-    const amountTotal = (session.amount_total ?? 0) / 100
-    const stripeFee = estimateStripeFee(amountTotal)
-    const netAmount = amountTotal - stripeFee
-
-    // Update order to PAID and save payment intent ID
-    const order = await prisma.order.update({
-      where: { id: orderId },
-      data: {
-        status: 'PAID',
-        stripePaymentIntentId: session.payment_intent as string,
-        stripeFee,
-      },
-      include: { items: true, invoice: true },
-    })
-
-    // Create Payment record -- providerTransactionId mirrors
-    // stripePaymentIntentId (same value) so reconcilePaymentEvent's later
-    // refund/dispute/cancellation lookups can match on either field, and a
-    // future non-Stripe provider has a real generic column to write to
-    // instead of one named for this specific processor.
-    await prisma.payment.create({
-      data: {
-        orderId: order.id,
-        stripePaymentIntentId: session.payment_intent as string,
-        amount: amountTotal,
-        status: 'SUCCEEDED',
-        stripeFee,
-        netAmount,
-        provider: 'STRIPE',
-        methodType: 'CARD',
-        providerTransactionId: session.payment_intent as string,
-        completedAt: new Date(),
-      },
-    })
-
-    // Deduct the physical stock this order's checkout already reserved
-    // (app/api/checkout/route.ts) -- a card payment settles synchronously,
-    // so fulfillment happens right here rather than waiting on a second
-    // webhook event the way ACH's async_payment_succeeded does below.
-    await prisma.$transaction((tx) => fulfillAllOrderReservationsTx(tx, order.id, 'system-stripe-webhook'))
-
-    // Mark invoice as ISSUED
-    if (order.invoice) {
-      await prisma.invoice.update({
-        where: { id: order.invoice.id },
-        data: { status: 'ISSUED', paidAt: new Date() },
-      })
-    }
-
-    // Log expenses for accounting
-    await prisma.expense.createMany({
-      data: [
-        {
-          type: 'STRIPE_FEE',
-          amount: stripeFee,
-          description: `Stripe fee for order ${order.orderNumber}`,
-          orderId: order.id,
-        },
-        {
-          type: 'COGS',
-          amount: order.items.reduce((s, i) => s + i.costOfGoods, 0),
-          description: `COGS for order ${order.orderNumber}`,
-          orderId: order.id,
-        },
-      ],
-    })
-
-    // Send order confirmation email
-    try {
-      const html = buildOrderConfirmationHtml({
-        orderNumber: order.orderNumber,
-        customerName: order.customerName,
-        items: order.items.map(i => ({
-          name: i.name,
-          size: i.size,
-          quantity: i.quantity,
-          unitPrice: i.unitPrice,
-        })),
-        subtotal: order.subtotal,
-        shippingCost: order.shippingCost,
-        total: order.total,
-        invoiceNumber: order.invoice?.invoiceNumber ?? '',
-      })
-
-      await sendCategorizedEmail(
-        { category: 'ORDER_CONFIRMATION', to: order.customerEmail, subject: `Order Confirmed — ${order.orderNumber} | Pepscore`, html },
-        { invoiceId: order.invoice?.id ?? null, actorType: 'SYSTEM' }
-      )
-    } catch (emailErr) {
-      // Log but don't fail — order is already recorded
-      console.error('[webhook] Failed to send confirmation email:', emailErr)
-    }
+    await markOrderPaymentFailedOrReturned({ orderId, status: 'FAILED', reason: 'ACH payment failed' })
   }
 
   // ── payment_intent.payment_failed ──────────────────────────────────────────
   if (event.type === 'payment_intent.payment_failed') {
     const pi = event.data.object
-    // Find order by payment intent and mark failed
     try {
       const failedOrder = await prisma.order.findFirst({ where: { stripePaymentIntentId: pi.id } })
       if (failedOrder) {
-        await prisma.order.update({ where: { id: failedOrder.id }, data: { status: 'CANCELLED' } })
-        // Release the stock this order's checkout reserved -- a failed
-        // payment must never keep holding units another customer could buy.
-        await prisma.$transaction((tx) => releaseAllOrderReservationsTx(tx, failedOrder.id, 'system-stripe-webhook', 'Payment failed'))
+        await markOrderPaymentFailedOrReturned({ orderId: failedOrder.id, status: 'FAILED', reason: 'Payment failed' })
       }
     } catch {
       // Order may not exist yet — ignore
