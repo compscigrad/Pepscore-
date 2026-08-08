@@ -8,6 +8,8 @@ import { prisma } from '@/lib/prisma'
 import { sendCategorizedEmail } from '@/lib/notifications/log'
 import { buildOrderConfirmationHtml } from '@/emails/OrderConfirmation'
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
+import { normalizeStripeEvent } from '@/lib/payments/providers/stripe'
+import { reconcilePaymentEvent } from '@/lib/payments/reconcile'
 
 // Required: raw body for Stripe signature verification
 export const runtime = 'nodejs'
@@ -73,7 +75,11 @@ export async function POST(req: NextRequest) {
       include: { items: true, invoice: true },
     })
 
-    // Create Payment record
+    // Create Payment record -- providerTransactionId mirrors
+    // stripePaymentIntentId (same value) so reconcilePaymentEvent's later
+    // refund/dispute/cancellation lookups can match on either field, and a
+    // future non-Stripe provider has a real generic column to write to
+    // instead of one named for this specific processor.
     await prisma.payment.create({
       data: {
         orderId: order.id,
@@ -82,6 +88,10 @@ export async function POST(req: NextRequest) {
         status: 'SUCCEEDED',
         stripeFee,
         netAmount,
+        provider: 'STRIPE',
+        methodType: 'CARD',
+        providerTransactionId: session.payment_intent as string,
+        completedAt: new Date(),
       },
     })
 
@@ -149,6 +159,25 @@ export async function POST(req: NextRequest) {
       })
     } catch {
       // Order may not exist yet — ignore
+    }
+  }
+
+  // ── refund / dispute / cancellation reconciliation ──────────────────────
+  // These three event types previously had no handler at all -- a refund
+  // or a dispute issued from the Stripe dashboard left the Payment row
+  // permanently showing SUCCEEDED with no record anything had changed.
+  // Uses the same normalization the provider abstraction is built on
+  // (lib/payments/providers/stripe.ts) rather than parsing the event
+  // inline, so a future non-Stripe provider's webhook can reconcile
+  // through the identical reconcilePaymentEvent() path.
+  if (
+    event.type === 'charge.refunded' ||
+    event.type === 'charge.dispute.created' ||
+    event.type === 'payment_intent.canceled'
+  ) {
+    const normalized = normalizeStripeEvent(event)
+    if (normalized) {
+      await reconcilePaymentEvent(normalized)
     }
   }
 

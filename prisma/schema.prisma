@@ -1201,6 +1201,18 @@ enum InstallmentStatus {
 }
 
 // ─── Payments ────────────────────────────────────────────────────────────────
+// [Roadmap] Payment-provider abstraction, Phase 1 (see lib/payments/types.ts
+// and docs/Decisions.md's Payment Provider Abstraction entry). Storefront-
+// side only -- entirely separate from InvoicePayment above, which is the
+// admin invoice module's own manually-entered payment record with no live
+// processor integration. stripePaymentIntentId/stripeFee stay exactly as
+// they were (still what app/api/webhooks/stripe/route.ts's idempotency
+// check and lib/export.ts key off of, unchanged) -- every field below is
+// new, nullable-or-defaulted, and additive so no existing row or call site
+// needed to change. providerTransactionId is the generic field a future
+// non-Stripe provider (ACH via GoCardless, PayPal) will use instead of a
+// provider-specific column; for today's only real provider it's populated
+// with the same value as stripePaymentIntentId.
 
 model Payment {
   id                    String        @id @default(cuid())
@@ -1214,14 +1226,65 @@ model Payment {
   netAmount             Float         @default(0)
   createdAt             DateTime      @default(now())
 
+  provider              PaymentProvider             @default(STRIPE)
+  methodType            StorefrontPaymentMethodType @default(CARD)
+  providerTransactionId String?                     @unique
+
+  // Normalized processor-cost tracking (owner spec item 3) -- kept separate
+  // from stripeFee/netAmount above rather than replacing them, since those
+  // two are still what existing reporting reads; these are the provider-
+  // agnostic equivalents for future ACH/other-provider fee shapes that
+  // don't map cleanly onto "2.9% + $0.30".
+  processorFeePercent Float?
+  processorFeeFixed   Float?
+  refundedAmount      Float     @default(0)
+  settledAt           DateTime?
+  payoutId            String?
+  disputedAt          DateTime?
+  completedAt         DateTime?
+
   @@index([orderId])
+  @@index([provider])
+  @@index([status])
+}
+
+enum PaymentProvider {
+  STRIPE
+  // Reserved for the ACH-provider evaluation (owner spec Phase 3) --
+  // unused until a real adapter is built and this value is actually
+  // written by one.
+  GOCARDLESS
+  PAYPAL
+}
+
+enum StorefrontPaymentMethodType {
+  CARD
+  ACH
+  APPLE_PAY
+  GOOGLE_PAY
+  CASH_APP
+  PAYPAL
+  VENMO
 }
 
 enum PaymentStatus {
   PENDING
+  // ACH/bank debits sit here between submission and the provider's
+  // authoritative confirmation -- ownerSpec section 9's "do not mark Paid
+  // immediately" requirement. Never used by the existing card flow, which
+  // still goes PENDING -> SUCCEEDED directly via checkout.session.completed.
+  PROCESSING
+  AUTHORIZED
   SUCCEEDED
-  FAILED
+  PARTIALLY_REFUNDED
   REFUNDED
+  FAILED
+  // ACH-specific: the bank returned/reversed an already-processing debit
+  // (insufficient funds, closed account, revoked authorization, etc.) --
+  // distinct from FAILED (which never got as far as a bank attempt).
+  RETURNED
+  CANCELLED
+  DISPUTED
 }
 
 // ─── Shipping ────────────────────────────────────────────────────────────────
