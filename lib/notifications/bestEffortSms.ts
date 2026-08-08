@@ -21,7 +21,7 @@ export function normalizePhoneToE164(raw: string): string {
   return raw.startsWith('+') ? raw : `+${digits}`
 }
 
-export type SmsOutcome = 'SENT' | 'SKIPPED_NOT_CONFIGURED' | 'SKIPPED_NO_PHONE' | 'FAILED'
+export type SmsOutcome = 'SENT' | 'SKIPPED_NOT_CONFIGURED' | 'SKIPPED_NO_PHONE' | 'SKIPPED_OPTED_OUT' | 'FAILED'
 
 export interface SmsAttemptResult {
   outcome: SmsOutcome

@@ -8,6 +8,7 @@ import { prisma } from '@/lib/prisma'
 import { computeCustomerStatus } from '@/lib/customers/status'
 import { generateSequentialInvoiceNumber } from '@/lib/invoice/numbering'
 import { hasActivePaymentArrangement } from '@/lib/paymentArrangements'
+import { digitsOnly, phoneNumbersMatch } from '@/lib/notifications/phoneMatch'
 
 export interface CustomerInput {
   firstName: string
@@ -138,6 +139,28 @@ export async function findCustomerByEmailOrPhone(
       OR: [...(email ? [{ email }] : []), ...(phone ? [{ phone }] : [])],
     },
   })
+}
+
+// Flexible counterpart to findCustomerByEmailOrPhone's exact match --
+// Customer.phone is stored exactly as typed (no write-time normalization),
+// while an inbound Twilio webhook's `From` is always E.164. Used only for
+// app/api/webhooks/twilio/route.ts's STOP/START handling, where matching
+// the real customer actually matters (a missed match leaves someone
+// wrongly still subscribed; a false match would wrongly opt someone else
+// out) -- everywhere else in the app keeps using the exact-match lookup.
+// A Prisma `contains` can't narrow this the way it does for
+// findPossibleDuplicateCustomers's other fields, since punctuation in the
+// stored value (dashes, parens, spaces) breaks a digits-only substring
+// match -- so this scans every customer with a phone on file and compares
+// digit sequences in JS. Fine at today's customer-table scale; if that
+// ever stops being true, a normalized-phone column with its own index
+// would be the fix, not a cleverer query against the raw field.
+export async function findCustomerByPhoneFlexible(rawPhone: string): Promise<Customer | null> {
+  const digits = digitsOnly(rawPhone)
+  if (digits.length < 7) return null
+
+  const candidates = await prisma.customer.findMany({ where: { phone: { not: null } } })
+  return candidates.find((c) => c.phone && phoneNumbersMatch(c.phone, rawPhone)) ?? null
 }
 
 export interface PossibleDuplicateMatch {

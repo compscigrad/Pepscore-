@@ -109,7 +109,7 @@ export async function notifyClientPaymentSelectionConfirmation(invoice: InvoiceW
   const sms = await sendCategorizedSms(
     'PAYMENT_SELECTION_CONFIRMATION',
     invoice.customerPhone,
-    `Hi ${invoice.customerName}, we received your Pay in Full selection for invoice #${invoice.invoiceNumber}.`,
+    `Hi ${invoice.customerName}, we received your Pay in Full selection for invoice #${invoice.invoiceNumber}. Reply STOP to opt out of texts.`,
     { customerId: invoice.customerId, invoiceId: invoice.id, actorType: 'SYSTEM' }
   )
   await logInvoiceAndCustomerEvent(invoice, 'PAY_IN_FULL_SELECTED_CLIENT_CONFIRMED', sms.outcome)
@@ -179,7 +179,7 @@ export async function notifyClientArrangementRequestReceived(invoice: InvoiceWit
   const sms = await sendCategorizedSms(
     'PAYMENT_ARRANGEMENT_REQUEST_RECEIVED',
     invoice.customerPhone,
-    `Hi ${invoice.customerName}, we received your payment-arrangement request for invoice #${invoice.invoiceNumber}. Awaiting review.`,
+    `Hi ${invoice.customerName}, we received your payment-arrangement request for invoice #${invoice.invoiceNumber}. Awaiting review. Reply STOP to opt out of texts.`,
     { customerId: invoice.customerId, invoiceId: invoice.id, actorType: 'SYSTEM' }
   )
   await logInvoiceAndCustomerEvent(invoice, 'ARRANGEMENT_REQUEST_CLIENT_CONFIRMED', sms.outcome)
@@ -215,7 +215,7 @@ export async function notifyClientArrangementApproved(
   const sms = await sendCategorizedSms(
     'PAYMENT_ARRANGEMENT_DECISION',
     invoice.customerPhone,
-    `Hi ${invoice.customerName}, your payment arrangement for invoice #${invoice.invoiceNumber} was approved.`,
+    `Hi ${invoice.customerName}, your payment arrangement for invoice #${invoice.invoiceNumber} was approved. Reply STOP to opt out of texts.`,
     { customerId: invoice.customerId, invoiceId: invoice.id, actorType: 'SYSTEM' }
   )
   await logInvoiceAndCustomerEvent(invoice, 'ARRANGEMENT_APPROVED_CLIENT_NOTIFIED', sms.outcome)
@@ -249,7 +249,7 @@ export async function notifyClientArrangementDenied(invoice: InvoiceWithRelation
   const sms = await sendCategorizedSms(
     'PAYMENT_ARRANGEMENT_DECISION',
     invoice.customerPhone,
-    `Hi ${invoice.customerName}, your payment arrangement request for invoice #${invoice.invoiceNumber} needs a revision. Please check your email.`,
+    `Hi ${invoice.customerName}, your payment arrangement request for invoice #${invoice.invoiceNumber} needs a revision. Please check your email. Reply STOP to opt out of texts.`,
     { customerId: invoice.customerId, invoiceId: invoice.id, actorType: 'SYSTEM' }
   )
   await logInvoiceAndCustomerEvent(invoice, 'ARRANGEMENT_DENIED_CLIENT_NOTIFIED', sms.outcome)

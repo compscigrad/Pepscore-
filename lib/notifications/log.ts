@@ -15,6 +15,7 @@ import { prisma } from '@/lib/prisma'
 import { resend } from '@/lib/resend'
 import { routeFor, type MessageCategory } from './routing'
 import { attemptSms, type SmsOutcome } from './bestEffortSms'
+import { phoneNumbersMatch } from './phoneMatch'
 import type { TrackingEventSource } from '@prisma/client'
 
 export interface SendContext {
@@ -145,6 +146,31 @@ export async function sendCategorizedSms(
   body: string,
   context: SendContext
 ): Promise<SendSmsResult> {
+  // Only ever suppresses a send TO the customer's own opted-out phone --
+  // context.customerId marks which customer a message concerns, not who
+  // it's going to (an admin alert about a customer's activity carries the
+  // same customerId but goes to an AdminNotificationRecipient's phone, and
+  // must never be silently dropped just because that customer opted out).
+  if (phone && context.customerId) {
+    const customer = await prisma.customer.findUnique({
+      where: { id: context.customerId },
+      select: { phone: true, smsOptedOut: true },
+    })
+    if (customer?.smsOptedOut && customer.phone && phoneNumbersMatch(customer.phone, phone)) {
+      await recordCommunication({
+        channel: 'SMS',
+        category,
+        status: 'SKIPPED',
+        toAddress: phone,
+        body,
+        providerName: 'twilio',
+        failureReason: 'SKIPPED_OPTED_OUT',
+        context,
+      })
+      return { outcome: 'SKIPPED_OPTED_OUT' }
+    }
+  }
+
   const result = await attemptSms(phone, body)
 
   await recordCommunication({
