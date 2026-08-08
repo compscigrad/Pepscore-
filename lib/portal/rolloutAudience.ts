@@ -11,6 +11,7 @@ import type { Customer } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { getPortalReadinessStatus } from '@/lib/portal/readiness'
 import { digitsOnly } from '@/lib/notifications/phoneMatch'
+import { looksLikeTestData } from '@/lib/customers/linkageBackfill'
 
 export interface RolloutAudience {
   eligible: Customer[]
@@ -19,6 +20,13 @@ export interface RolloutAudience {
   alreadyInvited: Customer[]
   alreadyClaimed: number
   conflictReview: number
+  // Surfaced for admin review, same "flag, never auto-decide" principle as
+  // duplicateFlagged/conflictReview -- looksLikeTestData() is a heuristic
+  // (name/email pattern match), so a false positive is possible; excluding
+  // these from `eligible` by default means the failure mode is "an admin
+  // has to manually re-include a real customer," never "a test record gets
+  // a real invitation."
+  testDataFlagged: Customer[]
 }
 
 export function normalizeEmail(email: string | null): string | null {
@@ -85,9 +93,13 @@ export async function computeEligibleInviteAudience(): Promise<RolloutAudience> 
   const duplicateFlagged = withContact.filter((c) => duplicateIds.has(c.id))
   const nonDuplicate = withContact.filter((c) => !duplicateIds.has(c.id))
 
+  const testDataFlagged = nonDuplicate.filter((c) => looksLikeTestData(`${c.firstName} ${c.lastName}`.trim(), c.email))
+  const testDataIds = new Set(testDataFlagged.map((c) => c.id))
+  const nonTestData = nonDuplicate.filter((c) => !testDataIds.has(c.id))
+
   const [openReviewCases, statuses] = await Promise.all([
     prisma.customerIdentityReviewCase.findMany({ where: { status: 'OPEN' } }),
-    Promise.all(nonDuplicate.map(async (c) => ({ customer: c, status: await getPortalReadinessStatus(c) }))),
+    Promise.all(nonTestData.map(async (c) => ({ customer: c, status: await getPortalReadinessStatus(c) }))),
   ])
   const conflictReviewCustomerIds = new Set(
     openReviewCases.map((r) => r.customerId).filter((id): id is string => Boolean(id))
@@ -108,5 +120,6 @@ export async function computeEligibleInviteAudience(): Promise<RolloutAudience> 
     alreadyInvited,
     alreadyClaimed: claimedCount,
     conflictReview: openReviewCases.length,
+    testDataFlagged,
   }
 }

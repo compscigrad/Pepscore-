@@ -76,6 +76,7 @@ export default async function PortalRolloutPage() {
               value={audience.conflictReview}
               href={audience.conflictReview > 0 ? '/admin/identity-review' : undefined}
             />
+            <Stat label="Test/QA-flagged (excluded)" value={audience.testDataFlagged.length} />
           </div>
         </div>
 
@@ -109,6 +110,23 @@ export default async function PortalRolloutPage() {
             <h3 className={sectionHeading}>Eligible Customers ({audience.eligible.length})</h3>
             <div className="mt-4 max-h-80 overflow-y-auto space-y-2">
               {audience.eligible.map((c) => (
+                <div key={c.id} className="flex justify-between text-sm">
+                  <span className="text-white">{`${c.firstName} ${c.lastName}`.trim()}</span>
+                  <span className={mutedText}>{c.email ?? c.phone ?? '—'}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {audience.testDataFlagged.length > 0 && (
+          <div className={`${card} p-6`}>
+            <h3 className={sectionHeading}>Test/QA-Flagged — Excluded, Review Recommended ({audience.testDataFlagged.length})</h3>
+            <p className={`text-sm ${mutedText} mt-1 mb-4`}>
+              Name or email matched a test-data pattern (e.g. &ldquo;Test&rdquo;, &ldquo;QA&rdquo;, or a placeholder email domain). Heuristic — verify before manually inviting if any of these are real.
+            </p>
+            <div className="max-h-80 overflow-y-auto space-y-2">
+              {audience.testDataFlagged.map((c) => (
                 <div key={c.id} className="flex justify-between text-sm">
                   <span className="text-white">{`${c.firstName} ${c.lastName}`.trim()}</span>
                   <span className={mutedText}>{c.email ?? c.phone ?? '—'}</span>
