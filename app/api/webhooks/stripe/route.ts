@@ -10,6 +10,7 @@ import { buildOrderConfirmationHtml } from '@/emails/OrderConfirmation'
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
 import { normalizeStripeEvent } from '@/lib/payments/providers/stripe'
 import { reconcilePaymentEvent } from '@/lib/payments/reconcile'
+import { fulfillAllOrderReservationsTx, releaseAllOrderReservationsTx } from '@/lib/inventory/orderReservations'
 
 // Required: raw body for Stripe signature verification
 export const runtime = 'nodejs'
@@ -95,6 +96,12 @@ export async function POST(req: NextRequest) {
       },
     })
 
+    // Deduct the physical stock this order's checkout already reserved
+    // (app/api/checkout/route.ts) -- a card payment settles synchronously,
+    // so fulfillment happens right here rather than waiting on a second
+    // webhook event the way ACH's async_payment_succeeded does below.
+    await prisma.$transaction((tx) => fulfillAllOrderReservationsTx(tx, order.id, 'system-stripe-webhook'))
+
     // Mark invoice as ISSUED
     if (order.invoice) {
       await prisma.invoice.update({
@@ -153,10 +160,13 @@ export async function POST(req: NextRequest) {
     const pi = event.data.object
     // Find order by payment intent and mark failed
     try {
-      await prisma.order.updateMany({
-        where: { stripePaymentIntentId: pi.id },
-        data: { status: 'CANCELLED' },
-      })
+      const failedOrder = await prisma.order.findFirst({ where: { stripePaymentIntentId: pi.id } })
+      if (failedOrder) {
+        await prisma.order.update({ where: { id: failedOrder.id }, data: { status: 'CANCELLED' } })
+        // Release the stock this order's checkout reserved -- a failed
+        // payment must never keep holding units another customer could buy.
+        await prisma.$transaction((tx) => releaseAllOrderReservationsTx(tx, failedOrder.id, 'system-stripe-webhook', 'Payment failed'))
+      }
     } catch {
       // Order may not exist yet — ignore
     }

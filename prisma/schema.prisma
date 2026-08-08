@@ -148,6 +148,7 @@ model Product {
   invoiceItems           InvoiceItem[]
   inventoryLedgerEntries InventoryLedgerEntry[]
   inventoryReservations  InventoryReservation[]
+  orderReservations      OrderReservation[]
   lowStockAlerts         LowStockAlert[]
   backorderConditions    BackorderCondition[]
   slugRedirects          ProductSlugRedirect[]
@@ -206,6 +207,15 @@ model InventoryLedgerEntry {
   invoice       Invoice? @relation(fields: [invoiceId], references: [id])
   invoiceItemId String?
 
+  // [Roadmap] Storefront Order counterpart to invoiceId/invoiceItemId above
+  // -- added for OrderReservation (see below) so a ledger entry driven by a
+  // storefront checkout is auditable the same way an invoice-driven one is,
+  // rather than a blind spot in this table. A given row is ever only
+  // invoice-linked OR order-linked, never both.
+  orderId     String?
+  order       Order?  @relation(fields: [orderId], references: [id])
+  orderItemId String?
+
   actor     String
   actorType InventoryActorType @default(ADMIN)
   notes     String?
@@ -224,6 +234,7 @@ model InventoryLedgerEntry {
 
   @@index([productId])
   @@index([invoiceId])
+  @@index([orderId])
   @@index([eventType])
   @@index([createdAt])
 }
@@ -281,6 +292,41 @@ model InventoryReservation {
   @@index([status])
 }
 
+// [Roadmap] Storefront-Order counterpart to InventoryReservation above.
+// Deliberately a SEPARATE model rather than making InventoryReservation's
+// invoiceId/invoiceItemId optional and bolting on orderId/orderItemId --
+// that model is mature and actively used in production by the admin
+// invoice module (backorder handling, the reservation-correction admin
+// panel); this new one exists so storefront checkout (real audit finding:
+// app/api/checkout/route.ts never reserved or deducted stock at all,
+// regardless of payment method) can get the same proven reserve/release/
+// fulfill discipline without touching that working system. Reuses
+// ReservationStatus and computeInventoryStatus()/Product.reservedUnits --
+// the two models share the same underlying stock-accounting primitives,
+// they just point at different parent records.
+model OrderReservation {
+  id          String  @id @default(cuid())
+  productId   String
+  product     Product @relation(fields: [productId], references: [id])
+  orderId     String
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItemId String
+  quantity    Int
+
+  status ReservationStatus @default(ACTIVE)
+
+  reservedAt  DateTime  @default(now())
+  releasedAt  DateTime?
+  fulfilledAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+  @@index([orderId])
+  @@index([orderItemId])
+  @@index([status])
+}
+
 enum ReservationStatus {
   ACTIVE
   RELEASED
@@ -335,11 +381,13 @@ model Order {
   createdAt             DateTime          @default(now())
   updatedAt             DateTime          @updatedAt
 
-  items          OrderItem[]
-  invoice        Invoice?
-  shippingLabel  ShippingLabel?
-  payments       Payment[]
-  complianceLogs ComplianceAcknowledgment[]
+  items                  OrderItem[]
+  invoice                Invoice?
+  shippingLabel          ShippingLabel?
+  payments               Payment[]
+  complianceLogs         ComplianceAcknowledgment[]
+  reservations           OrderReservation[]
+  inventoryLedgerEntries InventoryLedgerEntry[]
 
   @@index([customerEmail])
   @@index([stripeSessionId])
