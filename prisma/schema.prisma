@@ -1428,6 +1428,40 @@ model PaymentSettings {
   updatedBy String?
 }
 
+// [Roadmap] One row per saved reusable payment method (card or bank
+// account) a portal customer has added. Every field here is either a
+// Stripe-side reference (stripePaymentMethodId) or safe display metadata
+// Stripe itself returns (brand/last4/expiry, bank name/last4) -- never a
+// raw card or account/routing number, matching the same boundary
+// AchAuthorization already established. Soft-deleted (removedAt) rather
+// than hard-deleted so "this customer once had a method on file, then
+// removed it" stays a real, auditable fact instead of silently
+// disappearing -- lib/payments/savedMethods.ts's list functions always
+// filter to removedAt: null.
+model SavedPaymentMethod {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  stripePaymentMethodId String                      @unique
+  methodType            StorefrontPaymentMethodType
+  isDefault             Boolean                     @default(false)
+
+  cardBrand    String?
+  cardLast4    String?
+  cardExpMonth Int?
+  cardExpYear  Int?
+
+  bankName         String?
+  bankAccountLast4 String?
+  bankAccountType  String?
+
+  createdAt DateTime  @default(now())
+  removedAt DateTime?
+
+  @@index([customerId])
+}
+
 // ─── Shipping ────────────────────────────────────────────────────────────────
 
 model ShippingLabel {
@@ -1667,6 +1701,15 @@ model Customer {
   company   String?
   email     String?
   phone     String?
+
+  // [Roadmap] Saved payment methods -- created lazily (lib/payments/
+  // savedMethods.ts) the first time this customer adds a payment method
+  // in the portal, never eagerly for every Customer. Confirmed via audit
+  // that no Stripe Customer object was ever created anywhere in this
+  // codebase before this -- checkout has always been guest/email-based.
+  stripeCustomerId String? @unique
+
+  savedPaymentMethods SavedPaymentMethod[]
 
   // Optional link to the Clerk-authenticated storefront User this Customer
   // corresponds to. Null for admin-entered and intake-only customers (no

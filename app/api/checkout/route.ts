@@ -207,6 +207,23 @@ export async function POST(req: NextRequest) {
       quantity: i.quantity,
     }))
 
+    // If this is an authenticated, portal-linked returning customer who
+    // has ever saved a payment method, attach their real Stripe Customer
+    // id to the session -- Stripe's own embedded Checkout then surfaces
+    // their saved methods automatically, with zero custom "choose a saved
+    // method" UI to build here. `customer` and `customer_email` are
+    // mutually exclusive on Stripe's Checkout Session API, so this is an
+    // either/or, never both. A guest or a linked customer who has never
+    // saved a method (no stripeCustomerId yet) still checks out exactly
+    // as before, on customer_email alone -- nothing here ever creates a
+    // Stripe Customer during a purchase; that only happens the first time
+    // someone explicitly adds a saved method in the portal.
+    let existingStripeCustomerId: string | null = null
+    if (userId) {
+      const linkedCustomer = await prisma.customer.findUnique({ where: { userId }, select: { stripeCustomerId: true } })
+      existingStripeCustomerId = linkedCustomer?.stripeCustomerId ?? null
+    }
+
     // Create Stripe Checkout Session -- own try/catch so a Stripe-side
     // failure here (network error, API rejection) releases the inventory
     // this order's transaction above already committed, rather than
@@ -235,7 +252,7 @@ export async function POST(req: NextRequest) {
         payment_method_types: paymentMethodTypes,
         mode: 'payment',
         ui_mode: 'embedded',
-        customer_email: customerEmail,
+        ...(existingStripeCustomerId ? { customer: existingStripeCustomerId } : { customer_email: customerEmail }),
         line_items: stripeLineItems,
         // Add shipping as a line item if applicable
         ...(shippingCost > 0
