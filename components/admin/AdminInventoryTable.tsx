@@ -17,11 +17,11 @@ const INVENTORY_STATUS_LABEL: Record<string, string> = {
   OUT_OF_STOCK: 'Out of Stock',
 }
 const INVENTORY_STATUS_STYLE: Record<string, string> = {
-  TRACKING_DISABLED: 'bg-gray-100 text-gray-400',
-  AWAITING_INITIALIZATION: 'bg-amber-100 text-amber-700',
-  IN_STOCK: 'bg-green-100 text-green-700',
-  LOW_STOCK: 'bg-orange-100 text-orange-700',
-  OUT_OF_STOCK: 'bg-red-100 text-red-600',
+  TRACKING_DISABLED: 'bg-white/5 text-white/40',
+  AWAITING_INITIALIZATION: 'bg-amber-400/10 text-amber-300',
+  IN_STOCK: 'bg-green-400/10 text-green-300',
+  LOW_STOCK: 'bg-orange-400/10 text-orange-300',
+  OUT_OF_STOCK: 'bg-red-400/10 text-red-300',
 }
 
 function Pill({ label, className }: { label: string; className: string }) {
@@ -60,25 +60,29 @@ export function AdminInventoryTable({ rows }: { rows: InventoryOverviewRow[] }) 
   )
 
   return (
-    <div className="bg-white rounded-2xl shadow-sh overflow-hidden">
-      <div className="p-6 border-b border-g100 flex items-center justify-between flex-wrap gap-3">
+    <div className="bg-white/[0.03] border border-gold/10 rounded-[18px] overflow-hidden">
+      <div className="p-6 border-b border-white/10 flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="font-heading text-[17px] font-bold text-dark">Products</h2>
-          <p className="text-[12px] text-g500 mt-0.5">{filtered.length} of {rows.length} shown</p>
+          <h2 className="font-heading text-[17px] font-bold text-white">Products</h2>
+          <p className="text-[12px] text-white/50 mt-0.5">{filtered.length} of {rows.length} shown</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search name, strength, SKU…"
-            className="rounded-lg border border-g100 px-3 py-2 text-[13px] w-56"
+            className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-[13px] text-white placeholder:text-white/30 w-56 focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold/30"
           />
-          <select value={filter} onChange={(e) => setFilter(e.target.value as FilterKey)} className="rounded-lg border border-g100 px-3 py-2 text-[13px]">
-            <option value="ALL">All statuses</option>
-            <option value="AWAITING_INITIALIZATION">Awaiting Initialization ({filterCounts.AWAITING_INITIALIZATION})</option>
-            <option value="LOW_STOCK">Low Stock ({filterCounts.LOW_STOCK})</option>
-            <option value="OUT_OF_STOCK">Out of Stock ({filterCounts.OUT_OF_STOCK})</option>
-            <option value="NEEDS_PRICING_REVIEW">Needs Pricing Review ({filterCounts.NEEDS_PRICING_REVIEW})</option>
+          <select
+            value={filter}
+            onChange={(e) => setFilter(e.target.value as FilterKey)}
+            className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-[13px] text-white focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold/30"
+          >
+            <option value="ALL" className="bg-white text-dark">All statuses</option>
+            <option value="AWAITING_INITIALIZATION" className="bg-white text-dark">Awaiting Initialization ({filterCounts.AWAITING_INITIALIZATION})</option>
+            <option value="LOW_STOCK" className="bg-white text-dark">Low Stock ({filterCounts.LOW_STOCK})</option>
+            <option value="OUT_OF_STOCK" className="bg-white text-dark">Out of Stock ({filterCounts.OUT_OF_STOCK})</option>
+            <option value="NEEDS_PRICING_REVIEW" className="bg-white text-dark">Needs Pricing Review ({filterCounts.NEEDS_PRICING_REVIEW})</option>
           </select>
         </div>
       </div>
@@ -86,9 +90,9 @@ export function AdminInventoryTable({ rows }: { rows: InventoryOverviewRow[] }) 
       <div className="overflow-x-auto">
         <table className="w-full text-[13px]">
           <thead>
-            <tr className="border-b border-g100">
+            <tr className="border-b border-white/10">
               {['Product', 'SKU', 'Inventory', 'Available', 'Cases', 'Backordered', 'Standard', 'SPA', 'Individual', ''].map((h) => (
-                <th key={h} className="text-left font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-g500 px-4 py-3 whitespace-nowrap">
+                <th key={h} className="text-left font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 px-4 py-3 whitespace-nowrap">
                   {h}
                 </th>
               ))}
@@ -96,22 +100,22 @@ export function AdminInventoryTable({ rows }: { rows: InventoryOverviewRow[] }) 
           </thead>
           <tbody>
             {filtered.map((row) => (
-              <tr key={row.product.id} className="border-b border-g100 hover:bg-g100/50">
+              <tr key={row.product.id} className="border-b border-white/10 hover:bg-white/[0.02]">
                 <td className="px-4 py-3">
-                  <Link href={`/admin/inventory/${row.product.id}`} className="font-semibold text-dark hover:text-gold-dark hover:underline">
+                  <Link href={`/admin/inventory/${row.product.id}`} className="font-semibold text-white hover:text-gold-dark hover:underline">
                     {row.product.name}
                   </Link>
-                  <span className="text-g500 ml-1.5">{row.product.size}</span>
-                  {row.needsPricingReview && <div className="text-[10px] font-bold text-amber-700 uppercase tracking-wide mt-0.5">Needs Pricing Review</div>}
+                  <span className="text-white/50 ml-1.5">{row.product.size}</span>
+                  {row.needsPricingReview && <div className="text-[10px] font-bold text-amber-300 uppercase tracking-wide mt-0.5">Needs Pricing Review</div>}
                 </td>
-                <td className="px-4 py-3 text-g500 whitespace-nowrap">{row.product.sku ?? '—'}</td>
+                <td className="px-4 py-3 text-white/50 whitespace-nowrap">{row.product.sku ?? '—'}</td>
                 <td className="px-4 py-3">
                   <Pill label={INVENTORY_STATUS_LABEL[row.product.inventoryStatus]} className={INVENTORY_STATUS_STYLE[row.product.inventoryStatus]} />
                 </td>
-                <td className="px-4 py-3 font-heading font-bold text-dark whitespace-nowrap">{row.availableUnits ?? '—'}</td>
-                <td className="px-4 py-3 text-g500 whitespace-nowrap">{row.completeCasesAvailable ?? '—'}</td>
+                <td className="px-4 py-3 font-heading font-bold text-white whitespace-nowrap">{row.availableUnits ?? '—'}</td>
+                <td className="px-4 py-3 text-white/50 whitespace-nowrap">{row.completeCasesAvailable ?? '—'}</td>
                 <td className="px-4 py-3 whitespace-nowrap">
-                  {row.backorderedVials > 0 ? <span className="font-bold text-red-600">{row.backorderedVials}</span> : <span className="text-g300">0</span>}
+                  {row.backorderedVials > 0 ? <span className="font-bold text-red-400">{row.backorderedVials}</span> : <span className="text-white/30">0</span>}
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap">{formatCurrency(row.effectiveStandardPrice)}</td>
                 <td className="px-4 py-3 whitespace-nowrap">{formatCurrency(row.effectiveSpaPrice)}</td>
@@ -119,7 +123,7 @@ export function AdminInventoryTable({ rows }: { rows: InventoryOverviewRow[] }) 
                   {row.product.individualSalesEnabled ? (
                     formatCurrency(row.effectiveIndividualPrice)
                   ) : row.product.activeIndividualVialPrice !== null ? (
-                    <span className="text-[11px] text-g500 italic">Stored — disabled</span>
+                    <span className="text-[11px] text-white/50 italic">Stored — disabled</span>
                   ) : (
                     '—'
                   )}
@@ -133,7 +137,7 @@ export function AdminInventoryTable({ rows }: { rows: InventoryOverviewRow[] }) 
             ))}
           </tbody>
         </table>
-        {filtered.length === 0 && <div className="text-center py-16 text-g500">No products match this filter.</div>}
+        {filtered.length === 0 && <div className="text-center py-16 text-white/50">No products match this filter.</div>}
       </div>
     </div>
   )

@@ -23,7 +23,7 @@ export default async function IntakeQueuePage() {
         <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
           <div>
             <h1 className="font-heading text-3xl font-bold text-white">Intake Queue</h1>
-            <p className="text-white/50 text-sm mt-1">Customer submissions awaiting review · Pepscore</p>
+            <p className="text-white/50 text-sm mt-1">Customer submissions awaiting review · Pepscore Lab</p>
           </div>
           <div className="flex items-center gap-6 flex-wrap">
             <Link

@@ -11,9 +11,9 @@ type ReservationRow = InventoryReservation & {
 }
 
 const STATUS_STYLE: Record<string, string> = {
-  ACTIVE: 'bg-green-100 text-green-700',
-  RELEASED: 'bg-gray-100 text-gray-500',
-  FULFILLED: 'bg-blue-100 text-blue-700',
+  ACTIVE: 'bg-green-400/10 text-green-300',
+  RELEASED: 'bg-white/5 text-white/50',
+  FULFILLED: 'bg-blue-400/10 text-blue-300',
 }
 
 type ActionKey = 'CORRECT_QUANTITY' | 'RELEASE' | 'RESTORE' | 'REVERSE_FULFILLMENT' | 'REAPPLY_FULFILLMENT' | 'MARK_RESOLVED' | null
@@ -108,26 +108,26 @@ export function ReservationCorrectionPanel({ reservations, defaultStatus }: { re
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-sh overflow-hidden">
-      <div className="p-6 border-b border-g100 flex items-end gap-3 flex-wrap">
+    <div className="bg-white/[0.03] border border-gold/10 rounded-[18px] overflow-hidden">
+      <div className="p-6 border-b border-white/10 flex items-end gap-3 flex-wrap">
         <label className="block">
-          <span className="text-[11px] font-heading font-bold uppercase tracking-wide text-g500">Status</span>
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="mt-1 rounded-lg border border-g100 px-3 py-2 text-[13px] block">
-            <option value="ACTIVE">Active</option>
-            <option value="RELEASED">Released</option>
-            <option value="FULFILLED">Fulfilled</option>
-            <option value="">All</option>
+          <span className="text-[11px] font-heading font-bold uppercase tracking-wide text-white/50">Status</span>
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="mt-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-[13px] text-white block focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold/30">
+            <option value="ACTIVE" className="bg-white text-dark">Active</option>
+            <option value="RELEASED" className="bg-white text-dark">Released</option>
+            <option value="FULFILLED" className="bg-white text-dark">Fulfilled</option>
+            <option value="" className="bg-white text-dark">All</option>
           </select>
         </label>
         <label className="block">
-          <span className="text-[11px] font-heading font-bold uppercase tracking-wide text-g500">Invoice ID</span>
-          <input value={invoiceFilter} onChange={(e) => setInvoiceFilter(e.target.value)} className="mt-1 rounded-lg border border-g100 px-3 py-2 text-[13px] block w-48" />
+          <span className="text-[11px] font-heading font-bold uppercase tracking-wide text-white/50">Invoice ID</span>
+          <input value={invoiceFilter} onChange={(e) => setInvoiceFilter(e.target.value)} className="mt-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-[13px] text-white block focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold/30 w-48" />
         </label>
         <label className="block">
-          <span className="text-[11px] font-heading font-bold uppercase tracking-wide text-g500">Product ID</span>
-          <input value={productFilter} onChange={(e) => setProductFilter(e.target.value)} className="mt-1 rounded-lg border border-g100 px-3 py-2 text-[13px] block w-48" />
+          <span className="text-[11px] font-heading font-bold uppercase tracking-wide text-white/50">Product ID</span>
+          <input value={productFilter} onChange={(e) => setProductFilter(e.target.value)} className="mt-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-[13px] text-white block focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold/30 w-48" />
         </label>
-        <button onClick={applyFilters} className="rounded-lg bg-gold px-4 py-2 text-[13px] font-heading font-bold text-dark hover:bg-gold-dark">
+        <button onClick={applyFilters} className="rounded-lg bg-gold px-4 py-2 text-[13px] font-heading font-bold text-white hover:bg-gold-dark">
           Search
         </button>
       </div>
@@ -135,9 +135,9 @@ export function ReservationCorrectionPanel({ reservations, defaultStatus }: { re
       <div className="overflow-x-auto">
         <table className="w-full text-[13px]">
           <thead>
-            <tr className="border-b border-g100">
+            <tr className="border-b border-white/10">
               {['Invoice', 'Customer', 'Product', 'Quantity', 'Status', 'Created', ''].map((h) => (
-                <th key={h} className="text-left font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-g500 px-4 py-3 whitespace-nowrap">
+                <th key={h} className="text-left font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 px-4 py-3 whitespace-nowrap">
                   {h}
                 </th>
               ))}
@@ -146,15 +146,15 @@ export function ReservationCorrectionPanel({ reservations, defaultStatus }: { re
           <tbody>
             {reservations.map((r) => (
               <>
-                <tr key={r.id} className="border-b border-g100 hover:bg-g100/50">
+                <tr key={r.id} className="border-b border-white/10 hover:bg-white/[0.02]">
                   <td className="px-4 py-3 whitespace-nowrap">
-                    <Link href={`/admin/invoices/${r.invoiceId}`} className="font-semibold text-dark hover:text-gold-dark hover:underline">
+                    <Link href={`/admin/invoices/${r.invoiceId}`} className="font-semibold text-white hover:text-gold-dark hover:underline">
                       {r.invoice.invoiceNumber}
                     </Link>
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     {r.invoice.customerId ? (
-                      <Link href={`/admin/customers/${r.invoice.customerId}`} className="text-dark hover:text-gold-dark hover:underline">
+                      <Link href={`/admin/customers/${r.invoice.customerId}`} className="text-white hover:text-gold-dark hover:underline">
                         {r.invoice.customerName}
                       </Link>
                     ) : (
@@ -162,21 +162,21 @@ export function ReservationCorrectionPanel({ reservations, defaultStatus }: { re
                     )}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
-                    <Link href={`/admin/inventory/${r.productId}`} className="text-dark hover:text-gold-dark hover:underline">
+                    <Link href={`/admin/inventory/${r.productId}`} className="text-white hover:text-gold-dark hover:underline">
                       {r.product.name} {r.product.size}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 font-heading font-bold text-dark">{r.quantity}</td>
+                  <td className="px-4 py-3 font-heading font-bold text-white">{r.quantity}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold ${STATUS_STYLE[r.status]}`}>{r.status}</span>
                   </td>
-                  <td className="px-4 py-3 text-g500 whitespace-nowrap">{new Date(r.createdAt).toLocaleString()}</td>
+                  <td className="px-4 py-3 text-white/50 whitespace-nowrap">{new Date(r.createdAt).toLocaleString()}</td>
                   <td className="px-4 py-3 text-right whitespace-nowrap">
                     {AVAILABLE_ACTIONS[r.status]?.map((action) => (
                       <button
                         key={action}
                         onClick={() => openAction(r.id, action)}
-                        className="ml-2 rounded-lg border border-g100 px-2 py-1 text-[11px] font-heading font-bold text-dark hover:bg-g100"
+                        className="ml-2 rounded-lg border border-white/10 px-2 py-1 text-[11px] font-heading font-bold text-white/80 hover:bg-white/5"
                       >
                         {ACTION_LABEL[action]}
                       </button>
@@ -184,10 +184,10 @@ export function ReservationCorrectionPanel({ reservations, defaultStatus }: { re
                   </td>
                 </tr>
                 {activeRow === r.id && activeAction && (
-                  <tr key={`${r.id}-form`} className="bg-g100/40">
+                  <tr key={`${r.id}-form`} className="bg-white/[0.02]">
                     <td colSpan={7} className="px-4 py-4">
                       <div className="max-w-lg">
-                        <p className="font-heading text-[13px] font-bold text-dark mb-2">{ACTION_LABEL[activeAction]}</p>
+                        <p className="font-heading text-[13px] font-bold text-white mb-2">{ACTION_LABEL[activeAction]}</p>
                         {activeAction === 'CORRECT_QUANTITY' && (
                           <input
                             type="number"
@@ -195,7 +195,7 @@ export function ReservationCorrectionPanel({ reservations, defaultStatus }: { re
                             placeholder="New quantity"
                             value={quantity}
                             onChange={(e) => setQuantity(e.target.value)}
-                            className="w-full rounded-lg border border-g100 px-3 py-2 text-[13px] mb-2"
+                            className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-[13px] text-white placeholder:text-white/30 mb-2 focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold/30"
                           />
                         )}
                         {activeAction !== 'REAPPLY_FULFILLMENT' && (
@@ -203,19 +203,19 @@ export function ReservationCorrectionPanel({ reservations, defaultStatus }: { re
                             placeholder="Reason (required)"
                             value={reason}
                             onChange={(e) => setReason(e.target.value)}
-                            className="w-full rounded-lg border border-g100 px-3 py-2 text-[13px] mb-2"
+                            className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-[13px] text-white placeholder:text-white/30 mb-2 focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold/30"
                           />
                         )}
-                        <label className="flex items-center gap-2 text-[12px] text-dark mb-2">
+                        <label className="flex items-center gap-2 text-[12px] text-white mb-2">
                           <input type="checkbox" checked={confirmChecked} onChange={(e) => setConfirmChecked(e.target.checked)} />
                           I confirm this correction is correct.
                         </label>
-                        {error && <p className="text-[12px] text-red-600 mb-2">{error}</p>}
+                        {error && <p className="text-[12px] text-red-400 mb-2">{error}</p>}
                         <div className="flex gap-2">
-                          <button onClick={submit} disabled={busy} className="rounded-lg bg-gold px-4 py-2 text-[13px] font-heading font-bold text-dark hover:bg-gold-dark">
+                          <button onClick={submit} disabled={busy} className="rounded-lg bg-gold px-4 py-2 text-[13px] font-heading font-bold text-white hover:bg-gold-dark">
                             Save
                           </button>
-                          <button onClick={resetForm} className="rounded-lg border border-g100 px-4 py-2 text-[13px] font-heading font-bold text-dark hover:bg-g100">
+                          <button onClick={resetForm} className="rounded-lg border border-white/10 px-4 py-2 text-[13px] font-heading font-bold text-white/80 hover:bg-white/5">
                             Cancel
                           </button>
                         </div>
@@ -227,7 +227,7 @@ export function ReservationCorrectionPanel({ reservations, defaultStatus }: { re
             ))}
           </tbody>
         </table>
-        {reservations.length === 0 && <div className="text-center py-16 text-g500">No reservations match this filter.</div>}
+        {reservations.length === 0 && <div className="text-center py-16 text-white/50">No reservations match this filter.</div>}
       </div>
     </div>
   )
