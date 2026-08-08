@@ -3,7 +3,7 @@
 // intake links, notifications, the activity timeline) points at — see
 // docs/Decisions.md and the Customer Intake Link plan.
 import { Prisma } from '@prisma/client'
-import type { Customer, CustomerStatus, TrackingEventSource, InvoicePriority, PaymentMethod } from '@prisma/client'
+import type { Customer, CustomerStatus, LeadStatus, LeadInterestType, TrackingEventSource, InvoicePriority, PaymentMethod } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { computeCustomerStatus } from '@/lib/customers/status'
 import { generateSequentialInvoiceNumber } from '@/lib/invoice/numbering'
@@ -29,15 +29,46 @@ export async function getCustomer(id: string): Promise<Customer | null> {
 export interface ListCustomersParams {
   search?: string
   status?: CustomerStatus
+  // CRM/lead filters (Phase 2B item 8) -- interestType/hasConsent/campaign
+  // all filter via the related LeadCapture rows (a Customer can have zero
+  // or many), never fields stored directly on Customer.
+  leadStatus?: LeadStatus
+  interestType?: LeadInterestType
+  hasConsent?: boolean
+  // Matches either utmCampaign or utmSource on any of the customer's
+  // LeadCapture rows -- "campaign/source" is one filter field in the UI
+  // since most submissions only ever populate one or the other.
+  campaign?: string
   page?: number
   limit?: number
+  sortBy?: 'newest' | 'oldest' | 'name'
 }
 
 export async function listCustomers(params: ListCustomersParams = {}) {
-  const { search, status, page = 1, limit = 25 } = params
+  const { search, status, leadStatus, interestType, hasConsent, campaign, page = 1, limit = 25, sortBy = 'newest' } = params
+
+  const leadCaptureFilters: Prisma.LeadCaptureWhereInput[] = []
+  if (interestType) leadCaptureFilters.push({ interestType })
+  if (hasConsent !== undefined) leadCaptureFilters.push({ consent: hasConsent })
+  if (campaign) {
+    leadCaptureFilters.push({
+      OR: [
+        { utmCampaign: { contains: campaign, mode: 'insensitive' } },
+        { utmSource: { contains: campaign, mode: 'insensitive' } },
+      ],
+    })
+  }
 
   const where: Prisma.CustomerWhereInput = {
     ...(status ? { status } : {}),
+    ...(leadStatus ? { leadStatus } : {}),
+    // AND across filter *kinds*, but each kind only needs to match *some*
+    // one LeadCapture row -- e.g. a customer who once submitted a
+    // consent=true PRODUCT_INTEREST lead and separately a consent=false
+    // GENERAL_UPDATES lead still matches interestType=PRODUCT_INTEREST +
+    // hasConsent=true (the same real submission satisfies both), which is
+    // the intuitive reading of "has a lead matching this."
+    ...(leadCaptureFilters.length > 0 ? { leadCaptures: { some: { AND: leadCaptureFilters } } } : {}),
     ...(search
       ? {
           OR: [
@@ -51,8 +82,26 @@ export async function listCustomers(params: ListCustomersParams = {}) {
       : {}),
   }
 
+  const orderBy: Prisma.CustomerOrderByWithRelationInput =
+    sortBy === 'oldest' ? { createdAt: 'asc' } : sortBy === 'name' ? { firstName: 'asc' } : { createdAt: 'desc' }
+
   const [customers, total] = await Promise.all([
-    prisma.customer.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
+    prisma.customer.findMany({
+      where,
+      orderBy,
+      skip: (page - 1) * limit,
+      take: limit,
+      include: {
+        // Lightweight -- just enough for the list view's "most recent
+        // interest" column. Full history is only fetched on the profile
+        // page (getCustomerProfileData's customerProfileInclude).
+        leadCaptures: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { interestType: true, productName: true, productSize: true, consent: true, createdAt: true },
+        },
+      },
+    }),
     prisma.customer.count({ where }),
   ])
 
@@ -325,6 +374,7 @@ const customerProfileInclude = Prisma.validator<Prisma.CustomerDefaultArgs>()({
     communications: { orderBy: { sentAt: 'desc' } },
     activityLog: { orderBy: { createdAt: 'desc' } },
     intakeLinks: { orderBy: { createdAt: 'desc' } },
+    leadCaptures: { orderBy: { createdAt: 'desc' } },
   },
 })
 export type CustomerProfile = Prisma.CustomerGetPayload<typeof customerProfileInclude>

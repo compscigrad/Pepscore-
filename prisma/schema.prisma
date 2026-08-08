@@ -1503,6 +1503,16 @@ model Customer {
   // so filtering/sorting by status is a plain indexed column.
   status CustomerStatus @default(LEAD)
 
+  // Phase 2B item 8 (2026-08-07) -- a separate, admin-editable CRM triage
+  // status (New/Contacted/Qualified/Converted/Closed), deliberately NOT
+  // reusing `status` above: that field is fulfillment-lifecycle state,
+  // automatically recomputed from invoice/payment/shipment events and never
+  // admin-settable directly. leadStatus is the opposite -- never
+  // auto-computed, only ever changed by an explicit admin action (see
+  // app/api/admin/customers/[id]/route.ts), independent of whatever the
+  // customer's actual order history looks like.
+  leadStatus LeadStatus @default(NEW)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1729,6 +1739,16 @@ enum CustomerStatus {
   SHIPPED
   DELIVERED
   ARCHIVED
+}
+
+// CRM triage status (Phase 2B item 8) -- see Customer.leadStatus's own
+// comment for why this is a separate enum from CustomerStatus above.
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  CONVERTED
+  CLOSED
 }
 
 // Permanent, append-only history for a customer — both lifecycle events
