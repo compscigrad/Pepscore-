@@ -12,6 +12,9 @@ import { Header } from '@/components/storefront/Header'
 import { Footer } from '@/components/storefront/Footer'
 import { RuoModal, RUO_TEXT } from '@/components/storefront/RuoModal'
 import { CartSidebar } from '@/components/storefront/CartSidebar'
+import { BackorderIndicator } from '@/components/storefront/BackorderIndicator'
+import { BackorderLegend } from '@/components/storefront/BackorderLegend'
+import { STOREFRONT_BACKORDER_CREDIT_AMOUNT, STOREFRONT_BACKORDER_MINIMUM_ORDER_TOTAL } from '@/lib/storefront/backorderPolicy'
 
 const fieldInput =
   'w-full border border-white/15 bg-white/[0.04] rounded-lg px-4 py-3 text-[14px] text-white placeholder:text-white/35 focus:outline-none focus:border-[#D4AF37]/50 transition-colors'
@@ -39,6 +42,11 @@ export function CheckoutForm() {
   const router = useRouter()
   const { items, total } = useCartStore()
   const cartTotal = total()
+  const hasBackorderedItem = items.some((i) => i.backordered)
+  // Storefront-side hint only -- the authoritative eligibility check happens
+  // server-side against the real invoice once one exists (lib/invoice/
+  // backorder.ts's isAutomaticCompensationEligible).
+  const qualifiesForBackorderCredit = hasBackorderedItem && cartTotal > STOREFRONT_BACKORDER_MINIMUM_ORDER_TOTAL
 
   const [form, setForm] = useState<AddressForm>(EMPTY_FORM)
   const [showRuo, setShowRuo] = useState(false)
@@ -238,7 +246,10 @@ export function CheckoutForm() {
                   {items.map(i => (
                     <li key={i.id} className="flex justify-between items-start gap-3 text-[13px]">
                       <div>
-                        <p className="font-heading font-bold text-white">{i.name} × {i.quantity}</p>
+                        <p className="font-heading font-bold text-white flex items-center gap-1.5">
+                          {i.name} × {i.quantity}
+                          {i.backordered && <BackorderIndicator />}
+                        </p>
                         <p className="text-white/45">{i.size}</p>
                       </div>
                       <span className="font-heading font-bold text-white whitespace-nowrap">
@@ -258,6 +269,17 @@ export function CheckoutForm() {
                     </span>
                   </div>
                 </div>
+
+                {hasBackorderedItem && (
+                  <div className="mt-4 pt-4 border-t border-white/10 space-y-2">
+                    <BackorderLegend />
+                    <p className="text-[11px] text-white/45">
+                      {qualifiesForBackorderCredit
+                        ? `This order qualifies for a one-time $${STOREFRONT_BACKORDER_CREDIT_AMOUNT} backorder credit, applied automatically.`
+                        : `Orders over $${STOREFRONT_BACKORDER_MINIMUM_ORDER_TOTAL} with a backordered item receive a one-time $${STOREFRONT_BACKORDER_CREDIT_AMOUNT} backorder credit.`}
+                    </p>
+                  </div>
+                )}
                 <div className="flex justify-between items-center mt-4 pt-4 border-t border-white/10">
                   <span className="font-heading font-bold text-[16px] text-white">Est. Total</span>
                   <span className="font-heading font-extrabold text-[22px] text-[#D4AF37]">${cartTotal.toFixed(2)}</span>
