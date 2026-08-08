@@ -10,7 +10,8 @@ import toast from 'react-hot-toast'
 import { formatCurrency } from '@/lib/orders'
 import { formatCarrierLabel } from '@/lib/invoice/format'
 import { StatusBadge } from './StatusBadge'
-import { card, input, pillOutline, pillPrimary, selectOption } from './theme'
+import { InvoiceArchiveButton } from './InvoiceArchiveButton'
+import { card, input, pillPrimary, selectOption } from './theme'
 import type { InvoiceWithRelations, InvoiceListFilter } from '@/lib/invoices'
 
 type SortField = 'invoiceNumber' | 'customerName' | 'createdAt' | 'balanceDue' | 'status'
@@ -43,7 +44,6 @@ export function InvoiceTable({ initialInvoices, initialTotal }: Props) {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(false)
-  const [archivingIds, setArchivingIds] = useState<Set<string>>(new Set())
 
   const fetchInvoices = useCallback(async () => {
     setLoading(true)
@@ -91,33 +91,6 @@ export function InvoiceTable({ initialInvoices, initialTotal }: Props) {
     return () => clearTimeout(timeout)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search])
-
-  // Mirrors InvoiceHeaderActions.tsx's archiveOrRestore() but scoped to a
-  // single row in this list, so archiving from Sales Activity doesn't
-  // require opening the invoice first.
-  async function archiveOrRestoreRow(invoiceId: string, archived: boolean) {
-    setArchivingIds((prev) => new Set(prev).add(invoiceId))
-    try {
-      const res = archived
-        ? await fetch(`/api/admin/invoices/${invoiceId}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'restore' }),
-          })
-        : await fetch(`/api/admin/invoices/${invoiceId}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error(archived ? 'Failed to restore invoice' : 'Failed to archive invoice')
-      toast.success(archived ? 'Invoice restored' : 'Invoice archived')
-      await fetchInvoices()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Action failed')
-    } finally {
-      setArchivingIds((prev) => {
-        const next = new Set(prev)
-        next.delete(invoiceId)
-        return next
-      })
-    }
-  }
 
   function toggleSort(field: SortField) {
     if (sortBy === field) {
@@ -234,14 +207,7 @@ export function InvoiceTable({ initialInvoices, initialTotal }: Props) {
                   </td>
                   <td className="px-4 py-3 text-right whitespace-nowrap">
                     <div className="flex items-center justify-end gap-3">
-                      <button
-                        type="button"
-                        onClick={() => archiveOrRestoreRow(invoice.id, Boolean(invoice.archivedAt))}
-                        disabled={archivingIds.has(invoice.id)}
-                        className={`${pillOutline} px-3 py-1 text-[11px] disabled:opacity-40`}
-                      >
-                        {invoice.archivedAt ? 'Restore' : 'Archive'}
-                      </button>
+                      <InvoiceArchiveButton invoiceId={invoice.id} archived={Boolean(invoice.archivedAt)} onDone={fetchInvoices} />
                       <Link href={`/admin/invoices/${invoice.id}`} className="text-gold-light font-bold text-sm hover:underline">
                         View →
                       </Link>
