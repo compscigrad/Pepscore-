@@ -7,6 +7,7 @@ import { X, Minus, Plus, Trash2 } from 'lucide-react'
 import { useCartStore } from '@/lib/cart-store'
 import { useRouter } from 'next/navigation'
 import { BackorderIndicator } from './BackorderIndicator'
+import { BackorderLegend } from './BackorderLegend'
 import { STOREFRONT_BACKORDER_CREDIT_AMOUNT, STOREFRONT_BACKORDER_MINIMUM_ORDER_TOTAL } from '@/lib/storefront/backorderPolicy'
 
 export function CartSidebar() {
@@ -113,15 +114,14 @@ export function CartSidebar() {
               Shipping and taxes calculated at checkout. Free shipping on orders over $150.
             </p>
             {hasBackorderedItem && (
-              <p className="text-[11px] text-amber-300/80 mb-3 leading-relaxed flex items-start gap-1.5">
-                <BackorderIndicator className="mt-1" />
-                <span>
-                  Your cart includes a backordered item — fulfillment may take longer.{' '}
+              <div className="mb-3 space-y-1.5">
+                <BackorderLegend />
+                <p className="text-[11px] text-white/45">
                   {qualifiesForBackorderCredit
                     ? `This order qualifies for a one-time $${STOREFRONT_BACKORDER_CREDIT_AMOUNT} backorder credit, applied automatically.`
                     : `Orders over $${STOREFRONT_BACKORDER_MINIMUM_ORDER_TOTAL} with a backordered item receive a one-time $${STOREFRONT_BACKORDER_CREDIT_AMOUNT} backorder credit.`}
-                </span>
-              </p>
+                </p>
+              </div>
             )}
             <button
               onClick={handleCheckout}

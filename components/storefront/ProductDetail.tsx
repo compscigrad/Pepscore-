@@ -12,6 +12,7 @@ import { useCartStore } from '@/lib/cart-store'
 import { SingleVialImage } from './SingleVialImage'
 import { LeadCaptureTrigger } from './LeadCaptureTrigger'
 import { BackorderIndicator } from './BackorderIndicator'
+import { BackorderLegend } from './BackorderLegend'
 import { AVAILABILITY_LABEL, isPurchasable, type StorefrontAvailability } from '@/lib/storefront/availability'
 import type { StorefrontPrice } from '@/lib/storefront/pricing'
 
@@ -165,9 +166,9 @@ export function ProductDetail({
                 </button>
 
                 {availability === 'BACKORDERED' && (
-                  <p className="text-[11px] text-amber-300/80 mt-2 text-center">
-                    This item is on backorder and may require additional fulfillment time.
-                  </p>
+                  <div className="mt-3">
+                    <BackorderLegend />
+                  </div>
                 )}
 
                 {!canPurchase && (availability === 'OUT_OF_STOCK' || availability === 'COMING_SOON') && (
