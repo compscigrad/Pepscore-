@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
   const page = parseInt(params.get('page') ?? '1')
   const limit = parseInt(params.get('limit') ?? '25')
   const search = params.get('search') ?? undefined
-  const filter = (params.get('filter') as ListInvoicesParams['filter']) ?? 'all'
+  const filter = (params.get('filter') as ListInvoicesParams['filter']) ?? 'active'
   const sortBy = (params.get('sortBy') as 'invoiceNumber' | 'customerName' | 'createdAt' | 'balanceDue' | 'status') ?? 'createdAt'
   const sortDir = (params.get('sortDir') as 'asc' | 'desc') ?? 'desc'
   const withStats = params.get('withStats') === 'true'

@@ -87,7 +87,12 @@ export type InvoiceWithRelations = Prisma.InvoiceGetPayload<typeof invoiceWithRe
 // PaymentArrangementInstallment.dueDate exists, for installment plans) — it's
 // approximated as "unpaid and issued more than 30 days ago." See
 // docs/Decisions.md #21.
-export type InvoiceListFilter = 'all' | 'outstanding' | 'paid' | 'overdue' | 'archived'
+//
+// 'active' was previously named 'all', which was misleading -- it never
+// included archived invoices. 'all' now means what it says: active and
+// archived together, so there's a real way to see everything in one tab
+// rather than only via a search term.
+export type InvoiceListFilter = 'active' | 'outstanding' | 'paid' | 'overdue' | 'archived' | 'all'
 
 export interface ListInvoicesParams {
   search?: string
@@ -114,13 +119,20 @@ function buildFilterClause(filter: InvoiceListFilter): Prisma.InvoiceWhereInput 
       return { archivedAt: null, balanceDue: { gt: 0 }, status: OPEN_STATUSES, issuedAt: { lte: cutoff } }
     }
     case 'all':
+      return {}
+    case 'active':
     default:
       return { archivedAt: null }
   }
 }
 
 export async function listInvoices(params: ListInvoicesParams = {}) {
-  const { search, filter = 'all', sortBy = 'createdAt', sortDir = 'desc', page = 1, limit = 25 } = params
+  const { search, filter = 'active', sortBy = 'createdAt', sortDir = 'desc', page = 1, limit = 25 } = params
+
+  // A bare number (e.g. "150" or "150.00") also matches an exact total or
+  // balance due -- covers "search by amount" without pretending to support
+  // a range query or currency-formatted matching.
+  const numericSearch = search && /^\d+(\.\d{1,2})?$/.test(search.trim()) ? Number(search.trim()) : null
 
   const searchClause: Prisma.InvoiceWhereInput = search
     ? {
@@ -128,7 +140,10 @@ export async function listInvoices(params: ListInvoicesParams = {}) {
           { invoiceNumber: { contains: search, mode: 'insensitive' } },
           { customerName: { contains: search, mode: 'insensitive' } },
           { customerEmail: { contains: search, mode: 'insensitive' } },
+          { customerPhone: { contains: search, mode: 'insensitive' } },
           { trackingNumber: { contains: search, mode: 'insensitive' } },
+          { items: { some: { skuSnapshot: { contains: search, mode: 'insensitive' } } } },
+          ...(numericSearch !== null ? [{ total: numericSearch }, { balanceDue: numericSearch }] : []),
         ],
       }
     : {}
