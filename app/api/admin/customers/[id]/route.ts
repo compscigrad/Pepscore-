@@ -12,6 +12,8 @@ import { prisma } from '@/lib/prisma'
 import { recordCustomerActivity } from '@/lib/customers'
 import { addressSchema } from '@/lib/invoice/validation'
 
+const LEAD_STATUSES = ['NEW', 'CONTACTED', 'QUALIFIED', 'CONVERTED', 'CLOSED'] as const
+
 function isAdmin(userId: string | null) {
   return userId === process.env.ADMIN_CLERK_USER_ID
 }
@@ -33,6 +35,9 @@ const patchSchema = z.object({
   notes: z.string().optional().nullable(),
   billingAddress: addressSchema.optional().nullable(),
   shippingAddress: addressSchema.optional().nullable(),
+  // CRM triage status (Phase 2B item 8) -- see Customer.leadStatus's schema
+  // comment for why this is separate from the fulfillment-lifecycle `status`.
+  leadStatus: z.enum(LEAD_STATUSES).optional(),
 })
 
 interface RouteParams {
@@ -58,6 +63,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
         email: payload.email,
         phone: payload.phone,
         notes: payload.notes,
+        leadStatus: payload.leadStatus,
         // Prisma's JSON columns need an explicit Prisma.JsonNull to clear a
         // value -- a plain `null` is only valid for genuinely nullable
         // scalar columns. `undefined` (the field simply wasn't in the
@@ -83,6 +89,16 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
         eventType: 'ADDRESS_UPDATED_BY_ADMIN',
         previousValue: JSON.stringify({ billingAddress: before.billingAddress, shippingAddress: before.shippingAddress }),
         newValue: JSON.stringify({ billingAddress: payload.billingAddress ?? before.billingAddress, shippingAddress: payload.shippingAddress ?? before.shippingAddress }),
+        source: 'MANUAL',
+        userId: userId!,
+      })
+    }
+    if (payload.leadStatus !== undefined && payload.leadStatus !== before.leadStatus) {
+      await recordCustomerActivity({
+        customerId: id,
+        eventType: 'LEAD_STATUS_CHANGED',
+        previousValue: before.leadStatus,
+        newValue: payload.leadStatus,
         source: 'MANUAL',
         userId: userId!,
       })
