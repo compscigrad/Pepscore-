@@ -6,8 +6,9 @@ import { UserButton } from '@clerk/nextjs'
 
 const NAV_ITEMS = [
   { href: '/account', label: 'Dashboard' },
-  { href: '/account/invoices', label: 'Invoices' },
   { href: '/account/orders', label: 'Orders' },
+  { href: '/account/invoices', label: 'Invoices' },
+  { href: '/account/tracking', label: 'Tracking' },
   { href: '/account/correspondence', label: 'Correspondence' },
   { href: '/account/payment-methods', label: 'Payment Methods' },
   { href: '/account/profile', label: 'Profile' },

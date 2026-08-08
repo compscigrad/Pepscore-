@@ -40,6 +40,9 @@ export async function getPortalInvoiceDetail(customerId: string, invoiceId: stri
     include: {
       items: { orderBy: { sortOrder: 'asc' } },
       discounts: true,
+      // Reference-only link back to the storefront Order this invoice was
+      // generated from, when one exists -- most manual invoices have none.
+      order: { select: { id: true, orderNumber: true } },
       payments: { orderBy: { paidAt: 'desc' } },
       paymentArrangement: { include: { installments: { orderBy: { installmentNumber: 'asc' } } } },
       // Only fields safe for customer display are read by the page/mapper —
@@ -65,11 +68,13 @@ export async function getPortalInvoiceDetail(customerId: string, invoiceId: stri
 
 export type PortalInvoiceDetail = NonNullable<Awaited<ReturnType<typeof getPortalInvoiceDetail>>>
 
-// Order/tracking-focused view — same invoices as listPortalInvoices, with
-// shipment/backorder summaries instead of financial figures. A separate
-// query rather than reusing listPortalInvoices' shape, since the two pages
-// show genuinely different fields.
-export async function listPortalOrders(customerId: string) {
+// Shipment/backorder-focused view of a customer's Invoices — same rows as
+// listPortalInvoices, different fields (tracking/backorder status instead
+// of financial figures). Named for what it actually is: an Invoice-side
+// tracking summary, NOT the storefront Order model (see lib/portal/orders.ts
+// for that) -- the two are never the same record type and must not be
+// presented as if they were.
+export async function listPortalInvoiceTracking(customerId: string) {
   return prisma.invoice.findMany({
     where: { customerId, deletedAt: null },
     orderBy: { createdAt: 'desc' },
