@@ -10,6 +10,8 @@
 import type { Customer } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { getPortalReadinessStatus } from '@/lib/portal/readiness'
+import { digitsOnly } from '@/lib/notifications/phoneMatch'
+import { looksLikeTestData } from '@/lib/customers/linkageBackfill'
 
 export interface RolloutAudience {
   eligible: Customer[]
@@ -18,37 +20,56 @@ export interface RolloutAudience {
   alreadyInvited: Customer[]
   alreadyClaimed: number
   conflictReview: number
+  // Surfaced for admin review, same "flag, never auto-decide" principle as
+  // duplicateFlagged/conflictReview -- looksLikeTestData() is a heuristic
+  // (name/email pattern match), so a false positive is possible; excluding
+  // these from `eligible` by default means the failure mode is "an admin
+  // has to manually re-include a real customer," never "a test record gets
+  // a real invitation."
+  testDataFlagged: Customer[]
 }
 
-function normalizeEmail(email: string | null): string | null {
+export function normalizeEmail(email: string | null): string | null {
   const trimmed = email?.trim().toLowerCase()
   return trimmed ? trimmed : null
 }
 
-function normalizePhone(phone: string | null): string | null {
-  const digits = phone?.replace(/\D/g, '')
-  return digits ? digits : null
+// Last-10-digits (US/CA subscriber number), matching the same convention
+// lib/notifications/phoneMatch.ts's phoneNumbersMatch() already uses for
+// Twilio opt-out matching -- otherwise "(305) 984-2899" and
+// "+1-305-984-2899" (the same real number) normalize to different strings
+// and a genuine duplicate goes undetected.
+export function normalizePhone(phone: string | null): string | null {
+  const digits = phone ? digitsOnly(phone) : ''
+  const tail = digits.slice(-10)
+  return tail.length === 10 ? tail : null
 }
 
-export async function computeEligibleInviteAudience(): Promise<RolloutAudience> {
-  const [unclaimed, claimedCount] = await Promise.all([
-    prisma.customer.findMany({ where: { userId: null, portalAccessDisabled: false } }),
-    prisma.customer.count({ where: { userId: { not: null } } }),
-  ])
-
-  const missingContact: Customer[] = []
-  const withContact: Customer[] = []
-  for (const customer of unclaimed) {
+// Pure split -- no DB, unit-testable directly. Anyone with neither email
+// nor phone can never receive an invite of any channel.
+export function classifyByContactInfo<T extends Pick<Customer, 'id' | 'email' | 'phone'>>(
+  customers: T[]
+): { missingContact: T[]; withContact: T[] } {
+  const missingContact: T[] = []
+  const withContact: T[] = []
+  for (const customer of customers) {
     if (!customer.email && !customer.phone) missingContact.push(customer)
     else withContact.push(customer)
   }
+  return { missingContact, withContact }
+}
 
-  // Group by normalized email/phone to find any customer sharing contact
-  // info with another row — Customer.email/.phone have no uniqueness
-  // constraint, so this is a real possibility, not a hypothetical.
-  const byEmail = new Map<string, Customer[]>()
-  const byPhone = new Map<string, Customer[]>()
-  for (const customer of withContact) {
+// Pure grouping -- no DB. Group by normalized email/phone to find any
+// customer sharing contact info with another row — Customer.email/.phone
+// have no uniqueness constraint, so this is a real possibility, not a
+// hypothetical. Returns the ids to exclude, never guesses which of the two
+// (or more) rows is the "real" one.
+export function findDuplicateContactCustomerIds<T extends Pick<Customer, 'id' | 'email' | 'phone'>>(
+  customers: T[]
+): Set<string> {
+  const byEmail = new Map<string, T[]>()
+  const byPhone = new Map<string, T[]>()
+  for (const customer of customers) {
     const email = normalizeEmail(customer.email)
     const phone = normalizePhone(customer.phone)
     if (email) byEmail.set(email, [...(byEmail.get(email) ?? []), customer])
@@ -57,13 +78,28 @@ export async function computeEligibleInviteAudience(): Promise<RolloutAudience> 
   const duplicateIds = new Set<string>()
   for (const group of byEmail.values()) if (group.length > 1) group.forEach((c) => duplicateIds.add(c.id))
   for (const group of byPhone.values()) if (group.length > 1) group.forEach((c) => duplicateIds.add(c.id))
+  return duplicateIds
+}
 
+export async function computeEligibleInviteAudience(): Promise<RolloutAudience> {
+  const [unclaimed, claimedCount] = await Promise.all([
+    prisma.customer.findMany({ where: { userId: null, portalAccessDisabled: false } }),
+    prisma.customer.count({ where: { userId: { not: null } } }),
+  ])
+
+  const { missingContact, withContact } = classifyByContactInfo(unclaimed)
+
+  const duplicateIds = findDuplicateContactCustomerIds(withContact)
   const duplicateFlagged = withContact.filter((c) => duplicateIds.has(c.id))
   const nonDuplicate = withContact.filter((c) => !duplicateIds.has(c.id))
 
+  const testDataFlagged = nonDuplicate.filter((c) => looksLikeTestData(`${c.firstName} ${c.lastName}`.trim(), c.email))
+  const testDataIds = new Set(testDataFlagged.map((c) => c.id))
+  const nonTestData = nonDuplicate.filter((c) => !testDataIds.has(c.id))
+
   const [openReviewCases, statuses] = await Promise.all([
     prisma.customerIdentityReviewCase.findMany({ where: { status: 'OPEN' } }),
-    Promise.all(nonDuplicate.map(async (c) => ({ customer: c, status: await getPortalReadinessStatus(c) }))),
+    Promise.all(nonTestData.map(async (c) => ({ customer: c, status: await getPortalReadinessStatus(c) }))),
   ])
   const conflictReviewCustomerIds = new Set(
     openReviewCases.map((r) => r.customerId).filter((id): id is string => Boolean(id))
@@ -84,5 +120,6 @@ export async function computeEligibleInviteAudience(): Promise<RolloutAudience> 
     alreadyInvited,
     alreadyClaimed: claimedCount,
     conflictReview: openReviewCases.length,
+    testDataFlagged,
   }
 }
