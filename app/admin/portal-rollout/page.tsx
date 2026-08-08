@@ -14,7 +14,10 @@ import { isAutoInvitesEnabled, isSmsInvitesEnabled, isInviteRemindersEnabled, is
 import { isSmsConfigured } from '@/lib/notifications/bestEffortSms'
 import { FROM_EMAIL } from '@/lib/resend'
 import { getRolloutSafetyConfig } from '@/lib/portal/rolloutSafety'
+import { getReminderSafetyConfig } from '@/lib/portal/reminderSafety'
+import { getReminderPreview } from '@/lib/portal/reminderPreview'
 import { PortalRolloutPanel } from '@/components/admin/PortalRolloutPanel'
+import { ReminderPreviewTable } from '@/components/admin/ReminderPreviewTable'
 import { card, mutedText, sectionHeading, divider } from '@/components/invoices/theme'
 
 const FLAG_LABEL: Record<string, string> = {
@@ -30,7 +33,11 @@ export default async function PortalRolloutPage() {
     redirect('/')
   }
 
-  const [audience, settings] = await Promise.all([computeEligibleInviteAudience(), getPortalRolloutSettings()])
+  const [audience, settings, reminderPreview] = await Promise.all([
+    computeEligibleInviteAudience(),
+    getPortalRolloutSettings(),
+    getReminderPreview(),
+  ])
 
   const resendDomainVerified = FROM_EMAIL !== 'onboarding@resend.dev'
   const smsConfigured = isSmsConfigured()
@@ -43,6 +50,7 @@ export default async function PortalRolloutPage() {
 
   const readyToActivate = flags.CUSTOMER_AUTO_INVITES_ENABLED
   const safety = getRolloutSafetyConfig()
+  const reminderSafety = getReminderSafetyConfig()
 
   return (
     <main className="min-h-screen bg-black p-8">
@@ -104,6 +112,42 @@ export default async function PortalRolloutPage() {
             ))}
           </div>
         </div>
+
+        <div className={`${card} p-6`}>
+          <h3 className={sectionHeading}>Reminder Readiness</h3>
+          <p className={`text-sm ${mutedText} mt-1 mb-4`}>
+            Day-3/Day-6 reminders for customers who haven&rsquo;t claimed their invite yet — same layered safety gates as the initial rollout. No reminder has been sent from this report.
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
+            <Stat label="Eligible Day-3 reminders" value={reminderPreview.eligibleDay3} highlight />
+            <Stat label="Eligible Day-6 reminders" value={reminderPreview.eligibleDay6} highlight />
+            <Stat label="Recipient cap (per run)" value={reminderSafety.maxPerRun} />
+          </div>
+          <div className={`divide-y ${divider}`}>
+            <ReadinessRow
+              label="Reminder feature enabled"
+              ready={flags.CUSTOMER_INVITE_REMINDERS_ENABLED}
+              detail={flags.CUSTOMER_INVITE_REMINDERS_ENABLED ? 'Enabled' : 'CUSTOMER_INVITE_REMINDERS_ENABLED is unset (default off)'}
+            />
+            <ReadinessRow
+              label="Reminder dry-run"
+              ready={reminderSafety.dryRun}
+              detail={reminderSafety.dryRun ? 'On (safe) — no real reminder will be sent' : 'Off — real reminders will send if otherwise eligible'}
+            />
+            <ReadinessRow
+              label="Reminder kill switch"
+              ready={!reminderSafety.killSwitch}
+              detail={reminderSafety.killSwitch ? 'ACTIVE — every reminder run is halted before evaluating any candidate' : 'Inactive'}
+            />
+            <ReadinessRow
+              label="Reminder allowlist"
+              ready={reminderSafety.allowlist.size === 0}
+              detail={reminderSafety.allowlist.size > 0 ? `Restricted to ${reminderSafety.allowlist.size} allowlisted recipient(s)` : 'Unrestricted (no allowlist configured)'}
+            />
+          </div>
+        </div>
+
+        {reminderPreview.entries.length > 0 && <ReminderPreviewTable entries={reminderPreview.entries} />}
 
         {audience.eligible.length > 0 && (
           <div className={`${card} p-6`}>
