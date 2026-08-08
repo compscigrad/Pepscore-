@@ -1516,16 +1516,17 @@ model Customer {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  invoices            Invoice[]
-  intakeLinks         IntakeLink[]
-  activityLog         CustomerActivityLog[]
-  notifications       Notification[]
-  accountCredits      CustomerAccountCredit[]
-  communications      Communication[]
-  portalInvites       CustomerPortalInvite[]
-  accessEvents        CustomerAccessEvent[]
-  identityReviewCases CustomerIdentityReviewCase[]
-  leadCaptures        LeadCapture[]
+  invoices             Invoice[]
+  intakeLinks          IntakeLink[]
+  activityLog          CustomerActivityLog[]
+  notifications        Notification[]
+  accountCredits       CustomerAccountCredit[]
+  communications       Communication[]
+  portalInvites        CustomerPortalInvite[]
+  accessEvents         CustomerAccessEvent[]
+  identityReviewCases  CustomerIdentityReviewCase[]
+  leadCaptures         LeadCapture[]
+  firstOrderOfferClaim FirstOrderOfferClaim?
 
   @@index([email])
   @@index([phone])
@@ -1578,6 +1579,8 @@ model LeadCapture {
 
   createdAt DateTime @default(now())
 
+  firstOrderOfferClaim FirstOrderOfferClaim?
+
   @@index([customerId])
   @@index([interestType])
   @@index([createdAt])
@@ -1591,6 +1594,79 @@ enum LeadInterestType {
   OUT_OF_STOCK_INTEREST
   PRICING_REVIEW_INTEREST
   SPA_WHOLESALE_INQUIRY
+  // First-order 10% offer claim (see FirstOrderOfferClaim) -- every claim
+  // also creates a LeadCapture row with this interest type so it shows up
+  // in the same admin Leads/CRM list/filters as every other submission,
+  // never a disconnected marketing database.
+  FIRST_ORDER_OFFER
+}
+
+// [Roadmap] 10% first-order storefront offer ("FIRST10"). A singleton
+// config row (lib/promotions/firstOrderOffer.ts always reads/writes the one
+// row via findFirst, creating it on first access) rather than a full
+// admin-managed catalog like Promotion above -- this offer has exactly one
+// live instance at a time, not a reusable per-invoice preset, and needs
+// eligibility/expiration/stacking fields Promotion has no concept of.
+// `enabled` defaults to false so shipping this schema + admin UI carries
+// zero storefront behavior change until an admin explicitly turns it on --
+// no owner action required to build this safely, since it's schema/config
+// only, not a payment activation.
+model FirstOrderOfferConfig {
+  id String @id @default("singleton")
+
+  enabled    Boolean @default(false)
+  percentage Float   @default(10)
+
+  // Empty array = every product is eligible. Non-empty = allow-list of
+  // product slugs (matches Product.slug), letting an admin scope the offer
+  // (e.g. exclude backordered/limited items) without a code deploy.
+  eligibleProductSlugs String[] @default([])
+
+  expiresAt DateTime?
+  stackable Boolean   @default(false)
+
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  claims FirstOrderOfferClaim[]
+}
+
+// One row per customer who has claimed the first-order offer. customerId is
+// @unique so the database itself enforces one-claim-per-customer --
+// claimFirstOrderOffer() is written to be idempotent on a repeat claim by
+// the same customer (returns the existing claim rather than erroring), but
+// this constraint is what actually prevents a race from ever producing two.
+model FirstOrderOfferClaim {
+  id         String   @id @default(cuid())
+  customerId String   @unique
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  configId String
+  config   FirstOrderOfferConfig @relation(fields: [configId], references: [id])
+
+  // The LeadCapture row created alongside this claim (interestType
+  // FIRST_ORDER_OFFER, see enum above) -- same submission, kept as two rows
+  // rather than folded into LeadCapture so this claim's own redemption-
+  // tracking fields below don't have to be bolted onto that general-purpose
+  // model.
+  leadCaptureId String      @unique
+  leadCapture   LeadCapture @relation(fields: [leadCaptureId], references: [id])
+
+  // Snapshotted at claim time so a later admin change to the config's
+  // percentage never retroactively changes what a customer was already
+  // promised.
+  percentage Float
+  consent    Boolean @default(false)
+
+  // Set only once real checkout can apply discounts (roadmap items #164/
+  // #165) -- distinguishes "claimed, never redeemed" from "claimed and
+  // used" in reporting. Left null by every code path today.
+  redeemedAt      DateTime?
+  redeemedOrderId String?
+
+  claimedAt DateTime @default(now())
+
+  @@index([configId])
 }
 
 // Single-purpose, expiring, revocable, admin-initiated invite that binds one

@@ -1,11 +1,35 @@
 // Site footer with RUO disclaimer, product links, contact info
 import Link from 'next/link'
 import { LeadCaptureTrigger } from './LeadCaptureTrigger'
+import { FirstOrderOfferModal } from './FirstOrderOfferModal'
+import { getFirstOrderOfferConfig, isFirstOrderOfferLive } from '@/lib/promotions/firstOrderOffer'
 
-export function Footer() {
+// Server Component -- reads the FIRST10 config directly (no client fetch)
+// so the banner renders or doesn't with zero flash, and stays entirely
+// absent from the DOM while the offer is off (the default).
+export async function Footer() {
+  const offerConfig = await getFirstOrderOfferConfig()
+  const offerLive = isFirstOrderOfferLive(offerConfig)
+
   return (
     <footer className="bg-black text-white pt-14 pb-7 px-6">
       <div className="max-w-[1200px] mx-auto">
+
+        {offerLive && (
+          <div className="mb-11 rounded-2xl border border-[#D4AF37]/30 bg-gradient-to-br from-[#D4AF37]/10 via-transparent to-transparent p-6 flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="font-heading text-[17px] font-bold text-white mb-1">
+                Get {offerConfig.percentage}% Off Your First Order
+              </p>
+              <p className="text-[13px] text-white/55">Leave your email and phone number to claim your first-order discount.</p>
+            </div>
+            <FirstOrderOfferModal
+              percentage={offerConfig.percentage}
+              triggerLabel={`Claim ${offerConfig.percentage}% Off →`}
+              triggerClassName="shrink-0 bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] hover:shadow-[0_4px_16px_rgba(212,175,55,0.4)] text-black font-heading text-[12px] font-bold tracking-[0.08em] uppercase px-6 py-3 rounded-full transition-all"
+            />
+          </div>
+        )}
 
         {/* Top grid */}
         <div className="grid grid-cols-1 md:grid-cols-[1.6fr_1fr_1fr_1fr] gap-11 pb-11 border-b border-[#D4AF37]/15">
