@@ -5,7 +5,32 @@ import {
   isDeliveryStatusBlockedByBackorder,
   isTrackingBlockedByBackorder,
   canTransitionRefundStatus,
+  isAutomaticCompensationEligible,
+  BACKORDER_AUTOMATIC_MINIMUM_ORDER_TOTAL,
 } from './backorder'
+
+describe('isAutomaticCompensationEligible', () => {
+  it('does not qualify an $85 invoice', () => {
+    expect(isAutomaticCompensationEligible(85)).toBe(false)
+  })
+
+  it('does not qualify an invoice totaling exactly $100.00 -- the rule is strictly "over $100"', () => {
+    expect(isAutomaticCompensationEligible(100)).toBe(false)
+    expect(isAutomaticCompensationEligible(BACKORDER_AUTOMATIC_MINIMUM_ORDER_TOTAL)).toBe(false)
+  })
+
+  it('qualifies an invoice totaling $100.01', () => {
+    expect(isAutomaticCompensationEligible(100.01)).toBe(true)
+  })
+
+  it('qualifies a $500 invoice', () => {
+    expect(isAutomaticCompensationEligible(500)).toBe(true)
+  })
+
+  it('does not qualify a $0 invoice', () => {
+    expect(isAutomaticCompensationEligible(0)).toBe(false)
+  })
+})
 
 describe('computeCompensationSplit', () => {
   it('applies the full amount as a credit when the balance due covers it', () => {

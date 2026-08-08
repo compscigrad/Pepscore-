@@ -99,6 +99,17 @@ model Product {
   reservedUnits            Int                    @default(0)
   lowStockThreshold        Int?
   inventoryStatus          ProductInventoryStatus @default(TRACKING_DISABLED)
+  // Catalog/inventory-level backorder configuration (Phase 2B correction,
+  // 2026-08-07) -- explicitly distinct from BackorderCondition, which
+  // records a specific invoice line's fulfillment shortage after a sale.
+  // This field answers a different question, asked *before* any sale
+  // exists: "can this product still be ordered when available physical
+  // inventory is zero?" Admin-editable per product/strength, no code
+  // deployment required. See lib/storefront/availability.ts's
+  // getStorefrontAvailability(), which reads this alongside inventory
+  // status rather than ever inferring it from another customer's
+  // in-flight order.
+  backorderEnabled         Boolean                @default(false)
 
   // ─── SEO / Content Management (Phase 2B item 6) ─────────────────────────
   // All admin-editable via the storefront content editor
@@ -933,6 +944,11 @@ enum CompensationDispositionPreference {
   ACCOUNT_CREDIT
 }
 
+enum BackorderCompensationType {
+  AUTOMATIC
+  DISCRETIONARY
+}
+
 // One compensation per genuinely separate delay, not one per affected item —
 // multiple line items backordered as part of the same order delay share a
 // single BackorderCompensation via the join table below, which is what makes
@@ -945,7 +961,17 @@ model BackorderCompensation {
   invoiceId String
   invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
-  totalAmount           Float // the flat policy amount, normally 25.00
+  // AUTOMATIC = the flat $25 policy credit (gated on the order exceeding the
+  // $100 minimum -- see lib/invoice/backorder.ts's
+  // isAutomaticCompensationEligible). DISCRETIONARY = an admin-entered
+  // custom amount for real-time customer-service situations that don't
+  // meet the automatic policy (lib/backorders.ts's
+  // applyDiscretionaryAccommodation) -- a genuinely separate workflow, not
+  // a substitute for the automatic one. Both can coexist on the same
+  // invoice; idempotency (one-per-invoice) is scoped per type, not globally.
+  compensationType BackorderCompensationType @default(AUTOMATIC)
+
+  totalAmount           Float // the flat policy amount (AUTOMATIC, normally 25.00) or the admin-entered amount (DISCRETIONARY)
   creditAppliedAmount   Float                             @default(0) // portion applied as an InvoiceDiscount, reducing balance due
   // Portion *requested* as a refund of money already collected — a fixed
   // snapshot of the compensation's allocation plan at apply-time, not a
@@ -966,6 +992,20 @@ model BackorderCompensation {
   appliedAt DateTime @default(now())
   appliedBy String
 
+  // Set only when this specific compensation was later reversed/replaced
+  // (e.g. a DISCRETIONARY amount the admin adjusted or removed) — the row
+  // itself is never deleted or overwritten, matching the same
+  // reversedAt-on-the-same-row convention used elsewhere in this schema
+  // (BalanceTransfer). A reversed compensation's linked discountId is
+  // detached (set null) and its InvoiceDiscount row deleted so the
+  // invoice total no longer reflects it, but this row's own
+  // totalAmount/reason/appliedAt/appliedBy stay exactly as they were at
+  // the time, so the full history of what was granted and later undone
+  // is always reconstructable.
+  reversedAt     DateTime?
+  reversedBy     String?
+  reversalReason String?
+
   // Each of these is optional and independent -- a single compensation can
   // be a pure credit, a pure refund, a pure account credit, or a genuine mix
   // of two or three, matching whatever the invoice's payment state actually
@@ -980,6 +1020,7 @@ model BackorderCompensation {
   coveredConditions BackorderConditionCompensation[]
 
   @@index([invoiceId])
+  @@index([invoiceId, compensationType])
 }
 
 // Join table: which specific backorder events a given compensation covers —

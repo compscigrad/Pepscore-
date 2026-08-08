@@ -1,21 +1,44 @@
 // Pure, DB-free decision logic for the backorder-compensation workflow:
 // how a $25 (or any) compensation amount splits across credit / refund /
 // account-credit depending on payment state at the moment it's applied, the
-// one-per-invoice idempotency decision, and the delivery-status guard that
-// blocks shipment progression while a backorder is unresolved.
+// one-per-invoice-per-type idempotency decision, and the delivery-status
+// guard that blocks shipment progression while a backorder is unresolved.
 //
 // Design constraints this encodes (locked in with the user before build):
 //  - Never fake a refund with an InvoiceDiscount: a discount can only ever
 //    reduce a balance that's still actually owed. Money already collected
 //    must come back as a real InvoiceRefund; money beyond that has no
 //    balance or cash to draw from, so it becomes a CustomerAccountCredit.
-//  - Exactly one BackorderCompensation per invoice-delay, ever, without
-//    manual admin approval for a second one — decideCompensationDisposition
-//    is the single choke point that enforces "link, don't duplicate."
+//  - Exactly one BackorderCompensation per invoice-delay *per type*, ever,
+//    without manual admin approval for a second one —
+//    decideCompensationDisposition is the single choke point that enforces
+//    "link, don't duplicate" within a type. AUTOMATIC and DISCRETIONARY are
+//    two separate, independently-idempotent slots on the same invoice (see
+//    lib/backorders.ts) — a discretionary accommodation is never mistaken
+//    for, or blocked by, the automatic policy credit, and vice versa.
+//  - The automatic $25 policy credit only applies when the invoice's
+//    pre-compensation total strictly exceeds $100 (2026-08-07 policy
+//    correction) — see isAutomaticCompensationEligible below. The
+//    discretionary accommodation has no such floor; that's the entire
+//    point of the separate workflow (real-time customer-service judgment
+//    calls on orders that don't meet the automatic policy).
 import type { DeliveryStatus, RefundStatus, CompensationDispositionPreference } from '@prisma/client'
 
 function round2(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100
+}
+
+// The literal business rule is "over $100" -- strictly greater than, so an
+// invoice totaling exactly $100.00 does NOT qualify (only $100.01+ does).
+// Evaluated against the invoice's pre-compensation total (its state before
+// this specific compensation would be created), so the $25 credit can
+// never affect its own eligibility -- see lib/backorders.ts's
+// applyCompensationTx, which reads invoice.total *before* creating the
+// discount that would reduce it.
+export const BACKORDER_AUTOMATIC_MINIMUM_ORDER_TOTAL = 100
+
+export function isAutomaticCompensationEligible(preCompensationInvoiceTotal: number): boolean {
+  return preCompensationInvoiceTotal > BACKORDER_AUTOMATIC_MINIMUM_ORDER_TOTAL
 }
 
 export interface CompensationSplit {

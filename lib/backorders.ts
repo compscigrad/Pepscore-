@@ -12,12 +12,27 @@
 // eventually, when a real payment-provider webhook confirms it through the
 // same record). Nothing in this file tells a customer a refund is done
 // until that has genuinely happened.
-import { Prisma, type DeliveryStatus, type CompensationDispositionPreference, type InvoiceRefund, type BackorderCompensation } from '@prisma/client'
+import {
+  Prisma,
+  type DeliveryStatus,
+  type CompensationDispositionPreference,
+  type InvoiceRefund,
+  type BackorderCompensation,
+  type BackorderCompensationType,
+} from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { calculateInvoiceTotals, type InvoiceLineItemInput, type InvoiceDiscountInput } from '@/lib/invoice/calculations'
 import { deriveInvoicePaymentAmounts, deriveInvoiceWorkflowStatus } from '@/lib/invoice/status'
 import { computeOrderStatus } from '@/lib/tracking/orderStatus'
-import { decideCompensationDisposition, isDeliveryStatusBlockedByBackorder, canTransitionRefundStatus } from '@/lib/invoice/backorder'
+import {
+  decideCompensationDisposition,
+  computeCompensationSplit,
+  isDeliveryStatusBlockedByBackorder,
+  canTransitionRefundStatus,
+  isAutomaticCompensationEligible,
+  BACKORDER_AUTOMATIC_MINIMUM_ORDER_TOTAL,
+  type CompensationSplit,
+} from '@/lib/invoice/backorder'
 import { syncCustomerFromInvoiceEvent, recordCustomerActivity } from '@/lib/customers'
 import { sendCategorizedEmail } from '@/lib/notifications/log'
 import {
@@ -27,6 +42,8 @@ import {
   buildBackorderResolvedHtml,
   refundCompletedSubject,
   buildRefundCompletedHtml,
+  backorderAccommodationSubject,
+  buildBackorderAccommodationHtml,
 } from '@/emails/BackorderNotice'
 import { backorderFinancialActionRequiredSubject, buildBackorderFinancialActionRequiredHtml } from '@/emails/AdminBackorderAlerts'
 
@@ -34,6 +51,11 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? ''
 
 export const BACKORDER_COMPENSATION_AMOUNT = 25
 export const BACKORDER_COMPENSATION_LABEL = 'Backorder Service Credit'
+// The admin-discretionary counterpart -- a distinct customer-facing label
+// (never "Backorder Service Credit") so a customer's invoice/portal line
+// item and the admin UI both read unambiguously as a manual, real-time
+// customer-service adjustment rather than the standard automatic policy.
+export const BACKORDER_ACCOMMODATION_LABEL = 'Backorder Accommodation'
 
 function formatMoney(amount: number): string {
   return amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
@@ -128,16 +150,31 @@ export async function assertDeliveryStatusAllowed(input: {
 }
 
 interface ApplyCompensationTxResult {
-  compensation: BackorderCompensation
+  // Null exactly when this was an AUTOMATIC request, no compensation
+  // exists yet for this invoice, and the invoice's pre-compensation total
+  // does not exceed the $100 minimum — the BackorderCondition itself is
+  // still created either way (see applyBackorder); only the financial
+  // compensation is gated.
+  compensation: BackorderCompensation | null
   isNew: boolean
+  skippedReason: 'BELOW_MINIMUM_ORDER_TOTAL' | null
   // Only set when a brand-new PENDING refund obligation was just created in
   // this call — never set on a LINK_EXISTING reuse, so callers know exactly
   // when (and only when) the "manual refund required" admin alert applies.
   newRefund: InvoiceRefund | null
 }
 
+interface ApplyCompensationInput {
+  amount?: number
+  reason?: string
+  appliedBy: string
+  preference?: CompensationDispositionPreference
+  compensationType?: BackorderCompensationType
+}
+
 // The single choke point for the flat backorder compensation: idempotent
-// per invoice (decideCompensationDisposition), and disposes the amount as
+// per invoice *per type* (decideCompensationDisposition, scoped by
+// compensationType below), and disposes the amount as
 // credit/refund-obligation/account-credit strictly by the invoice's payment
 // state and the admin's chosen preference at this exact moment
 // (lib/invoice/backorder.ts's split algorithm) — never a fabricated
@@ -146,10 +183,7 @@ interface ApplyCompensationTxResult {
 // it. Safe to call once per newly-discovered backorder on an invoice; every
 // call after the first on the same invoice is a no-op financially and only
 // returns the existing compensation to link against.
-export async function applyCompensation(
-  invoiceId: string,
-  input: { amount?: number; reason?: string; appliedBy: string; preference?: CompensationDispositionPreference }
-): Promise<BackorderCompensation> {
+export async function applyCompensation(invoiceId: string, input: ApplyCompensationInput): Promise<BackorderCompensation | null> {
   const result = await prisma.$transaction((tx) => applyCompensationTx(tx, invoiceId, input))
   if (result.newRefund) {
     await notifyAdminFinancialActionRequired(invoiceId, result.newRefund)
@@ -163,14 +197,41 @@ export async function applyCompensation(
 async function applyCompensationTx(
   tx: Prisma.TransactionClient,
   invoiceId: string,
-  input: { amount?: number; reason?: string; appliedBy: string; preference?: CompensationDispositionPreference }
+  input: ApplyCompensationInput
 ): Promise<ApplyCompensationTxResult> {
   const amount = input.amount ?? BACKORDER_COMPENSATION_AMOUNT
-  const reason = input.reason ?? BACKORDER_COMPENSATION_LABEL
+  const compensationType: BackorderCompensationType = input.compensationType ?? 'AUTOMATIC'
+  // The InvoiceDiscount label (and thus what a customer sees as the line
+  // item, in both admin and the Customer Portal) is always this fixed,
+  // type-specific string — never the admin's free-text reason, which may
+  // contain internal notes and is never shown to the customer. `reason`
+  // itself (an admin-entered explanation, defaulting to the same label
+  // when not given) is stored on BackorderCompensation/InvoiceRefund for
+  // the internal audit trail only.
+  const discountLabel = compensationType === 'DISCRETIONARY' ? BACKORDER_ACCOMMODATION_LABEL : BACKORDER_COMPENSATION_LABEL
+  const reason = input.reason ?? discountLabel
   const preference = input.preference ?? 'REFUND'
 
   const invoice = await tx.invoice.findUniqueOrThrow({ where: { id: invoiceId } })
-  const existing = await tx.backorderCompensation.findFirst({ where: { invoiceId } })
+  // Scoped by type AND excludes reversed rows — AUTOMATIC and
+  // DISCRETIONARY are independently idempotent, and a reversed
+  // compensation never blocks a fresh one of the same type from being
+  // created again (e.g. after an admin removes a discretionary
+  // accommodation, a later one is a brand-new grant, not a "link to the
+  // reversed one").
+  const existing = await tx.backorderCompensation.findFirst({ where: { invoiceId, compensationType, reversedAt: null } })
+
+  // The $100 minimum only gates the AUTOMATIC policy credit, and only when
+  // this would be a brand-new grant (an already-existing automatic
+  // compensation is never retroactively revoked just because the invoice
+  // total later changed, e.g. from a partial refund). Evaluated against
+  // invoice.total as read here -- i.e. before this compensation's own
+  // discount could ever be created -- so the credit can never affect its
+  // own eligibility. DISCRETIONARY amounts are never gated by this check;
+  // that's the entire point of the separate manual workflow.
+  if (!existing && compensationType === 'AUTOMATIC' && !isAutomaticCompensationEligible(invoice.total)) {
+    return { compensation: null, isNew: false, skippedReason: 'BELOW_MINIMUM_ORDER_TOTAL', newRefund: null }
+  }
 
   const disposition = decideCompensationDisposition({
     existingCompensationId: existing?.id ?? null,
@@ -182,7 +243,7 @@ async function applyCompensationTx(
 
   if (disposition.kind === 'LINK_EXISTING') {
     const compensation = await tx.backorderCompensation.findUniqueOrThrow({ where: { id: disposition.compensationId } })
-    return { compensation, isNew: false, newRefund: null }
+    return { compensation, isNew: false, skippedReason: null, newRefund: null }
   }
 
   const { split } = disposition
@@ -195,7 +256,7 @@ async function applyCompensationTx(
     const discount = await tx.invoiceDiscount.create({
       data: {
         invoiceId,
-        label: BACKORDER_COMPENSATION_LABEL,
+        label: discountLabel,
         type: 'FIXED',
         amount: split.creditAppliedAmount,
         appliedAmount: split.creditAppliedAmount,
@@ -245,6 +306,7 @@ async function applyCompensationTx(
   const compensation = await tx.backorderCompensation.create({
     data: {
       invoiceId,
+      compensationType,
       totalAmount: amount,
       creditAppliedAmount: split.creditAppliedAmount,
       refundAmount: split.refundAmount,
@@ -263,7 +325,7 @@ async function applyCompensationTx(
     await recalculateInvoiceFinancials(tx, invoiceId)
   }
 
-  return { compensation, isNew: true, newRefund }
+  return { compensation, isNew: true, skippedReason: null, newRefund }
 }
 
 // Fired once, only when this exact call created a brand-new PENDING refund
@@ -311,20 +373,24 @@ async function notifyAdminFinancialActionRequired(invoiceId: string, refund: Inv
 async function sendBackorderNoticeEmail(
   invoice: { id: string; customerId: string | null; customerEmail: string | null; customerName: string; invoiceNumber: string },
   condition: { id: string; productName: string; expectedAvailableDate: Date | null },
-  compensation: BackorderCompensation
+  compensation: BackorderCompensation | null
 ): Promise<void> {
   if (!invoice.customerEmail) return
 
   const lines: string[] = []
-  if (compensation.creditAppliedAmount > 0) {
+  // Null exactly when the AUTOMATIC policy didn't qualify (invoice at or
+  // under the $100 minimum) -- the notice still goes out describing the
+  // backorder itself, just with no compensation lines, never a false claim
+  // of credit/refund/account-credit that didn't happen.
+  if (compensation?.creditAppliedAmount) {
     lines.push(`A ${formatMoney(compensation.creditAppliedAmount)} credit has been applied to your remaining balance on this invoice.`)
   }
-  if (compensation.refundAmount > 0) {
+  if (compensation?.refundAmount) {
     lines.push(
       `A ${formatMoney(compensation.refundAmount)} refund is being processed and will be completed within a few business days — we'll send a separate confirmation once it's done.`
     )
   }
-  if (compensation.accountCreditAmount > 0) {
+  if (compensation?.accountCreditAmount) {
     lines.push(`A ${formatMoney(compensation.accountCreditAmount)} credit has been added to your account for a future order.`)
   }
 
@@ -408,11 +474,18 @@ export async function applyBackorder(input: ApplyBackorderInput) {
     const compResult = await applyCompensationTx(tx, input.invoiceId, {
       appliedBy: input.appliedBy,
       preference: input.preference,
+      compensationType: 'AUTOMATIC',
     })
 
-    await tx.backorderConditionCompensation.create({
-      data: { backorderConditionId: created.id, backorderCompensationId: compResult.compensation.id },
-    })
+    // Null exactly when the invoice doesn't exceed the $100 minimum -- the
+    // BackorderCondition itself is still recorded (a real fulfillment
+    // shortage exists regardless of compensation eligibility); there's just
+    // no compensation row to join it to.
+    if (compResult.compensation) {
+      await tx.backorderConditionCompensation.create({
+        data: { backorderConditionId: created.id, backorderCompensationId: compResult.compensation.id },
+      })
+    }
 
     return { condition: created, compensationResult: compResult }
   })
@@ -437,9 +510,296 @@ export async function applyBackorder(input: ApplyBackorderInput) {
   if (compensationResult.newRefund) {
     await notifyAdminFinancialActionRequired(input.invoiceId, compensationResult.newRefund)
   }
+  if (compensationResult.skippedReason === 'BELOW_MINIMUM_ORDER_TOTAL') {
+    // Traceable, not silent: an admin looking at this invoice's timeline
+    // should be able to see exactly why no automatic $25 credit appeared,
+    // rather than wondering if the policy simply didn't run.
+    await prisma.invoiceActivityLog.create({
+      data: {
+        invoiceId: input.invoiceId,
+        eventType: 'BACKORDER_AUTOMATIC_COMPENSATION_NOT_APPLIED',
+        newValue: `Invoice total ${formatMoney(invoice.total)} does not exceed the $${BACKORDER_AUTOMATIC_MINIMUM_ORDER_TOTAL} minimum for the automatic $${BACKORDER_COMPENSATION_AMOUNT} backorder credit`,
+        source: 'SYSTEM',
+      },
+    })
+  }
   await sendBackorderNoticeEmail(invoice, condition, compensationResult.compensation)
 
   return condition
+}
+
+function round2(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100
+}
+
+export class DiscretionaryAccommodationError extends Error {}
+
+export interface BackorderCompensationSummary {
+  automatic: BackorderCompensation | null
+  discretionary: BackorderCompensation | null
+}
+
+// The "show existing compensation before applying another" lookup — one
+// read, both types, so the admin UI can render "Automatic Backorder
+// Credit: $25 / Manual Backorder Accommodation: $10" (or either/neither)
+// before an admin ever submits a new accommodation.
+export async function getBackorderCompensationSummary(invoiceId: string): Promise<BackorderCompensationSummary> {
+  const [automatic, discretionary] = await Promise.all([
+    prisma.backorderCompensation.findFirst({ where: { invoiceId, compensationType: 'AUTOMATIC', reversedAt: null } }),
+    prisma.backorderCompensation.findFirst({ where: { invoiceId, compensationType: 'DISCRETIONARY', reversedAt: null } }),
+  ])
+  return { automatic, discretionary }
+}
+
+export interface AccommodationPreview {
+  split: CompensationSplit
+  currentTotal: number
+  projectedTotal: number
+  currentBalanceDue: number
+  projectedBalanceDue: number
+  existing: BackorderCompensationSummary
+}
+
+// Read-only — computes the effect of a candidate discretionary amount
+// without writing anything, so the admin UI can show "invoice becomes
+// $79.00" before the admin confirms. Uses the same pure
+// computeCompensationSplit the real apply path uses, so the preview can
+// never drift from what actually happens on confirm.
+export async function previewDiscretionaryAccommodation(
+  invoiceId: string,
+  amount: number,
+  preference?: CompensationDispositionPreference
+): Promise<AccommodationPreview> {
+  const [invoice, existing] = await Promise.all([
+    prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } }),
+    getBackorderCompensationSummary(invoiceId),
+  ])
+  const split = computeCompensationSplit({
+    compensationAmount: amount,
+    balanceDue: invoice.balanceDue,
+    amountPaid: invoice.amountPaid,
+    preference,
+  })
+  return {
+    split,
+    currentTotal: invoice.total,
+    projectedTotal: round2(invoice.total - split.creditAppliedAmount),
+    currentBalanceDue: invoice.balanceDue,
+    projectedBalanceDue: round2(Math.max(0, invoice.balanceDue - split.creditAppliedAmount)),
+    existing,
+  }
+}
+
+async function notifyCustomerOfAccommodation(
+  invoice: { id: string; customerId: string | null; customerEmail: string | null; customerName: string; invoiceNumber: string; balanceDue: number },
+  compensation: BackorderCompensation,
+  actor: string
+): Promise<void> {
+  if (!invoice.customerEmail) return
+  const portalUrl = invoice.customerId ? `${APP_URL}/account` : null
+  await sendCategorizedEmail(
+    {
+      category: 'BACKORDER_ACCOMMODATION',
+      to: invoice.customerEmail,
+      subject: backorderAccommodationSubject(invoice.invoiceNumber),
+      html: buildBackorderAccommodationHtml({
+        customerName: invoice.customerName,
+        invoiceNumber: invoice.invoiceNumber,
+        accommodationAmount: compensation.totalAmount,
+        revisedBalanceDue: invoice.balanceDue,
+        reason: compensation.reason,
+        portalUrl,
+      }),
+    },
+    { customerId: invoice.customerId, invoiceId: invoice.id, actorType: 'MANUAL', actorUserId: actor }
+  )
+}
+
+export interface ApplyDiscretionaryAccommodationInput {
+  amount: number
+  reason: string
+  appliedBy: string
+  preference?: CompensationDispositionPreference
+}
+
+// The real-time customer-service path: an admin-entered custom amount,
+// completely independent of the $100 automatic-policy minimum -- that's
+// the entire point of this being a separate function rather than a
+// parameter on applyCompensation. Never gated by isAutomaticCompensationEligible.
+// Blocked when a non-reversed DISCRETIONARY compensation already exists on
+// this invoice (use adjustDiscretionaryAccommodation instead) -- this is
+// what prevents an accidental duplicate; the AUTOMATIC $25 (if any) is
+// entirely unaffected and untouched by this function.
+export async function applyDiscretionaryAccommodation(
+  invoiceId: string,
+  input: ApplyDiscretionaryAccommodationInput
+): Promise<BackorderCompensation> {
+  if (!Number.isFinite(input.amount) || input.amount <= 0) {
+    throw new DiscretionaryAccommodationError('Enter a valid accommodation amount greater than $0.')
+  }
+  if (!input.reason.trim()) {
+    throw new DiscretionaryAccommodationError('A reason is required for a discretionary backorder accommodation.')
+  }
+
+  const existing = await prisma.backorderCompensation.findFirst({
+    where: { invoiceId, compensationType: 'DISCRETIONARY', reversedAt: null },
+  })
+  if (existing) {
+    throw new DiscretionaryAccommodationError(
+      'This invoice already has an active discretionary backorder accommodation — adjust or remove it instead of applying a new one.'
+    )
+  }
+
+  const result = await prisma.$transaction((tx) =>
+    applyCompensationTx(tx, invoiceId, {
+      amount: input.amount,
+      reason: input.reason,
+      appliedBy: input.appliedBy,
+      preference: input.preference,
+      compensationType: 'DISCRETIONARY',
+    })
+  )
+  // Never null here: DISCRETIONARY is never gated by the $100 minimum, and
+  // the check above already confirmed there's no existing row to link to
+  // instead of creating a new one.
+  const compensation = result.compensation!
+
+  const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })
+  await logInvoiceAndCustomerEvent(
+    invoice,
+    'BACKORDER_ACCOMMODATION_APPLIED',
+    `${formatMoney(compensation.totalAmount)} — ${compensation.reason} — revised balance ${formatMoney(invoice.balanceDue)}`,
+    input.appliedBy
+  )
+  await notifyCustomerOfAccommodation(invoice, compensation, input.appliedBy)
+
+  if (result.newRefund) {
+    await notifyAdminFinancialActionRequired(invoiceId, result.newRefund)
+  }
+
+  return compensation
+}
+
+export interface AdjustDiscretionaryAccommodationInput {
+  newAmount: number
+  reason: string
+  actor: string
+  preference?: CompensationDispositionPreference
+}
+
+// Never mutates the old compensation row's financial fields in place —
+// marks it reversed (reversedAt/reversedBy/reversalReason), detaches and
+// deletes its InvoiceDiscount (so the invoice total no longer reflects
+// it), then creates a brand-new DISCRETIONARY compensation for the new
+// amount. The full history — what was originally granted, when, by whom,
+// and why it changed — is always reconstructable from the two rows.
+export async function adjustDiscretionaryAccommodation(
+  compensationId: string,
+  input: AdjustDiscretionaryAccommodationInput
+): Promise<BackorderCompensation> {
+  if (!Number.isFinite(input.newAmount) || input.newAmount <= 0) {
+    throw new DiscretionaryAccommodationError('Enter a valid accommodation amount greater than $0.')
+  }
+
+  const existing = await prisma.backorderCompensation.findUniqueOrThrow({ where: { id: compensationId } })
+  if (existing.compensationType !== 'DISCRETIONARY') {
+    throw new DiscretionaryAccommodationError('Only a discretionary accommodation can be adjusted — the automatic policy credit is not editable.')
+  }
+  if (existing.reversedAt) {
+    throw new DiscretionaryAccommodationError('This accommodation has already been reversed.')
+  }
+  if (existing.refundId || existing.accountCreditId) {
+    throw new DiscretionaryAccommodationError(
+      'This accommodation includes a refund or account-credit portion — use the refund/account-credit workflow to change it instead of adjusting it directly.'
+    )
+  }
+
+  const invoiceId = existing.invoiceId
+
+  await prisma.$transaction(async (tx) => {
+    await tx.backorderCompensation.update({
+      where: { id: existing.id },
+      data: {
+        reversedAt: new Date(),
+        reversedBy: input.actor,
+        reversalReason: `Adjusted to ${formatMoney(input.newAmount)} — ${input.reason}`,
+        discountId: null,
+      },
+    })
+    if (existing.discountId) {
+      await tx.invoiceDiscount.delete({ where: { id: existing.discountId } })
+    }
+    await recalculateInvoiceFinancials(tx, invoiceId)
+  })
+
+  const result = await prisma.$transaction((tx) =>
+    applyCompensationTx(tx, invoiceId, {
+      amount: input.newAmount,
+      reason: input.reason,
+      appliedBy: input.actor,
+      preference: input.preference,
+      compensationType: 'DISCRETIONARY',
+    })
+  )
+  const compensation = result.compensation!
+
+  const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })
+  await logInvoiceAndCustomerEvent(
+    invoice,
+    'BACKORDER_ACCOMMODATION_ADJUSTED',
+    `${formatMoney(existing.totalAmount)} → ${formatMoney(compensation.totalAmount)} — revised balance ${formatMoney(invoice.balanceDue)}`,
+    input.actor
+  )
+  await notifyCustomerOfAccommodation(invoice, compensation, input.actor)
+
+  if (result.newRefund) {
+    await notifyAdminFinancialActionRequired(invoiceId, result.newRefund)
+  }
+
+  return compensation
+}
+
+export interface RemoveDiscretionaryAccommodationInput {
+  actor: string
+  reason: string
+}
+
+export async function removeDiscretionaryAccommodation(
+  compensationId: string,
+  input: RemoveDiscretionaryAccommodationInput
+): Promise<void> {
+  const existing = await prisma.backorderCompensation.findUniqueOrThrow({ where: { id: compensationId } })
+  if (existing.compensationType !== 'DISCRETIONARY') {
+    throw new DiscretionaryAccommodationError('Only a discretionary accommodation can be removed — the automatic policy credit is not editable.')
+  }
+  if (existing.reversedAt) {
+    throw new DiscretionaryAccommodationError('This accommodation has already been reversed.')
+  }
+  if (existing.refundId || existing.accountCreditId) {
+    throw new DiscretionaryAccommodationError(
+      'This accommodation includes a refund or account-credit portion — use the refund/account-credit workflow to reverse it instead.'
+    )
+  }
+
+  const invoiceId = existing.invoiceId
+  await prisma.$transaction(async (tx) => {
+    await tx.backorderCompensation.update({
+      where: { id: existing.id },
+      data: { reversedAt: new Date(), reversedBy: input.actor, reversalReason: input.reason, discountId: null },
+    })
+    if (existing.discountId) {
+      await tx.invoiceDiscount.delete({ where: { id: existing.discountId } })
+    }
+    await recalculateInvoiceFinancials(tx, invoiceId)
+  })
+
+  const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })
+  await logInvoiceAndCustomerEvent(
+    invoice,
+    'BACKORDER_ACCOMMODATION_REMOVED',
+    `${formatMoney(existing.totalAmount)} — ${input.reason} — revised balance ${formatMoney(invoice.balanceDue)}`,
+    input.actor
+  )
 }
 
 export interface ResolveBackorderInput {
