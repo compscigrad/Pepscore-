@@ -543,6 +543,19 @@ model Invoice {
   paidAt     DateTime?
   archivedAt DateTime?
 
+  // [Roadmap] Archive metadata -- who/why/how this invoice was archived,
+  // for the CURRENT archive event only (cleared to null on restore, same
+  // present-tense semantics as archivedAt itself). The full history --
+  // every past archive/restore, with timestamps -- lives in
+  // InvoiceActivityLog (INVOICE_ARCHIVED/INVOICE_UNARCHIVED events), the
+  // same append-only place every other invoice history fact already
+  // lives; these three columns are a display convenience, not the
+  // authoritative record, so restoring never "destroys" anything the
+  // activity log doesn't already durably have.
+  archiveReason String?
+  archivedBy    String?
+  archiveSource InvoiceArchiveSource?
+
   // Soft-delete holding spot, distinct from archivedAt: Archive is for
   // completed invoices you keep for records; this is for "get this out of my
   // list" with a recovery window before the separate, explicit permanent-delete
@@ -616,6 +629,13 @@ model Invoice {
   @@index([status])
   @@index([createdAt])
   @@index([deletedAt])
+  // [Roadmap] Added for archive/history filtering at scale -- customerId
+  // for a customer's own invoice history, archivedAt for the Active/
+  // Archived/All filter tabs, paidAt for the auto-archive sweep's cutoff
+  // comparison.
+  @@index([customerId])
+  @@index([archivedAt])
+  @@index([paidAt])
 }
 
 // One row per transfer *event* — reversing never deletes or overwrites this
@@ -773,6 +793,14 @@ enum InvoiceOrderStatus {
   IN_PROGRESS
   COMPLETED
   CANCELLED
+}
+
+// [Roadmap] Distinguishes an admin's deliberate Archive click from the
+// daily automatic sweep (lib/invoices.ts's sweepAutoArchive) -- see
+// Invoice.archiveSource.
+enum InvoiceArchiveSource {
+  ADMIN
+  SYSTEM
 }
 
 // Manual triage priority for the Awaiting Fulfillment queue — bumped inline,

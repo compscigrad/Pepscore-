@@ -617,21 +617,67 @@ export async function recordPayment(invoiceId: string, payload: PaymentPayload):
 }
 
 // Archive rather than hard-delete, per the spec's Archive/Restore requirement.
-export async function archiveInvoice(id: string): Promise<InvoiceWithRelations> {
-  const invoice = await prisma.invoice.update({ where: { id }, data: { archivedAt: new Date() }, ...invoiceWithRelations })
+// actor/reason are optional so the automatic sweep (sweepAutoArchive below,
+// source SYSTEM, no human actor) and a manual admin action (source ADMIN,
+// a real Clerk user id) can share this one function instead of diverging
+// logic. archiveReason/archivedBy/archiveSource describe the CURRENT
+// archive event only (see schema comment) -- the durable history of every
+// past archive/restore lives in InvoiceActivityLog, written here
+// regardless of whether this invoice has a linked Customer (the previous
+// version only logged when one existed, silently skipping every
+// no-customer manual invoice).
+export async function archiveInvoice(
+  id: string,
+  actor: string | null,
+  source: 'ADMIN' | 'SYSTEM' = 'ADMIN',
+  reason?: string | null
+): Promise<InvoiceWithRelations> {
+  const invoice = await prisma.invoice.update({
+    where: { id },
+    data: { archivedAt: new Date(), archivedBy: actor, archiveSource: source, archiveReason: reason ?? null },
+    ...invoiceWithRelations,
+  })
+  await prisma.invoiceActivityLog.create({
+    data: {
+      invoiceId: invoice.id,
+      eventType: 'INVOICE_ARCHIVED',
+      newValue: reason ?? undefined,
+      source: source === 'SYSTEM' ? 'SYSTEM' : 'MANUAL',
+      userId: actor ?? undefined,
+    },
+  })
   if (invoice.customerId) {
     await syncCustomerFromInvoiceEvent({
       customerId: invoice.customerId,
       invoiceId: invoice.id,
       eventType: 'INVOICE_ARCHIVED',
-      source: 'MANUAL',
+      newValue: reason ?? undefined,
+      source: source === 'SYSTEM' ? 'SYSTEM' : 'MANUAL',
+      userId: actor ?? undefined,
     })
   }
   return invoice
 }
 
-export async function restoreInvoice(id: string): Promise<InvoiceWithRelations> {
-  return prisma.invoice.update({ where: { id }, data: { archivedAt: null }, ...invoiceWithRelations })
+export async function restoreInvoice(id: string, actor: string): Promise<InvoiceWithRelations> {
+  const invoice = await prisma.invoice.update({
+    where: { id },
+    data: { archivedAt: null, archivedBy: null, archiveSource: null, archiveReason: null },
+    ...invoiceWithRelations,
+  })
+  await prisma.invoiceActivityLog.create({
+    data: { invoiceId: invoice.id, eventType: 'INVOICE_UNARCHIVED', source: 'MANUAL', userId: actor },
+  })
+  if (invoice.customerId) {
+    await syncCustomerFromInvoiceEvent({
+      customerId: invoice.customerId,
+      invoiceId: invoice.id,
+      eventType: 'INVOICE_UNARCHIVED',
+      source: 'MANUAL',
+      userId: actor,
+    })
+  }
+  return invoice
 }
 
 // Auto-archive sweep: archives every fully-paid, not-yet-archived invoice

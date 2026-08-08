@@ -151,7 +151,7 @@ export async function transferBalance(input: TransferBalanceInput): Promise<Invo
   )
 
   if (input.archiveSource) {
-    await archiveInvoice(source.id)
+    await archiveInvoice(source.id, input.transferredBy, 'ADMIN', `Balance transferred to ${destination.invoiceNumber}`)
   }
 
   const updatedDestination = await prisma.invoice.findUniqueOrThrow({ where: { id: destination.id } })
