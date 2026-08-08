@@ -184,8 +184,11 @@ export type ClaimPortalInviteResult =
       reason: 'NOT_FOUND' | 'EXPIRED' | 'REVOKED' | 'ALREADY_CLAIMED' | 'EMAIL_MISMATCH' | 'USER_ALREADY_LINKED' | 'CUSTOMER_ALREADY_LINKED'
     }
 
-// The one place Customer.userId is ever set. Every guard here is a real,
-// separately-tested rejection path — see lib/portalInvites.test.ts.
+// The one place Customer.userId is ever set. Every guard here is a real
+// rejection path (see ClaimPortalInviteResult's reason union), exercised
+// against the shared production DB via a disposable rehearsal test at
+// merge time rather than a permanent test file -- this module is entirely
+// Prisma-backed with no pure-logic split to unit test in isolation.
 //
 // Customer.userId is a foreign key to User.id (Prisma's own cuid), not the
 // raw Clerk user id — Clerk's id lives on User.clerkId. This resolves (or,
