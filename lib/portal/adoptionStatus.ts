@@ -124,7 +124,11 @@ export async function computePortalAdoptionOverview(): Promise<PortalAdoptionOve
       return { customerId: customer.id, status: 'EXCLUDED', reason: 'Matches a test/QA data pattern' }
     }
     if (isLeadStage(customer)) {
-      return { customerId: customer.id, status: 'NOT_ELIGIBLE', reason: 'No invoice issued yet' }
+      return {
+        customerId: customer.id,
+        status: 'NOT_ELIGIBLE',
+        reason: `No invoice issued yet (lead status: ${customer.leadStatus}) — mark Converted to include before their first invoice`,
+      }
     }
     if (conflictCustomerIds.has(customer.id)) {
       return { customerId: customer.id, status: 'IDENTITY_REVIEW_REQUIRED', reason: 'Open identity-review case' }

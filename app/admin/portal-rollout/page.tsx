@@ -216,13 +216,18 @@ export default async function PortalRolloutPage() {
           <div className={`${card} p-6`}>
             <h3 className={sectionHeading}>No Invoice Yet — Excluded ({audience.leadStageFlagged.length})</h3>
             <p className={`text-sm ${mutedText} mt-1 mb-4`}>
-              Still a lead or in-progress intake — no invoice has ever been issued to this customer. A portal account isn&rsquo;t useful until there&rsquo;s something real to show there; invite manually once they&rsquo;ve actually transacted, if appropriate.
+              Still a lead or in-progress intake, and not yet marked Converted — no invoice has ever been issued to this customer. A legitimate customer can exist before their first invoice: mark them Converted on their profile&rsquo;s CRM status to include them here without waiting for an invoice, or invite manually if appropriate.
             </p>
             <div className="max-h-80 overflow-y-auto space-y-2">
               {audience.leadStageFlagged.map((c) => (
                 <div key={c.id} className="flex justify-between text-sm">
                   <span className="text-white">{`${c.firstName} ${c.lastName}`.trim()}</span>
-                  <span className={mutedText}>{c.email ?? c.phone ?? '—'}</span>
+                  <span className="flex items-center gap-2">
+                    <span className={mutedText}>{c.email ?? c.phone ?? '—'}</span>
+                    <span className="text-[10px] font-bold tracking-wide uppercase text-white/40 border border-white/15 rounded-full px-2 py-0.5">
+                      {c.leadStatus}
+                    </span>
+                  </span>
                 </div>
               ))}
             </div>
