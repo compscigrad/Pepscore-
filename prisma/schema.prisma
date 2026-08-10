@@ -152,10 +152,55 @@ model Product {
   lowStockAlerts         LowStockAlert[]
   backorderConditions    BackorderCondition[]
   slugRedirects          ProductSlugRedirect[]
+  priceChanges           ProductPriceChange[]
 
   @@index([slug])
   @@index([inventoryStatus])
   @@index([pricingStatus])
+}
+
+// ─── Product Price Change History (Phase 3B) ────────────────────────────────
+// Append-only audit record of every write to Product's active* price columns
+// (the values actually charged) — a companion to InventoryLedgerEntry, same
+// "auditable, never overwritten" discipline, but for price rather than
+// physical stock. Written by lib/pricing/history.ts, called from
+// setActivePricing() so every write path through that one function is
+// captured with zero risk of a caller forgetting to log it. Denormalizes
+// productName/productSize (strength) at time of change so history stays
+// readable even if a product is later renamed or reclassified.
+model ProductPriceChange {
+  id            String              @id @default(cuid())
+  productId     String
+  product       Product             @relation(fields: [productId], references: [id])
+  productName   String
+  productSize   String
+  sellUnit      PriceChangeSellUnit
+  previousPrice Float?
+  newPrice      Float?
+  actorId       String
+  source        PriceChangeSource
+  reason        String?
+  createdAt     DateTime            @default(now())
+
+  @@index([productId, createdAt])
+}
+
+enum PriceChangeSellUnit {
+  STANDARD_CASE
+  SPA_CASE
+  BULK
+  INDIVIDUAL_VIAL
+}
+
+// Distinguishes which admin workflow produced the change — the pricing
+// review page (per-product formula/active editor) vs. an invoice-line
+// "Update Product Price" choice (Phase 3B item 3) vs. the one-off catalog
+// seed scripts. Not exhaustive of every possible future source; extend as
+// new authoritative write paths are added.
+enum PriceChangeSource {
+  ADMIN_PRICING_PAGE
+  INVOICE_LINE_UPDATE_PRODUCT_PRICE
+  CATALOG_SEED
 }
 
 // Preserves the prior canonical URL when an admin changes a product's slug

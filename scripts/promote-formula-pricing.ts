@@ -48,11 +48,15 @@ async function main() {
       continue
     }
     if (!dryRun) {
-      await setActivePricing(p.id, {
-        activeStandardCasePrice: p.suggestedStandardCasePrice,
-        activeSpaCasePrice: p.suggestedSpaCasePrice,
-        activeIndividualVialPrice: p.suggestedIndividualVialPrice,
-      })
+      await setActivePricing(
+        p.id,
+        {
+          activeStandardCasePrice: p.suggestedStandardCasePrice,
+          activeSpaCasePrice: p.suggestedSpaCasePrice,
+          activeIndividualVialPrice: p.suggestedIndividualVialPrice,
+        },
+        { actorId: 'system-pricing-completion', source: 'CATALOG_SEED', reason: 'Pricing-policy correction (2026-08-07): promote formula-suggested pricing to active' }
+      )
       await prisma.adminAuditLog.create({
         data: {
           action: 'PROMOTE_SUGGESTED_TO_ACTIVE_PRICING',
