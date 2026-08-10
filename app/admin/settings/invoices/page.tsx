@@ -53,6 +53,12 @@ export default async function InvoiceSettingsPage() {
               Payment Settings →
             </Link>
             <Link
+              href="/admin/settings/email-templates"
+              className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
+            >
+              Email Templates →
+            </Link>
+            <Link
               href="/admin/invoices"
               className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
             >
