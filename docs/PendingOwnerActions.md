@@ -1,0 +1,34 @@
+# Pending Owner Actions — Consolidated
+
+**Purpose**: one canonical list of every item in this project that genuinely requires the owner's own action (a credential, a dashboard click, a business decision only the owner can make, a real-money/real-communication go-ahead) — so autonomous engineering work never has to rediscover or re-ask the same question twice. Engineering work never stops on any single item here; independent work continues while an item stays pending. When an item is resolved, it's marked resolved in place rather than deleted, so the history stays legible.
+
+This document indexes items already tracked in more detail elsewhere (`docs/PaymentReadiness.md`, `docs/Decisions.md`) rather than duplicating their full write-ups — follow the link for the complete context on each.
+
+---
+
+## Open items
+
+| # | Item | Area | Exact owner action required | Why it's owner-only | What's already done | Blocks launch or one feature? | Status |
+|---|---|---|---|---|---|---|---|
+| 1 | Stripe live activation | Payments | Request live (non-test) Stripe API keys, set them in Vercel, flip `STOREFRONT_CHECKOUT_ENABLED` on. Confirm RUO merchant-eligibility/compliance review before doing so. | Real API keys and a compliance judgment call are owner-only; code path is fully built and test-mode verified (`docs/PaymentReadiness.md` §§2–11). | Card, ACH, Cash App Pay, PayPal all engineered and test-mode verified end-to-end. | Blocks launch of real storefront checkout only — everything else in the app is unaffected. | Open (as of 2026-08-08 readiness report) |
+| 2 | PayPal Dashboard enablement | Payments | Enable PayPal as a payment method for the Stripe account in the Stripe Dashboard (Stripe itself enforces this, not app code). | Dashboard-side account configuration, owner-only. | App-side `paypalEnabled` gate built and wired (Decision #32). | Blocks PayPal specifically, not checkout overall (card/ACH unaffected). | Open |
+| 3 | Twilio A2P 10DLC registration | SMS | 5-step checklist: register Brand/Campaign, purchase/port a number, set `TWILIO_*` env vars in Vercel, point the number's inbound webhook at `/api/webhooks/twilio`, send one real test STOP/START. Full detail: `docs/PaymentReadiness.md` §13. | Carrier/provider registration requires the owner's own business identity and Twilio account. | Sending + receiving (STOP/START webhook, signature-verified) both fully engineered (Decision #27). | Blocks all real SMS (transactional and any future bulk) — email notifications are unaffected. | Open |
+| 4 | Shippo Trust & Safety business-registration review | Shipping | Complete Shippo's account review process for the business. | Third-party account verification, owner-only. | Tracking (real, verified against Shippo's test API) and manual-tracking fallback both production-live already; only label **purchasing** (real postage spend) is gated. | Blocks real label purchasing only — manual tracking (Pirate Ship + manual entry) is the actual current production shipping workflow and is unaffected. | Open, deliberately deferred (Decision-log precedent: not reopened as a blocker) |
+| 5 | Resend domain verification for `pepscorelab.com` | Email | Add the DNS records Resend requires to verify `pepscorelab.com`, so `FROM_EMAIL` can resolve to a real `@pepscorelab.com` address instead of falling back to Resend's shared sandbox address (`onboarding@resend.dev`). | DNS record changes on the owner's own domain. | Every email template (all 18, Decisions #43–#51) is fully built and shell-branded; Reply-To already correctly shows `admin@pepscorelab.com`/etc. regardless of this — only the raw `From:` header depends on it. | Cosmetic only today (recipients still receive real, correctly-branded email) — does not block any functionality. | Open |
+| 6 | PortalRolloutSettings activation | Customer Portal | The one explicit admin action that triggers real bulk portal-invite sends to the live customer base, after reviewing the launch-readiness report (eligible audience, review-queue count, template/provider readiness). | Real bulk customer communication — an explicit standing stop condition, never flipped autonomously. | Rollout automation, eligibility computation, dry-run/allowlist/per-run-cap safety gates, and delivery-failure surfacing are all built and live (Decisions #35–#40). | Blocks real bulk portal invitations only — admin can still invite individual customers one at a time today. | Open |
+| 7 | Customer Portal live customer-login QA walkthrough | Customer Portal | One authenticated walkthrough of `/account/orders` and `/account/tracking` from a real (non-admin) customer login, to close out the QA checkpoint recorded in project memory. | Requires a real customer-side Clerk session distinct from the admin session this environment has authenticated access to. | `/account/orders` + `/account/tracking` shipped and tested from the admin/engineering side. | Optional QA closure — does not block any shipped functionality, just final sign-off. | Open (tracked in memory as `project_pepscore_portal_orders_qa_checkpoint`) |
+| 8 | Storefront Order visibility in Customer Portal | Customer Portal | A real design/engineering decision on how a customer who pays via real storefront checkout should see that specific order's payment/ACH-processing status in their portal — today the portal's "Orders" tab shows admin-invoice records, not storefront `Order`/`Payment` records. | Not strictly owner-only — an engineering/design decision — but listed here since it was explicitly flagged as needing its own real design pass rather than a bolt-on (`docs/PaymentReadiness.md` §12). | Everything else about storefront Order/Payment tracking (reservation, fulfillment, refund reconciliation) is real and verified. | Blocks a good post-checkout customer experience once checkout goes live — not blocking today since checkout itself is off. | Open, not yet scheduled |
+
+---
+
+## Resolved items
+
+*(None yet — this document was created 2026-08-10. Future resolutions get moved here with a resolution date rather than deleted, so the record stays complete.)*
+
+---
+
+## How this list is maintained
+
+- Every new owner-dependent blocker discovered during autonomous work gets added here at the time it's found, with the exact action, exact reason, and exact scope of what it blocks — never just "waiting on owner."
+- Before adding a new entry, this list (plus `docs/PaymentReadiness.md`, `docs/Decisions.md`, `docs/ProductRoadmap.md`, and project memory) is checked first, so a question already answered here is never re-asked.
+- An item's own linked document (`PaymentReadiness.md`, a specific `Decisions.md` entry) remains the authoritative detailed write-up; this table is the fast-scan index, not a replacement.

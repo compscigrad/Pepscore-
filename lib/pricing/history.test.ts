@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computePriceChangeRows } from './history'
+import { computePriceChangeRows, computeTierDiffs } from './history'
 import type { Product } from '@prisma/client'
 
 function product(overrides: Partial<Product> = {}): Product {
@@ -131,5 +131,28 @@ describe('computePriceChangeRows', () => {
     const after = product({ name: 'Semaglutide', size: '5mg', activeStandardCasePrice: 400 })
     const rows = computePriceChangeRows({ before, after, actorId: 'admin1', source: 'ADMIN_PRICING_PAGE' })
     expect(rows[0]).toMatchObject({ productId: 'p1', productName: 'Semaglutide', productSize: '5mg' })
+  })
+})
+
+// The shared diffing primitive both computePriceChangeRows (post-commit
+// audit) and the admin pricing panel's global-update preview (Phase 3B item
+// 4, pre-commit) are built on -- tested directly since it's the one place
+// "which tiers actually changed" is decided.
+describe('computeTierDiffs', () => {
+  it('returns only the tiers that changed, with no product/actor/source noise', () => {
+    const before = product({ activeIndividualVialPrice: 49 })
+    const after = product({ activeIndividualVialPrice: 55 })
+    expect(computeTierDiffs(before, after)).toEqual([{ sellUnit: 'INDIVIDUAL_VIAL', previousPrice: 49, newPrice: 55 }])
+  })
+
+  it('returns an empty array when nothing changed', () => {
+    const same = product()
+    expect(computeTierDiffs(same, same)).toEqual([])
+  })
+
+  it('works against a partial (Pick) product shape, not just a full Product row -- the preview UI only has form-field values, not a full database row', () => {
+    const before = { activeStandardCasePrice: 370, activeSpaCasePrice: 261, activeBulkPrice: 200, activeIndividualVialPrice: 49 }
+    const after = { activeStandardCasePrice: 400, activeSpaCasePrice: 261, activeBulkPrice: 200, activeIndividualVialPrice: 49 }
+    expect(computeTierDiffs(before, after)).toEqual([{ sellUnit: 'STANDARD_CASE', previousPrice: 370, newPrice: 400 }])
   })
 })
