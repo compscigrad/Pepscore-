@@ -201,9 +201,9 @@ const SMS_ATTEMPT_EVENT_TYPES = ['INVOICE_ISSUED_SMS_SENT', 'INVOICE_ISSUED_SMS_
 function invoiceReadySmsBody(invoice: InvoiceWithRelations, secureLink: string | null): string {
   const linkPart = secureLink ? ` ${secureLink}` : ''
   if (invoice.balanceDue <= 0) {
-    return `Hi ${invoice.customerName}, your Pepscore invoice #${invoice.invoiceNumber} has been prepared and your payment has been recorded.${linkPart} Reply STOP to opt out of texts.`
+    return `Hi ${invoice.customerName}, your PepScore Lab invoice #${invoice.invoiceNumber} has been prepared and your payment has been recorded.${linkPart} Reply STOP to opt out of texts.`
   }
-  return `Hi ${invoice.customerName}, your Pepscore invoice #${invoice.invoiceNumber} is ready. Please review and choose how you'd like to pay:${linkPart} Reply STOP to opt out of texts.`
+  return `Hi ${invoice.customerName}, your PepScore Lab invoice #${invoice.invoiceNumber} is ready. Please review and choose how you'd like to pay:${linkPart} Reply STOP to opt out of texts.`
 }
 
 // SMS companion to sendInvoiceIssuedEmailIfNeeded — same trigger/one-time

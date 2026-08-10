@@ -84,7 +84,7 @@ export async function notifyAdminPaymentSelectionPending(invoice: InvoiceWithRel
     await sendCategorizedSms(
       'PAYMENT_SELECTION_PENDING',
       recipient.phone,
-      `Pepscore: ${invoice.customerName} selected Pay in Full for invoice #${invoice.invoiceNumber}. Awaiting manual confirmation.`,
+      `PepScore Lab: ${invoice.customerName} selected Pay in Full for invoice #${invoice.invoiceNumber}. Awaiting manual confirmation.`,
       { customerId: invoice.customerId, invoiceId: invoice.id, actorType: 'SYSTEM' }
     )
   }
@@ -155,7 +155,7 @@ export async function notifyAdminArrangementRequestPending(
     await sendCategorizedSms(
       'PAYMENT_ARRANGEMENT_REQUEST_PENDING',
       recipient.phone,
-      `Pepscore: ${invoice.customerName} requested a payment arrangement for invoice #${invoice.invoiceNumber}. Review required.`,
+      `PepScore Lab: ${invoice.customerName} requested a payment arrangement for invoice #${invoice.invoiceNumber}. Review required.`,
       { customerId: invoice.customerId, invoiceId: invoice.id, actorType: 'SYSTEM' }
     )
   }

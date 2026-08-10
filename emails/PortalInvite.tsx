@@ -74,12 +74,15 @@ export function buildPortalInviteReminderHtml(props: PortalInviteReminderProps):
 // SMS bodies live alongside their email counterparts (same notification,
 // two channels) rather than in a separate file. Deliberately terse and
 // transactional per the compliance requirement — no invoice/balance/product
-// detail, just enough to identify Pepscore and link to the secure setup
-// flow. "Reply STOP" is required opt-out language for any Twilio send.
-// Left exactly as-is -- SMS wording is a separate, later slice pending a
-// Twilio A2P consent-wording audit, not part of this email-only migration.
+// detail, just enough to identify PepScore Lab and link to the secure setup
+// flow. "Reply STOP to opt out of texts." is the required opt-out language
+// for any Twilio send and must never be altered -- the Phase 3D SMS
+// brand-name audit (Decision #58) touched only the brand-identifying prefix
+// here (Pepscore -> PepScore Lab), verified against docs/PendingOwnerActions.md
+// confirming no Twilio A2P campaign has been registered yet, so there is no
+// already-approved wording this could diverge from.
 export function portalInviteSmsBody(claimUrl: string): string {
-  return `Pepscore: Your customer profile is ready. Set up your secure account to view invoices, payments, purchases, tracking, and updates: ${claimUrl}. Reply STOP to opt out of texts.`
+  return `PepScore Lab: Your customer profile is ready. Set up your secure account to view invoices, payments, purchases, tracking, and updates: ${claimUrl}. Reply STOP to opt out of texts.`
 }
 
 export interface PortalAccountClaimedProps {

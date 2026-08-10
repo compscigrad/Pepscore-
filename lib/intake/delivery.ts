@@ -65,7 +65,7 @@ export async function sendIntakeLinkSms(input: SendIntakeLinkInput): Promise<voi
   const result = await sendCategorizedSms(
     'INTAKE_REQUEST',
     input.phone,
-    `Hi ${input.customerName}, please complete your Pepscore order details here: ${input.link}`,
+    `Hi ${input.customerName}, please complete your PepScore Lab order details here: ${input.link}`,
     { customerId: input.customerId, invoiceId: input.invoiceId, actorType: 'MANUAL' }
   )
   if (result.outcome !== 'SENT') throw new Error(result.failureReason ?? 'SMS send failed')
