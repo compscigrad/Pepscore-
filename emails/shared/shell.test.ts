@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildEmailShell, emailCta, emailCtaOutline, emailPanel, escapeHtml, EMAIL_COLORS } from './shell'
+import { buildEmailShell, emailCta, emailCtaOutline, emailPanel, escapeHtml, EMAIL_COLORS, EMAIL_LOGO_MARK_URL } from './shell'
 
 describe('buildEmailShell', () => {
   it('renders the current brand name "Pepscore Lab", not standalone "Pepscore"', () => {
@@ -48,6 +48,40 @@ describe('buildEmailShell', () => {
   it('the footer note (critical transactional content) survives even if a caller passes plain text with no markup', () => {
     const html = buildEmailShell({ bodyHtml: '<p>hi</p>', footerNote: 'Contact orders@pepscorelab.com with questions.' })
     expect(html).toContain('Contact orders@pepscorelab.com with questions.')
+  })
+
+  it('includes the PepScore Lab P logo mark as an absolute, non-local, non-expiring HTTPS URL', () => {
+    const html = buildEmailShell({ bodyHtml: '<p>hi</p>', footerNote: 'note' })
+    expect(html).toContain(`src="${EMAIL_LOGO_MARK_URL}"`)
+    expect(EMAIL_LOGO_MARK_URL).toMatch(/^https:\/\//)
+    // Never a local filesystem path or relative URL -- email clients fetch
+    // this from their own servers, not the reader's machine.
+    expect(EMAIL_LOGO_MARK_URL).not.toContain('localhost')
+    expect(EMAIL_LOGO_MARK_URL).not.toMatch(/^(file:|\.\/|\/[^/])/)
+  })
+
+  it('gives the logo image accessible alt text, and keeps the text wordmark present so the brand is still identified with images blocked', () => {
+    const html = buildEmailShell({ bodyHtml: '<p>hi</p>', footerNote: 'note' })
+    expect(html).toMatch(/<img[^>]*alt="PepScore Lab"/)
+    // The text wordmark below the image must still be there independent of
+    // whether the image itself loads.
+    expect(html).toMatch(/Pepscore<\/span><span[^>]*> Lab/)
+  })
+
+  it('constrains the logo to fixed, reasonable dimensions rather than letting it render oversized or stretched', () => {
+    const html = buildEmailShell({ bodyHtml: '<p>hi</p>', footerNote: 'note' })
+    const match = html.match(/<img[^>]*width="(\d+)"[^>]*height="(\d+)"/)
+    expect(match).not.toBeNull()
+    const [, width, height] = match!
+    expect(Number(width)).toBe(Number(height)) // the source mark is square
+    expect(Number(width)).toBeGreaterThan(16)
+    expect(Number(width)).toBeLessThan(120)
+  })
+
+  it('declares dark/light color-scheme support so email clients do not auto-invert the deliberately dark template', () => {
+    const html = buildEmailShell({ bodyHtml: '<p>hi</p>', footerNote: 'note' })
+    expect(html).toContain('name="color-scheme" content="dark light"')
+    expect(html).toContain('name="supported-color-schemes" content="dark light"')
   })
 })
 

@@ -34,6 +34,18 @@ export const EMAIL_COLORS = {
   textFooter: 'rgba(255,255,255,0.4)',
 } as const
 
+// The approved PepScore Lab "P" mark, served as a stable, publicly reachable
+// PNG (public/images/email-logo-mark.png) -- an email-safe derivative of the
+// same P monogram used on invoices (public/images/invoice-logo.jpeg):
+// cropped to isolate just the icon and given real alpha transparency (the
+// source has none), with the artwork itself -- proportions, gold gradient,
+// design -- left completely unaltered. Reuses the same NEXT_PUBLIC_APP_URL
+// fallback already established in app/sitemap.ts/app/robots.ts/
+// lib/storefront/structuredData.ts, since email images must be an absolute,
+// non-expiring URL (no local filesystem paths, no signed/expiring links).
+const EMAIL_APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://pepscore-compscigrads-projects.vercel.app'
+export const EMAIL_LOGO_MARK_URL = `${EMAIL_APP_URL}/images/email-logo-mark.png`
+
 export function escapeHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
@@ -61,9 +73,27 @@ export interface EmailShellOptions {
 export function buildEmailShell({ eyebrow, bodyHtml, footerNote, year = new Date().getFullYear() }: EmailShellOptions): string {
   return `<!DOCTYPE html>
 <html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Tells Gmail/Outlook/Apple Mail's dark-mode heuristics this template
+       is already deliberately dark -- without this, some clients try to
+       auto-invert colors on a dark-background email, which would corrupt
+       both the header and the transparent-background logo below. -->
+  <meta name="color-scheme" content="dark light" />
+  <meta name="supported-color-schemes" content="dark light" />
+  <title>PepScore Lab</title>
+</head>
 <body style="font-family:Helvetica,Arial,sans-serif;background:${EMAIL_COLORS.bodyBg};color:${EMAIL_COLORS.textPrimary};margin:0;padding:24px 12px">
   <div style="max-width:600px;margin:0 auto;background:${EMAIL_COLORS.contentBg};border:1px solid ${EMAIL_COLORS.border};border-radius:16px;overflow:hidden">
     <div style="background:${EMAIL_COLORS.headerBg};padding:28px 36px;text-align:center">
+      <img
+        src="${EMAIL_LOGO_MARK_URL}"
+        width="44"
+        height="44"
+        alt="PepScore Lab"
+        style="display:block;width:44px;height:44px;margin:0 auto 10px;border:0;outline:none;text-decoration:none"
+      />
       <div style="font-size:22px;font-weight:800;letter-spacing:-0.01em">
         <span style="color:#ffffff">Pepscore</span><span style="color:${EMAIL_COLORS.gold}"> Lab</span>
       </div>
