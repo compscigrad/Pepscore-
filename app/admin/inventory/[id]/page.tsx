@@ -5,6 +5,7 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { isAdminClerkUser } from '@/lib/isAdmin'
 import { getInventoryDetail } from '@/lib/adminInventory'
+import { SELL_UNIT_LABEL, PRICE_SOURCE_LABEL } from '@/lib/pricing/labels'
 import { InventoryDetailPanel } from '@/components/admin/InventoryDetailPanel'
 import { ProductContentSection } from '@/components/admin/ProductContentSection'
 
@@ -24,19 +25,6 @@ const EVENT_LABEL: Record<string, string> = {
   FULFILLMENT_DEDUCTION: 'Fulfillment Deduction',
   BACKORDER_ALLOCATION: 'Backorder Allocation',
   REVERSAL: 'Reversal',
-}
-
-const SELL_UNIT_LABEL: Record<string, string> = {
-  STANDARD_CASE: 'Standard Case',
-  SPA_CASE: 'SPA Case',
-  BULK: 'Bulk',
-  INDIVIDUAL_VIAL: 'Individual Vial',
-}
-
-const PRICE_SOURCE_LABEL: Record<string, string> = {
-  ADMIN_PRICING_PAGE: 'Admin Pricing Page',
-  INVOICE_LINE_UPDATE_PRODUCT_PRICE: 'Invoice Line — Update Product Price',
-  CATALOG_SEED: 'Catalog Seed',
 }
 
 function formatPrice(value: number | null): string {

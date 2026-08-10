@@ -13,6 +13,21 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Product } from '@prisma/client'
 import { card, input as inputCls, label as labelClass, mutedText, pillPrimary, pillOutline, sectionHeading } from '@/components/invoices/theme'
+import { computeTierDiffs, type TierDiff } from '@/lib/pricing/history'
+import { SELL_UNIT_LABEL } from '@/lib/pricing/labels'
+
+function formatPrice(value: number | null): string {
+  return value === null ? '—' : `$${value.toFixed(2)}`
+}
+
+function formatDifference(previous: number | null, next: number | null): string {
+  if (previous === null && next !== null) return 'New price'
+  if (previous !== null && next === null) return 'Removed'
+  if (previous === null || next === null) return '—'
+  const delta = next - previous
+  if (delta === 0) return '—'
+  return `${delta > 0 ? '+' : '−'}$${Math.abs(delta).toFixed(2)}`
+}
 
 interface Props {
   product: Product
@@ -96,6 +111,15 @@ export function InventoryDetailPanel({ product, availableUnits, completeCasesAva
   const [sku, setSku] = useState(product.sku ?? '')
   const [pricingBusy, setPricingBusy] = useState(false)
   const [pricingError, setPricingError] = useState<string | null>(null)
+  // Phase 3B item 4: a price update showing at least one changed tier is
+  // never committed directly -- it's held here for the admin to review
+  // (product/strength/sell unit/existing price/new price/difference/public
+  // visibility/effect on future transactions) before an explicit Confirm.
+  // Non-price-only changes (SKU, override reason, etc. with zero tier
+  // deltas) skip the preview and save immediately, matching this component's
+  // existing behavior for every other section on this page.
+  const [pricingPreview, setPricingPreview] = useState<TierDiff[] | null>(null)
+  const [pendingPricingPayload, setPendingPricingPayload] = useState<Record<string, unknown> | null>(null)
 
   function resetActionForm() {
     setActiveAction(null)
@@ -187,26 +211,63 @@ export function InventoryDetailPanel({ product, availableUnits, completeCasesAva
     }
   }
 
-  async function savePricing() {
+  function buildPricingPayload(): Record<string, unknown> {
+    return {
+      activeStandardCasePrice: activeStandard === '' ? null : Number(activeStandard),
+      activeSpaCasePrice: activeSpa === '' ? null : Number(activeSpa),
+      activeBulkPrice: activeBulk === '' ? null : Number(activeBulk),
+      activeIndividualVialPrice: activeIndividual === '' ? null : Number(activeIndividual),
+      individualSalesEnabled,
+      manualPricingOverride: manualOverride,
+      pricingOverrideReason: overrideReason || null,
+      sku: sku || null,
+    }
+  }
+
+  async function commitPricing(payload: Record<string, unknown>) {
     setPricingBusy(true)
     setPricingError(null)
     try {
-      await patchPricing(product.id, {
-        activeStandardCasePrice: activeStandard === '' ? null : Number(activeStandard),
-        activeSpaCasePrice: activeSpa === '' ? null : Number(activeSpa),
-        activeBulkPrice: activeBulk === '' ? null : Number(activeBulk),
-        activeIndividualVialPrice: activeIndividual === '' ? null : Number(activeIndividual),
-        individualSalesEnabled,
-        manualPricingOverride: manualOverride,
-        pricingOverrideReason: overrideReason || null,
-        sku: sku || null,
-      })
+      await patchPricing(product.id, payload)
+      setPricingPreview(null)
+      setPendingPricingPayload(null)
       router.refresh()
     } catch (e) {
       setPricingError(e instanceof Error ? e.message : 'Failed to save pricing')
     } finally {
       setPricingBusy(false)
     }
+  }
+
+  // Entry point for the "Save Pricing" button -- diffs the four price tiers
+  // against the current product prop and only shows the preview when at
+  // least one tier actually changed; a pure non-price edit (SKU, override
+  // reason) saves immediately, same as before this feature.
+  function requestSavePricing() {
+    const payload = buildPricingPayload()
+    const diffs = computeTierDiffs(product, {
+      ...product,
+      activeStandardCasePrice: payload.activeStandardCasePrice as number | null,
+      activeSpaCasePrice: payload.activeSpaCasePrice as number | null,
+      activeBulkPrice: payload.activeBulkPrice as number | null,
+      activeIndividualVialPrice: payload.activeIndividualVialPrice as number | null,
+    })
+    if (diffs.length === 0) {
+      commitPricing(payload)
+      return
+    }
+    setPricingPreview(diffs)
+    setPendingPricingPayload(payload)
+  }
+
+  function confirmSavePricing() {
+    if (!pendingPricingPayload) return
+    commitPricing(pendingPricingPayload)
+  }
+
+  function cancelPricingPreview() {
+    setPricingPreview(null)
+    setPendingPricingPayload(null)
   }
 
   return (
@@ -265,7 +326,7 @@ export function InventoryDetailPanel({ product, availableUnits, completeCasesAva
         </div>
 
         {pricingError && <p className="text-[12px] text-red-400 mt-3">{pricingError}</p>}
-        <button onClick={savePricing} disabled={pricingBusy} className={`${pillPrimary} mt-4 px-4 py-2`}>
+        <button onClick={requestSavePricing} disabled={pricingBusy} className={`${pillPrimary} mt-4 px-4 py-2`}>
           Save Pricing
         </button>
       </div>
@@ -417,6 +478,51 @@ export function InventoryDetailPanel({ product, availableUnits, completeCasesAva
           </>
         )}
       </div>
+
+      {pricingPreview && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className={`${card} p-6 max-w-lg w-full`}>
+            <h3 className={`${sectionHeading} mb-1`}>Review Price Update</h3>
+            <p className={`text-[13px] ${mutedText} mb-4`}>
+              {product.name} <span className="text-white">{product.size}</span>
+            </p>
+
+            <div className="space-y-3 mb-4">
+              {pricingPreview.map((diff) => {
+                const visibleToCustomers = diff.sellUnit === 'INDIVIDUAL_VIAL' ? individualSalesEnabled : true
+                return (
+                  <div key={diff.sellUnit} className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                    <p className="font-heading text-[12px] font-bold text-white mb-1">{SELL_UNIT_LABEL[diff.sellUnit]}</p>
+                    <div className="flex items-center justify-between text-[13px]">
+                      <span className={mutedText}>Existing: {formatPrice(diff.previousPrice)}</span>
+                      <span className="text-white">New: {formatPrice(diff.newPrice)}</span>
+                      <span className="text-gold font-bold">{formatDifference(diff.previousPrice, diff.newPrice)}</span>
+                    </div>
+                    <p className={`text-[11px] mt-1 ${visibleToCustomers ? 'text-green-400' : 'text-amber-300'}`}>
+                      {visibleToCustomers ? 'Publicly visible on the storefront' : 'Not visible on the storefront (admin only)'}
+                    </p>
+                  </div>
+                )
+              })}
+            </div>
+
+            <p className={`text-[11px] ${mutedText} mb-4`}>
+              This applies to new invoice lines and storefront orders going forward. It will never rewrite historical issued or paid invoices.
+            </p>
+
+            {pricingError && <p className="text-[12px] text-red-400 mb-3">{pricingError}</p>}
+
+            <div className="flex gap-2">
+              <button onClick={confirmSavePricing} disabled={pricingBusy} className={`${pillPrimary} px-4 py-2`}>
+                Confirm & Save
+              </button>
+              <button onClick={cancelPricingPreview} disabled={pricingBusy} className={`${pillOutline} px-4 py-2`}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
