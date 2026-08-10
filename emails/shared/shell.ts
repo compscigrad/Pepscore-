@@ -82,7 +82,7 @@ export function buildEmailShell({ eyebrow, bodyHtml, footerNote, year = new Date
        both the header and the transparent-background logo below. -->
   <meta name="color-scheme" content="dark light" />
   <meta name="supported-color-schemes" content="dark light" />
-  <title>PepScore Lab</title>
+  <title>Pepscore Lab</title>
 </head>
 <body style="font-family:Helvetica,Arial,sans-serif;background:${EMAIL_COLORS.bodyBg};color:${EMAIL_COLORS.textPrimary};margin:0;padding:24px 12px">
   <div style="max-width:600px;margin:0 auto;background:${EMAIL_COLORS.contentBg};border:1px solid ${EMAIL_COLORS.border};border-radius:16px;overflow:hidden">
@@ -91,7 +91,7 @@ export function buildEmailShell({ eyebrow, bodyHtml, footerNote, year = new Date
         src="${EMAIL_LOGO_MARK_URL}"
         width="44"
         height="44"
-        alt="PepScore Lab"
+        alt="Pepscore Lab"
         style="display:block;width:44px;height:44px;margin:0 auto 10px;border:0;outline:none;text-decoration:none"
       />
       <div style="font-size:22px;font-weight:800;letter-spacing:-0.01em">
