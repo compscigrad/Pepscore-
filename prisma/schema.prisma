@@ -1812,6 +1812,7 @@ model Customer {
   identityReviewCases  CustomerIdentityReviewCase[]
   leadCaptures         LeadCapture[]
   firstOrderOfferClaim FirstOrderOfferClaim?
+  promotionCodes       PromotionCode[]
 
   @@index([email])
   @@index([phone])
@@ -1929,6 +1930,16 @@ model FirstOrderOfferClaim {
   configId String
   config   FirstOrderOfferConfig @relation(fields: [configId], references: [id])
 
+  // Nullable/additive -- claims created before the Promotion Campaign
+  // system existed have no campaign to point at and stay null forever;
+  // every new claim going forward is expected to set this once
+  // claimFirstOrderOffer() is rewired to read from the active default
+  // PromotionCampaign instead of FirstOrderOfferConfig (a deliberately
+  // separate, later slice -- see docs/Decisions.md for the campaign model
+  // itself, which ships first with zero behavior change to this flow).
+  campaignId String?
+  campaign   PromotionCampaign? @relation(fields: [campaignId], references: [id])
+
   // The LeadCapture row created alongside this claim (interestType
   // FIRST_ORDER_OFFER, see enum above) -- same submission, kept as two rows
   // rather than folded into LeadCapture so this claim's own redemption-
@@ -1952,6 +1963,139 @@ model FirstOrderOfferClaim {
   claimedAt DateTime @default(now())
 
   @@index([configId])
+}
+
+enum PromotionCampaignStatus {
+  DRAFT
+  SCHEDULED
+  ACTIVE
+  RETIRED
+  ARCHIVED
+}
+
+enum PromotionCodeStatus {
+  ACTIVE
+  REDEEMED
+  EXPIRED
+  REVOKED
+}
+
+// Combination policy for the default "one promotion per Order" rule --
+// see lib/promotions/compatibility.ts (canCampaignsCombine) for the actual
+// rule engine this drives, and docs/Decisions.md for the full reasoning.
+// NOT_STACKABLE is the default for every campaign, including first-order
+// acquisition offers (FIRST10/FIRST20/etc.) -- a campaign only becomes
+// combinable through an explicit admin choice, never by default.
+enum PromotionStackingPolicy {
+  NOT_STACKABLE // default -- cannot combine with any other promotion
+  STACKABLE_WITH_ONE // may combine with exactly one other eligible, non-NOT_STACKABLE promotion
+  PRIVILEGED_STACKABLE // the "Family & Friends" class -- may combine with one other eligible promotion, but two PRIVILEGED_STACKABLE campaigns cannot combine with each other
+}
+
+// Reusable, admin-configurable acquisition-offer campaign system --
+// generalizes the originally-hardcoded FIRST10 (10% first order) so the
+// owner can create/schedule/activate/retire/archive campaigns and change
+// the live offer without a deploy. Deliberately a separate model from
+// Promotion (above), not an extension of it: Promotion is a flat, ad-hoc
+// discount an admin manually applies to one invoice line at a time
+// (percentage/fixed, no dates/eligibility/scheduling/code-issuance) --
+// this is a marketing acquisition offer with its own lifecycle, audience
+// rules, and unique single-redemption codes issued per qualifying
+// customer. Reuses PromotionType (FIXED|PERCENTAGE) for its own discount
+// shape rather than inventing a parallel enum. See docs/Decisions.md for
+// the full reasoning.
+//
+// FirstOrderOfferConfig/Claim (above) are NOT rewired to read from this
+// model in this same change -- that's a deliberately separate, later
+// slice (code generation + discount email + Twilio double opt-in all land
+// together). This model ships additive-only, with zero behavior change to
+// the existing (currently-inert, never-issued-a-code) claim flow.
+model PromotionCampaign {
+  id String @id @default(cuid())
+
+  // Internal-only, never shown to a customer.
+  name String
+
+  // Customer-facing copy -- the storefront/lead-capture/email surfaces
+  // should read these rather than hardcoding offer language, so a new
+  // campaign's copy takes effect the moment it's activated.
+  publicTitle       String
+  publicDescription String?
+
+  discountType  PromotionType
+  discountValue Float
+
+  status    PromotionCampaignStatus @default(DRAFT)
+  startsAt  DateTime?
+  expiresAt DateTime?
+
+  // Only one campaign should ever be the default general first-order
+  // acquisition offer at a time -- enforced in lib/promotions/campaigns.ts
+  // (transactionally demotes the prior default when a new one activates),
+  // not a DB constraint, matching this codebase's existing
+  // singleton-invariant pattern (PortalRolloutSettings) of enforcing
+  // uniqueness at the service layer rather than a partial unique index.
+  isDefaultFirstOrderCampaign Boolean @default(false)
+  firstOrderOnly              Boolean @default(true)
+
+  // See PromotionStackingPolicy above -- NOT_STACKABLE by default, so a
+  // newly-created campaign (including a first-order offer) can never
+  // combine with another promotion until an admin deliberately changes it.
+  stackingPolicy PromotionStackingPolicy @default(NOT_STACKABLE)
+
+  // Empty array = every product eligible -- same convention as the
+  // original FirstOrderOfferConfig.eligibleProductSlugs.
+  eligibleProductSlugs String[] @default([])
+  excludedProductSlugs String[] @default([])
+
+  minPurchaseAmount Float?
+  stackable         Boolean @default(false)
+  maxUses           Int? // null = unlimited
+  usesPerCustomer   Int     @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String
+  updatedBy String?
+
+  codes  PromotionCode[]
+  claims FirstOrderOfferClaim[]
+
+  @@index([status])
+}
+
+// One unique, single-redemption code per qualifying customer per campaign.
+// discountType/discountValue/expiresAt are snapshotted at issuance from the
+// campaign's state at that exact moment -- the same "snapshot so a later
+// admin edit never rewrites what a customer was already promised"
+// precedent already established by InvoiceDiscount and
+// FirstOrderOfferClaim.percentage.
+model PromotionCode {
+  id   String @id @default(cuid())
+  code String @unique
+
+  campaign   PromotionCampaign @relation(fields: [campaignId], references: [id])
+  campaignId String
+
+  customer   Customer @relation(fields: [customerId], references: [id])
+  customerId String
+
+  discountType  PromotionType
+  discountValue Float
+
+  status    PromotionCodeStatus @default(ACTIVE)
+  issuedAt  DateTime            @default(now())
+  expiresAt DateTime?
+
+  redeemedAt        DateTime?
+  redeemedOrderId   String?
+  redeemedInvoiceId String?
+
+  revokedAt DateTime?
+  revokedBy String?
+
+  @@index([campaignId])
+  @@index([customerId])
 }
 
 // Single-purpose, expiring, revocable, admin-initiated invite that binds one
