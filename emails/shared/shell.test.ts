@@ -50,7 +50,7 @@ describe('buildEmailShell', () => {
     expect(html).toContain('Contact orders@pepscorelab.com with questions.')
   })
 
-  it('includes the PepScore Lab P logo mark as an absolute, non-local, non-expiring HTTPS URL', () => {
+  it('includes the Pepscore Lab P logo mark as an absolute, non-local, non-expiring HTTPS URL', () => {
     const html = buildEmailShell({ bodyHtml: '<p>hi</p>', footerNote: 'note' })
     expect(html).toContain(`src="${EMAIL_LOGO_MARK_URL}"`)
     expect(EMAIL_LOGO_MARK_URL).toMatch(/^https:\/\//)
@@ -62,7 +62,7 @@ describe('buildEmailShell', () => {
 
   it('gives the logo image accessible alt text, and keeps the text wordmark present so the brand is still identified with images blocked', () => {
     const html = buildEmailShell({ bodyHtml: '<p>hi</p>', footerNote: 'note' })
-    expect(html).toMatch(/<img[^>]*alt="PepScore Lab"/)
+    expect(html).toMatch(/<img[^>]*alt="Pepscore Lab"/)
     // The text wordmark below the image must still be there independent of
     // whether the image itself loads.
     expect(html).toMatch(/Pepscore<\/span><span[^>]*> Lab/)
