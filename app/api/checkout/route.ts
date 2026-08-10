@@ -14,6 +14,7 @@ import { resolveCheckoutLine, computeVialsToReserve } from '@/lib/storefront/che
 import { SELL_UNIT_DISPLAY_LABEL } from '@/lib/pricing/sellUnits'
 import { reserveForOrderItemTx, releaseAllOrderReservationsTx } from '@/lib/inventory/orderReservations'
 import { getPaymentSettings } from '@/lib/payments/settings'
+import { resolveCustomerIdForCheckout, resolvePromotionCode, PROMOTION_CODE_INVALID_MESSAGE } from '@/lib/promotions/redemption'
 import type { CheckoutLineItem, ShippingAddress } from '@/types'
 import type Stripe from 'stripe'
 
@@ -46,6 +47,7 @@ export async function POST(req: NextRequest) {
       customerName,
       ruoAgreed,
       ruoText,
+      promotionCode,
     }: {
       items: CheckoutLineItem[]
       shippingAddress: ShippingAddress
@@ -53,6 +55,7 @@ export async function POST(req: NextRequest) {
       customerName: string
       ruoAgreed: boolean
       ruoText: string
+      promotionCode?: string
     } = body
 
     if (!ruoAgreed) {
@@ -98,6 +101,33 @@ export async function POST(req: NextRequest) {
     const freeShipping = subtotal >= 150
     const shippingCost = freeShipping ? 0 : 0 // Shippo rates fetched post-checkout
 
+    // Resolve and authoritatively re-validate a promotion code before
+    // creating anything -- never trusts a client-calculated discount, and
+    // never creates a PENDING Order for a checkout attempt with an invalid
+    // code (fail fast). See lib/promotions/redemption.ts's header comment
+    // for the two-phase soft-hold/finalize design that keeps an abandoned
+    // checkout from permanently burning a one-time code.
+    let appliedPromotionCodeId: string | null = null
+    let discountAmount = 0
+    if (promotionCode) {
+      const customerId = await resolveCustomerIdForCheckout(userId ?? null, customerEmail)
+      if (!customerId) {
+        return NextResponse.json({ error: PROMOTION_CODE_INVALID_MESSAGE.WRONG_CUSTOMER }, { status: 400 })
+      }
+      const result = await resolvePromotionCode(promotionCode, {
+        customerId,
+        cartSubtotal: subtotal,
+        cartProductSlugs: products.map((p) => p.slug),
+      })
+      if (!result.valid) {
+        return NextResponse.json({ error: PROMOTION_CODE_INVALID_MESSAGE[result.reason] }, { status: 400 })
+      }
+      appliedPromotionCodeId = result.code.id
+      discountAmount = result.discountAmount
+    }
+
+    const total = subtotal + shippingCost - discountAmount
+
     // Pre-create order record in PENDING state
     const orderNumber = generateOrderNumber()
     const invoiceNumber = generateInvoiceNumber()
@@ -121,7 +151,9 @@ export async function POST(req: NextRequest) {
           status: 'PENDING',
           subtotal,
           shippingCost,
-          total: subtotal + shippingCost,
+          discountAmount,
+          total,
+          appliedPromotionCodeId,
           items: {
             create: lineItems.map(i => ({
               productId: i.productId,
@@ -143,8 +175,8 @@ export async function POST(req: NextRequest) {
               customerEmail,
               shippingAddress: JSON.parse(JSON.stringify(shippingAddress)),
               subtotal,
-              total: subtotal + shippingCost,
-              balanceDue: subtotal + shippingCost,
+              total,
+              balanceDue: total,
               shippingCost,
             },
           },
@@ -216,6 +248,28 @@ export async function POST(req: NextRequest) {
       },
       quantity: i.quantity,
     }))
+
+    // A promotion discount is applied by proportionally scaling down every
+    // line item's unit_amount rather than a Stripe-side Coupon object --
+    // simpler than syncing our own PromotionCode model into Stripe's
+    // separate coupon system, and it guarantees the amount Stripe actually
+    // charges is byte-exact with Order.total, never a few cents off from
+    // independent per-line rounding. The last line absorbs any rounding
+    // remainder so the sum always lands exactly on the target.
+    if (discountAmount > 0) {
+      const targetTotalCents = Math.round((subtotal - discountAmount) * 100)
+      const originalTotalCents = stripeLineItems.reduce((s, li) => s + li.price_data.unit_amount * li.quantity, 0)
+      if (originalTotalCents > 0) {
+        let allocatedCents = 0
+        stripeLineItems.forEach((li, idx) => {
+          const lineOriginalCents = li.price_data.unit_amount * li.quantity
+          const isLast = idx === stripeLineItems.length - 1
+          const lineTargetCents = isLast ? targetTotalCents - allocatedCents : Math.round((lineOriginalCents / originalTotalCents) * targetTotalCents)
+          allocatedCents += lineTargetCents
+          li.price_data.unit_amount = Math.max(0, Math.round(lineTargetCents / li.quantity))
+        })
+      }
+    }
 
     // If this is an authenticated, portal-linked returning customer who
     // has ever saved a payment method, attach their real Stripe Customer

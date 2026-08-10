@@ -13,6 +13,7 @@ import { sendCategorizedEmail } from '@/lib/notifications/log'
 import { buildOrderConfirmationHtml } from '@/emails/OrderConfirmation'
 import { achPaymentProcessingSubject, buildAchPaymentProcessingHtml } from '@/emails/AchPaymentProcessing'
 import { fulfillAllOrderReservationsTx, releaseAllOrderReservationsTx } from '@/lib/inventory/orderReservations'
+import { finalizeRedemption } from '@/lib/promotions/redemption'
 import type { StorefrontPaymentMethodType, Order } from '@prisma/client'
 
 export interface MarkOrderPaidInput {
@@ -58,6 +59,12 @@ export async function markOrderPaid(input: MarkOrderPaidInput): Promise<Order> {
   })
 
   await prisma.$transaction((tx) => fulfillAllOrderReservationsTx(tx, order.id, 'system-stripe-webhook'))
+
+  // The only point a soft-held promotion code (Phase 4A Critical #1)
+  // actually becomes REDEEMED -- payment has now genuinely succeeded.
+  // Idempotent (see finalizeRedemption's own comment), so a redelivered
+  // webhook that reaches this far again is still safe.
+  await finalizeRedemption(order.id)
 
   if (order.invoice) {
     await prisma.invoice.update({ where: { id: order.invoice.id }, data: { status: 'ISSUED', paidAt: new Date() } })

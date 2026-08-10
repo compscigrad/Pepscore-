@@ -421,10 +421,24 @@ model Order {
   shippingCost          Float             @default(0)
   stripeFee             Float             @default(0)
   tax                   Float             @default(0)
+  discountAmount        Float             @default(0)
   total                 Float
   notes                 String?
   createdAt             DateTime          @default(now())
   updatedAt             DateTime          @updatedAt
+
+  // Phase 4A Critical #1 -- the one promotion code applied to this order,
+  // if any. Additive/nullable: every pre-existing Order row has both null.
+  // A single nullable FK is a deliberate scope decision for this slice --
+  // "standard promotions default to one promotion maximum" is the default
+  // case this covers; true simultaneous 2-code stacking (Family & Friends
+  // + one more) is scoped out as a follow-up (see docs/Decisions.md) even
+  // though the compatibility-check logic itself already supports it.
+  // Set at checkout creation (soft hold, PromotionCode.status stays ACTIVE
+  // so an abandoned/failed order never permanently burns a one-time code),
+  // only actually marked REDEEMED on real payment success.
+  appliedPromotionCodeId String?       @unique
+  appliedPromotionCode   PromotionCode? @relation(fields: [appliedPromotionCodeId], references: [id])
 
   items                  OrderItem[]
   invoice                Invoice?
@@ -2166,6 +2180,11 @@ model PromotionCode {
   revokedBy String?
 
   firstOrderOfferClaims FirstOrderOfferClaim[]
+  // Back-relation for Order.appliedPromotionCodeId (Phase 4A Critical #1)
+  // -- at most one Order can hold a given code at a time (the FK is
+  // @unique on Order's side), so this is 0-or-1 in practice even though
+  // Prisma models it as a list for the relation direction.
+  appliedToOrder Order?
 
   @@index([campaignId])
   @@index([customerId])
