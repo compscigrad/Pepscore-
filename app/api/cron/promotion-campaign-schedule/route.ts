@@ -7,6 +7,12 @@
 // FIRST10's actual code-issuance/email/SMS flow (a separate, later slice)
 // is what would ever contact a real customer, and stays gated by its own
 // switches regardless of which campaign is active.
+//
+// Runs once daily (vercel.json, 0 16 * * *) -- this Vercel project is on
+// the Hobby plan, which rejects the entire deployment if any cron is
+// scheduled more frequently than daily (confirmed by a failed preview
+// deployment when this was first set to run hourly), matching every other
+// cron in this project.
 import { NextRequest, NextResponse } from 'next/server'
 import { activateDueScheduledCampaigns } from '@/lib/promotions/campaigns'
 
