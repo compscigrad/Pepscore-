@@ -1,22 +1,34 @@
 // GET /api/cron/portal-invite-rollout — the automated bulk-invitation send.
+// Runs off LIVE eligibility (computeEligibleInviteAudience(), recomputed
+// every invocation), not a one-time frozen batch — see docs/Decisions.md
+// #37 for why this changed from the original snapshot-only design.
 // Layered gates, every one independently sufficient to stop a real send —
 // see lib/portal/rolloutSafety.ts's header comment for why this exists:
 //   1. CUSTOMER_AUTO_INVITES_ENABLED (deploy-time flag)
-//   2. PortalRolloutSettings.activatedAt (runtime admin action)
+//   2. PortalRolloutSettings.activatedAt (runtime admin action -- an
+//      ONGOING "automated invites are running" state, not a one-time
+//      batch approval; see #37)
 //   3. CUSTOMER_ROLLOUT_KILL_SWITCH (env-var emergency stop, no DB needed)
 //   4. PortalRolloutSettings.pausedAt (admin-facing pause, DB-driven)
 //   5. CUSTOMER_ROLLOUT_DRY_RUN (defaults ON — a real send requires the
 //      exact string 'false', not just the absence of an opt-in)
 //   6. CUSTOMER_ROLLOUT_TEST_ALLOWLIST (when set, restricts real sends to
 //      only these recipients even with dry-run off)
-//   7. The audience snapshot captured at activation — only ever sends to
-//      customers who were both in that approved snapshot AND are still
-//      currently eligible right now.
+//   7. Every one of computeEligibleInviteAudience()'s own exclusion rules
+//      (claimed, disabled, missing contact, duplicate, test/QA, lead-stage,
+//      identity conflict, already-invited) -- recomputed fresh every run,
+//      so a customer who stops qualifying between runs is dropped
+//      automatically, and one who starts qualifying is picked up without
+//      any admin action.
+//   8. generatePortalInvite()'s own idempotency guards (an existing active
+//      invite is reused, not duplicated; an already-linked customer throws)
+//      -- the real duplicate-send protection, independent of anything in
+//      this route.
 // Merging or deploying this file never sends a single real invitation on
 // its own; every one of 1-6 defaults to the safe state.
 import { NextRequest, NextResponse } from 'next/server'
 import { isAutoInvitesEnabled, isSmsInvitesEnabled } from '@/lib/portalAuth'
-import { isPortalRolloutActive, isPortalRolloutPaused, getAudienceSnapshotIds } from '@/lib/portal/rollout'
+import { isPortalRolloutActive, isPortalRolloutPaused } from '@/lib/portal/rollout'
 import { computeEligibleInviteAudience } from '@/lib/portal/rolloutAudience'
 import { getRolloutSafetyConfig, planRolloutBatch } from '@/lib/portal/rolloutSafety'
 import { generatePortalInvite, PortalInviteError } from '@/lib/portalInvites'
@@ -38,15 +50,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ skipped: true, reason: 'PortalRolloutSettings has not been activated by an admin yet' })
   }
 
-  const [snapshotIds, paused, audience] = await Promise.all([
-    getAudienceSnapshotIds(),
-    isPortalRolloutPaused(),
-    computeEligibleInviteAudience(),
-  ])
-  const snapshotSet = new Set(snapshotIds ?? [])
-  // Only ever a customer approved in the original snapshot AND still
-  // currently eligible — never a candidate that only appeared later.
-  const candidates = audience.eligible.filter((c) => snapshotSet.has(c.id))
+  const [paused, audience] = await Promise.all([isPortalRolloutPaused(), computeEligibleInviteAudience()])
+  // Live eligibility every run -- see the header comment and
+  // docs/Decisions.md #37. Not scoped to the historical activation
+  // snapshot; a customer who becomes eligible after activation is picked
+  // up on the very next run, same as one who was eligible on day one.
+  const candidates = audience.eligible
 
   const config = getRolloutSafetyConfig()
   const plan = planRolloutBatch(candidates, config, paused)
@@ -94,7 +103,6 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     dryRun: config.dryRun,
     eligibleTotal: audience.eligible.length,
-    snapshotSize: snapshotSet.size,
     candidatesThisRun: candidates.length,
     dryRunLogged,
     blocked,

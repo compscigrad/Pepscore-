@@ -6,6 +6,12 @@
 // POST /api/admin/portal-rollout route after a human reviews the
 // launch-readiness report. See docs/ProductRoadmap.md's launch-checkpoint
 // requirement — this is the "exact control that triggers real rollout."
+//
+// activatedAt is an ONGOING state ("automated invites are running"), not a
+// one-time batch approval — the cron recomputes live eligibility on every
+// run rather than being scoped to whoever qualified at the moment of
+// activation. See docs/Decisions.md #37 for the full reasoning and why
+// this changed from the original snapshot-only design.
 import { prisma } from '@/lib/prisma'
 import type { PortalRolloutSettings } from '@prisma/client'
 import { computeEligibleInviteAudience } from '@/lib/portal/rolloutAudience'
@@ -27,23 +33,19 @@ export async function isPortalRolloutPaused(): Promise<boolean> {
   return Boolean(settings?.pausedAt)
 }
 
-// The exact customer ids the admin actually saw and approved at the moment
-// of activation — never recomputed afterward. Returns null if the rollout
-// was never activated (nothing to read yet).
-export async function getAudienceSnapshotIds(): Promise<string[] | null> {
-  const settings = await getPortalRolloutSettings()
-  if (!settings?.audienceSnapshot) return null
-  return settings.audienceSnapshot as string[]
-}
-
 export class PortalRolloutError extends Error {}
 
 // Idempotent by design: once activated, a second call is a no-op that
 // returns the existing (first) activation record rather than erroring —
 // there is exactly one real go-ahead moment, and re-clicking a stale tab
-// must never look like a second decision. The eligible-audience id list is
-// snapshotted here, at the moment of approval, and never touched again —
-// see this file's header comment and lib/portal/rolloutSafety.ts.
+// must never look like a second decision.
+//
+// audienceSnapshot is recorded here purely as a historical audit trail --
+// "this is what the admin actually saw and approved at the moment they
+// clicked Activate" (surfaced as a count on /admin/portal-rollout) -- it
+// is deliberately NOT read anywhere as a filter on who the cron will ever
+// invite; see docs/Decisions.md #37. The cron recomputes eligibility live
+// on every run instead.
 export async function activatePortalRollout(adminUserId: string): Promise<PortalRolloutSettings> {
   const existing = await getPortalRolloutSettings()
   if (existing?.activatedAt) return existing

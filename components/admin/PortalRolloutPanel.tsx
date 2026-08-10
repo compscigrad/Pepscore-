@@ -5,8 +5,11 @@
 // Customer Identity Platform sprint that's genuinely irreversible in
 // spirit: once activated, real customers start receiving real invitations
 // on the next cron run — subject to the dry-run/kill-switch/allowlist
-// safeguards surfaced below. See lib/portal/rollout.ts and
-// lib/portal/rolloutSafety.ts.
+// safeguards surfaced below. Activating is an ONGOING decision, not a
+// one-time batch approval: the cron recomputes live eligibility on every
+// run, so new customers who qualify later are invited automatically too,
+// without a second activation — see lib/portal/rollout.ts,
+// lib/portal/rolloutSafety.ts, and docs/Decisions.md #37.
 'use client'
 
 import { useState } from 'react'
@@ -67,9 +70,10 @@ export function PortalRolloutPanel({
         <div>
           <h3 className={sectionHeading}>Rollout Activated</h3>
           <p className={`text-sm ${mutedText} mt-2`}>
-            Activated {new Date(settings.activatedAt).toLocaleString()} by {settings.activatedBy ?? 'unknown'}, approving{' '}
-            {settings.audienceSnapshotSize ?? 0} customer{settings.audienceSnapshotSize === 1 ? '' : 's'}. The cron only ever
-            sends to that approved list, never a later-recomputed one.
+            Activated {new Date(settings.activatedAt).toLocaleString()} by {settings.activatedBy ?? 'unknown'} — at that moment,{' '}
+            {settings.audienceSnapshotSize ?? 0} customer{settings.audienceSnapshotSize === 1 ? '' : 's'} were eligible. Automation
+            is ongoing: the cron recomputes who currently qualifies on every run, so customers who become eligible later are
+            invited automatically too, subject to the safety gates below.
           </p>
         </div>
 
@@ -99,9 +103,10 @@ export function PortalRolloutPanel({
       <div>
         <h3 className={sectionHeading}>Activate Automated Rollout</h3>
         <p className={`text-sm ${mutedText} mt-2`}>
-          Not yet activated. Activating will approve the {eligibleCount} currently-eligible customer{eligibleCount === 1 ? '' : 's'}{' '}
-          above as an immutable snapshot — the cron will only ever send to customers on that exact list, never anyone who
-          qualifies later. This cannot be meaningfully undone once customers have actually been contacted.
+          Not yet activated. Activating turns on ongoing automated invitations: the {eligibleCount} customer
+          {eligibleCount === 1 ? '' : 's'} eligible right now will be invited on the next run, and any customer who becomes
+          eligible later will be invited automatically too — this is not a one-time batch. This cannot be meaningfully undone
+          once customers have actually been contacted.
         </p>
       </div>
 
@@ -119,7 +124,8 @@ export function PortalRolloutPanel({
       ) : (
         <div className="space-y-3 rounded-lg border border-gold/30 bg-gold/5 p-4">
           <p className="text-sm text-white">
-            This will approve {eligibleCount} real customer{eligibleCount === 1 ? '' : 's'} as the send list.{' '}
+            This starts ongoing automated invitations, beginning with {eligibleCount} real customer{eligibleCount === 1 ? '' : 's'}{' '}
+            eligible right now, and continuing automatically as new customers qualify.{' '}
             {dryRun
               ? 'CUSTOMER_ROLLOUT_DRY_RUN is on, so the cron will only log what it would send — no real messages yet.'
               : 'CUSTOMER_ROLLOUT_DRY_RUN is off — the cron WILL send real messages on its next run.'}{' '}
