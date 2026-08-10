@@ -23,7 +23,7 @@ export function PortalNav() {
       <div className="max-w-[960px] mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <Link href="/account" className="font-heading text-lg font-bold text-white tracking-[0.05em]">
-            PEPSCORE
+            PEPSCORE <span className="text-gold-light">LAB</span>
           </Link>
           <UserButton afterSignOutUrl="/" />
         </div>
