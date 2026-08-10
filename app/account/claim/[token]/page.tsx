@@ -59,7 +59,7 @@ export default async function ClaimPage({ params }: { params: Promise<{ token: s
           Hi {customer.firstName}, set up your account
         </h2>
         <p className="text-white/60 text-sm leading-relaxed mb-6">
-          This will link your PepScore Lab order history to the account you&apos;re signed in with, so you can view
+          This will link your Pepscore Lab order history to the account you&apos;re signed in with, so you can view
           your invoices, tracking, and payment history anytime.
         </p>
         <PortalClaimButton token={token} />
