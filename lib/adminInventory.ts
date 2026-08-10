@@ -48,11 +48,12 @@ export async function getInventoryDetail(productId: string) {
   const product = await prisma.product.findUnique({ where: { id: productId } })
   if (!product) return null
 
-  const [ledgerEntries, reservations, alerts, backorderedVials] = await Promise.all([
+  const [ledgerEntries, reservations, alerts, backorderedVials, priceChanges] = await Promise.all([
     prisma.inventoryLedgerEntry.findMany({ where: { productId }, orderBy: { createdAt: 'desc' }, take: 50 }),
     prisma.inventoryReservation.findMany({ where: { productId, status: 'ACTIVE' }, orderBy: { reservedAt: 'desc' } }),
     prisma.lowStockAlert.findMany({ where: { productId }, orderBy: { createdAt: 'desc' }, take: 20 }),
     getActiveBackorderedVialsByProduct().then((m) => m.get(productId) ?? 0),
+    prisma.productPriceChange.findMany({ where: { productId }, orderBy: { createdAt: 'desc' }, take: 50 }),
   ])
 
   return {
@@ -63,6 +64,7 @@ export async function getInventoryDetail(productId: string) {
     ledgerEntries,
     reservations,
     alerts,
+    priceChanges,
   }
 }
 

@@ -43,7 +43,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     const updated =
       'supplierCaseCost' in payload
         ? await recalculateSuggestedPricing(id, payload.supplierCaseCost)
-        : await setActivePricing(id, payload)
+        : await setActivePricing(id, payload, { actorId: userId!, source: 'ADMIN_PRICING_PAGE', reason: payload.pricingOverrideReason ?? null })
 
     return NextResponse.json(updated)
   } catch (err: unknown) {

@@ -26,6 +26,23 @@ const EVENT_LABEL: Record<string, string> = {
   REVERSAL: 'Reversal',
 }
 
+const SELL_UNIT_LABEL: Record<string, string> = {
+  STANDARD_CASE: 'Standard Case',
+  SPA_CASE: 'SPA Case',
+  BULK: 'Bulk',
+  INDIVIDUAL_VIAL: 'Individual Vial',
+}
+
+const PRICE_SOURCE_LABEL: Record<string, string> = {
+  ADMIN_PRICING_PAGE: 'Admin Pricing Page',
+  INVOICE_LINE_UPDATE_PRODUCT_PRICE: 'Invoice Line — Update Product Price',
+  CATALOG_SEED: 'Catalog Seed',
+}
+
+function formatPrice(value: number | null): string {
+  return value === null ? '—' : `$${value.toFixed(2)}`
+}
+
 export default async function AdminInventoryDetailPage({ params }: Props) {
   const { userId } = await auth()
   if (!userId) redirect('/sign-in?redirect_url=/admin/inventory')
@@ -44,7 +61,7 @@ export default async function AdminInventoryDetailPage({ params }: Props) {
   const detail = await getInventoryDetail(id)
   if (!detail) notFound()
 
-  const { product, availableUnits, completeCasesAvailable, backorderedVials, ledgerEntries, reservations, alerts } = detail
+  const { product, availableUnits, completeCasesAvailable, backorderedVials, ledgerEntries, reservations, alerts, priceChanges } = detail
 
   return (
     <main className="min-h-screen bg-black p-6 md:p-8">
@@ -99,6 +116,42 @@ export default async function AdminInventoryDetailPage({ params }: Props) {
             </ul>
           </div>
         )}
+
+        <div className="bg-white/[0.03] border border-gold/10 rounded-[18px] overflow-hidden mb-6">
+          <div className="p-6 border-b border-white/10">
+            <h2 className="font-heading text-[15px] font-bold text-white">Price Change History</h2>
+            <p className="text-[12px] text-white/50 mt-0.5">Most recent {priceChanges.length} authoritative price changes</p>
+          </div>
+          {priceChanges.length === 0 ? (
+            <div className="text-center py-12 text-white/50 text-[13px]">No price changes recorded yet.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-[13px]">
+                <thead>
+                  <tr className="border-b border-white/10">
+                    {['When', 'Sell Unit', 'Previous', 'New', 'Source', 'Reason'].map((h) => (
+                      <th key={h} className="text-left font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 px-4 py-3 whitespace-nowrap">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {priceChanges.map((change) => (
+                    <tr key={change.id} className="border-b border-white/10">
+                      <td className="px-4 py-3 text-white/50 whitespace-nowrap">{new Date(change.createdAt).toLocaleString()}</td>
+                      <td className="px-4 py-3 font-semibold text-white whitespace-nowrap">{SELL_UNIT_LABEL[change.sellUnit] ?? change.sellUnit}</td>
+                      <td className="px-4 py-3 text-white/50 whitespace-nowrap">{formatPrice(change.previousPrice)}</td>
+                      <td className="px-4 py-3 text-white whitespace-nowrap">{formatPrice(change.newPrice)}</td>
+                      <td className="px-4 py-3 text-white/50 whitespace-nowrap">{PRICE_SOURCE_LABEL[change.source] ?? change.source}</td>
+                      <td className="px-4 py-3 text-white/50 max-w-[280px] truncate">{change.reason ?? '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
 
         <div className="bg-white/[0.03] border border-gold/10 rounded-[18px] overflow-hidden">
           <div className="p-6 border-b border-white/10">
