@@ -169,7 +169,7 @@ function customerToDraft(customer: Customer): InvoiceDraft {
 export function InvoiceBuilder({
   mode,
   initialInvoice,
-  products,
+  products: initialProducts,
   promotions: initialPromotions,
   smsConfigured = false,
   prefillCustomer,
@@ -187,6 +187,11 @@ export function InvoiceBuilder({
   // Local copy so a newly-created reusable promotion (see DiscountsSection's
   // "+ New Preset") shows up in the picker immediately, without a page reload.
   const [promotions, setPromotions] = useState(initialPromotions)
+  // Local copy so an "Update Product Price" choice inside InvoiceItemsTable
+  // (Phase 3B item 3) is reflected immediately in every other line on this
+  // same draft without a full page reload -- which would also discard any
+  // unsaved edits elsewhere on this form, unlike a plain in-memory patch.
+  const [products, setProducts] = useState(initialProducts)
 
   const totals = useMemo(
     () =>
@@ -403,6 +408,9 @@ export function InvoiceBuilder({
           items={draft.items}
           onChange={(items) => setDraft((d) => ({ ...d, items }))}
           products={products}
+          onProductPriceUpdated={(productId, field, newPrice) =>
+            setProducts((prev) => prev.map((p) => (p.id === productId ? { ...p, [field]: newPrice } : p)))
+          }
           invoiceId={invoice?.id}
         />
         <DiscountsSection

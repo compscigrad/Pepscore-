@@ -25,6 +25,12 @@ const patchSchema = z.union([
     unitsPerCase: z.number().int().positive().nullable().optional(),
     sku: z.string().nullable().optional(),
     pricingStatus: z.enum(['ACTIVE', 'INACTIVE']).optional(),
+    // Defaults to the admin pricing page's own source so every existing
+    // caller (which never sends this field) is unaffected -- an invoice
+    // line's "Update Product Price" choice (Phase 3B item 3) is the one
+    // other real caller today, and explicitly passes its own source.
+    source: z.enum(['ADMIN_PRICING_PAGE', 'INVOICE_LINE_UPDATE_PRODUCT_PRICE']).optional(),
+    reason: z.string().nullable().optional(),
   }),
 ])
 
@@ -40,10 +46,19 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
 
   try {
     const payload = patchSchema.parse(await req.json())
-    const updated =
-      'supplierCaseCost' in payload
-        ? await recalculateSuggestedPricing(id, payload.supplierCaseCost)
-        : await setActivePricing(id, payload, { actorId: userId!, source: 'ADMIN_PRICING_PAGE', reason: payload.pricingOverrideReason ?? null })
+    let updated
+    if ('supplierCaseCost' in payload) {
+      updated = await recalculateSuggestedPricing(id, payload.supplierCaseCost)
+    } else {
+      // source/reason are audit-context metadata, not Product columns --
+      // stripped out of the write payload itself so Prisma never sees them.
+      const { source, reason, ...input } = payload
+      updated = await setActivePricing(id, input, {
+        actorId: userId!,
+        source: source ?? 'ADMIN_PRICING_PAGE',
+        reason: reason ?? input.pricingOverrideReason ?? null,
+      })
+    }
 
     return NextResponse.json(updated)
   } catch (err: unknown) {

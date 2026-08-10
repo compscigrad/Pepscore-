@@ -58,6 +58,10 @@ export interface InvoiceItemDraft {
   priceTier?: InvoiceItemPriceTier | null
   skuSnapshot?: string | null
   inventoryQuantityConsumed?: number | null
+  // True only for a Phase 3B "Use Once" price correction -- unitPrice
+  // deviates from the product's catalog price for priceTier === 'MANUAL',
+  // and the catalog itself was deliberately left untouched.
+  manualPricingOverride?: boolean
 }
 
 export interface InvoiceDiscountDraft {
