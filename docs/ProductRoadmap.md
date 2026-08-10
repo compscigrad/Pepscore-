@@ -249,7 +249,17 @@ A repeat-purchase workflow reading historical Order/Invoice line items for *what
 
 **Depends on**: 3B's price-override decision UI is the natural reuse point for "current price differs from what the customer paid before" on the admin side; the Customer Portal's existing order/invoice history views (already built, this session's earlier Phase 2B work) are what reorder extends, not a new read path.
 
-### Sequencing and safety constraints (apply to all of 3A–3C)
+### 3D. Global PepScore Lab notification/communication design system (pinned 2026-08-10)
+
+A permanent, ongoing UX/branding requirement, not a one-time migration: every customer-facing communication surface — transactional/promotional email, portal invitation/reminder email, in-app Customer Portal notifications, admin notification cards, and (text-only, within SMS's own constraints) SMS — must read as one cohesive PepScore Lab product alongside the storefront/admin/Customer Portal's dark-gold visual system, not a disconnected, under-branded legacy look. Brand name is `PepScore Lab` (not standalone `PepScore`) on every customer-facing surface. Direction is "premium dark luxury" (charcoal/graphite/layered depth, a real gold-gradient accent) — explicitly not flat solid black everywhere and not a flat-yellow accent.
+
+**Scope**: (1) a centralized, reusable branded email shell (header/wordmark → gold accent → content → CTA → footer) that every email template plugs into, replacing each template's current ad hoc inline-HTML styling; (2) a shared token set (background/panel/text/border/gold/gold-gradient/CTA/semantic colors) derived from the same visual source of truth as `components/invoices/theme.ts` and the storefront's measured dark tokens (`docs/Decisions.md` #10), expressed in email-safe inline-CSS form since email HTML can't use the frontend's Tailwind/CSS-variable architecture directly; (3) migration of every existing customer-facing template (portal invite/reminder, FIRST10/promotion code, invoice issued/revised, payment received, backorder notice/accommodation, tracking/shipment, refund, lead-follow-up) onto the shared shell — content/business logic unchanged, presentation only; (4) an admin preview capability for reusable templates using representative sample data, no real send required; (5) a lighter pass auditing in-app Customer Portal/admin notification surfaces for the same dark/gold cohesion, and a controlled-hierarchy pass on the broader dark frontend so "dark" reads as intentional depth rather than undifferentiated black.
+
+**Depends on**: nothing architecturally new — this is a presentation-layer migration of already-shipped, already-tested notification-sending logic (`lib/notifications/log.ts`'s `sendCategorizedEmail`, `lib/notifications/routing.ts`'s category system), not a rework of when/why/to-whom anything sends.
+
+**Permanent rule going forward**: any new customer-facing email or visual notification must be built on the shared shell/tokens from the start — no new standalone-styled template.
+
+### Sequencing and safety constraints (apply to all of 3A–3D)
 
 1. Audit → architecture → implementation → tests → preview/browser/mobile verification → PR → CI → routine squash-merge → deploy → smoke test, per-slice, matching this session's established workflow.
 2. Real bulk customer communication and real payment/checkout activation stay OFF throughout — every send during engineering uses synthetic/owner-controlled recipients, exactly as every other communication-adjacent feature this session has shipped.
