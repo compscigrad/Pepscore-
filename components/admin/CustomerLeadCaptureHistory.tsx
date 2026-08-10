@@ -30,7 +30,7 @@ const INTEREST_TYPE_LABEL: Record<string, string> = {
   OUT_OF_STOCK_INTEREST: 'Out of Stock Interest',
   PRICING_REVIEW_INTEREST: 'Pricing Review Interest',
   SPA_WHOLESALE_INQUIRY: 'SPA / Wholesale Inquiry',
-  FIRST_ORDER_OFFER: 'First-Order 10% Offer',
+  FIRST_ORDER_OFFER: 'First-Order Offer',
 }
 
 function formatDate(value: Date | string): string {

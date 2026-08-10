@@ -2,30 +2,36 @@
 import Link from 'next/link'
 import { LeadCaptureTrigger } from './LeadCaptureTrigger'
 import { FirstOrderOfferModal } from './FirstOrderOfferModal'
-import { getFirstOrderOfferConfig, isFirstOrderOfferLive } from '@/lib/promotions/firstOrderOffer'
+import { getActiveFirstOrderOffer } from '@/lib/promotions/firstOrderOffer'
+import { formatDiscountLabel } from '@/lib/promotions/format'
 
-// Server Component -- reads the FIRST10 config directly (no client fetch)
-// so the banner renders or doesn't with zero flash, and stays entirely
-// absent from the DOM while the offer is off (the default).
+// Server Component -- reads the active first-order offer directly (no
+// client fetch) so the banner renders or doesn't with zero flash, and
+// stays entirely absent from the DOM while the offer is off (the
+// default). Copy comes from the active campaign's own publicTitle rather
+// than being constructed from a raw percentage, so a fixed-dollar
+// campaign (or any future copy an admin writes) renders correctly without
+// a code change.
 export async function Footer() {
-  const offerConfig = await getFirstOrderOfferConfig()
-  const offerLive = isFirstOrderOfferLive(offerConfig)
+  const offer = await getActiveFirstOrderOffer()
 
   return (
     <footer className="bg-black text-white pt-14 pb-7 px-6">
       <div className="max-w-[1200px] mx-auto">
 
-        {offerLive && (
+        {offer.live && offer.campaign && (
           <div className="mb-11 rounded-2xl border border-[#D4AF37]/30 bg-gradient-to-br from-[#D4AF37]/10 via-transparent to-transparent p-6 flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="font-heading text-[17px] font-bold text-white mb-1">
-                Get {offerConfig.percentage}% Off Your First Order
+              <p className="font-heading text-[17px] font-bold text-white mb-1">{offer.campaign.publicTitle}</p>
+              <p className="text-[13px] text-white/55">
+                {offer.campaign.publicDescription ?? 'Leave your email and phone number to claim your first-order discount.'}
               </p>
-              <p className="text-[13px] text-white/55">Leave your email and phone number to claim your first-order discount.</p>
             </div>
             <FirstOrderOfferModal
-              percentage={offerConfig.percentage}
-              triggerLabel={`Claim ${offerConfig.percentage}% Off →`}
+              publicTitle={offer.campaign.publicTitle}
+              discountType={offer.campaign.discountType}
+              discountValue={offer.campaign.discountValue}
+              triggerLabel={`Claim ${formatDiscountLabel(offer.campaign.discountType, offer.campaign.discountValue)} →`}
               triggerClassName="shrink-0 bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] hover:shadow-[0_4px_16px_rgba(212,175,55,0.4)] text-black font-heading text-[12px] font-bold tracking-[0.08em] uppercase px-6 py-3 rounded-full transition-all"
             />
           </div>

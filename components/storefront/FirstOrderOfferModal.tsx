@@ -10,9 +10,13 @@
 import { useState } from 'react'
 import toast from 'react-hot-toast'
 import { getAttribution } from '@/lib/storefront/attribution'
+import { formatDiscountLabel } from '@/lib/promotions/format'
+import type { PromotionType } from '@prisma/client'
 
 export interface FirstOrderOfferModalProps {
-  percentage: number
+  publicTitle: string
+  discountType: PromotionType
+  discountValue: number
   triggerLabel: string
   triggerClassName: string
 }
@@ -20,7 +24,8 @@ export interface FirstOrderOfferModalProps {
 const inputCls =
   'w-full rounded-lg border border-white/15 bg-white/[0.04] px-3.5 py-2.5 text-[13px] text-white placeholder:text-white/35 focus:outline-none focus:border-[#D4AF37]/50 transition-colors'
 
-export function FirstOrderOfferModal({ percentage, triggerLabel, triggerClassName }: FirstOrderOfferModalProps) {
+export function FirstOrderOfferModal({ publicTitle, discountType, discountValue, triggerLabel, triggerClassName }: FirstOrderOfferModalProps) {
+  const discountLabel = formatDiscountLabel(discountType, discountValue)
   const [open, setOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [claimed, setClaimed] = useState(false)
@@ -103,14 +108,14 @@ export function FirstOrderOfferModal({ percentage, triggerLabel, triggerClassNam
               <div className="py-4">
                 <h2 className="font-heading text-[19px] font-bold text-white mb-1.5">You&apos;re all set</h2>
                 <p className="text-[13px] text-white/60 leading-relaxed">
-                  We&apos;ll follow up by email with your {percentage}% first-order code and how to use it.
+                  We&apos;ll follow up by email with your {discountLabel} first-order code and how to use it.
                 </p>
               </div>
             ) : (
               <>
-                <h2 className="font-heading text-[19px] font-bold text-white mb-1.5">Get {percentage}% Off Your First Order</h2>
+                <h2 className="font-heading text-[19px] font-bold text-white mb-1.5">{publicTitle}</h2>
                 <p className="text-[13px] text-white/55 leading-relaxed mb-5">
-                  Leave your email and phone number and we&apos;ll send you a code for {percentage}% off your first order. One offer per customer.
+                  Leave your email and phone number and we&apos;ll send you a code for {discountLabel} your first order. One offer per customer.
                 </p>
 
                 <form onSubmit={handleSubmit} className="space-y-3">
@@ -163,7 +168,7 @@ export function FirstOrderOfferModal({ percentage, triggerLabel, triggerClassNam
                     disabled={submitting}
                     className="w-full bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] hover:shadow-[0_4px_16px_rgba(212,175,55,0.4)] text-black font-heading text-[13px] font-bold tracking-[0.08em] uppercase py-3 rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {submitting ? 'Submitting…' : `Claim ${percentage}% Off`}
+                    {submitting ? 'Submitting…' : `Claim ${discountLabel}`}
                   </button>
                 </form>
               </>

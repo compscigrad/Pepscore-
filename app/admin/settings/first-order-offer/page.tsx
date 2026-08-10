@@ -33,15 +33,7 @@ export default async function FirstOrderOfferSettingsPage() {
           </div>
         </div>
 
-        <FirstOrderOfferConfigForm
-          initial={{
-            enabled: config.enabled,
-            percentage: config.percentage,
-            eligibleProductSlugs: config.eligibleProductSlugs,
-            expiresAt: config.expiresAt ? config.expiresAt.toISOString() : null,
-            stackable: config.stackable,
-          }}
-        />
+        <FirstOrderOfferConfigForm initial={{ enabled: config.enabled }} />
       </div>
     </main>
   )

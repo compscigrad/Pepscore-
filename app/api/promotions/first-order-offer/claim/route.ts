@@ -5,7 +5,7 @@
 // enforces one claim per customer via lib/promotions/firstOrderOffer.ts.
 import { NextRequest, NextResponse } from 'next/server'
 import { firstOrderOfferClaimSchema, isHoneypotTripped } from '@/lib/promotions/firstOrderOfferValidation'
-import { claimFirstOrderOffer, FirstOrderOfferNotLiveError } from '@/lib/promotions/firstOrderOffer'
+import { claimFirstOrderOffer, FirstOrderOfferNotLiveError } from '@/lib/promotions/firstOrderOfferClaim'
 import { sendCategorizedEmail } from '@/lib/notifications/log'
 import { CONTACT_EMAIL } from '@/lib/resend'
 import { leadCapturedSubject, buildLeadCapturedHtml } from '@/emails/LeadCaptured'

@@ -46,6 +46,9 @@ export type MessageCategory =
   // item 7) -- general updates, product interest, pricing review,
   // SPA/wholesale inquiry, etc.
   | 'LEAD_CAPTURED'
+  // Customer-facing: delivers a qualifying lead's unique first-order
+  // promotion code (Promotion Campaign system) after a successful claim.
+  | 'FIRST_ORDER_OFFER_CODE'
   // Support — existing-customer problems, access issues
   | 'SUPPORT_REQUEST'
   | 'SUPPORT_REQUEST_RECEIVED' // customer-facing: acknowledges their submission
@@ -94,6 +97,7 @@ const ROUTING: Record<MessageCategory, RoutedSender> = {
 
   CONTACT_INQUIRY: { fromName: 'Pepscore', replyTo: CONTACT_EMAIL },
   LEAD_CAPTURED: { fromName: 'Pepscore', replyTo: CONTACT_EMAIL },
+  FIRST_ORDER_OFFER_CODE: { fromName: 'Pepscore Lab', replyTo: CONTACT_EMAIL },
   SUPPORT_REQUEST: { fromName: 'Pepscore Support', replyTo: SUPPORT_EMAIL },
   SUPPORT_REQUEST_RECEIVED: { fromName: 'Pepscore Support', replyTo: SUPPORT_EMAIL },
 
@@ -147,6 +151,7 @@ const CUSTOMER_VISIBLE_CATEGORIES: ReadonlySet<MessageCategory> = new Set<Messag
   'ACCOUNT_CREDIT_ISSUED',
   'BALANCE_TRANSFER_NOTICE',
   'SUPPORT_REQUEST_RECEIVED',
+  'FIRST_ORDER_OFFER_CODE',
 ])
 
 export function isCustomerVisibleCategory(category: string): boolean {
