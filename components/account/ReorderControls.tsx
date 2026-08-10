@@ -8,7 +8,7 @@
 
 import toast from 'react-hot-toast'
 import { useCartStore } from '@/lib/cart-store'
-import type { ResolvedReorderLine } from '@/lib/storefront/reorder'
+import { REORDER_UNAVAILABLE_MESSAGE, type ResolvedReorderLine } from '@/lib/storefront/reorder'
 
 export interface ReorderLineView {
   key: string
@@ -18,13 +18,6 @@ export interface ReorderLineView {
   size: string
   imageUrl: string
   resolved: ResolvedReorderLine
-}
-
-const UNAVAILABLE_MESSAGE: Record<Extract<ResolvedReorderLine, { status: 'UNAVAILABLE' }>['reason'], string> = {
-  product_not_found: 'No longer available',
-  discontinued: 'No longer available',
-  out_of_stock: 'Currently out of stock',
-  sell_unit_no_longer_offered: 'This option is no longer offered',
 }
 
 function toCartItem(line: ReorderLineView, resolved: Extract<ResolvedReorderLine, { status: 'RESOLVED' }>) {
@@ -48,7 +41,7 @@ export function BuyAgainButton({ line }: { line: ReorderLineView }) {
   const resolved = line.resolved
 
   if (resolved.status !== 'RESOLVED') {
-    return <span className="text-white/30 text-[11px]">{UNAVAILABLE_MESSAGE[resolved.reason]}</span>
+    return <span className="text-white/30 text-[11px]">{REORDER_UNAVAILABLE_MESSAGE[resolved.reason]}</span>
   }
 
   function handleClick() {

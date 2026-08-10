@@ -1,8 +1,9 @@
 // Resolves a historical purchase (product + sell unit + quantity) against
-// the CURRENT product state for Buy Again/Reorder (Phase 3C item 2). Never
-// clones a historical price, never auto-substitutes a different product --
-// this only ever answers "given this exact product and tier, what does it
-// cost and can it be added to the cart right now."
+// the CURRENT product state for Buy Again/Reorder (Phase 3C item 2) and
+// admin-assisted reorder (Phase 3C item 3). Never clones a historical
+// price, never auto-substitutes a different product -- this only ever
+// answers "given this exact product and tier, what does it cost and can it
+// be added right now."
 import type { Product } from '@prisma/client'
 import { getAvailableSellUnits, type SellUnit } from '@/lib/pricing/sellUnits'
 import { getStorefrontAvailability, isPurchasable } from './availability'
@@ -38,9 +39,32 @@ export type ResolvedReorderLine =
       reason: ReorderUnavailableReason
     }
 
+// Shared with both the customer-facing Buy Again/Reorder All UI
+// (components/account/ReorderControls.tsx) and the admin-assisted reorder UI
+// (components/admin/PreviouslyPurchasedSection.tsx), so an UNAVAILABLE
+// reason always reads the same regardless of which surface shows it.
+export const REORDER_UNAVAILABLE_MESSAGE: Record<ReorderUnavailableReason, string> = {
+  product_not_found: 'No longer available',
+  discontinued: 'No longer available',
+  out_of_stock: 'Currently out of stock',
+  sell_unit_no_longer_offered: 'This option is no longer offered',
+}
+
+export interface ResolveReorderLineOptions {
+  // Admin-assisted reorder (Phase 3C item 3) may bypass individualSalesEnabled,
+  // mirroring the admin invoice builder's existing bypass (Decision #50) --
+  // never set true from a customer-facing code path. Buy Again/Reorder All
+  // always call this with no options, which stays gated exactly as before.
+  adminContext?: boolean
+}
+
 // `product` is null when the referenced Product row no longer exists at all
 // (a genuinely deleted catalog entry, not just discontinued/out of stock).
-export function resolveReorderLine(request: ReorderLineRequest, product: Product | null): ResolvedReorderLine {
+export function resolveReorderLine(
+  request: ReorderLineRequest,
+  product: Product | null,
+  options: ResolveReorderLineOptions = {}
+): ResolvedReorderLine {
   if (!product) {
     return { status: 'UNAVAILABLE', productId: request.productId, requestedSellUnit: request.sellUnit, reason: 'product_not_found' }
   }
@@ -53,14 +77,15 @@ export function resolveReorderLine(request: ReorderLineRequest, product: Product
     return { status: 'UNAVAILABLE', productId: request.productId, requestedSellUnit: request.sellUnit, reason: 'out_of_stock' }
   }
 
-  // Customer-facing resolution only -- never adminContext: true. A historical
-  // Individual Vial purchase resolves to UNAVAILABLE (not silently
-  // substituted to Standard Case) if individualSalesEnabled has since been
-  // turned off; the sell unit that's no longer offered is a real fact the
-  // customer should see, not paper over.
+  // Customer-facing by default (options.adminContext undefined/false). A
+  // historical Individual Vial purchase resolves to UNAVAILABLE (not
+  // silently substituted to Standard Case) if individualSalesEnabled has
+  // since been turned off; the sell unit that's no longer offered is a real
+  // fact the customer should see, not paper over. Admin-assisted reorder
+  // opts into the same bypass the invoice builder already has.
   const sellUnit = request.sellUnit ?? 'CASE_STANDARD'
-  const options = getAvailableSellUnits(product)
-  const option = options.find((o) => o.sellUnit === sellUnit)
+  const sellUnitOptions = getAvailableSellUnits(product, { adminContext: options.adminContext })
+  const option = sellUnitOptions.find((o) => o.sellUnit === sellUnit)
   if (!option) {
     return { status: 'UNAVAILABLE', productId: request.productId, requestedSellUnit: request.sellUnit, reason: 'sell_unit_no_longer_offered' }
   }
