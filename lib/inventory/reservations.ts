@@ -8,6 +8,11 @@
 // deduction exactly once" true by construction rather than by caller
 // discipline.
 //
+// Every write to Product.reservedUnits/physicalStockOnHand in this file
+// goes through withOptimisticProductLock() (lib/inventory/optimisticLock.ts)
+// -- a Phase 4A audit fix. See that file's header comment for why a plain
+// read-then-update was unsafe under concurrent access.
+//
 // Each function has a `*Tx` core (takes a Prisma client/transaction) and a
 // thin public wrapper that opens its own transaction -- same pattern as
 // lib/backorders.ts's applyCompensation/applyCompensationTx. The Tx
@@ -16,12 +21,11 @@
 // sync is atomic with the invoice-item write it's reacting to; the public
 // wrappers are what the admin correction UI and standalone scripts call.
 import { randomUUID } from 'crypto'
-import { Prisma, PrismaClient, type InventoryReservation } from '@prisma/client'
+import { type InventoryReservation } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { computeInventoryStatus } from './status'
 import { refreshLowStockAlert } from './lowStockAlerts'
-
-type Db = PrismaClient | Prisma.TransactionClient
+import { withOptimisticProductLock, type Db } from './optimisticLock'
 
 export interface ReserveInput {
   productId: string
@@ -55,42 +59,48 @@ export interface ReserveResult {
 export async function reserveForInvoiceItemTx(tx: Db, input: ReserveInput): Promise<ReserveResult> {
   if (!Number.isInteger(input.quantity) || input.quantity <= 0) throw new Error('quantity must be a positive integer')
 
-  const product = await tx.product.findUniqueOrThrow({ where: { id: input.productId } })
-  if (!product.inventoryTrackingEnabled) return { reservation: null, reservedQuantity: 0, shortfall: 0 }
-  if (product.physicalStockOnHand === null) {
-    // Awaiting initialization -- nothing can be confidently reserved yet;
-    // the entire request is a shortfall, not an error, so a draft-to-issued
-    // transition for an untracked-count product doesn't hard-fail the save.
-    return { reservation: null, reservedQuantity: 0, shortfall: input.quantity }
-  }
-
   const existing = await tx.inventoryReservation.findFirst({ where: { invoiceItemId: input.invoiceItemId, status: 'ACTIVE' } })
   if (existing) return { reservation: existing, reservedQuantity: existing.quantity, shortfall: 0 }
 
-  const availableForMore = Math.max(0, product.physicalStockOnHand - product.reservedUnits)
-  const toReserve = Math.min(input.quantity, availableForMore)
-  const shortfall = input.quantity - toReserve
-  if (toReserve <= 0) return { reservation: null, reservedQuantity: 0, shortfall: input.quantity }
+  const outcome = await withOptimisticProductLock(tx, input.productId, (product) => {
+    if (!product.inventoryTrackingEnabled) return { data: null, result: { toReserve: 0, shortfall: 0, sku: product.sku, stockOnHand: product.physicalStockOnHand } }
+    if (product.physicalStockOnHand === null) {
+      // Awaiting initialization -- nothing can be confidently reserved yet;
+      // the entire request is a shortfall, not an error, so a draft-to-issued
+      // transition for an untracked-count product doesn't hard-fail the save.
+      return { data: null, result: { toReserve: 0, shortfall: input.quantity, sku: product.sku, stockOnHand: null } }
+    }
 
-  const newReserved = product.reservedUnits + toReserve
-  const newStatus = computeInventoryStatus({
-    inventoryTrackingEnabled: product.inventoryTrackingEnabled,
-    physicalStockOnHand: product.physicalStockOnHand,
-    reservedUnits: newReserved,
-    lowStockThreshold: product.lowStockThreshold,
+    const availableForMore = Math.max(0, product.physicalStockOnHand - product.reservedUnits)
+    const toReserve = Math.min(input.quantity, availableForMore)
+    if (toReserve <= 0) return { data: null, result: { toReserve: 0, shortfall: input.quantity, sku: product.sku, stockOnHand: product.physicalStockOnHand } }
+
+    const newReserved = product.reservedUnits + toReserve
+    const newStatus = computeInventoryStatus({
+      inventoryTrackingEnabled: product.inventoryTrackingEnabled,
+      physicalStockOnHand: product.physicalStockOnHand,
+      reservedUnits: newReserved,
+      lowStockThreshold: product.lowStockThreshold,
+    })
+    return {
+      data: { reservedUnits: newReserved, inventoryStatus: newStatus },
+      result: { toReserve, shortfall: input.quantity - toReserve, sku: product.sku, stockOnHand: product.physicalStockOnHand },
+    }
   })
+
+  const { toReserve, shortfall, sku, stockOnHand } = outcome
+  if (toReserve <= 0) return { reservation: null, reservedQuantity: 0, shortfall }
 
   const created = await tx.inventoryReservation.create({
     data: { productId: input.productId, invoiceId: input.invoiceId, invoiceItemId: input.invoiceItemId, quantity: toReserve, status: 'ACTIVE' },
   })
-  await tx.product.update({ where: { id: input.productId }, data: { reservedUnits: newReserved, inventoryStatus: newStatus } })
   await tx.inventoryLedgerEntry.create({
     data: {
       productId: input.productId,
-      skuSnapshot: product.sku,
+      skuSnapshot: sku,
       quantityDelta: 0,
-      previousBalance: product.physicalStockOnHand,
-      resultingBalance: product.physicalStockOnHand,
+      previousBalance: stockOnHand ?? 0,
+      resultingBalance: stockOnHand ?? 0,
       eventType: 'RESERVATION',
       invoiceId: input.invoiceId,
       invoiceItemId: input.invoiceItemId,
@@ -144,35 +154,40 @@ export async function adjustReservationQuantityTx(
     return { reservation: released, shortfall: 0 }
   }
 
-  const product = await tx.product.findUniqueOrThrow({ where: { id: reservation.productId } })
   const delta = newQuantity - reservation.quantity
 
-  let appliedDelta = delta
-  let shortfall = 0
-  if (delta > 0) {
-    const availableForMore = Math.max(0, (product.physicalStockOnHand ?? 0) - product.reservedUnits)
-    appliedDelta = Math.min(delta, availableForMore)
-    shortfall = delta - appliedDelta
-  }
-
-  const finalQuantity = reservation.quantity + appliedDelta
-  const newReserved = Math.max(0, product.reservedUnits + appliedDelta)
-  const newStatus = computeInventoryStatus({
-    inventoryTrackingEnabled: product.inventoryTrackingEnabled,
-    physicalStockOnHand: product.physicalStockOnHand,
-    reservedUnits: newReserved,
-    lowStockThreshold: product.lowStockThreshold,
+  const outcome = await withOptimisticProductLock(tx, reservation.productId, (product) => {
+    let appliedDelta = delta
+    let shortfall = 0
+    if (delta > 0) {
+      const availableForMore = Math.max(0, (product.physicalStockOnHand ?? 0) - product.reservedUnits)
+      appliedDelta = Math.min(delta, availableForMore)
+      shortfall = delta - appliedDelta
+    }
+    const newReserved = Math.max(0, product.reservedUnits + appliedDelta)
+    const newStatus = computeInventoryStatus({
+      inventoryTrackingEnabled: product.inventoryTrackingEnabled,
+      physicalStockOnHand: product.physicalStockOnHand,
+      reservedUnits: newReserved,
+      lowStockThreshold: product.lowStockThreshold,
+    })
+    return {
+      data: { reservedUnits: newReserved, inventoryStatus: newStatus },
+      result: { appliedDelta, shortfall, sku: product.sku, stockOnHand: product.physicalStockOnHand },
+    }
   })
 
+  const { appliedDelta, shortfall, sku, stockOnHand } = outcome
+  const finalQuantity = reservation.quantity + appliedDelta
+
   const updated = await tx.inventoryReservation.update({ where: { id: reservationId }, data: { quantity: finalQuantity } })
-  await tx.product.update({ where: { id: reservation.productId }, data: { reservedUnits: newReserved, inventoryStatus: newStatus } })
   await tx.inventoryLedgerEntry.create({
     data: {
       productId: reservation.productId,
-      skuSnapshot: product.sku,
+      skuSnapshot: sku,
       quantityDelta: 0,
-      previousBalance: product.physicalStockOnHand ?? 0,
-      resultingBalance: product.physicalStockOnHand ?? 0,
+      previousBalance: stockOnHand ?? 0,
+      resultingBalance: stockOnHand ?? 0,
       eventType: appliedDelta >= 0 ? 'RESERVATION' : 'RESERVATION_RELEASE',
       invoiceId: reservation.invoiceId,
       invoiceItemId: reservation.invoiceItemId,
@@ -195,24 +210,25 @@ export async function releaseReservationTx(tx: Db, reservationId: string, actor:
   const reservation = await tx.inventoryReservation.findUniqueOrThrow({ where: { id: reservationId } })
   if (reservation.status !== 'ACTIVE') return reservation // idempotent no-op
 
-  const product = await tx.product.findUniqueOrThrow({ where: { id: reservation.productId } })
-  const newReserved = Math.max(0, product.reservedUnits - reservation.quantity)
-  const newStatus = computeInventoryStatus({
-    inventoryTrackingEnabled: product.inventoryTrackingEnabled,
-    physicalStockOnHand: product.physicalStockOnHand,
-    reservedUnits: newReserved,
-    lowStockThreshold: product.lowStockThreshold,
+  const { sku, stockOnHand } = await withOptimisticProductLock(tx, reservation.productId, (product) => {
+    const newReserved = Math.max(0, product.reservedUnits - reservation.quantity)
+    const newStatus = computeInventoryStatus({
+      inventoryTrackingEnabled: product.inventoryTrackingEnabled,
+      physicalStockOnHand: product.physicalStockOnHand,
+      reservedUnits: newReserved,
+      lowStockThreshold: product.lowStockThreshold,
+    })
+    return { data: { reservedUnits: newReserved, inventoryStatus: newStatus }, result: { sku: product.sku, stockOnHand: product.physicalStockOnHand } }
   })
 
   const updated = await tx.inventoryReservation.update({ where: { id: reservationId }, data: { status: 'RELEASED', releasedAt: new Date() } })
-  await tx.product.update({ where: { id: reservation.productId }, data: { reservedUnits: newReserved, inventoryStatus: newStatus } })
   await tx.inventoryLedgerEntry.create({
     data: {
       productId: reservation.productId,
-      skuSnapshot: product.sku,
+      skuSnapshot: sku,
       quantityDelta: 0,
-      previousBalance: product.physicalStockOnHand ?? 0,
-      resultingBalance: product.physicalStockOnHand ?? 0,
+      previousBalance: stockOnHand ?? 0,
+      resultingBalance: stockOnHand ?? 0,
       eventType: 'RESERVATION_RELEASE',
       invoiceId: reservation.invoiceId,
       invoiceItemId: reservation.invoiceItemId,
@@ -243,32 +259,36 @@ export async function restoreReservationTx(tx: Db, reservationId: string, actor:
   if (reservation.status === 'ACTIVE') return { reservation, shortfall: 0 }
   if (reservation.status === 'FULFILLED') throw new Error('Cannot restore a fulfilled reservation -- use reverseFulfillment instead')
 
-  const product = await tx.product.findUniqueOrThrow({ where: { id: reservation.productId } })
-  const availableForMore = Math.max(0, (product.physicalStockOnHand ?? 0) - product.reservedUnits)
-  const toRestore = Math.min(reservation.quantity, availableForMore)
-  const shortfall = reservation.quantity - toRestore
-  if (toRestore <= 0) throw new Error('Cannot restore this reservation -- no availability remains')
+  const outcome = await withOptimisticProductLock(tx, reservation.productId, (product) => {
+    const availableForMore = Math.max(0, (product.physicalStockOnHand ?? 0) - product.reservedUnits)
+    const toRestore = Math.min(reservation.quantity, availableForMore)
+    if (toRestore <= 0) throw new Error('Cannot restore this reservation -- no availability remains')
 
-  const newReserved = product.reservedUnits + toRestore
-  const newStatus = computeInventoryStatus({
-    inventoryTrackingEnabled: product.inventoryTrackingEnabled,
-    physicalStockOnHand: product.physicalStockOnHand,
-    reservedUnits: newReserved,
-    lowStockThreshold: product.lowStockThreshold,
+    const newReserved = product.reservedUnits + toRestore
+    const newStatus = computeInventoryStatus({
+      inventoryTrackingEnabled: product.inventoryTrackingEnabled,
+      physicalStockOnHand: product.physicalStockOnHand,
+      reservedUnits: newReserved,
+      lowStockThreshold: product.lowStockThreshold,
+    })
+    return {
+      data: { reservedUnits: newReserved, inventoryStatus: newStatus },
+      result: { toRestore, shortfall: reservation.quantity - toRestore, sku: product.sku, stockOnHand: product.physicalStockOnHand },
+    }
   })
 
+  const { toRestore, shortfall, sku, stockOnHand } = outcome
   const updated = await tx.inventoryReservation.update({
     where: { id: reservationId },
     data: { status: 'ACTIVE', quantity: toRestore, releasedAt: null },
   })
-  await tx.product.update({ where: { id: reservation.productId }, data: { reservedUnits: newReserved, inventoryStatus: newStatus } })
   await tx.inventoryLedgerEntry.create({
     data: {
       productId: reservation.productId,
-      skuSnapshot: product.sku,
+      skuSnapshot: sku,
       quantityDelta: 0,
-      previousBalance: product.physicalStockOnHand ?? 0,
-      resultingBalance: product.physicalStockOnHand ?? 0,
+      previousBalance: stockOnHand ?? 0,
+      resultingBalance: stockOnHand ?? 0,
       eventType: 'RESERVATION',
       invoiceId: reservation.invoiceId,
       invoiceItemId: reservation.invoiceItemId,
@@ -291,26 +311,37 @@ export async function fulfillReservationTx(tx: Db, reservationId: string, actor:
   const reservation = await tx.inventoryReservation.findUniqueOrThrow({ where: { id: reservationId } })
   if (reservation.status !== 'ACTIVE') return reservation // idempotent no-op -- deduction already happened (or was released)
 
-  const product = await tx.product.findUniqueOrThrow({ where: { id: reservation.productId } })
-  const previousBalance = product.physicalStockOnHand ?? 0
-  const resultingBalance = previousBalance - reservation.quantity
-  const newReserved = Math.max(0, product.reservedUnits - reservation.quantity)
-  const newStatus = computeInventoryStatus({
-    inventoryTrackingEnabled: product.inventoryTrackingEnabled,
-    physicalStockOnHand: resultingBalance,
-    reservedUnits: newReserved,
-    lowStockThreshold: product.lowStockThreshold,
+  const { previousBalance, resultingBalance, sku } = await withOptimisticProductLock(tx, reservation.productId, (product) => {
+    const previousBalance = product.physicalStockOnHand ?? 0
+    const resultingBalance = previousBalance - reservation.quantity
+    // Defense in depth: a correctly-created ACTIVE reservation should never
+    // be able to drive this negative, but a legitimate downward physical-
+    // count correction (lib/inventory/actions.ts) made *after* the
+    // reservation existed could -- fail loudly rather than silently write a
+    // corrupt negative count, matching applyLedgerEvent's own floor check.
+    if (resultingBalance < 0) {
+      throw new Error(
+        `Fulfilling this reservation would drive physical stock negative (${previousBalance} - ${reservation.quantity} = ${resultingBalance}) for product ${reservation.productId}`
+      )
+    }
+    const newReserved = Math.max(0, product.reservedUnits - reservation.quantity)
+    const newStatus = computeInventoryStatus({
+      inventoryTrackingEnabled: product.inventoryTrackingEnabled,
+      physicalStockOnHand: resultingBalance,
+      reservedUnits: newReserved,
+      lowStockThreshold: product.lowStockThreshold,
+    })
+    return {
+      data: { physicalStockOnHand: resultingBalance, reservedUnits: newReserved, inventoryStatus: newStatus },
+      result: { previousBalance, resultingBalance, sku: product.sku },
+    }
   })
 
   const updated = await tx.inventoryReservation.update({ where: { id: reservationId }, data: { status: 'FULFILLED', fulfilledAt: new Date() } })
-  await tx.product.update({
-    where: { id: reservation.productId },
-    data: { physicalStockOnHand: resultingBalance, reservedUnits: newReserved, inventoryStatus: newStatus },
-  })
   await tx.inventoryLedgerEntry.create({
     data: {
       productId: reservation.productId,
-      skuSnapshot: product.sku,
+      skuSnapshot: sku,
       quantityDelta: -reservation.quantity,
       previousBalance,
       resultingBalance,
@@ -340,26 +371,27 @@ export async function reverseFulfillmentTx(tx: Db, reservationId: string, actor:
   const reservation = await tx.inventoryReservation.findUniqueOrThrow({ where: { id: reservationId } })
   if (reservation.status !== 'FULFILLED') return reservation // idempotent no-op
 
-  const product = await tx.product.findUniqueOrThrow({ where: { id: reservation.productId } })
-  const previousBalance = product.physicalStockOnHand ?? 0
-  const resultingBalance = previousBalance + reservation.quantity
-  const newReserved = product.reservedUnits + reservation.quantity
-  const newStatus = computeInventoryStatus({
-    inventoryTrackingEnabled: product.inventoryTrackingEnabled,
-    physicalStockOnHand: resultingBalance,
-    reservedUnits: newReserved,
-    lowStockThreshold: product.lowStockThreshold,
+  const { previousBalance, resultingBalance, sku } = await withOptimisticProductLock(tx, reservation.productId, (product) => {
+    const previousBalance = product.physicalStockOnHand ?? 0
+    const resultingBalance = previousBalance + reservation.quantity
+    const newReserved = product.reservedUnits + reservation.quantity
+    const newStatus = computeInventoryStatus({
+      inventoryTrackingEnabled: product.inventoryTrackingEnabled,
+      physicalStockOnHand: resultingBalance,
+      reservedUnits: newReserved,
+      lowStockThreshold: product.lowStockThreshold,
+    })
+    return {
+      data: { physicalStockOnHand: resultingBalance, reservedUnits: newReserved, inventoryStatus: newStatus },
+      result: { previousBalance, resultingBalance, sku: product.sku },
+    }
   })
 
   const updated = await tx.inventoryReservation.update({ where: { id: reservationId }, data: { status: 'ACTIVE', fulfilledAt: null } })
-  await tx.product.update({
-    where: { id: reservation.productId },
-    data: { physicalStockOnHand: resultingBalance, reservedUnits: newReserved, inventoryStatus: newStatus },
-  })
   await tx.inventoryLedgerEntry.create({
     data: {
       productId: reservation.productId,
-      skuSnapshot: product.sku,
+      skuSnapshot: sku,
       quantityDelta: reservation.quantity,
       previousBalance,
       resultingBalance,
