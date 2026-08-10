@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { summarizeAdoptionAudit, type PortalAdoptionOverview, type PortalAdoptionEntry } from './adoptionStatus'
+import { summarizeAdoptionAudit, computeAdoptionRates, type PortalAdoptionOverview, type PortalAdoptionEntry, type PortalAdoptionAuditReport } from './adoptionStatus'
 
 function overview(entries: PortalAdoptionEntry[]): PortalAdoptionOverview {
   const counts: PortalAdoptionOverview['counts'] = {
@@ -63,5 +63,54 @@ describe('summarizeAdoptionAudit', () => {
     const report = summarizeAdoptionAudit(overview([]))
     expect(report.customersReviewed).toBe(0)
     expect(report.excludedByReason).toEqual([])
+  })
+})
+
+function report(overrides: Partial<PortalAdoptionAuditReport>): PortalAdoptionAuditReport {
+  return {
+    customersReviewed: 0,
+    portalActive: 0,
+    invitationPending: 0,
+    eligibleNotYetInvited: 0,
+    reminderOutstanding: 0,
+    identityReviewRequired: 0,
+    excludedTotal: 0,
+    excludedByReason: [],
+    notEligible: 0,
+    suppressed: 0,
+    ...overrides,
+  }
+}
+
+describe('computeAdoptionRates', () => {
+  it('computes activationRate as portalActive / customersReviewed', () => {
+    const rates = computeAdoptionRates(report({ customersReviewed: 10, portalActive: 4 }), 0, 0)
+    expect(rates.activationRate).toBe(0.4)
+  })
+
+  it('sums eligible/pending/reminder/review into pendingAdoptionRate, excluding notEligible and excludedTotal', () => {
+    const rates = computeAdoptionRates(
+      report({ customersReviewed: 10, eligibleNotYetInvited: 1, invitationPending: 1, reminderOutstanding: 2, identityReviewRequired: 1, notEligible: 3, excludedTotal: 2 }),
+      0,
+      0
+    )
+    expect(rates.pendingAdoptionRate).toBe(0.5)
+  })
+
+  it('returns null (not 0) inviteConversionRate when nobody has ever been invited', () => {
+    const rates = computeAdoptionRates(report({ customersReviewed: 5 }), 0, 0)
+    expect(rates.inviteConversionRate).toBeNull()
+  })
+
+  it('computes inviteConversionRate as everInvitedNowActive / everInvited', () => {
+    const rates = computeAdoptionRates(report({ customersReviewed: 10 }), 8, 6)
+    expect(rates.inviteConversionRate).toBe(0.75)
+  })
+
+  it('an empty base (zero customers) produces zero rates, not NaN or a divide-by-zero error', () => {
+    const rates = computeAdoptionRates(report({ customersReviewed: 0 }), 0, 0)
+    expect(rates.activationRate).toBe(0)
+    expect(rates.pendingAdoptionRate).toBe(0)
+    expect(rates.inviteConversionRate).toBeNull()
   })
 })

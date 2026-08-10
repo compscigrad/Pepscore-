@@ -181,6 +181,50 @@ export interface PortalAdoptionAuditReport {
   suppressed: number
 }
 
+// Dashboard ratios built entirely from PortalAdoptionAuditReport's own
+// counts plus two cheap, targeted Customer.count() queries -- never a
+// second copy of the eligibility/classification logic above. Deliberately
+// does NOT include any login-frequency or session-activity metric: while
+// CustomerAccessEvent (lib/admin/accessHistory.ts) does capture real
+// session data per customer, nothing here asked for a login-based ratio,
+// and inventing one wasn't the request -- these three are exactly what the
+// spec named (activation rate, invite conversion rate, pending adoption).
+export interface PortalAdoptionRates {
+  activationRate: number // portalActive / customersReviewed, 0 when there are no customers
+  pendingAdoptionRate: number // still working through the pipeline (eligible/invited/reminder/review) / customersReviewed
+  inviteConversionRate: number | null // of customers ever sent an invite, the fraction now active -- null (not 0%) when nobody has ever been invited, since 0% would misleadingly imply invites are failing
+  everInvitedCount: number
+  everInvitedNowActiveCount: number
+}
+
+export function computeAdoptionRates(
+  report: PortalAdoptionAuditReport,
+  everInvitedCount: number,
+  everInvitedNowActiveCount: number
+): PortalAdoptionRates {
+  const pendingCount = report.eligibleNotYetInvited + report.invitationPending + report.reminderOutstanding + report.identityReviewRequired
+  return {
+    activationRate: report.customersReviewed > 0 ? report.portalActive / report.customersReviewed : 0,
+    pendingAdoptionRate: report.customersReviewed > 0 ? pendingCount / report.customersReviewed : 0,
+    inviteConversionRate: everInvitedCount > 0 ? everInvitedNowActiveCount / everInvitedCount : null,
+    everInvitedCount,
+    everInvitedNowActiveCount,
+  }
+}
+
+// A customer counts as "ever invited" if any CustomerPortalInvite row
+// exists for them, regardless of its current state (active/expired/
+// revoked) -- this intentionally also credits a customer who was invited,
+// let that invite lapse, and later self-registered instead: the invite is
+// still a plausible reason they knew the portal existed.
+export async function computePortalAdoptionRates(report: PortalAdoptionAuditReport): Promise<PortalAdoptionRates> {
+  const [everInvitedCount, everInvitedNowActiveCount] = await Promise.all([
+    prisma.customer.count({ where: { portalInvites: { some: {} } } }),
+    prisma.customer.count({ where: { portalInvites: { some: {} }, userId: { not: null } } }),
+  ])
+  return computeAdoptionRates(report, everInvitedCount, everInvitedNowActiveCount)
+}
+
 export function summarizeAdoptionAudit(overview: PortalAdoptionOverview): PortalAdoptionAuditReport {
   const excludedReasonCounts = new Map<string, number>()
   for (const entry of overview.entries) {

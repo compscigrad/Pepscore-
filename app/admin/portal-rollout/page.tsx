@@ -16,7 +16,7 @@ import { FROM_EMAIL } from '@/lib/resend'
 import { getRolloutSafetyConfig } from '@/lib/portal/rolloutSafety'
 import { getReminderSafetyConfig } from '@/lib/portal/reminderSafety'
 import { getReminderPreview } from '@/lib/portal/reminderPreview'
-import { computePortalAdoptionOverview, summarizeAdoptionAudit } from '@/lib/portal/adoptionStatus'
+import { computePortalAdoptionOverview, summarizeAdoptionAudit, computePortalAdoptionRates } from '@/lib/portal/adoptionStatus'
 import { PortalRolloutPanel } from '@/components/admin/PortalRolloutPanel'
 import { ReminderPreviewTable } from '@/components/admin/ReminderPreviewTable'
 import { card, mutedText, sectionHeading, divider } from '@/components/invoices/theme'
@@ -41,6 +41,7 @@ export default async function PortalRolloutPage() {
     computePortalAdoptionOverview(),
   ])
   const adoptionAudit = summarizeAdoptionAudit(adoptionOverview)
+  const adoptionRates = await computePortalAdoptionRates(adoptionAudit)
 
   const resendDomainVerified = FROM_EMAIL !== 'onboarding@resend.dev'
   const smsConfigured = isSmsConfigured()
@@ -86,6 +87,20 @@ export default async function PortalRolloutPage() {
             <Stat label="Not yet eligible" value={adoptionAudit.notEligible} />
             <Stat label="Excluded (total)" value={adoptionAudit.excludedTotal} />
           </div>
+          <div className={`grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t ${divider}`}>
+            <RateStat label="Activation rate" value={adoptionRates.activationRate} detail={`${adoptionAudit.portalActive} of ${adoptionAudit.customersReviewed} customers`} />
+            <RateStat label="Pending adoption" value={adoptionRates.pendingAdoptionRate} detail="Still moving through the pipeline" />
+            <RateStat
+              label="Invite conversion rate"
+              value={adoptionRates.inviteConversionRate}
+              detail={
+                adoptionRates.everInvitedCount > 0
+                  ? `${adoptionRates.everInvitedNowActiveCount} of ${adoptionRates.everInvitedCount} ever invited`
+                  : 'No one has been invited yet'
+              }
+            />
+          </div>
+
           {adoptionAudit.excludedByReason.length > 0 && (
             <div className={`pt-4 border-t ${divider} space-y-1.5`}>
               <p className={`text-[11px] font-bold tracking-[0.08em] uppercase ${mutedText} mb-2`}>Excluded, by reason</p>
@@ -268,6 +283,16 @@ function Stat({ label, value, highlight, href }: { label: string; value: number;
     )
   }
   return <div>{body}</div>
+}
+
+function RateStat({ label, value, detail }: { label: string; value: number | null; detail: string }) {
+  return (
+    <div>
+      <p className={`text-[11px] font-bold tracking-[0.08em] uppercase ${mutedText}`}>{label}</p>
+      <p className="font-heading text-2xl font-bold mt-1 text-white">{value === null ? '—' : `${Math.round(value * 100)}%`}</p>
+      <p className={`text-xs ${mutedText} mt-0.5`}>{detail}</p>
+    </div>
+  )
 }
 
 function ReadinessRow({ label, ready, detail }: { label: string; ready: boolean; detail: string }) {
