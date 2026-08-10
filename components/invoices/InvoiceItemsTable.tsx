@@ -94,7 +94,7 @@ export function InvoiceItemsTable({ items, onChange, products, invoiceId }: Prop
       updateItem(key, { unitPrice: product.price, sellUnit: null, unitsPerSellUnit: null, priceTier: null, skuSnapshot: null, inventoryQuantityConsumed: null })
       return
     }
-    const options = getAvailableSellUnits(product)
+    const options = getAvailableSellUnits(product, { adminContext: true })
     const option = options.find((o) => o.sellUnit === sellUnitValue)
     if (!option) return
     const priceTier =
@@ -152,7 +152,7 @@ export function InvoiceItemsTable({ items, onChange, products, invoiceId }: Prop
             <tbody>
               {items.map((item, index) => {
                 const matchedProduct = item.productId ? products.find((p) => p.id === item.productId) : undefined
-                const sellUnitOptions = matchedProduct ? getAvailableSellUnits(matchedProduct) : []
+                const sellUnitOptions = matchedProduct ? getAvailableSellUnits(matchedProduct, { adminContext: true }) : []
                 return (
                 <tr key={item.key} className="border-b border-white/10">
                   <td className="py-2 pr-2">
@@ -173,6 +173,7 @@ export function InvoiceItemsTable({ items, onChange, products, invoiceId }: Prop
                         {sellUnitOptions.map((o) => (
                           <option key={o.sellUnit} value={o.sellUnit}>
                             {o.label} — {formatMoney(o.price)}
+                            {!o.visibleToCustomers ? ' (not on storefront)' : ''}
                           </option>
                         ))}
                       </select>
