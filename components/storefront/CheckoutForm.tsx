@@ -56,6 +56,17 @@ export function CheckoutForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [clientSecret, setClientSecret] = useState<string | null>(null)
 
+  // Promotion code (Phase 4A Critical #1). appliedCode is the exact string
+  // sent to /api/checkout on confirm -- discountAmount here is a preview
+  // only, shown for the customer's benefit; checkout always re-resolves
+  // the authoritative amount server-side and never trusts this value.
+  const [promoInput, setPromoInput] = useState('')
+  const [promoChecking, setPromoChecking] = useState(false)
+  const [appliedCode, setAppliedCode] = useState<string | null>(null)
+  const [promoDiscountAmount, setPromoDiscountAmount] = useState(0)
+  const [promoCampaignTitle, setPromoCampaignTitle] = useState<string | null>(null)
+  const [promoError, setPromoError] = useState<string | null>(null)
+
   if (items.length === 0) {
     return (
       <>
@@ -99,6 +110,51 @@ export function CheckoutForm() {
     setShowRuo(true)
   }
 
+  async function handleApplyPromo() {
+    if (!promoInput.trim()) return
+    if (!form.email.includes('@')) {
+      toast.error('Enter your email above first, so we can check this code against your account.')
+      return
+    }
+    setPromoChecking(true)
+    setPromoError(null)
+    try {
+      const res = await fetch('/api/promotions/validate-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: promoInput,
+          email: form.email,
+          cartSubtotal: cartTotal,
+          cartProductSlugs: items.map((i) => i.slug),
+        }),
+      })
+      const data = await res.json()
+      if (!data.valid) {
+        setPromoError(data.message ?? "That code isn't valid.")
+        return
+      }
+      setAppliedCode(promoInput.trim().toUpperCase())
+      setPromoDiscountAmount(data.discountAmount)
+      setPromoCampaignTitle(data.campaignTitle ?? null)
+      setPromoInput('')
+      toast.success('Promo code applied')
+    } catch {
+      setPromoError('Something went wrong checking that code — please try again.')
+    } finally {
+      setPromoChecking(false)
+    }
+  }
+
+  function handleRemovePromo() {
+    setAppliedCode(null)
+    setPromoDiscountAmount(0)
+    setPromoCampaignTitle(null)
+    setPromoError(null)
+  }
+
+  const estimatedTotal = Math.max(0, cartTotal - promoDiscountAmount)
+
   async function handleRuoConfirm() {
     setIsLoading(true)
     try {
@@ -127,11 +183,22 @@ export function CheckoutForm() {
           customerName: form.name,
           ruoAgreed: true,
           ruoText: RUO_TEXT,
+          promotionCode: appliedCode ?? undefined,
         }),
       })
 
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? 'Checkout failed')
+      if (!res.ok) {
+        // A promo code that stopped validating between "Apply" and payment
+        // (e.g. someone else redeemed a shared-eligibility edge case, or it
+        // simply expired mid-checkout) surfaces here -- clear it rather
+        // than silently retrying with a now-invalid code.
+        if (appliedCode && data.error) {
+          setAppliedCode(null)
+          setPromoDiscountAmount(0)
+        }
+        throw new Error(data.error ?? 'Checkout failed')
+      }
 
       // Mounts Stripe's embedded Checkout in-page below instead of a
       // full-page redirect to a Stripe-hosted URL.
@@ -284,6 +351,12 @@ export function CheckoutForm() {
                   <div className="flex justify-between text-[13px] text-white/50">
                     <span>Subtotal</span><span>${cartTotal.toFixed(2)}</span>
                   </div>
+                  {promoDiscountAmount > 0 && (
+                    <div className="flex justify-between text-[13px] text-[#D4AF37]">
+                      <span>{promoCampaignTitle ?? 'Promotion'} ({appliedCode})</span>
+                      <span>−${promoDiscountAmount.toFixed(2)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-[13px] text-white/50">
                     <span>Shipping</span>
                     <span className="text-green-400 font-semibold">
@@ -292,19 +365,52 @@ export function CheckoutForm() {
                   </div>
                 </div>
 
+                {/* Promotion code */}
+                <div className="mt-4 pt-4 border-t border-white/10">
+                  {appliedCode ? (
+                    <div className="flex items-center justify-between text-[13px]">
+                      <span className="text-white">
+                        <span className="text-[#D4AF37] font-heading font-bold">{appliedCode}</span> applied
+                      </span>
+                      <button type="button" onClick={handleRemovePromo} className="text-white/40 hover:text-white text-[12px] underline">
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <input
+                        value={promoInput}
+                        onChange={(e) => { setPromoInput(e.target.value); setPromoError(null) }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleApplyPromo() } }}
+                        placeholder="Promo code"
+                        className={`${fieldInput} py-2.5 text-[13px]`}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleApplyPromo}
+                        disabled={promoChecking || !promoInput.trim()}
+                        className="shrink-0 px-4 rounded-lg border border-[#D4AF37]/40 text-[#D4AF37] text-[12px] font-heading font-bold uppercase tracking-wide hover:bg-[#D4AF37]/10 disabled:opacity-40"
+                      >
+                        {promoChecking ? '…' : 'Apply'}
+                      </button>
+                    </div>
+                  )}
+                  {promoError && <p className="text-[11px] text-red-300 mt-2">{promoError}</p>}
+                </div>
+
                 {hasBackorderedItem && (
                   <div className="mt-4 pt-4 border-t border-white/10 space-y-2">
                     <BackorderLegend />
                     <p className="text-[11px] text-white/45">
                       {qualifiesForBackorderCredit
-                        ? `This order qualifies for a one-time $${STOREFRONT_BACKORDER_CREDIT_AMOUNT} backorder credit, applied automatically.`
-                        : `Orders over $${STOREFRONT_BACKORDER_MINIMUM_ORDER_TOTAL} with a backordered item receive a one-time $${STOREFRONT_BACKORDER_CREDIT_AMOUNT} backorder credit.`}
+                        ? `This order qualifies for a one-time $${STOREFRONT_BACKORDER_CREDIT_AMOUNT} backorder credit. Our team applies it to your invoice once your order is reviewed.`
+                        : `Orders over $${STOREFRONT_BACKORDER_MINIMUM_ORDER_TOTAL} with a backordered item receive a one-time $${STOREFRONT_BACKORDER_CREDIT_AMOUNT} backorder credit, applied to your invoice once reviewed.`}
                     </p>
                   </div>
                 )}
                 <div className="flex justify-between items-center mt-4 pt-4 border-t border-white/10">
                   <span className="font-heading font-bold text-[16px] text-white">Est. Total</span>
-                  <span className="font-heading font-extrabold text-[22px] text-[#D4AF37]">${cartTotal.toFixed(2)}</span>
+                  <span className="font-heading font-extrabold text-[22px] text-[#D4AF37]">${estimatedTotal.toFixed(2)}</span>
                 </div>
 
                 <button
