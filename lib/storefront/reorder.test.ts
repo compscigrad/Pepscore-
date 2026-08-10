@@ -126,4 +126,15 @@ describe('resolveReorderLine', () => {
     expect(result.productId).toBe('p1')
     expect(result.status).toBe('UNAVAILABLE')
   })
+
+  it('stays gated by individualSalesEnabled by default (adminContext omitted) -- regression check that admin-assisted reorder cannot accidentally become the default', () => {
+    const result = resolveReorderLine({ productId: 'p1', sellUnit: 'INDIVIDUAL_VIAL', quantity: 1 }, product({ individualSalesEnabled: false }))
+    expect(result).toEqual({ status: 'UNAVAILABLE', productId: 'p1', requestedSellUnit: 'INDIVIDUAL_VIAL', reason: 'sell_unit_no_longer_offered' })
+  })
+
+  it('with { adminContext: true }, resolves Individual Vial even when individualSalesEnabled is false -- mirrors the admin invoice builder bypass (Decision #50)', () => {
+    const result = resolveReorderLine({ productId: 'p1', sellUnit: 'INDIVIDUAL_VIAL', quantity: 1 }, product({ individualSalesEnabled: false }), { adminContext: true })
+    expect(result.status).toBe('RESOLVED')
+    expect(result.status === 'RESOLVED' && result.sellUnit).toBe('INDIVIDUAL_VIAL')
+  })
 })

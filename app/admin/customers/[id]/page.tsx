@@ -12,7 +12,12 @@ import Link from 'next/link'
 import { getCustomerProfileData, getCustomerInvoiceHistory, findPossibleDuplicateCustomers } from '@/lib/customers'
 import { currentPeriod, getInvoiceHistoryYearRange } from '@/lib/invoice/historyPeriod'
 import { formatCurrency } from '@/lib/orders'
-import { formatDate, formatCarrierLabel, formatPaymentMethodLabel, formatPhoneDisplay } from '@/lib/invoice/format'
+import { formatDate, formatCarrierLabel, formatPaymentMethodLabel, formatPhoneDisplay, formatProductLabel } from '@/lib/invoice/format'
+import { getCustomerPurchaseHistory } from '@/lib/admin/purchaseHistory'
+import { resolveReorderLine } from '@/lib/storefront/reorder'
+import type { SellUnit } from '@/lib/pricing/sellUnits'
+import { prisma } from '@/lib/prisma'
+import { PreviouslyPurchasedSection, type PreviouslyPurchasedLine } from '@/components/admin/PreviouslyPurchasedSection'
 import { CorrespondenceHistory } from '@/components/invoices/CorrespondenceHistory'
 import { StatusBadge } from '@/components/invoices/StatusBadge'
 import { InvoiceHistoryFilter } from '@/components/invoices/InvoiceHistoryFilter'
@@ -93,6 +98,28 @@ export default async function CustomerProfilePage({ params, searchParams }: Page
     company: customer.company,
     shippingAddressZip: zipFromAddress(customer.shippingAddress),
     excludeCustomerId: customer.id,
+  })
+
+  // Admin-assisted reorder (Phase 3C item 3): resolve every previously
+  // purchased (product, sell unit) line against the CURRENT product state,
+  // never a historical price. adminContext: true mirrors the invoice
+  // builder's existing individualSalesEnabled bypass (Decision #50) -- an
+  // admin can reorder an Individual Vial for this customer even if it's not
+  // publicly visible on the storefront, same as composing a fresh line.
+  const purchaseHistory = await getCustomerPurchaseHistory(customer.id, customer.userId)
+  const purchasedProducts = purchaseHistory.length > 0
+    ? await prisma.product.findMany({ where: { id: { in: [...new Set(purchaseHistory.map((h) => h.productId))] } } })
+    : []
+  const purchasedProductMap = new Map(purchasedProducts.map((p) => [p.id, p]))
+  const previouslyPurchasedLines: PreviouslyPurchasedLine[] = purchaseHistory.map((h) => {
+    const purchasedProduct = purchasedProductMap.get(h.productId) ?? null
+    return {
+      productId: h.productId,
+      sellUnit: h.sellUnit,
+      productLabel: purchasedProduct ? formatProductLabel(purchasedProduct) : h.name,
+      purchasedAt: h.purchasedAt,
+      resolved: resolveReorderLine({ productId: h.productId, sellUnit: h.sellUnit as SellUnit | null, quantity: h.quantity }, purchasedProduct, { adminContext: true }),
+    }
   })
 
   const fullName = `${customer.firstName} ${customer.lastName}`.trim()
@@ -293,6 +320,8 @@ export default async function CustomerProfilePage({ params, searchParams }: Page
             </div>
           )}
         </div>
+
+        <PreviouslyPurchasedSection customerId={customer.id} lines={previouslyPurchasedLines} />
 
         {customer.accountCredits.length > 0 ? (
           <div className={`${card} p-6 space-y-3`}>

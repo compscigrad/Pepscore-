@@ -26,7 +26,7 @@ import { InvoicePreview } from './InvoicePreview'
 import { PDFExportButtons } from './PDFExportButtons'
 import { card, mutedText, pillPrimary, sectionHeading } from './theme'
 import { makeKey, EMPTY_DRAFT, INVOICE_STATUSES } from './types'
-import type { InvoiceDraft, AddressDraft, Product, Promotion } from './types'
+import type { InvoiceDraft, InvoiceItemDraft, AddressDraft, Product, Promotion } from './types'
 import type { InvoiceWithRelations } from '@/lib/invoices'
 import type { Customer } from '@prisma/client'
 
@@ -58,6 +58,17 @@ interface Props {
   // below) rather than leaving customerId unset the way a plain manual
   // invoice always has until now.
   prefillCustomer?: Customer | null
+  // Create-mode only — set when arriving from "Previously Purchased" ->
+  // Add to New Invoice / Add All to New Invoice (Phase 3C item 3). Each
+  // line was already re-resolved against the CURRENT product server-side
+  // (app/admin/invoices/new/page.tsx), so this seeds the draft directly --
+  // still just a starting point the admin reviews and can edit like any
+  // other line before saving.
+  initialItems?: InvoiceItemDraft[]
+  // Lines from that same reorder request that couldn't be resolved (e.g.
+  // discontinued, or gone out of stock since the customer page rendered) --
+  // surfaced so the admin knows something was silently left off the draft.
+  skippedReorderMessages?: string[]
 }
 
 function toDateInputValue(date: Date | string | null | undefined): string {
@@ -173,11 +184,14 @@ export function InvoiceBuilder({
   promotions: initialPromotions,
   smsConfigured = false,
   prefillCustomer,
+  initialItems,
+  skippedReorderMessages,
 }: Props) {
   const router = useRouter()
-  const [draft, setDraft] = useState<InvoiceDraft>(() =>
-    initialInvoice ? invoiceToDraft(initialInvoice) : prefillCustomer ? customerToDraft(prefillCustomer) : EMPTY_DRAFT
-  )
+  const [draft, setDraft] = useState<InvoiceDraft>(() => {
+    const base = initialInvoice ? invoiceToDraft(initialInvoice) : prefillCustomer ? customerToDraft(prefillCustomer) : EMPTY_DRAFT
+    return initialItems && initialItems.length > 0 ? { ...base, items: initialItems } : base
+  })
   const [invoice, setInvoice] = useState(initialInvoice)
   const [saving, setSaving] = useState(false)
   // Ephemeral UI convenience, not part of the draft/save payload — what's
@@ -357,6 +371,18 @@ export function InvoiceBuilder({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-6 items-start">
       <div className="space-y-6">
+        {skippedReorderMessages && skippedReorderMessages.length > 0 ? (
+          <div className={`${card} p-4 border-amber-400/30 bg-amber-400/[0.04]`}>
+            <p className="text-[11px] font-heading font-bold uppercase tracking-[0.08em] text-amber-300 mb-2">
+              Some previously purchased items weren&apos;t added
+            </p>
+            <div className="space-y-0.5">
+              {skippedReorderMessages.map((msg) => (
+                <p key={msg} className="text-sm text-white/70">{msg}</p>
+              ))}
+            </div>
+          </div>
+        ) : null}
         <InvoiceStatusSection value={draft.status} onChange={(status) => setDraft((d) => ({ ...d, status }))} />
         <CustomerInfoSection
           value={draft.customer}
