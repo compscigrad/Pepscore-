@@ -1,32 +1,19 @@
 // Customer-facing emails for the backorder workflow: the initial notice
-// (sent when an item is marked backordered) and the refund-completed
-// confirmation (sent only once an admin actually completes a pending
-// refund — never at request time). Same plain-HTML-string pattern as
-// emails/ClientSubmissionConfirmation.tsx. Wording is deliberately literal
-// about what has and hasn't happened yet — a pending refund is described as
-// "being processed," never as "refunded," per the no-false-completion rule.
+// (sent when an item is marked backordered), the resolved notice, the
+// accommodation notice, and the refund-completed confirmation (sent only
+// once an admin actually completes a pending refund — never at request
+// time; reused as-is by lib/backorders.ts's completeRefund() for both
+// backorder-originated and standalone refunds). Wording is deliberately
+// literal about what has and hasn't happened yet — a pending refund is
+// described as "being processed," never as "refunded," per the
+// no-false-completion rule.
+// Migrated onto the shared PepScore Lab email shell (docs/Decisions.md) --
+// content and send logic unchanged, presentation only.
 import { BILLING_EMAIL } from '@/lib/resend'
+import { buildEmailShell, emailPanel, escapeHtml, EMAIL_COLORS } from '@/emails/shared/shell'
 
 function formatMoney(amount: number): string {
   return amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-}
-
-function shell(bodyHtml: string): string {
-  const year = new Date().getFullYear()
-  return `<!DOCTYPE html>
-<html>
-<body style="font-family:Georgia,serif;background:#FAFAF5;color:#1A1A1A;margin:0;padding:0">
-  <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden">
-    <div style="background:#1A1A1A;padding:28px 36px;text-align:center">
-      <h1 style="font-family:Helvetica,sans-serif;font-size:26px;margin:0;letter-spacing:0.1em"><span style="color:#fff">PEPSCORE</span> <span style="color:#C49A1A">LAB</span></h1>
-    </div>
-    <div style="padding:32px 36px">${bodyHtml}</div>
-    <div style="background:#1A1A1A;padding:20px 36px;text-align:center">
-      <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0">© ${year} Pepscore Lab · ${BILLING_EMAIL}</p>
-    </div>
-  </div>
-</body>
-</html>`
 }
 
 export interface BackorderNoticeProps {
@@ -50,23 +37,21 @@ export function buildBackorderNoticeHtml(props: BackorderNoticeProps): string {
     ? `We currently expect it to be available around <strong>${props.expectedAvailableDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</strong>.`
     : `We'll share an expected availability date as soon as we have one.`
 
-  return shell(`
-    <h2 style="font-family:Helvetica,sans-serif;font-size:19px;margin:0 0 14px">Hi ${props.customerName},</h2>
-    <p style="font-size:14px;line-height:1.7;color:#424242">
-      One item on your order, <strong>${props.productName}</strong>, is temporarily on backorder. Your order status
+  const bodyHtml = `
+    <h2 style="font-size:19px;color:${EMAIL_COLORS.textPrimary};margin:0 0 14px">Hi ${escapeHtml(props.customerName)},</h2>
+    <p style="font-size:14px;line-height:1.7;color:${EMAIL_COLORS.textSecondary}">
+      One item on your order, <strong>${escapeHtml(props.productName)}</strong>, is temporarily on backorder. Your order status
       remains <strong>Preparing</strong> — we'll move it forward the moment this item is back in stock, and everything
       else on your order is unaffected.
     </p>
-    <p style="font-size:14px;line-height:1.7;color:#424242">${dateLine}</p>
-    ${props.compensationLines.length > 0 ? `
-    <div style="background:#F5F5F0;border-radius:10px;padding:18px 20px;margin:18px 0;font-size:13px;line-height:1.8;color:#424242">
-      ${props.compensationLines.map((line) => `<p style="margin:0 0 8px">${line}</p>`).join('')}
-    </div>` : ''}
-    <p style="font-size:14px;line-height:1.7;color:#424242">
+    <p style="font-size:14px;line-height:1.7;color:${EMAIL_COLORS.textSecondary}">${dateLine}</p>
+    ${props.compensationLines.length > 0 ? emailPanel(props.compensationLines.map((line) => `<p style="margin:0 0 8px;font-size:13px;line-height:1.8;color:${EMAIL_COLORS.textSecondary}">${line}</p>`).join('')) : ''}
+    <p style="font-size:14px;line-height:1.7;color:${EMAIL_COLORS.textSecondary}">
       Thank you for your patience — reach out anytime at ${BILLING_EMAIL} with questions about Invoice
-      #${props.invoiceNumber}.
+      #${escapeHtml(props.invoiceNumber)}.
     </p>
-  `)
+  `
+  return buildEmailShell({ eyebrow: 'Order Update', bodyHtml, footerNote: `Questions? Reply to this email or contact ${BILLING_EMAIL}.` })
 }
 
 export interface BackorderResolvedProps {
@@ -80,16 +65,17 @@ export function backorderResolvedSubject(invoiceNumber: string): string {
 }
 
 export function buildBackorderResolvedHtml(props: BackorderResolvedProps): string {
-  return shell(`
-    <h2 style="font-family:Helvetica,sans-serif;font-size:19px;margin:0 0 14px">Hi ${props.customerName},</h2>
-    <p style="font-size:14px;line-height:1.7;color:#424242">
-      Good news — <strong>${props.productName}</strong> on your order (Invoice <strong>#${props.invoiceNumber}</strong>)
+  const bodyHtml = `
+    <h2 style="font-size:19px;color:${EMAIL_COLORS.textPrimary};margin:0 0 14px">Hi ${escapeHtml(props.customerName)},</h2>
+    <p style="font-size:14px;line-height:1.7;color:${EMAIL_COLORS.textSecondary}">
+      Good news — <strong>${escapeHtml(props.productName)}</strong> on your order (Invoice <strong>#${escapeHtml(props.invoiceNumber)}</strong>)
       is no longer on backorder. We're moving your order forward now.
     </p>
-    <p style="font-size:14px;line-height:1.7;color:#424242">
+    <p style="font-size:14px;line-height:1.7;color:${EMAIL_COLORS.textSecondary}">
       You'll get a separate tracking update once it ships. Reach out anytime at ${BILLING_EMAIL} with questions.
     </p>
-  `)
+  `
+  return buildEmailShell({ eyebrow: 'Order Update', bodyHtml, footerNote: `Questions? Reply to this email or contact ${BILLING_EMAIL}.` })
 }
 
 export interface BackorderAccommodationProps {
@@ -108,24 +94,24 @@ export function backorderAccommodationSubject(invoiceNumber: string): string {
 // Never includes the admin's internal reason verbatim in customer-facing
 // copy -- only that an accommodation was applied and what it changed.
 export function buildBackorderAccommodationHtml(props: BackorderAccommodationProps): string {
-  return shell(`
-    <h2 style="font-family:Helvetica,sans-serif;font-size:19px;margin:0 0 14px">Hi ${props.customerName},</h2>
-    <p style="font-size:14px;line-height:1.7;color:#424242">
-      Your Pepscore Lab invoice <strong>#${props.invoiceNumber}</strong> has been updated to include a backorder
+  const summaryPanel = emailPanel(`
+    <p style="margin:0;font-size:13px;line-height:1.9;color:${EMAIL_COLORS.textSecondary}"><strong style="color:${EMAIL_COLORS.textPrimary}">Backorder Accommodation:</strong> -${formatMoney(props.accommodationAmount)}</p>
+    <p style="margin:0;font-size:13px;line-height:1.9;color:${EMAIL_COLORS.textSecondary}"><strong style="color:${EMAIL_COLORS.textPrimary}">Revised Balance Due:</strong> ${formatMoney(props.revisedBalanceDue)}</p>
+  `)
+
+  const bodyHtml = `
+    <h2 style="font-size:19px;color:${EMAIL_COLORS.textPrimary};margin:0 0 14px">Hi ${escapeHtml(props.customerName)},</h2>
+    <p style="font-size:14px;line-height:1.7;color:${EMAIL_COLORS.textSecondary}">
+      Your Pepscore Lab invoice <strong>#${escapeHtml(props.invoiceNumber)}</strong> has been updated to include a backorder
       accommodation.
     </p>
-    <div style="background:#F5F5F0;border-radius:10px;padding:18px 20px;margin:18px 0;font-size:13px;line-height:1.9;color:#424242">
-      <p style="margin:0"><strong>Backorder Accommodation:</strong> -${formatMoney(props.accommodationAmount)}</p>
-      <p style="margin:0"><strong>Revised Balance Due:</strong> ${formatMoney(props.revisedBalanceDue)}</p>
-    </div>
-    ${props.portalUrl ? `
-    <p style="font-size:14px;line-height:1.7;color:#424242">
-      Your revised balance is available in your <a href="${props.portalUrl}" style="color:#C49A1A">Customer Portal</a>.
-    </p>` : ''}
-    <p style="font-size:14px;line-height:1.7;color:#424242">
-      Reach out anytime at ${BILLING_EMAIL} with questions about Invoice #${props.invoiceNumber}.
+    ${summaryPanel}
+    ${props.portalUrl ? `<p style="font-size:14px;line-height:1.7;color:${EMAIL_COLORS.textSecondary}">Your revised balance is available in your <a href="${props.portalUrl}" style="color:${EMAIL_COLORS.gold}">Customer Portal</a>.</p>` : ''}
+    <p style="font-size:14px;line-height:1.7;color:${EMAIL_COLORS.textSecondary}">
+      Reach out anytime at ${BILLING_EMAIL} with questions about Invoice #${escapeHtml(props.invoiceNumber)}.
     </p>
-  `)
+  `
+  return buildEmailShell({ eyebrow: 'Invoice Updated', bodyHtml, footerNote: `Questions? Reply to this email or contact ${BILLING_EMAIL}.` })
 }
 
 export interface RefundCompletedProps {
@@ -140,15 +126,16 @@ export function refundCompletedSubject(invoiceNumber: string): string {
 }
 
 export function buildRefundCompletedHtml(props: RefundCompletedProps): string {
-  return shell(`
-    <h2 style="font-family:Helvetica,sans-serif;font-size:19px;margin:0 0 14px">Hi ${props.customerName},</h2>
-    <p style="font-size:14px;line-height:1.7;color:#424242">
+  const bodyHtml = `
+    <h2 style="font-size:19px;color:${EMAIL_COLORS.textPrimary};margin:0 0 14px">Hi ${escapeHtml(props.customerName)},</h2>
+    <p style="font-size:14px;line-height:1.7;color:${EMAIL_COLORS.textSecondary}">
       Your refund of <strong>${formatMoney(props.amount)}</strong> for Invoice
-      <strong>#${props.invoiceNumber}</strong> has been completed${props.method ? ` via ${props.method}` : ''}.
+      <strong>#${escapeHtml(props.invoiceNumber)}</strong> has been completed${props.method ? ` via ${escapeHtml(props.method)}` : ''}.
     </p>
-    <p style="font-size:14px;line-height:1.7;color:#424242">
+    <p style="font-size:14px;line-height:1.7;color:${EMAIL_COLORS.textSecondary}">
       Please allow your bank or payment provider a few business days to reflect it, depending on the method used.
       Reach out anytime at ${BILLING_EMAIL} with questions.
     </p>
-  `)
+  `
+  return buildEmailShell({ eyebrow: 'Refund Completed', bodyHtml, footerNote: `Questions? Reply to this email or contact ${BILLING_EMAIL}.` })
 }
