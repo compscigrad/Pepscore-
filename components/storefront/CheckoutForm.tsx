@@ -112,6 +112,7 @@ export function CheckoutForm() {
             size: i.size,
             quantity: i.quantity,
             unitPrice: i.price,
+            sellUnit: i.sellUnit,
           })),
           shippingAddress: {
             name: form.name,

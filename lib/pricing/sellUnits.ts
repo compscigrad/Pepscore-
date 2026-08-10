@@ -14,6 +14,20 @@
 // anything customer-facing regardless of who calls it with adminContext true.
 export type SellUnit = 'CASE_STANDARD' | 'CASE_SPA' | 'CASE_BULK' | 'INDIVIDUAL_VIAL'
 
+// Display label for a bare SellUnit value with no AvailableSellUnitOption at
+// hand (e.g. a cart line, which only stores the enum) -- deliberately a
+// separate map from lib/pricing/labels.ts's SELL_UNIT_LABEL, which is keyed
+// by the differently-named PriceChangeSellUnit enum (STANDARD_CASE vs. this
+// file's CASE_STANDARD) for the price-change audit trail. Two pre-existing,
+// differently-named enums for the same underlying concept -- not unified
+// here to avoid touching Decision #48's audit trail model.
+export const SELL_UNIT_DISPLAY_LABEL: Record<SellUnit, string> = {
+  CASE_STANDARD: 'Standard Case',
+  CASE_SPA: 'SPA Case',
+  CASE_BULK: 'Bulk',
+  INDIVIDUAL_VIAL: 'Individual Vial',
+}
+
 export interface SellUnitAvailabilityInput {
   activeStandardCasePrice: number | null
   activeSpaCasePrice: number | null
