@@ -12,6 +12,8 @@ import { isAdminClerkUser } from '@/lib/isAdmin'
 import { listCustomers, type ListCustomersParams } from '@/lib/customers'
 import { formatPhoneDisplay } from '@/lib/invoice/format'
 import { LeadStatusBadge, type LeadStatusValue } from '@/components/admin/CustomerLeadStatusControl'
+import { computePortalAdoptionOverview, type PortalAdoptionStatus } from '@/lib/portal/adoptionStatus'
+import { PORTAL_ADOPTION_STATUS_LABEL, PORTAL_ADOPTION_STATUS_STYLE, PORTAL_ADOPTION_STATUS_VALUES } from '@/lib/portal/adoptionStatusDisplay'
 
 interface PageProps {
   searchParams: Promise<{
@@ -21,6 +23,7 @@ interface PageProps {
     interestType?: string
     consent?: string
     campaign?: string
+    portalStatus?: string
     sortBy?: string
     page?: string
   }>
@@ -81,6 +84,15 @@ export default async function AdminCustomersPage({ searchParams }: PageProps) {
   const page = Math.max(1, Number(sp.page) || 1)
   const limit = 25
 
+  // Portal Status is derived (computePortalAdoptionOverview()), not a
+  // stored Customer column, so it can't join the Prisma `where` the way
+  // status/leadStatus do -- resolve it to a concrete id set first, then
+  // hand that to listCustomers()'s generic customerIds filter so DB-level
+  // pagination still stays correct for everyone, filtered or not.
+  const portalStatus = (sp.portalStatus as PortalAdoptionStatus) || undefined
+  const portalAdoption = await computePortalAdoptionOverview()
+  const portalStatusCustomerIds = portalStatus ? portalAdoption.entries.filter((e) => e.status === portalStatus).map((e) => e.customerId) : undefined
+
   const params: ListCustomersParams = {
     search: sp.search || undefined,
     status: (sp.status as ListCustomersParams['status']) || undefined,
@@ -88,6 +100,7 @@ export default async function AdminCustomersPage({ searchParams }: PageProps) {
     interestType: (sp.interestType as ListCustomersParams['interestType']) || undefined,
     hasConsent: sp.consent === 'yes' ? true : sp.consent === 'no' ? false : undefined,
     campaign: sp.campaign || undefined,
+    customerIds: portalStatusCustomerIds,
     sortBy: (sp.sortBy as ListCustomersParams['sortBy']) || 'newest',
     page,
     limit,
@@ -96,7 +109,7 @@ export default async function AdminCustomersPage({ searchParams }: PageProps) {
   const { customers, total } = await listCustomers(params)
   const totalPages = Math.max(1, Math.ceil(total / limit))
 
-  const baseQuery = { search: sp.search, status: sp.status, leadStatus: sp.leadStatus, interestType: sp.interestType, consent: sp.consent, campaign: sp.campaign, sortBy: sp.sortBy }
+  const baseQuery = { search: sp.search, status: sp.status, leadStatus: sp.leadStatus, interestType: sp.interestType, consent: sp.consent, campaign: sp.campaign, portalStatus: sp.portalStatus, sortBy: sp.sortBy }
 
   return (
     <main className="min-h-screen bg-black p-6 md:p-8">
@@ -153,6 +166,13 @@ export default async function AdminCustomersPage({ searchParams }: PageProps) {
             </select>
           </div>
           <div>
+            <label className="block text-[11px] font-heading font-bold uppercase tracking-wide text-white/50 mb-1.5">Portal Status</label>
+            <select name="portalStatus" defaultValue={sp.portalStatus ?? ''} className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-[13px] text-white focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold/30">
+              <option value="" className="bg-white text-dark">All</option>
+              {PORTAL_ADOPTION_STATUS_VALUES.map((s) => <option key={s} value={s} className="bg-white text-dark">{PORTAL_ADOPTION_STATUS_LABEL[s]}</option>)}
+            </select>
+          </div>
+          <div>
             <label className="block text-[11px] font-heading font-bold uppercase tracking-wide text-white/50 mb-1.5">Campaign / Source</label>
             <input
               name="campaign"
@@ -184,7 +204,7 @@ export default async function AdminCustomersPage({ searchParams }: PageProps) {
             <table className="w-full text-[13px]">
               <thead>
                 <tr className="border-b border-white/10">
-                  {['Name', 'Contact', 'Lead Status', 'Customer Status', 'Most Recent Interest', 'Created', ''].map((h) => (
+                  {['Name', 'Contact', 'Lead Status', 'Customer Status', 'Portal', 'Most Recent Interest', 'Created', ''].map((h) => (
                     <th key={h} className="text-left font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 px-4 py-3 whitespace-nowrap">
                       {h}
                     </th>
@@ -194,6 +214,7 @@ export default async function AdminCustomersPage({ searchParams }: PageProps) {
               <tbody>
                 {customers.map((c) => {
                   const lead = c.leadCaptures[0]
+                  const portalEntry = portalAdoption.byCustomerId.get(c.id)
                   return (
                     <tr key={c.id} className="border-b border-white/10 hover:bg-white/[0.02]">
                       <td className="px-4 py-3">
@@ -210,6 +231,15 @@ export default async function AdminCustomersPage({ searchParams }: PageProps) {
                         <LeadStatusBadge status={c.leadStatus as LeadStatusValue} />
                       </td>
                       <td className="px-4 py-3 text-white/70 whitespace-nowrap">{formatLabel(c.status)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {portalEntry ? (
+                          <span className={`text-[10px] font-heading font-bold uppercase tracking-[0.06em] px-2 py-0.5 rounded-full ${PORTAL_ADOPTION_STATUS_STYLE[portalEntry.status]}`}>
+                            {PORTAL_ADOPTION_STATUS_LABEL[portalEntry.status]}
+                          </span>
+                        ) : (
+                          <span className="text-white/30">—</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3">
                         {lead ? (
                           <>
