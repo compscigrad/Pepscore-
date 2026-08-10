@@ -78,4 +78,93 @@ describe('getAvailableSellUnits', () => {
     })
     expect(options[0].unitsPerSellUnit).toBe(1)
   })
+
+  it('flags every case/SPA/bulk option as visible to customers regardless of admin context', () => {
+    const options = getAvailableSellUnits({
+      activeStandardCasePrice: 500,
+      activeSpaCasePrice: 400,
+      activeBulkPrice: 300,
+      activeIndividualVialPrice: null,
+      individualSalesEnabled: false,
+      unitsPerCase: 10,
+    })
+    expect(options.every((o) => o.visibleToCustomers)).toBe(true)
+  })
+
+  describe('adminContext (Phase 3B item 2)', () => {
+    it('Tesamorelin 10mg: without adminContext, Individual Vial stays hidden exactly as before (default behavior unchanged)', () => {
+      const tesamorelin = {
+        activeStandardCasePrice: 775,
+        activeSpaCasePrice: 700,
+        activeBulkPrice: null,
+        activeIndividualVialPrice: 80,
+        individualSalesEnabled: false,
+        unitsPerCase: 10,
+      }
+      const options = getAvailableSellUnits(tesamorelin)
+      expect(options.map((o) => o.sellUnit)).not.toContain('INDIVIDUAL_VIAL')
+    })
+
+    it('Tesamorelin 10mg: with adminContext, admin CAN select Individual Vial even though individualSalesEnabled is false', () => {
+      const tesamorelin = {
+        activeStandardCasePrice: 775,
+        activeSpaCasePrice: 700,
+        activeBulkPrice: null,
+        activeIndividualVialPrice: 80,
+        individualSalesEnabled: false,
+        unitsPerCase: 10,
+      }
+      const options = getAvailableSellUnits(tesamorelin, { adminContext: true })
+      const individual = options.find((o) => o.sellUnit === 'INDIVIDUAL_VIAL')
+      expect(individual).toBeDefined()
+      expect(individual?.price).toBe(80)
+    })
+
+    it('marks an adminContext-only Individual Vial option as NOT visible to customers, so the admin UI can flag it', () => {
+      const options = getAvailableSellUnits(
+        {
+          activeStandardCasePrice: 775,
+          activeSpaCasePrice: 700,
+          activeBulkPrice: null,
+          activeIndividualVialPrice: 80,
+          individualSalesEnabled: false,
+          unitsPerCase: 10,
+        },
+        { adminContext: true }
+      )
+      const individual = options.find((o) => o.sellUnit === 'INDIVIDUAL_VIAL')
+      expect(individual?.visibleToCustomers).toBe(false)
+    })
+
+    it('when individualSalesEnabled is already true, an adminContext-visible Individual Vial option is still marked visible to customers (it genuinely is)', () => {
+      const options = getAvailableSellUnits(
+        {
+          activeStandardCasePrice: 725,
+          activeSpaCasePrice: 565,
+          activeBulkPrice: null,
+          activeIndividualVialPrice: 89,
+          individualSalesEnabled: true,
+          unitsPerCase: 10,
+        },
+        { adminContext: true }
+      )
+      const individual = options.find((o) => o.sellUnit === 'INDIVIDUAL_VIAL')
+      expect(individual?.visibleToCustomers).toBe(true)
+    })
+
+    it('adminContext never invents a price -- a product with no stored individual price still offers no Individual Vial option', () => {
+      const options = getAvailableSellUnits(
+        {
+          activeStandardCasePrice: 500,
+          activeSpaCasePrice: null,
+          activeBulkPrice: null,
+          activeIndividualVialPrice: null,
+          individualSalesEnabled: false,
+          unitsPerCase: 10,
+        },
+        { adminContext: true }
+      )
+      expect(options.map((o) => o.sellUnit)).not.toContain('INDIVIDUAL_VIAL')
+    })
+  })
 })
