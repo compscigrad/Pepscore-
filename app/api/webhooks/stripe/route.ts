@@ -139,6 +139,37 @@ export async function POST(req: NextRequest) {
     await markOrderPaymentFailedOrReturned({ orderId, status: 'FAILED', reason: 'ACH payment failed' })
   }
 
+  // ── checkout.session.expired ─────────────────────────────────────────────
+  // Fires when an embedded Checkout session's own TTL (Stripe's default:
+  // 24h from creation) elapses with no completed payment -- Phase 4A
+  // Critical #3. Without this, an order the customer opened checkout for
+  // and then abandoned stayed PENDING with its OrderReservation ACTIVE
+  // forever, permanently holding real inventory no one would ever pay for.
+  // Reuses the exact same release path an explicit payment failure already
+  // goes through. Only acts if the order is still genuinely PENDING --
+  // Stripe doesn't guarantee event delivery order, so if a
+  // checkout.session.completed for this same session was somehow processed
+  // first (or arrives after, redelivered), this never overwrites a real
+  // payment. A scheduled reconciliation job (app/api/cron/release-
+  // abandoned-reservations) is the backstop for the case this webhook
+  // itself never arrives.
+  if (event.type === 'checkout.session.expired') {
+    const session = event.data.object
+    const orderId = session.metadata?.orderId
+    if (!orderId) {
+      console.warn('[webhook] checkout.session.expired missing orderId in metadata')
+      return NextResponse.json({ received: true })
+    }
+    const order = await prisma.order.findUnique({ where: { id: orderId }, select: { status: true } })
+    if (order?.status === 'PENDING') {
+      await markOrderPaymentFailedOrReturned({
+        orderId,
+        status: 'CANCELLED',
+        reason: 'Checkout session expired -- payment was never completed',
+      })
+    }
+  }
+
   // ── payment_intent.payment_failed ──────────────────────────────────────────
   if (event.type === 'payment_intent.payment_failed') {
     const pi = event.data.object
