@@ -11,12 +11,12 @@ import type { Customer, CustomerPortalInvite } from '@prisma/client'
 import { computeEligibleInviteAudience, isLeadStage } from '@/lib/portal/rolloutAudience'
 import { getPortalInviteState } from '@/lib/portalInviteState'
 import { isAutoInvitesEnabled } from '@/lib/portalAuth'
-import { isPortalRolloutActive, getAudienceSnapshotIds } from '@/lib/portal/rollout'
+import { isPortalRolloutActive, isPortalRolloutPaused } from '@/lib/portal/rollout'
 
 export type PortalAdoptionStatus =
   | 'NOT_ELIGIBLE' // lifecycle hasn't reached "genuine customer" yet (still a lead/in-progress intake) -- may become eligible later
   | 'ELIGIBLE' // qualifies today; nothing currently configured would auto-invite them
-  | 'INVITE_PENDING' // qualifies AND automation is live and has already approved them (see the INVITE_PENDING comment below) -- the next cron run will invite them
+  | 'INVITE_PENDING' // qualifies AND automation is live -- the next cron run will invite them (live-eligibility rollout, see docs/Decisions.md #37)
   | 'INVITED' // active invite sent, no reminder yet
   | 'REMINDER_1_SENT' // active invite, day-3 reminder sent
   | 'REMINDER_2_SENT' // active invite, day-6 (final) reminder sent
@@ -51,13 +51,13 @@ const EMPTY_COUNTS: Record<PortalAdoptionStatus, number> = {
 type CustomerWithInvites = Customer & { portalInvites: CustomerPortalInvite[] }
 
 export async function computePortalAdoptionOverview(): Promise<PortalAdoptionOverview> {
-  const [allCustomers, audience, openReviewCases, snapshotIds, autoInvitesEnabled, rolloutActive] = await Promise.all([
+  const [allCustomers, audience, openReviewCases, autoInvitesEnabled, rolloutActive, rolloutPaused] = await Promise.all([
     prisma.customer.findMany({ include: { portalInvites: { orderBy: { createdAt: 'desc' }, take: 1 } } }),
     computeEligibleInviteAudience(),
     prisma.customerIdentityReviewCase.findMany({ where: { status: 'OPEN' }, select: { customerId: true } }),
-    getAudienceSnapshotIds(),
     Promise.resolve(isAutoInvitesEnabled()),
     isPortalRolloutActive(),
+    isPortalRolloutPaused(),
   ])
 
   const conflictCustomerIds = new Set(openReviewCases.map((r) => r.customerId).filter((id): id is string => Boolean(id)))
@@ -65,19 +65,12 @@ export async function computePortalAdoptionOverview(): Promise<PortalAdoptionOve
   const testDataIds = new Set(audience.testDataFlagged.map((c) => c.id))
   const missingContactIds = new Set(audience.missingContact.map((c) => c.id))
   const eligibleIds = new Set(audience.eligible.map((c) => c.id))
-  // The rollout cron only ever sends to customers in the frozen snapshot
-  // taken at the moment an admin activated it (lib/portal/rollout.ts's
-  // activatePortalRollout header comment: "snapshotted here... and never
-  // touched again") -- it does NOT expand to include customers who become
-  // eligible afterward. So "the next automatic run will invite this
-  // person" is only true when they're both currently eligible AND were in
-  // that original approved snapshot. A customer who becomes eligible after
-  // activation stays ELIGIBLE, not INVITE_PENDING, until either a fresh
-  // activation happens or they're invited manually -- a real architectural
-  // gap relative to the "continuously onboard new customers automatically"
-  // goal, flagged rather than silently overclaimed here.
-  const snapshotSet = new Set(snapshotIds ?? [])
-  const autoInviteImminent = autoInvitesEnabled && rolloutActive
+  // The rollout cron now runs off live eligibility every invocation, not a
+  // frozen activation-time snapshot (docs/Decisions.md #37) -- so any
+  // currently-eligible customer will be picked up on the very next run
+  // once automation is on, active, and not paused. No per-customer
+  // snapshot-membership check needed anymore.
+  const autoInviteImminent = autoInvitesEnabled && rolloutActive && !rolloutPaused
 
   const entries: PortalAdoptionEntry[] = allCustomers.map((customer) => classify(customer))
   const counts = { ...EMPTY_COUNTS }
@@ -146,7 +139,7 @@ export async function computePortalAdoptionOverview(): Promise<PortalAdoptionOve
     // re-eligible, the existing approved re-invitation policy, not
     // reinvented here) and not otherwise excluded above.
     if (eligibleIds.has(customer.id)) {
-      if (autoInviteImminent && snapshotSet.has(customer.id)) {
+      if (autoInviteImminent) {
         return { customerId: customer.id, status: 'INVITE_PENDING', reason: null }
       }
       return { customerId: customer.id, status: 'ELIGIBLE', reason: null }
