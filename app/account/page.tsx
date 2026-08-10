@@ -48,7 +48,7 @@ export default async function AccountPage({ searchParams }: Props) {
     return (
       <PortalStatusShell
         heading="You're signed in as the site admin"
-        body="This browser session is signed in with the PepScore Lab admin account, not a customer account. Sign out and sign back in with a customer account to view the Customer Portal."
+        body="This browser session is signed in with the Pepscore Lab admin account, not a customer account. Sign out and sign back in with a customer account to view the Customer Portal."
       />
     )
   }
@@ -75,7 +75,7 @@ export default async function AccountPage({ searchParams }: Props) {
     return (
       <PortalStatusShell
         heading="No account found"
-        body="We don't see a PepScore Lab account linked to this login yet. Contact us and we'll get you set up."
+        body="We don't see a Pepscore Lab account linked to this login yet. Contact us and we'll get you set up."
       />
     )
   }
