@@ -22,7 +22,11 @@ function sameLine(a: { id: string; sellUnit?: SellUnit | null }, id: string, sel
 interface CartStore {
   items: CartItem[]
   isOpen: boolean
-  addItem: (item: Omit<CartItem, 'quantity'>) => void
+  // quantity is optional and means "how many to add" (default 1) -- every
+  // pre-existing call site omits it and keeps adding exactly one at a time;
+  // Buy Again/Reorder (Phase 3C) is the first caller that needs to add a
+  // historical quantity in one action.
+  addItem: (item: Omit<CartItem, 'quantity'> & { quantity?: number }) => void
   removeItem: (id: string, sellUnit?: SellUnit | null) => void
   updateQuantity: (id: string, quantity: number, sellUnit?: SellUnit | null) => void
   clearCart: () => void
@@ -40,16 +44,17 @@ export const useCartStore = create<CartStore>()(
       isOpen: false,
 
       addItem: (newItem) => {
+        const addQty = newItem.quantity ?? 1
         set((state) => {
           const existing = state.items.find((i) => sameLine(i, newItem.id, newItem.sellUnit))
           if (existing) {
             return {
               items: state.items.map((i) =>
-                sameLine(i, newItem.id, newItem.sellUnit) ? { ...i, quantity: i.quantity + 1 } : i
+                sameLine(i, newItem.id, newItem.sellUnit) ? { ...i, quantity: i.quantity + addQty } : i
               ),
             }
           }
-          return { items: [...state.items, { ...newItem, quantity: 1 }] }
+          return { items: [...state.items, { ...newItem, quantity: addQty }] }
         })
       },
 

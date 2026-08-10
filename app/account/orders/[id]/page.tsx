@@ -11,6 +11,10 @@ import { getPortalOrderDetail } from '@/lib/portal/orders'
 import { formatMoney, formatDate } from '@/lib/invoice/format'
 import { StatusBadge } from '@/components/invoices/StatusBadge'
 import { PortalStatusShell } from '@/components/account/PortalStatusShell'
+import { prisma } from '@/lib/prisma'
+import { resolveReorderLine } from '@/lib/storefront/reorder'
+import type { SellUnit } from '@/lib/pricing/sellUnits'
+import { BuyAgainButton, ReorderAllButton, type ReorderLineView } from '@/components/account/ReorderControls'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -27,6 +31,31 @@ export default async function OrderDetailPage({ params }: PageProps) {
   if (!order) notFound()
 
   const latestPayment = order.payments[0]
+
+  // Buy Again/Reorder (Phase 3C): resolve every line against the CURRENT
+  // product state server-side, never a historical price snapshot. A
+  // productId with no matching Product row (deleted from the catalog)
+  // resolves through resolveReorderLine's own product_not_found path.
+  const productIds = [...new Set(order.items.map((item) => item.productId))]
+  const products = productIds.length > 0 ? await prisma.product.findMany({ where: { id: { in: productIds } } }) : []
+  const productMap = new Map(products.map((p) => [p.id, p]))
+
+  const reorderLines: ReorderLineView[] = order.items.map((item) => {
+    const product = productMap.get(item.productId) ?? null
+    const resolved = resolveReorderLine(
+      { productId: item.productId, sellUnit: item.sellUnit as SellUnit | null, quantity: item.quantity },
+      product
+    )
+    return {
+      key: item.id,
+      productId: item.productId,
+      slug: product?.slug ?? '',
+      name: product?.name ?? item.name,
+      size: product?.size ?? item.size,
+      imageUrl: product?.imageUrl ?? '',
+      resolved,
+    }
+  })
 
   return (
     <main className="px-4 py-8">
@@ -59,17 +88,25 @@ export default async function OrderDetailPage({ params }: PageProps) {
 
         {/* Line items + totals */}
         <div className="bg-white/[0.03] border border-white/10 rounded-[18px] p-6">
+          <div className="flex items-center justify-between mb-1">
+            <h2 className="font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50">Items</h2>
+            <ReorderAllButton lines={reorderLines} />
+          </div>
           <div className="divide-y divide-white/10">
-            {order.items.map((item) => (
-              <div key={item.id} className="py-2.5 flex justify-between text-sm">
-                <div>
-                  <p className="text-white">
-                    {item.name} <span className="text-white/40">({item.size}) × {item.quantity}</span>
-                  </p>
+            {order.items.map((item) => {
+              const line = reorderLines.find((l) => l.key === item.id)
+              return (
+                <div key={item.id} className="py-2.5 flex items-center justify-between gap-3 text-sm">
+                  <div>
+                    <p className="text-white">
+                      {item.name} <span className="text-white/40">({item.size}) × {item.quantity}</span>
+                    </p>
+                    {line ? <div className="mt-1"><BuyAgainButton line={line} /></div> : null}
+                  </div>
+                  <p className="text-white/80 shrink-0">{formatMoney(item.total)}</p>
                 </div>
-                <p className="text-white/80">{formatMoney(item.total)}</p>
-              </div>
-            ))}
+              )
+            })}
           </div>
           <div className="mt-4 pt-4 border-t border-white/10 space-y-1 text-sm">
             <div className="flex justify-between text-white/60"><span>Subtotal</span><span>{formatMoney(order.subtotal)}</span></div>
