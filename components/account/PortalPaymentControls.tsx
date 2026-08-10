@@ -205,7 +205,7 @@ export function PortalPaymentControls(props: PortalPaymentControlsProps) {
       ) : (
         <form onSubmit={submitArrangementRequest} className="space-y-4">
           <p className="text-white/50 text-xs leading-relaxed">
-            Propose a schedule below. This is a request only — it&apos;s subject to Pepscore&apos;s approval and is
+            Propose a schedule below. This is a request only — it&apos;s subject to PepScore Lab&apos;s approval and is
             never active or finalized until approved.
           </p>
           <div className="grid grid-cols-2 gap-4">

@@ -53,14 +53,14 @@ export default async function ClaimPage({ params }: { params: Promise<{ token: s
   return (
     <main className="min-h-screen bg-dark flex items-center justify-center px-4">
       <div className="max-w-md w-full bg-white/[0.03] border border-gold/10 rounded-[18px] p-8 text-center">
-        <h1 className="font-heading text-2xl font-bold text-white mb-2">PEPSCORE</h1>
+        <h1 className="font-heading text-2xl font-bold text-white mb-2">PEPSCORE <span className="text-gold-light">LAB</span></h1>
         <p className="text-gold text-xs uppercase tracking-[0.2em] mb-6">Account Setup</p>
         <h2 className="text-lg font-bold text-white mb-3">
           Hi {customer.firstName}, set up your account
         </h2>
         <p className="text-white/60 text-sm leading-relaxed mb-6">
-          This will link your Pepscore order history to the account you&apos;re signed in with, so you can view your
-          invoices, tracking, and payment history anytime.
+          This will link your PepScore Lab order history to the account you&apos;re signed in with, so you can view
+          your invoices, tracking, and payment history anytime.
         </p>
         <PortalClaimButton token={token} />
       </div>

@@ -28,6 +28,13 @@ export const metadata: Metadata = {
   robots: process.env.VERCEL_ENV === 'production' ? undefined : { index: false, follow: false },
 }
 
+// Global toast styling (react-hot-toast has no Tailwind hook, so these are
+// plain inline styles) -- the dark card itself already matched the app's
+// `dark` token, but success toasts fell back to the library's default green
+// checkmark, inconsistent with every other "positive/terminal" surface in
+// the app (e.g. StatusBadge.tsx's gold-accented paid/delivered states).
+// Error keeps a red icon -- a real semantic warning, not a brand color, and
+// already close to the app's own red-400 error text elsewhere.
 const toasterProps = {
   position: 'bottom-center' as const,
   toastOptions: {
@@ -38,6 +45,10 @@ const toasterProps = {
       fontSize: '13px',
       fontWeight: 600,
       borderRadius: '8px',
+      border: '1px solid rgba(196,154,26,0.15)',
+    },
+    success: {
+      iconTheme: { primary: '#C49A1A', secondary: '#1A1A1A' },
     },
   },
 }
