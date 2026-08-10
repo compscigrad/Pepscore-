@@ -17,6 +17,8 @@ import { getRolloutSafetyConfig } from '@/lib/portal/rolloutSafety'
 import { getReminderSafetyConfig } from '@/lib/portal/reminderSafety'
 import { getReminderPreview } from '@/lib/portal/reminderPreview'
 import { computePortalAdoptionOverview, summarizeAdoptionAudit, computePortalAdoptionRates } from '@/lib/portal/adoptionStatus'
+import { getRecentPortalDeliveryIssues, summarizeRepeatedFailures } from '@/lib/portal/deliveryIssues'
+import { prisma } from '@/lib/prisma'
 import { PortalRolloutPanel } from '@/components/admin/PortalRolloutPanel'
 import { ReminderPreviewTable } from '@/components/admin/ReminderPreviewTable'
 import { card, mutedText, sectionHeading, divider } from '@/components/invoices/theme'
@@ -34,14 +36,21 @@ export default async function PortalRolloutPage() {
     redirect('/')
   }
 
-  const [audience, settings, reminderPreview, adoptionOverview] = await Promise.all([
+  const [audience, settings, reminderPreview, adoptionOverview, deliveryIssues] = await Promise.all([
     computeEligibleInviteAudience(),
     getPortalRolloutSettings(),
     getReminderPreview(),
     computePortalAdoptionOverview(),
+    getRecentPortalDeliveryIssues(),
   ])
   const adoptionAudit = summarizeAdoptionAudit(adoptionOverview)
   const adoptionRates = await computePortalAdoptionRates(adoptionAudit)
+  const repeatedFailures = summarizeRepeatedFailures(deliveryIssues)
+  const repeatedFailureCustomers =
+    repeatedFailures.length > 0
+      ? await prisma.customer.findMany({ where: { id: { in: repeatedFailures.map((r) => r.customerId) } }, select: { id: true, firstName: true, lastName: true } })
+      : []
+  const repeatedFailureNameById = new Map(repeatedFailureCustomers.map((c) => [c.id, `${c.firstName} ${c.lastName}`.trim()]))
 
   const resendDomainVerified = FROM_EMAIL !== 'onboarding@resend.dev'
   const smsConfigured = isSmsConfigured()
@@ -113,6 +122,42 @@ export default async function PortalRolloutPage() {
             </div>
           )}
         </div>
+
+        {deliveryIssues.length > 0 && (
+          <div className={`${card} p-6 border-amber-400/30 bg-amber-400/[0.03]`}>
+            <h3 className={sectionHeading}>Recent Delivery Issues</h3>
+            <p className={`text-sm ${mutedText} mt-1 mb-4`}>
+              Failed sends from the last {deliveryIssues.length} cron run{deliveryIssues.length === 1 ? '' : 's'} that had at least one failure. A failed send never marks an
+              invitation/reminder as delivered — the affected customer stays eligible and is retried automatically on the next run.
+            </p>
+            {repeatedFailures.length > 0 && (
+              <div className="space-y-1.5 mb-4">
+                <p className={`text-[11px] font-bold tracking-[0.08em] uppercase ${mutedText}`}>Failed on 2+ separate runs — may need manual attention</p>
+                {repeatedFailures.map((f) => (
+                  <div key={f.customerId} className="flex justify-between text-sm gap-3">
+                    <Link href={`/admin/customers/${f.customerId}`} className="text-gold-light hover:underline">
+                      {repeatedFailureNameById.get(f.customerId) ?? f.customerId}
+                    </Link>
+                    <span className="text-white/60 text-right">
+                      {f.count}× — {f.lastError}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className={`pt-3 border-t ${divider} space-y-1.5`}>
+              <p className={`text-[11px] font-bold tracking-[0.08em] uppercase ${mutedText}`}>Recent runs with failures</p>
+              {deliveryIssues.map((issue) => (
+                <div key={issue.id} className="flex justify-between text-sm">
+                  <span className="text-white/70">
+                    {issue.cron === 'ROLLOUT' ? 'Rollout' : 'Reminder'} — {issue.occurredAt.toLocaleString()}
+                  </span>
+                  <span className="text-white font-medium">{issue.failedCount} failed</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className={`${card} p-6`}>
           <h3 className={sectionHeading}>Eligible Audience</h3>
