@@ -41,13 +41,19 @@ export interface ListCustomersParams {
   // LeadCapture rows -- "campaign/source" is one filter field in the UI
   // since most submissions only ever populate one or the other.
   campaign?: string
+  // Restricts to this exact id set -- a generic escape hatch for callers
+  // that need to filter by something derived outside this module (e.g. the
+  // admin customer list's Portal Status filter, computed from
+  // computePortalAdoptionOverview() in lib/portal/adoptionStatus.ts) rather
+  // than baking portal-specific logic into this CRM-focused query builder.
+  customerIds?: string[]
   page?: number
   limit?: number
   sortBy?: 'newest' | 'oldest' | 'name'
 }
 
 export async function listCustomers(params: ListCustomersParams = {}) {
-  const { search, status, leadStatus, interestType, hasConsent, campaign, page = 1, limit = 25, sortBy = 'newest' } = params
+  const { search, status, leadStatus, interestType, hasConsent, campaign, customerIds, page = 1, limit = 25, sortBy = 'newest' } = params
 
   const leadCaptureFilters: Prisma.LeadCaptureWhereInput[] = []
   if (interestType) leadCaptureFilters.push({ interestType })
@@ -64,6 +70,7 @@ export async function listCustomers(params: ListCustomersParams = {}) {
   const where: Prisma.CustomerWhereInput = {
     ...(status ? { status } : {}),
     ...(leadStatus ? { leadStatus } : {}),
+    ...(customerIds ? { id: { in: customerIds } } : {}),
     // AND across filter *kinds*, but each kind only needs to match *some*
     // one LeadCapture row -- e.g. a customer who once submitted a
     // consent=true PRODUCT_INTEREST lead and separately a consent=false
