@@ -97,12 +97,12 @@ export function AdminSalesActivityTable({ rows, total }: { rows: SalesActivityRo
           <table className="w-full text-[13px]">
             <thead>
               <tr className="border-b border-white/10">
-                {['Invoice #', 'Date', 'Customer', 'Status', 'Payment', 'Fulfillment', 'Total', 'Balance', 'Tracking', 'Backorder', 'Portal', ''].map(
+                {['Invoice #', 'Origin', 'Date', 'Customer', 'Status', 'Payment', 'Fulfillment', 'Total', 'Balance', 'Tracking', 'Backorder', 'Portal', ''].map(
                   (h, i) => (
                     <th
                       key={h || i}
                       className={`text-left font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 px-4 py-3 whitespace-nowrap ${
-                        i === 9 || i === 10 ? 'hidden lg:table-cell' : ''
+                        i === 10 || i === 11 ? 'hidden lg:table-cell' : ''
                       }`}
                     >
                       {h}
@@ -115,6 +115,13 @@ export function AdminSalesActivityTable({ rows, total }: { rows: SalesActivityRo
               {rows.map(({ invoice, hasActiveBackorder, portalStatus }) => (
                 <tr key={invoice.id} className="border-b border-white/10 hover:bg-white/[0.02]">
                   <td className="px-4 py-3 font-heading font-bold text-white whitespace-nowrap">{invoice.invoiceNumber}</td>
+                  <td className="px-4 py-3">
+                    {invoice.orderId ? (
+                      <Pill label="Online" className="bg-blue-400/10 text-blue-300" />
+                    ) : (
+                      <Pill label="Direct" className="bg-white/5 text-white/50" />
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-white/50 whitespace-nowrap">
                     {new Date(invoice.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}
                   </td>

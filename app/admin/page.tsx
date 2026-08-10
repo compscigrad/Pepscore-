@@ -135,6 +135,9 @@ export default async function AdminDashboard() {
             <Link href="/admin/invoices" className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors">
               Invoices →
             </Link>
+            <Link href="/admin/orders" className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors">
+              Online Storefront Orders
+            </Link>
             <Link href="/admin/customers" className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors">
               Customers &amp; Leads
             </Link>
