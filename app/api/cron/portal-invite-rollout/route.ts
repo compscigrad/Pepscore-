@@ -27,6 +27,7 @@
 // Merging or deploying this file never sends a single real invitation on
 // its own; every one of 1-6 defaults to the safe state.
 import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
 import { isAutoInvitesEnabled, isSmsInvitesEnabled } from '@/lib/portalAuth'
 import { isPortalRolloutActive, isPortalRolloutPaused } from '@/lib/portal/rollout'
 import { computeEligibleInviteAudience } from '@/lib/portal/rolloutAudience'
@@ -99,6 +100,20 @@ export async function GET(req: NextRequest) {
       console.error(`[portal-invite-rollout] Failed to invite customer ${customer.id}:`, message)
     }
   }
+
+  // Same pattern as the reminder cron's own AdminAuditLog write -- this run
+  // was previously only visible in the cron's raw JSON response, which
+  // nobody actually looks at (it's a Vercel cron invocation, not a page).
+  // Recording it here is what lets /admin/portal-rollout's "Recent Delivery
+  // Issues" section surface a repeated-failure pattern to an admin at all.
+  await prisma.adminAuditLog.create({
+    data: {
+      action: 'ROLLOUT_CRON_RUN',
+      entity: 'CustomerPortalInvite',
+      adminId: 'cron',
+      details: { dryRun: config.dryRun, candidatesThisRun: candidates.length, sent, dryRunLogged, blocked, failed: failures.length, failures },
+    },
+  })
 
   return NextResponse.json({
     dryRun: config.dryRun,
