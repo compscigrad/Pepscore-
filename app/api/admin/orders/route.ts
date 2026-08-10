@@ -1,9 +1,13 @@
-// GET /api/admin/orders — paginated order list for admin dashboard
-// PATCH /api/admin/orders — update order status or notes
-
+// GET /api/admin/orders — searchable/sortable/filterable paginated order
+// list for the admin "Online Storefront Orders" surface (Phase 4A Critical
+// #2). PATCH /api/admin/orders — update order notes (status changes go
+// through the dedicated cancel endpoint, not a bare status PATCH, so a
+// cancellation always runs the real reservation-release lifecycle).
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { prisma } from '@/lib/prisma'
+import { listOrders, type ListOrdersParams } from '@/lib/orders/admin'
+import type { OrderStatus, StorefrontPaymentMethodType } from '@prisma/client'
 
 function isAdmin(userId: string | null) {
   return userId === process.env.ADMIN_CLERK_USER_ID
@@ -13,30 +17,25 @@ export async function GET(req: NextRequest) {
   const { userId } = await auth()
   if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
-  const page = parseInt(req.nextUrl.searchParams.get('page') ?? '1')
-  const limit = parseInt(req.nextUrl.searchParams.get('limit') ?? '25')
-  const status = req.nextUrl.searchParams.get('status')
+  const sp = req.nextUrl.searchParams
+  const params: ListOrdersParams = {
+    search: sp.get('search') ?? undefined,
+    status: (sp.get('status') as OrderStatus | 'all' | null) ?? 'all',
+    paymentMethod: (sp.get('paymentMethod') as StorefrontPaymentMethodType | 'all' | null) ?? 'all',
+    fulfillment: (sp.get('fulfillment') as ListOrdersParams['fulfillment']) ?? 'all',
+    dateFrom: sp.get('dateFrom') ?? undefined,
+    dateTo: sp.get('dateTo') ?? undefined,
+    sortBy: (sp.get('sortBy') as ListOrdersParams['sortBy']) ?? 'createdAt',
+    sortDir: (sp.get('sortDir') as ListOrdersParams['sortDir']) ?? 'desc',
+    page: parseInt(sp.get('page') ?? '1'),
+    limit: parseInt(sp.get('limit') ?? '25'),
+  }
 
-  const where = status ? { status: status as never } : {}
+  const { orders, total, page, limit } = await listOrders(params)
 
-  const [orders, total] = await Promise.all([
-    prisma.order.findMany({
-      where,
-      include: {
-        items: true,
-        invoice: { select: { invoiceNumber: true, status: true } },
-        shippingLabel: { select: { trackingNumber: true, carrier: true, labelUrl: true } },
-        payments: { select: { amount: true, stripeFee: true, status: true, provider: true, methodType: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-      skip: (page - 1) * limit,
-      take: limit,
-    }),
-    prisma.order.count({ where }),
-  ])
-
-  // Compute per-order profit metrics
-  const ordersWithProfit = orders.map(o => {
+  // Per-order profit metrics -- same computation the pre-existing route
+  // already did, preserved here rather than dropped.
+  const ordersWithProfit = orders.map((o) => {
     const cogs = o.items.reduce((s, i) => s + i.costOfGoods, 0)
     const grossProfit = o.subtotal - cogs
     const netProfit = grossProfit - o.stripeFee - o.shippingCost
@@ -52,6 +51,14 @@ export async function PATCH(req: NextRequest) {
 
   const { orderId, status, notes } = await req.json()
   if (!orderId) return NextResponse.json({ error: 'orderId required' }, { status: 400 })
+  // CANCELLED must go through POST /api/admin/orders/[id]/cancel, which runs
+  // the real reservation-release/payment-check lifecycle (Phase 4A Critical
+  // #4) -- a bare status PATCH would silently skip all of that. Every other
+  // status value (PROCESSING/SHIPPED/DELIVERED/etc.) is still a plain,
+  // low-risk record-keeping update with no reservation implications.
+  if (status === 'CANCELLED') {
+    return NextResponse.json({ error: 'Use POST /api/admin/orders/[id]/cancel to cancel an order' }, { status: 400 })
+  }
 
   const update: Record<string, unknown> = {}
   if (status) update.status = status
@@ -60,13 +67,7 @@ export async function PATCH(req: NextRequest) {
   const order = await prisma.order.update({ where: { id: orderId }, data: update })
 
   await prisma.adminAuditLog.create({
-    data: {
-      action: 'UPDATE_ORDER',
-      entity: 'Order',
-      entityId: orderId,
-      adminId: userId!,
-      details: update as unknown as import('@prisma/client').Prisma.InputJsonValue,
-    },
+    data: { action: 'UPDATE_ORDER', entity: 'Order', entityId: orderId, adminId: userId!, details: update as unknown as import('@prisma/client').Prisma.InputJsonValue },
   })
 
   return NextResponse.json(order)
