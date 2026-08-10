@@ -1,27 +1,13 @@
 // Admin-facing alert fired when a backorder compensation creates a pending
 // refund obligation that requires manual processing (no online-payment
-// provider is integrated, so nothing completes itself). Same plain-HTML-
-// string pattern as emails/AdminPaymentAlerts.tsx.
+// provider is integrated, so nothing completes itself). Same shell pattern
+// as emails/AdminPaymentAlerts.tsx.
+// Migrated onto the shared PepScore Lab email shell (docs/Decisions.md) --
+// content and send logic unchanged, presentation only.
+import { buildEmailShell, emailCta, emailPanel, escapeHtml, EMAIL_COLORS } from '@/emails/shared/shell'
+
 function formatMoney(amount: number): string {
   return amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-}
-
-function shell(bodyHtml: string): string {
-  const year = new Date().getFullYear()
-  return `<!DOCTYPE html>
-<html>
-<body style="font-family:Georgia,serif;background:#FAFAF5;color:#1A1A1A;margin:0;padding:0">
-  <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden">
-    <div style="background:#1A1A1A;padding:24px 36px;text-align:center">
-      <h1 style="color:#C49A1A;font-family:Helvetica,sans-serif;font-size:22px;margin:0;letter-spacing:0.1em">PEPSCORE ADMIN</h1>
-    </div>
-    <div style="padding:32px 36px">${bodyHtml}</div>
-    <div style="background:#1A1A1A;padding:16px 36px;text-align:center">
-      <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0">© ${year} Pepscore</p>
-    </div>
-  </div>
-</body>
-</html>`
 }
 
 interface RefundActionRequiredProps {
@@ -40,25 +26,22 @@ export function backorderFinancialActionRequiredSubject(invoiceNumber: string): 
 
 export function buildBackorderFinancialActionRequiredHtml(props: RefundActionRequiredProps): string {
   const adminLink = `${props.appUrl}/admin/invoices/${props.invoiceId}`
-  return shell(`
-    <h2 style="font-family:Helvetica,sans-serif;font-size:18px;margin:0 0 12px">Manual Refund Required</h2>
-    <p style="font-size:14px;line-height:1.6;color:#424242">
-      A backorder compensation on Invoice <strong>#${props.invoiceNumber}</strong> (${props.clientName}) requires a
-      real refund of <strong>${formatMoney(props.refundAmount)}</strong> — this invoice was already paid, so the
+  const bodyHtml = `
+    <h2 style="font-size:17px;color:${EMAIL_COLORS.textPrimary};margin:0 0 12px">Manual Refund Required</h2>
+    <p style="font-size:14px;line-height:1.6;color:${EMAIL_COLORS.textSecondary}">
+      A backorder compensation on Invoice <strong style="color:${EMAIL_COLORS.textPrimary}">#${escapeHtml(props.invoiceNumber)}</strong> (${escapeHtml(props.clientName)}) requires a
+      real refund of <strong style="color:${EMAIL_COLORS.textPrimary}">${formatMoney(props.refundAmount)}</strong> — this invoice was already paid, so the
       compensation could not be applied as a discount.
     </p>
-    <p style="font-size:13px;color:#757575;line-height:1.6">
-      No money has been returned yet. Pepscore has no automated refund provider, so this refund is recorded as
+    <p style="font-size:13px;color:${EMAIL_COLORS.textMuted};line-height:1.6">
+      No money has been returned yet. Pepscore Lab has no automated refund provider, so this refund is recorded as
       <strong>Pending</strong> until you process it manually (e.g. through your payment terminal or bank) and mark it
       complete from the invoice page. The customer has not been told a refund is complete.
     </p>
-    <p style="font-size:13px;color:#757575;line-height:1.6"><strong>Reason:</strong> ${props.reason}</p>
-    <p style="text-align:center;margin:22px 0 0">
-      <a href="${adminLink}" style="display:inline-block;background:#C49A1A;color:#1A1A1A;font-family:Helvetica,sans-serif;font-weight:bold;font-size:13px;text-decoration:none;padding:12px 26px;border-radius:8px">
-        Open Invoice &amp; Process Refund
-      </a>
-    </p>
-  `)
+    ${emailPanel(`<p style="margin:0;font-size:13px;line-height:1.6;color:${EMAIL_COLORS.textSecondary}"><strong style="color:${EMAIL_COLORS.textPrimary}">Reason:</strong> ${escapeHtml(props.reason)}</p>`)}
+    ${emailCta(adminLink, 'Open Invoice & Process Refund')}
+  `
+  return buildEmailShell({ eyebrow: 'Admin Alert', bodyHtml, footerNote: 'This is an internal admin notification.' })
 }
 
 // Same alert, generic wording — for a refund requested directly (not via a
@@ -71,24 +54,21 @@ export function refundActionRequiredSubject(invoiceNumber: string): string {
 
 export function buildRefundActionRequiredHtml(props: RefundActionRequiredProps): string {
   const adminLink = `${props.appUrl}/admin/invoices/${props.invoiceId}`
-  return shell(`
-    <h2 style="font-family:Helvetica,sans-serif;font-size:18px;margin:0 0 12px">Manual Refund Required</h2>
-    <p style="font-size:14px;line-height:1.6;color:#424242">
-      A refund of <strong>${formatMoney(props.refundAmount)}</strong> was requested on Invoice
-      <strong>#${props.invoiceNumber}</strong> (${props.clientName}).
+  const bodyHtml = `
+    <h2 style="font-size:17px;color:${EMAIL_COLORS.textPrimary};margin:0 0 12px">Manual Refund Required</h2>
+    <p style="font-size:14px;line-height:1.6;color:${EMAIL_COLORS.textSecondary}">
+      A refund of <strong style="color:${EMAIL_COLORS.textPrimary}">${formatMoney(props.refundAmount)}</strong> was requested on Invoice
+      <strong style="color:${EMAIL_COLORS.textPrimary}">#${escapeHtml(props.invoiceNumber)}</strong> (${escapeHtml(props.clientName)}).
     </p>
-    <p style="font-size:13px;color:#757575;line-height:1.6">
-      No money has been returned yet. Pepscore has no automated refund provider, so this refund is recorded as
+    <p style="font-size:13px;color:${EMAIL_COLORS.textMuted};line-height:1.6">
+      No money has been returned yet. Pepscore Lab has no automated refund provider, so this refund is recorded as
       <strong>Pending</strong> until you process it manually (e.g. through your payment terminal or bank) and mark it
       complete from the invoice page. The customer has not been told a refund is complete.
     </p>
-    <p style="font-size:13px;color:#757575;line-height:1.6"><strong>Reason:</strong> ${props.reason}</p>
-    <p style="text-align:center;margin:22px 0 0">
-      <a href="${adminLink}" style="display:inline-block;background:#C49A1A;color:#1A1A1A;font-family:Helvetica,sans-serif;font-weight:bold;font-size:13px;text-decoration:none;padding:12px 26px;border-radius:8px">
-        Open Invoice &amp; Process Refund
-      </a>
-    </p>
-  `)
+    ${emailPanel(`<p style="margin:0;font-size:13px;line-height:1.6;color:${EMAIL_COLORS.textSecondary}"><strong style="color:${EMAIL_COLORS.textPrimary}">Reason:</strong> ${escapeHtml(props.reason)}</p>`)}
+    ${emailCta(adminLink, 'Open Invoice & Process Refund')}
+  `
+  return buildEmailShell({ eyebrow: 'Admin Alert', bodyHtml, footerNote: 'This is an internal admin notification.' })
 }
 
 // A portal customer requested an email-address change — never applied
@@ -108,20 +88,17 @@ export function profileEmailChangeRequestedSubject(): string {
 
 export function buildProfileEmailChangeRequestedHtml(props: ProfileEmailChangeRequestedProps): string {
   const adminLink = `${props.appUrl}/admin/customers/${props.customerId}`
-  return shell(`
-    <h2 style="font-family:Helvetica,sans-serif;font-size:18px;margin:0 0 12px">Email Change Requested</h2>
-    <p style="font-size:14px;line-height:1.6;color:#424242">
-      <strong>${props.customerName}</strong> requested to change their portal account email from
-      <strong>${props.currentEmail ?? '(none on file)'}</strong> to <strong>${props.requestedEmail}</strong>.
+  const bodyHtml = `
+    <h2 style="font-size:17px;color:${EMAIL_COLORS.textPrimary};margin:0 0 12px">Email Change Requested</h2>
+    <p style="font-size:14px;line-height:1.6;color:${EMAIL_COLORS.textSecondary}">
+      <strong style="color:${EMAIL_COLORS.textPrimary}">${escapeHtml(props.customerName)}</strong> requested to change their portal account email from
+      <strong style="color:${EMAIL_COLORS.textPrimary}">${props.currentEmail ? escapeHtml(props.currentEmail) : '(none on file)'}</strong> to <strong style="color:${EMAIL_COLORS.textPrimary}">${escapeHtml(props.requestedEmail)}</strong>.
     </p>
-    <p style="font-size:13px;color:#757575;line-height:1.6">
+    <p style="font-size:13px;color:${EMAIL_COLORS.textMuted};line-height:1.6">
       This has not been changed automatically. Verify the request is genuine before updating it on the customer's
       profile — changing this email changes what a future portal login must match to claim or re-claim this account.
     </p>
-    <p style="text-align:center;margin:22px 0 0">
-      <a href="${adminLink}" style="display:inline-block;background:#C49A1A;color:#1A1A1A;font-family:Helvetica,sans-serif;font-weight:bold;font-size:13px;text-decoration:none;padding:12px 26px;border-radius:8px">
-        Review Customer
-      </a>
-    </p>
-  `)
+    ${emailCta(adminLink, 'Review Customer')}
+  `
+  return buildEmailShell({ eyebrow: 'Admin Alert', bodyHtml, footerNote: 'This is an internal admin notification.' })
 }
