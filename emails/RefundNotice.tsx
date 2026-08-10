@@ -1,32 +1,16 @@
 // Customer-facing emails for the standalone (non-backorder) refund/credit
 // workflow — sent at request time, before anything has actually happened.
-// Same plain-HTML-string pattern and shell as emails/BackorderNotice.tsx.
 // The completion confirmation is deliberately NOT duplicated here:
 // emails/BackorderNotice.tsx's refundCompletedSubject/buildRefundCompletedHtml
 // is already fully generic (no backorder-specific wording) and is reused
 // as-is by lib/backorders.ts's completeRefund() for both origins.
+// Migrated onto the shared PepScore Lab email shell (docs/Decisions.md) --
+// content and send logic unchanged, presentation only.
 import { BILLING_EMAIL } from '@/lib/resend'
+import { buildEmailShell, escapeHtml, EMAIL_COLORS } from '@/emails/shared/shell'
 
 function formatMoney(amount: number): string {
   return amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-}
-
-function shell(bodyHtml: string): string {
-  const year = new Date().getFullYear()
-  return `<!DOCTYPE html>
-<html>
-<body style="font-family:Georgia,serif;background:#FAFAF5;color:#1A1A1A;margin:0;padding:0">
-  <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden">
-    <div style="background:#1A1A1A;padding:28px 36px;text-align:center">
-      <h1 style="color:#C49A1A;font-family:Helvetica,sans-serif;font-size:26px;margin:0;letter-spacing:0.1em">PEPSCORE</h1>
-    </div>
-    <div style="padding:32px 36px">${bodyHtml}</div>
-    <div style="background:#1A1A1A;padding:20px 36px;text-align:center">
-      <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0">© ${year} Pepscore · ${BILLING_EMAIL}</p>
-    </div>
-  </div>
-</body>
-</html>`
 }
 
 export interface RefundRequestedProps {
@@ -44,17 +28,18 @@ export function refundRequestedSubject(invoiceNumber: string): string {
 // has moved yet. Matches the no-false-completion rule that governs every
 // refund-related template in this codebase.
 export function buildRefundRequestedHtml(props: RefundRequestedProps): string {
-  return shell(`
-    <h2 style="font-family:Helvetica,sans-serif;font-size:19px;margin:0 0 14px">Hi ${props.customerName},</h2>
-    <p style="font-size:14px;line-height:1.7;color:#424242">
+  const bodyHtml = `
+    <h2 style="font-size:19px;color:${EMAIL_COLORS.textPrimary};margin:0 0 14px">Hi ${escapeHtml(props.customerName)},</h2>
+    <p style="font-size:14px;line-height:1.7;color:${EMAIL_COLORS.textSecondary}">
       We've received a refund request of <strong>${formatMoney(props.requestedAmount)}</strong> for Invoice
-      <strong>#${props.invoiceNumber}</strong> (${props.reason}). This refund is now <strong>pending</strong> — we'll
+      <strong>#${escapeHtml(props.invoiceNumber)}</strong> (${escapeHtml(props.reason)}). This refund is now <strong>pending</strong> — we'll
       send a separate confirmation once it's actually been completed.
     </p>
-    <p style="font-size:14px;line-height:1.7;color:#424242">
+    <p style="font-size:14px;line-height:1.7;color:${EMAIL_COLORS.textSecondary}">
       Reach out anytime at ${BILLING_EMAIL} with questions.
     </p>
-  `)
+  `
+  return buildEmailShell({ eyebrow: 'Refund Requested', bodyHtml, footerNote: `Questions? Reply to this email or contact ${BILLING_EMAIL}.` })
 }
 
 export interface AccountCreditIssuedProps {
@@ -69,17 +54,18 @@ export function accountCreditIssuedSubject(invoiceNumber: string): string {
 }
 
 // Account credit, unlike a cash refund, is issued immediately (it's store
-// credit Pepscore grants directly, not money returned through an external
-// provider) — so this is a completed-state notice, not a pending one.
+// credit Pepscore Lab grants directly, not money returned through an
+// external provider) — so this is a completed-state notice, not a pending one.
 export function buildAccountCreditIssuedHtml(props: AccountCreditIssuedProps): string {
-  return shell(`
-    <h2 style="font-family:Helvetica,sans-serif;font-size:19px;margin:0 0 14px">Hi ${props.customerName},</h2>
-    <p style="font-size:14px;line-height:1.7;color:#424242">
-      A credit of <strong>${formatMoney(props.amount)}</strong> has been added to your account (${props.reason}),
-      related to Invoice <strong>#${props.invoiceNumber}</strong>. You can apply it toward a future order.
+  const bodyHtml = `
+    <h2 style="font-size:19px;color:${EMAIL_COLORS.textPrimary};margin:0 0 14px">Hi ${escapeHtml(props.customerName)},</h2>
+    <p style="font-size:14px;line-height:1.7;color:${EMAIL_COLORS.textSecondary}">
+      A credit of <strong>${formatMoney(props.amount)}</strong> has been added to your account (${escapeHtml(props.reason)}),
+      related to Invoice <strong>#${escapeHtml(props.invoiceNumber)}</strong>. You can apply it toward a future order.
     </p>
-    <p style="font-size:14px;line-height:1.7;color:#424242">
+    <p style="font-size:14px;line-height:1.7;color:${EMAIL_COLORS.textSecondary}">
       Reach out anytime at ${BILLING_EMAIL} with questions.
     </p>
-  `)
+  `
+  return buildEmailShell({ eyebrow: 'Account Credit', bodyHtml, footerNote: `Questions? Reply to this email or contact ${BILLING_EMAIL}.` })
 }
