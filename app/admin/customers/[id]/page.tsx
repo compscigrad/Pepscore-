@@ -19,8 +19,9 @@ import { InvoiceHistoryFilter } from '@/components/invoices/InvoiceHistoryFilter
 import { InvoiceArchiveButton } from '@/components/invoices/InvoiceArchiveButton'
 import { card, mutedText, sectionHeading, pillPrimary } from '@/components/invoices/theme'
 import { PortalAccessSection } from '@/components/admin/PortalAccessSection'
+import { CustomerPortalStatusSection } from '@/components/admin/CustomerPortalStatusSection'
 import { SpaEligibilitySection } from '@/components/admin/SpaEligibilitySection'
-import { getPortalReadinessStatus, type PortalReadinessStatus } from '@/lib/portal/readiness'
+import { computePortalAdoptionOverview } from '@/lib/portal/adoptionStatus'
 import { AccessHistorySection } from '@/components/admin/AccessHistorySection'
 import { LocalTimestamp } from '@/components/admin/LocalTimestamp'
 import { CustomerContactEditor } from '@/components/admin/CustomerContactEditor'
@@ -33,27 +34,11 @@ interface PageProps {
   searchParams: Promise<{ month?: string; year?: string; period?: string }>
 }
 
-const READINESS_LABEL: Record<PortalReadinessStatus, string> = {
-  CLAIMED: 'Claimed',
-  DISABLED: 'Access disabled',
-  CONFLICT_REVIEW: 'Needs review',
-  INVITE_SENT: 'Invite sent',
-  INVITE_EXPIRED: 'Invite expired',
-  INVITE_REVOKED: 'Invite revoked',
-  UNCLAIMED_ELIGIBLE: 'Not yet invited',
-  MISSING_CONTACT: 'Missing contact info',
-}
-
-const READINESS_BADGE_STYLE: Record<PortalReadinessStatus, string> = {
-  CLAIMED: 'bg-emerald-400/10 text-emerald-300 border border-emerald-400/20',
-  DISABLED: 'bg-red-400/10 text-red-300 border border-red-400/20',
-  CONFLICT_REVIEW: 'bg-amber-400/10 text-amber-300 border border-amber-400/20',
-  INVITE_SENT: 'bg-blue-400/10 text-blue-300 border border-blue-400/20',
-  INVITE_EXPIRED: 'bg-white/5 text-white/40 border border-white/10',
-  INVITE_REVOKED: 'bg-white/5 text-white/40 border border-white/10',
-  UNCLAIMED_ELIGIBLE: 'bg-white/5 text-white/50 border border-white/10',
-  MISSING_CONTACT: 'bg-white/5 text-white/30 border border-white/10',
-}
+// Which the customer actually clicked through to activate their account --
+// covers both the admin-invite claim path (PORTAL_ACCOUNT_CLAIMED) and both
+// self-service paths (PORTAL_ACCOUNT_SELF_CLAIMED / SELF_REGISTERED), since
+// only the admin-invite path ever produces a CustomerPortalInvite.claimedAt.
+const ACTIVATION_EVENT_TYPES = new Set(['PORTAL_ACCOUNT_CLAIMED', 'PORTAL_ACCOUNT_SELF_CLAIMED', 'PORTAL_ACCOUNT_SELF_REGISTERED'])
 
 function formatAddress(address: unknown): string | null {
   if (!address || typeof address !== 'object' || Array.isArray(address)) return null
@@ -97,7 +82,10 @@ export default async function CustomerProfilePage({ params, searchParams }: Page
     getInvoiceHistoryYearRange(customer.id),
   ])
 
-  const portalReadiness = await getPortalReadinessStatus(customer)
+  const portalAdoption = await computePortalAdoptionOverview()
+  const portalEntry = portalAdoption.byCustomerId.get(customer.id) ?? { status: 'NOT_ELIGIBLE' as const, reason: null }
+  const latestPortalInvite = customer.portalInvites[0] ?? null
+  const activationLogEntry = [...customer.activityLog].reverse().find((e) => ACTIVATION_EVENT_TYPES.has(e.eventType))
 
   const duplicates = await findPossibleDuplicateCustomers({
     firstName: customer.firstName,
@@ -326,16 +314,23 @@ export default async function CustomerProfilePage({ params, searchParams }: Page
           </div>
         ) : null}
 
-        <div className="flex items-center gap-2">
-          <span className={`text-xs font-heading font-bold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full ${READINESS_BADGE_STYLE[portalReadiness]}`}>
-            {READINESS_LABEL[portalReadiness]}
-          </span>
-          {portalReadiness === 'CONFLICT_REVIEW' ? (
-            <Link href="/admin/identity-review" className="text-xs text-gold hover:text-gold-light underline">
-              Review in queue →
-            </Link>
-          ) : null}
-        </div>
+        <CustomerPortalStatusSection
+          status={portalEntry.status}
+          reason={portalEntry.reason}
+          invite={
+            latestPortalInvite
+              ? {
+                  createdAt: latestPortalInvite.createdAt,
+                  expiresAt: latestPortalInvite.expiresAt,
+                  channel: latestPortalInvite.channel,
+                  remindersSent: latestPortalInvite.remindersSent,
+                  lastReminderAt: latestPortalInvite.lastReminderAt,
+                  revokedAt: latestPortalInvite.revokedAt,
+                }
+              : null
+          }
+          activatedAt={activationLogEntry?.createdAt ?? null}
+        />
 
         <PortalAccessSection customerId={customer.id} hasEmail={Boolean(customer.email)} />
 

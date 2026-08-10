@@ -399,6 +399,10 @@ const customerProfileInclude = Prisma.validator<Prisma.CustomerDefaultArgs>()({
     activityLog: { orderBy: { createdAt: 'desc' } },
     intakeLinks: { orderBy: { createdAt: 'desc' } },
     leadCaptures: { orderBy: { createdAt: 'desc' } },
+    // Most recent invite only -- the Customer Portal section derives status
+    // from computePortalAdoptionOverview() (same source of truth as the
+    // rollout/adoption dashboard), this is just for invite/reminder dates.
+    portalInvites: { orderBy: { createdAt: 'desc' }, take: 1 },
   },
 })
 export type CustomerProfile = Prisma.CustomerGetPayload<typeof customerProfileInclude>
