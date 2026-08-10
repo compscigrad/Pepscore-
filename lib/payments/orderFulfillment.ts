@@ -175,7 +175,11 @@ export async function markOrderPaymentProcessing(input: MarkOrderPaymentProcessi
 
 export interface MarkOrderPaymentFailedInput {
   orderId: string
-  status: 'FAILED' | 'RETURNED'
+  // CANCELLED covers an abandoned/expired checkout session (Phase 4A
+  // Critical #3) -- no payment attempt was ever actually declined, so
+  // FAILED would misrepresent what happened; CANCELLED matches the real
+  // Prisma PaymentStatus value for "never completed."
+  status: 'FAILED' | 'RETURNED' | 'CANCELLED'
   reason?: string
 }
 
