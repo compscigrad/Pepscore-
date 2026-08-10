@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation'
 import { BackorderIndicator } from './BackorderIndicator'
 import { BackorderLegend } from './BackorderLegend'
 import { STOREFRONT_BACKORDER_CREDIT_AMOUNT, STOREFRONT_BACKORDER_MINIMUM_ORDER_TOTAL } from '@/lib/storefront/backorderPolicy'
+import { SELL_UNIT_DISPLAY_LABEL } from '@/lib/pricing/sellUnits'
 
 export function CartSidebar() {
   const { items, isOpen, closeCart, removeItem, updateQuantity, total } = useCartStore()
@@ -61,7 +62,7 @@ export function CartSidebar() {
           ) : (
             <ul className="space-y-1">
               {items.map(item => (
-                <li key={item.id} className="flex gap-3 py-3 border-b border-white/10 items-center">
+                <li key={`${item.id}-${item.sellUnit ?? 'CASE_STANDARD'}`} className="flex gap-3 py-3 border-b border-white/10 items-center">
                   <div className="w-[60px] h-[60px] bg-white/[0.04] rounded-lg overflow-hidden flex-shrink-0 relative">
                     <Image src={item.imageUrl} alt={item.name} fill className="object-contain p-1" />
                   </div>
@@ -70,18 +71,23 @@ export function CartSidebar() {
                       {item.name}
                       {item.backordered && <BackorderIndicator />}
                     </p>
-                    <p className="text-[12px] text-[#D4AF37] font-semibold">${item.price.toFixed(2)} / {item.size}</p>
+                    <p className="text-[12px] text-[#D4AF37] font-semibold">
+                      ${item.price.toFixed(2)} / {item.size}
+                      {item.sellUnit && item.sellUnit !== 'CASE_STANDARD' && (
+                        <span className="text-white/50 font-normal"> · {SELL_UNIT_DISPLAY_LABEL[item.sellUnit]}</span>
+                      )}
+                    </p>
                     {/* Quantity controls */}
                     <div className="flex items-center gap-2 mt-1.5">
                       <button
-                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                        onClick={() => updateQuantity(item.id, item.quantity - 1, item.sellUnit)}
                         className="w-6 h-6 border border-white/20 text-white/70 rounded flex items-center justify-center hover:bg-[#D4AF37] hover:border-[#D4AF37] hover:text-black transition-all"
                       >
                         <Minus size={11} />
                       </button>
                       <span className="font-heading text-[13px] font-bold w-5 text-center text-white">{item.quantity}</span>
                       <button
-                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                        onClick={() => updateQuantity(item.id, item.quantity + 1, item.sellUnit)}
                         className="w-6 h-6 border border-white/20 text-white/70 rounded flex items-center justify-center hover:bg-[#D4AF37] hover:border-[#D4AF37] hover:text-black transition-all"
                       >
                         <Plus size={11} />
@@ -89,7 +95,7 @@ export function CartSidebar() {
                     </div>
                   </div>
                   <button
-                    onClick={() => removeItem(item.id)}
+                    onClick={() => removeItem(item.id, item.sellUnit)}
                     className="text-white/30 hover:text-red-500 transition-colors p-1 flex-shrink-0"
                     aria-label="Remove item"
                   >

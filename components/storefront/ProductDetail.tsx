@@ -82,7 +82,22 @@ export function ProductDetail({
 
   function handleAdd() {
     if (!canPurchase || price == null) return
-    addItem({ id, slug, name, size, price: price.standardCasePrice, imageUrl, backordered: availability === 'BACKORDERED' })
+    // Standard Case is the only tier this page's own "Add to Cart" button
+    // has ever offered -- explicitly tagging the line as such (rather than
+    // leaving sellUnit unset) means it correctly gets its own cart line
+    // even if a future page/flow (e.g. Buy Again resolving an Individual
+    // Vial purchase) adds a differently-tiered line for the same product.
+    addItem({
+      id,
+      slug,
+      name,
+      size,
+      price: price.standardCasePrice,
+      imageUrl,
+      backordered: availability === 'BACKORDERED',
+      sellUnit: 'CASE_STANDARD',
+      unitsPerSellUnit: price.unitsPerCase ?? 10,
+    })
     toast.success(`${name} ${size} added to cart`)
     openCart()
   }

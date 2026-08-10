@@ -468,6 +468,21 @@ model OrderItem {
   unitPrice   Float
   costOfGoods Float   @default(0)
   total       Float
+
+  // ─── Sell-unit awareness (Phase 3C reorder architecture) ──────────────────
+  // Additive: every pre-existing OrderItem row has both null, meaning
+  // "Standard Case" (checkout's only-ever-offered tier before this) --
+  // reads of these two fields must always tolerate null, never assume a
+  // real value on historical rows. Reuses InvoiceItemSellUnit rather than a
+  // parallel enum, since it's the exact same tier concept already
+  // established for invoices (CASE_STANDARD | CASE_SPA | CASE_BULK |
+  // INDIVIDUAL_VIAL). unitsPerSellUnit is how many physical vials one unit
+  // of `quantity` represents (10 for a Standard/SPA/Bulk Case, 1 for an
+  // Individual Vial) -- checkout resolves and stores this at purchase time
+  // so inventory reservation deducts the correct number of vials, not a
+  // raw case count.
+  sellUnit         InvoiceItemSellUnit?
+  unitsPerSellUnit Int?
 }
 
 // ─── Invoices ────────────────────────────────────────────────────────────────

@@ -9,8 +9,9 @@ import { prisma } from '@/lib/prisma'
 import { generateOrderNumber, generateInvoiceNumber } from '@/lib/orders'
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
 import { isStorefrontCheckoutEnabled, STOREFRONT_CHECKOUT_DISABLED_MESSAGE } from '@/lib/storefront/checkoutGate'
-import { getStorefrontPrice } from '@/lib/storefront/pricing'
 import { getStorefrontAvailability, isPurchasable } from '@/lib/storefront/availability'
+import { resolveCheckoutLine, computeVialsToReserve } from '@/lib/storefront/checkoutPricing'
+import { SELL_UNIT_DISPLAY_LABEL } from '@/lib/pricing/sellUnits'
 import { reserveForOrderItemTx, releaseAllOrderReservationsTx } from '@/lib/inventory/orderReservations'
 import { getPaymentSettings } from '@/lib/payments/settings'
 import type { CheckoutLineItem, ShippingAddress } from '@/types'
@@ -69,24 +70,26 @@ export async function POST(req: NextRequest) {
     const productMap = new Map(products.map(p => [p.id, p]))
 
     // Build validated line items using DB prices (never trust client-side
-    // prices) -- authoritative Standard Case pricing, matching what the
-    // storefront actually displayed (lib/storefront/pricing.ts), not the
-    // legacy Product.price field. A product with no approved active price,
-    // or one that's out of stock/coming soon (lib/storefront/availability.ts),
-    // can't be checked out at all -- the same rules ProductCard's "Add to
-    // Cart" gating already enforces client-side.
+    // prices) -- authoritative per-sell-unit pricing (lib/storefront/
+    // checkoutPricing.ts), not the legacy Product.price field and not
+    // whatever the client cart happened to snapshot. A product with no
+    // approved active price for the requested tier, or one that's out of
+    // stock/coming soon (lib/storefront/availability.ts), can't be checked
+    // out at all -- the same rules ProductCard's "Add to Cart" gating
+    // already enforces client-side.
     const lineItems = items.map(i => {
       const product = productMap.get(i.productId)
       if (!product) throw new Error(`Product ${i.productId} not found`)
-      const price = getStorefrontPrice(product)
-      if (price == null) throw new Error(`${product.name} (${product.size}) is not currently available for purchase`)
       if (!isPurchasable(getStorefrontAvailability(product))) {
         throw new Error(`${product.name} (${product.size}) is currently out of stock`)
       }
+      const resolved = resolveCheckoutLine(product, i.sellUnit)
       return {
         ...i,
-        unitPrice: price.standardCasePrice,
-        total: price.standardCasePrice * i.quantity,
+        sellUnit: resolved.sellUnit,
+        unitsPerSellUnit: resolved.unitsPerSellUnit,
+        unitPrice: resolved.unitPrice,
+        total: resolved.unitPrice * i.quantity,
         costOfGoods: product.costOfGoods * i.quantity,
       }
     })
@@ -126,6 +129,8 @@ export async function POST(req: NextRequest) {
               size: i.size,
               quantity: i.quantity,
               unitPrice: i.unitPrice,
+              sellUnit: i.sellUnit,
+              unitsPerSellUnit: i.unitsPerSellUnit,
               costOfGoods: (productMap.get(i.productId)?.costOfGoods ?? 0) * i.quantity,
               total: i.total,
             })),
@@ -149,11 +154,13 @@ export async function POST(req: NextRequest) {
 
       for (const orderItem of created.items) {
         const product = productMap.get(orderItem.productId)
+        // Reserve physical vials, not raw cart "quantity" -- a quantity of
+        // 2 Standard Cases (10 vials each) must reserve 20 vials, not 2.
         const { shortfall } = await reserveForOrderItemTx(tx, {
           productId: orderItem.productId,
           orderId: created.id,
           orderItemId: orderItem.id,
-          quantity: orderItem.quantity,
+          quantity: computeVialsToReserve(orderItem.quantity, orderItem.unitsPerSellUnit),
           actor: 'storefront-checkout',
         })
         if (shortfall > 0 && !product?.backorderEnabled) {
@@ -194,12 +201,15 @@ export async function POST(req: NextRequest) {
     ]
     if (paymentMethodTypes.length === 0) paymentMethodTypes.push('card')
 
-    // Build Stripe line items
+    // Build Stripe line items -- includes the resolved sell-unit label
+    // (e.g. "Individual Vial") so what the customer sees on Stripe's own
+    // checkout page matches what they actually selected, not just the bare
+    // product/strength name every tier used to share.
     const stripeLineItems = lineItems.map(i => ({
       price_data: {
         currency: 'usd',
         product_data: {
-          name: `${i.name} (${i.size})`,
+          name: `${i.name} (${i.size}) — ${SELL_UNIT_DISPLAY_LABEL[i.sellUnit]}`,
           description: 'For Research Use Only. Not for human use.',
         },
         unit_amount: Math.round(i.unitPrice * 100),
