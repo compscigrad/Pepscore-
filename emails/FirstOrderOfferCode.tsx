@@ -1,23 +1,20 @@
 // Customer-facing discount-code delivery for a qualifying first-order
 // acquisition offer (Promotion Campaign system) -- sent once, immediately
-// after a successful claim. Same plain-HTML-string shell pattern as
-// emails/LeadCaptured.tsx, using the current "Pepscore Lab" dark branding.
+// after a successful claim.
+// Refactored onto the shared PepScore Lab email shell (docs/Decisions.md)
+// -- this template already used matching tokens (it was built in the same
+// session as the shell), so this is a pure de-duplication: removes its own
+// locally-defined header/footer/CTA/escapeHtml in favor of the shared
+// versions, content unchanged. The two CTAs (primary "Create Your
+// Account" + secondary "Shop PepScore Lab") now stack vertically instead
+// of sitting side-by-side in one row -- the shared shell's dual-CTA
+// convention, matching every other multi-CTA template going forward
+// rather than this template's own one-off inline layout.
 import { formatDiscountLabel } from '@/lib/promotions/format'
 import type { PromotionType } from '@prisma/client'
+import { buildEmailShell, emailCta, emailCtaOutline, emailPanel, escapeHtml, EMAIL_COLORS } from '@/emails/shared/shell'
 
-const CONTENT_BG = '#0d0d0d'
-const CARD_BG = '#161616'
-const GOLD = '#D4AF37'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? ''
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-}
 
 export interface FirstOrderOfferCodeProps {
   firstName: string
@@ -37,38 +34,33 @@ export function buildFirstOrderOfferCodeHtml(props: FirstOrderOfferCodeProps): s
   const signUpUrl = `${APP_URL}/sign-up?redirect_url=/account`
   const shopUrl = `${APP_URL}/categories`
   const expiryLine = props.expiresAt
-    ? `<p style="margin:0 0 4px"><strong style="color:#fff">Expires:</strong> ${props.expiresAt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>`
+    ? `<p style="margin:0 0 4px;font-size:15px;color:${EMAIL_COLORS.textPrimary}"><strong>Expires:</strong> ${props.expiresAt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>`
     : ''
 
-  return `<!DOCTYPE html>
-<html>
-<body style="font-family:Helvetica,Arial,sans-serif;background:#000;color:#fff;margin:0;padding:0">
-  <div style="max-width:600px;margin:0 auto;background:${CONTENT_BG};border-radius:12px;overflow:hidden">
-    <div style="background:#000;padding:26px 36px;text-align:center;border-bottom:1px solid rgba(212,175,55,0.15)">
-      <span style="font-size:20px;font-weight:800;color:#fff">Pepscore</span>
-      <span style="font-size:20px;font-weight:800;color:${GOLD}"> Lab</span>
+  const codePanel = emailPanel(`
+    <p style="margin:0 0 6px;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:${EMAIL_COLORS.textMuted};text-align:center">Your Code</p>
+    <p style="margin:0;font-size:26px;font-weight:800;letter-spacing:2px;color:${EMAIL_COLORS.gold};text-align:center">${escapeHtml(props.code)}</p>
+  `)
+
+  const detailsPanel = `
+    <div style="font-size:13px;line-height:1.9;color:${EMAIL_COLORS.textSecondary};margin:0 0 8px">
+      <p style="margin:0 0 4px;font-size:15px;color:${EMAIL_COLORS.textPrimary}"><strong>Discount:</strong> ${formatDiscountLabel(props.discountType, props.discountValue)}</p>
+      ${expiryLine}
+      <p style="margin:0;font-size:15px;color:${EMAIL_COLORS.textPrimary}"><strong>Redemption:</strong> One qualifying first order per customer</p>
     </div>
-    <div style="padding:32px 36px">
-      <h2 style="font-size:18px;margin:0 0 8px;color:#fff">Hi ${escapeHtml(props.firstName)},</h2>
-      <p style="font-size:14px;line-height:1.7;color:rgba(255,255,255,0.75);margin:0 0 20px">
-        ${escapeHtml(props.publicTitle)}${props.publicDescription ? ` — ${escapeHtml(props.publicDescription)}` : ''} Here's your unique code, good for one qualifying first order.
-      </p>
-      <div style="background:${CARD_BG};border:1px solid rgba(212,175,55,0.3);border-radius:10px;padding:22px;margin:0 0 22px;text-align:center">
-        <p style="margin:0 0 6px;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.5)">Your Code</p>
-        <p style="margin:0;font-size:26px;font-weight:800;letter-spacing:2px;color:${GOLD}">${escapeHtml(props.code)}</p>
-      </div>
-      <div style="font-size:13px;line-height:1.9;color:rgba(255,255,255,0.7);margin:0 0 24px">
-        <p style="margin:0 0 4px"><strong style="color:#fff">Discount:</strong> ${formatDiscountLabel(props.discountType, props.discountValue)}</p>
-        ${expiryLine}
-        <p style="margin:0"><strong style="color:#fff">Redemption:</strong> One qualifying first order per customer</p>
-      </div>
-      <div style="text-align:center;margin:0 0 24px">
-        <a href="${signUpUrl}" style="display:inline-block;background:${GOLD};color:#000;font-weight:700;font-size:13px;text-decoration:none;padding:12px 28px;border-radius:999px;margin:0 8px 10px">Create Your Account</a>
-        <a href="${shopUrl}" style="display:inline-block;background:transparent;border:1px solid rgba(212,175,55,0.4);color:${GOLD};font-weight:700;font-size:13px;text-decoration:none;padding:12px 28px;border-radius:999px;margin:0 8px 10px">Shop Now</a>
-      </div>
-      <p style="font-size:12px;color:rgba(255,255,255,0.4);margin:0">Create or sign in to your Pepscore Lab account, then apply this code at checkout on your first qualifying order.</p>
-    </div>
-  </div>
-</body>
-</html>`
+  `
+
+  const bodyHtml = `
+    <h2 style="font-size:19px;color:${EMAIL_COLORS.textPrimary};margin:0 0 8px">Hi ${escapeHtml(props.firstName)},</h2>
+    <p style="font-size:14px;line-height:1.7;color:${EMAIL_COLORS.textSecondary};margin:0 0 20px">
+      ${escapeHtml(props.publicTitle)}${props.publicDescription ? ` — ${escapeHtml(props.publicDescription)}` : ''} Here's your unique code, good for one qualifying first order.
+    </p>
+    ${codePanel}
+    ${detailsPanel}
+    ${emailCta(signUpUrl, 'Create Your Account')}
+    ${emailCtaOutline(shopUrl, 'Shop PepScore Lab')}
+    <p style="font-size:12px;color:${EMAIL_COLORS.textMuted};margin:0;text-align:center">Create or sign in to your Pepscore Lab account, then apply this code at checkout on your first qualifying order.</p>
+  `
+
+  return buildEmailShell({ bodyHtml, footerNote: 'Questions about your offer? Reply to this email — we\'re happy to help.' })
 }
