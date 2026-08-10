@@ -1,29 +1,13 @@
 // Admin-facing alerts fired the moment a client submits a Pay in Full
 // selection (Section 12) or a payment-arrangement request (Section 16).
-// Same plain-HTML-string pattern as emails/InvoiceIssued.tsx — no template
-// library, sent directly through Resend. Both explicitly state that nothing
-// has been confirmed as received yet, matching the spec's suggested wording
-// verbatim in substance.
+// Both explicitly state that nothing has been confirmed as received yet,
+// matching the spec's suggested wording verbatim in substance.
+// Migrated onto the shared PepScore Lab email shell (docs/Decisions.md) --
+// content and send logic unchanged, presentation only.
+import { buildEmailShell, emailCta, emailPanel, escapeHtml, EMAIL_COLORS } from '@/emails/shared/shell'
+
 function formatMoney(amount: number): string {
   return amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-}
-
-function shell(bodyHtml: string): string {
-  const year = new Date().getFullYear()
-  return `<!DOCTYPE html>
-<html>
-<body style="font-family:Georgia,serif;background:#FAFAF5;color:#1A1A1A;margin:0;padding:0">
-  <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden">
-    <div style="background:#1A1A1A;padding:24px 36px;text-align:center">
-      <h1 style="color:#C49A1A;font-family:Helvetica,sans-serif;font-size:22px;margin:0;letter-spacing:0.1em">PEPSCORE ADMIN</h1>
-    </div>
-    <div style="padding:32px 36px">${bodyHtml}</div>
-    <div style="background:#1A1A1A;padding:16px 36px;text-align:center">
-      <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0">© ${year} Pepscore</p>
-    </div>
-  </div>
-</body>
-</html>`
 }
 
 interface PaymentSelectionPendingProps {
@@ -46,32 +30,31 @@ export function paymentSelectionPendingSubject(invoiceNumber: string): string {
 
 export function buildPaymentSelectionPendingHtml(props: PaymentSelectionPendingProps): string {
   const adminLink = `${props.appUrl}/admin/invoices/${props.invoiceId}`
-  return shell(`
-    <h2 style="font-family:Helvetica,sans-serif;font-size:18px;margin:0 0 12px">Payment Selection Pending</h2>
-    <p style="font-size:14px;line-height:1.6;color:#424242">
-      The client has submitted a Pay in Full payment selection for Invoice <strong>#${props.invoiceNumber}</strong>.
-      The invoice has automatically changed to <strong>Pending</strong>.
+  const detailsPanel = emailPanel(`
+    <p style="margin:0;font-size:13px;line-height:1.8;color:${EMAIL_COLORS.textSecondary}"><strong style="color:${EMAIL_COLORS.textPrimary}">Client:</strong> ${escapeHtml(props.clientName)}</p>
+    <p style="margin:0;font-size:13px;line-height:1.8;color:${EMAIL_COLORS.textSecondary}"><strong style="color:${EMAIL_COLORS.textPrimary}">Phone:</strong> ${props.clientPhone ? escapeHtml(props.clientPhone) : '—'}</p>
+    <p style="margin:0;font-size:13px;line-height:1.8;color:${EMAIL_COLORS.textSecondary}"><strong style="color:${EMAIL_COLORS.textPrimary}">Email:</strong> ${props.clientEmail ? escapeHtml(props.clientEmail) : '—'}</p>
+    <p style="margin:0;font-size:13px;line-height:1.8;color:${EMAIL_COLORS.textSecondary}"><strong style="color:${EMAIL_COLORS.textPrimary}">Selected Method:</strong> ${escapeHtml(props.selectedMethod)}</p>
+    <p style="margin:0;font-size:13px;line-height:1.8;color:${EMAIL_COLORS.textSecondary}"><strong style="color:${EMAIL_COLORS.textPrimary}">Invoice Total:</strong> ${formatMoney(props.invoiceTotal)}</p>
+    <p style="margin:0;font-size:13px;line-height:1.8;color:${EMAIL_COLORS.textSecondary}"><strong style="color:${EMAIL_COLORS.textPrimary}">Confirmed Amount Paid:</strong> ${formatMoney(props.amountPaid)}</p>
+    <p style="margin:0;font-size:13px;line-height:1.8;color:${EMAIL_COLORS.textSecondary}"><strong style="color:${EMAIL_COLORS.textPrimary}">Remaining Balance:</strong> ${formatMoney(props.balanceDue)}</p>
+    <p style="margin:0;font-size:13px;line-height:1.8;color:${EMAIL_COLORS.textSecondary}"><strong style="color:${EMAIL_COLORS.textPrimary}">Submitted:</strong> ${props.submittedAt.toLocaleString('en-US')}</p>
+  `)
+
+  const bodyHtml = `
+    <h2 style="font-size:17px;color:${EMAIL_COLORS.textPrimary};margin:0 0 12px">Payment Selection Pending</h2>
+    <p style="font-size:14px;line-height:1.6;color:${EMAIL_COLORS.textSecondary}">
+      The client has submitted a Pay in Full payment selection for Invoice <strong style="color:${EMAIL_COLORS.textPrimary}">#${escapeHtml(props.invoiceNumber)}</strong>.
+      The invoice has automatically changed to <strong style="color:${EMAIL_COLORS.textPrimary}">Pending</strong>.
     </p>
-    <div style="background:#F5F5F0;border-radius:10px;padding:18px 20px;margin:18px 0;font-size:13px;line-height:1.8">
-      <p style="margin:0"><strong>Client:</strong> ${props.clientName}</p>
-      <p style="margin:0"><strong>Phone:</strong> ${props.clientPhone ?? '—'}</p>
-      <p style="margin:0"><strong>Email:</strong> ${props.clientEmail ?? '—'}</p>
-      <p style="margin:0"><strong>Selected Method:</strong> ${props.selectedMethod}</p>
-      <p style="margin:0"><strong>Invoice Total:</strong> ${formatMoney(props.invoiceTotal)}</p>
-      <p style="margin:0"><strong>Confirmed Amount Paid:</strong> ${formatMoney(props.amountPaid)}</p>
-      <p style="margin:0"><strong>Remaining Balance:</strong> ${formatMoney(props.balanceDue)}</p>
-      <p style="margin:0"><strong>Submitted:</strong> ${props.submittedAt.toLocaleString('en-US')}</p>
-    </div>
-    <p style="font-size:13px;color:#757575;line-height:1.6">
+    ${detailsPanel}
+    <p style="font-size:13px;color:${EMAIL_COLORS.textMuted};line-height:1.6">
       This invoice is awaiting manual payment verification. No additional payment has been recorded or confirmed by
       this submission.
     </p>
-    <p style="text-align:center;margin:22px 0 0">
-      <a href="${adminLink}" style="display:inline-block;background:#C49A1A;color:#1A1A1A;font-family:Helvetica,sans-serif;font-weight:bold;font-size:13px;text-decoration:none;padding:12px 26px;border-radius:8px">
-        Open Invoice
-      </a>
-    </p>
-  `)
+    ${emailCta(adminLink, 'Open Invoice')}
+  `
+  return buildEmailShell({ eyebrow: 'Admin Alert', bodyHtml, footerNote: 'This is an internal admin notification.' })
 }
 
 interface ArrangementRequestPendingProps {
@@ -98,32 +81,31 @@ export function arrangementRequestPendingSubject(invoiceNumber: string): string 
 
 export function buildArrangementRequestPendingHtml(props: ArrangementRequestPendingProps): string {
   const adminLink = `${props.appUrl}/admin/invoices/${props.invoiceId}`
-  return shell(`
-    <h2 style="font-family:Helvetica,sans-serif;font-size:18px;margin:0 0 12px">Payment Arrangement Approval Required</h2>
-    <p style="font-size:14px;line-height:1.6;color:#424242">
-      The client has requested a payment arrangement for Invoice <strong>#${props.invoiceNumber}</strong>.
+  const detailsPanel = emailPanel(`
+    <p style="margin:0;font-size:13px;line-height:1.8;color:${EMAIL_COLORS.textSecondary}"><strong style="color:${EMAIL_COLORS.textPrimary}">Client:</strong> ${escapeHtml(props.clientName)}</p>
+    <p style="margin:0;font-size:13px;line-height:1.8;color:${EMAIL_COLORS.textSecondary}"><strong style="color:${EMAIL_COLORS.textPrimary}">Phone:</strong> ${props.clientPhone ? escapeHtml(props.clientPhone) : '—'}</p>
+    <p style="margin:0;font-size:13px;line-height:1.8;color:${EMAIL_COLORS.textSecondary}"><strong style="color:${EMAIL_COLORS.textPrimary}">Email:</strong> ${props.clientEmail ? escapeHtml(props.clientEmail) : '—'}</p>
+    <p style="margin:0;font-size:13px;line-height:1.8;color:${EMAIL_COLORS.textSecondary}"><strong style="color:${EMAIL_COLORS.textPrimary}">Invoice Status:</strong> Pending</p>
+    <p style="margin:0;font-size:13px;line-height:1.8;color:${EMAIL_COLORS.textSecondary}"><strong style="color:${EMAIL_COLORS.textPrimary}">Payment Status:</strong> ${escapeHtml(props.paymentStatus)}</p>
+    <p style="margin:0;font-size:13px;line-height:1.8;color:${EMAIL_COLORS.textSecondary}"><strong style="color:${EMAIL_COLORS.textPrimary}">Confirmed Amount Paid:</strong> ${formatMoney(props.amountPaid)}</p>
+    <p style="margin:0;font-size:13px;line-height:1.8;color:${EMAIL_COLORS.textSecondary}"><strong style="color:${EMAIL_COLORS.textPrimary}">Current Balance Due:</strong> ${formatMoney(props.balanceDue)}</p>
+    <p style="margin:8px 0 0;font-size:13px;line-height:1.8;color:${EMAIL_COLORS.textSecondary}"><strong style="color:${EMAIL_COLORS.textPrimary}">Requested Frequency:</strong> ${escapeHtml(props.frequency)}</p>
+    <p style="margin:0;font-size:13px;line-height:1.8;color:${EMAIL_COLORS.textSecondary}"><strong style="color:${EMAIL_COLORS.textPrimary}">Proposed Immediate Payment:</strong> ${formatMoney(props.proposedDownPayment)}</p>
+    <p style="margin:0;font-size:13px;line-height:1.8;color:${EMAIL_COLORS.textSecondary}"><strong style="color:${EMAIL_COLORS.textPrimary}">Proposed Installments:</strong> ${props.installmentCount}</p>
+    <p style="margin:0;font-size:13px;line-height:1.8;color:${EMAIL_COLORS.textSecondary}"><strong style="color:${EMAIL_COLORS.textPrimary}">Proposed Schedule:</strong> ${escapeHtml(props.scheduleSummary)}</p>
+    <p style="margin:0;font-size:13px;line-height:1.8;color:${EMAIL_COLORS.textSecondary}"><strong style="color:${EMAIL_COLORS.textPrimary}">Submitted:</strong> ${props.submittedAt.toLocaleString('en-US')}</p>
+  `)
+
+  const bodyHtml = `
+    <h2 style="font-size:17px;color:${EMAIL_COLORS.textPrimary};margin:0 0 12px">Payment Arrangement Approval Required</h2>
+    <p style="font-size:14px;line-height:1.6;color:${EMAIL_COLORS.textSecondary}">
+      The client has requested a payment arrangement for Invoice <strong style="color:${EMAIL_COLORS.textPrimary}">#${escapeHtml(props.invoiceNumber)}</strong>.
     </p>
-    <div style="background:#F5F5F0;border-radius:10px;padding:18px 20px;margin:18px 0;font-size:13px;line-height:1.8">
-      <p style="margin:0"><strong>Client:</strong> ${props.clientName}</p>
-      <p style="margin:0"><strong>Phone:</strong> ${props.clientPhone ?? '—'}</p>
-      <p style="margin:0"><strong>Email:</strong> ${props.clientEmail ?? '—'}</p>
-      <p style="margin:0"><strong>Invoice Status:</strong> Pending</p>
-      <p style="margin:0"><strong>Payment Status:</strong> ${props.paymentStatus}</p>
-      <p style="margin:0"><strong>Confirmed Amount Paid:</strong> ${formatMoney(props.amountPaid)}</p>
-      <p style="margin:0"><strong>Current Balance Due:</strong> ${formatMoney(props.balanceDue)}</p>
-      <p style="margin:8px 0 0"><strong>Requested Frequency:</strong> ${props.frequency}</p>
-      <p style="margin:0"><strong>Proposed Immediate Payment:</strong> ${formatMoney(props.proposedDownPayment)}</p>
-      <p style="margin:0"><strong>Proposed Installments:</strong> ${props.installmentCount}</p>
-      <p style="margin:0"><strong>Proposed Schedule:</strong> ${props.scheduleSummary}</p>
-      <p style="margin:0"><strong>Submitted:</strong> ${props.submittedAt.toLocaleString('en-US')}</p>
-    </div>
-    <p style="font-size:13px;color:#757575;line-height:1.6">
+    ${detailsPanel}
+    <p style="font-size:13px;color:${EMAIL_COLORS.textMuted};line-height:1.6">
       This request has not been approved, and no proposed payment has been recorded as received.
     </p>
-    <p style="text-align:center;margin:22px 0 0">
-      <a href="${adminLink}" style="display:inline-block;background:#C49A1A;color:#1A1A1A;font-family:Helvetica,sans-serif;font-weight:bold;font-size:13px;text-decoration:none;padding:12px 26px;border-radius:8px">
-        Review &amp; Approve or Deny
-      </a>
-    </p>
-  `)
+    ${emailCta(adminLink, 'Review & Approve or Deny')}
+  `
+  return buildEmailShell({ eyebrow: 'Admin Alert', bodyHtml, footerNote: 'This is an internal admin notification.' })
 }
