@@ -1,11 +1,26 @@
-// [Roadmap] 10% first-order storefront offer ("FIRST10"). Config is a
-// single-row table (fixed id 'singleton', same upsert pattern as
-// lib/invoiceSettings.ts's InvoiceSettings) rather than the reusable
-// Promotion catalog (lib/promotions.ts) — see prisma/schema.prisma's
-// FirstOrderOfferConfig comment for why the two aren't the same thing.
+// FIRST10 offer status -- lightweight, read-only surface deliberately kept
+// free of any notification-sending dependency (Resend/Twilio) so it stays
+// safe to import from components/storefront/Footer.tsx, which renders on
+// every storefront page load. The actual claim flow (which needs to send
+// the discount email) lives in lib/promotions/firstOrderOfferClaim.ts --
+// see that file's header for why the split exists: Footer.tsx is
+// statically imported by the client component CheckoutForm.tsx (pre-
+// existing code), and Next.js's client bundler cannot tolerate a
+// Node-only dependency like the Twilio SDK anywhere in that import graph,
+// even though Footer itself only ever runs on the server.
+//
+// Offer content (discount type/value, eligibility, expiration) now comes
+// from the active default first-order PromotionCampaign
+// (lib/promotions/campaigns.ts) instead of a hardcoded/config-only
+// percentage. FirstOrderOfferConfig.enabled remains a separate,
+// independent master switch (layered kill-switch pattern, matching every
+// other feature in this app) -- the offer is only ever live when BOTH the
+// master switch is on AND a campaign is actively designated the default
+// first-order offer. See docs/Decisions.md for the full migration
+// reasoning.
 import { prisma } from '@/lib/prisma'
-import { upsertCustomerFromIntake, recordCustomerActivity } from '@/lib/customers'
-import { Prisma } from '@prisma/client'
+import { getActiveDefaultFirstOrderCampaign } from '@/lib/promotions/campaigns'
+import type { PromotionCampaign } from '@prisma/client'
 
 const CONFIG_ID = 'singleton'
 
@@ -27,156 +42,51 @@ export async function getFirstOrderOfferConfig(): Promise<FirstOrderOfferConfigD
   })
 }
 
-// Live means an admin has actually turned the offer on AND it hasn't
-// passed its own expiration -- the single check every call site (public
-// status endpoint, claim endpoint, storefront banner) should use instead
-// of re-deriving `enabled && (!expiresAt || expiresAt > now)` inline.
-export function isFirstOrderOfferLive(config: Pick<FirstOrderOfferConfigData, 'enabled' | 'expiresAt'>): boolean {
+// Pure -- the master switch AND an active, unexpired default first-order
+// campaign must both be true. Kept separate from getActiveFirstOrderOffer()
+// so this specific rule is independently unit-testable with no database.
+export function computeFirstOrderOfferLive(
+  config: Pick<FirstOrderOfferConfigData, 'enabled'>,
+  campaign: Pick<PromotionCampaign, 'status' | 'expiresAt'> | null
+): boolean {
   if (!config.enabled) return false
-  if (config.expiresAt && config.expiresAt.getTime() <= Date.now()) return false
+  if (!campaign) return false
+  if (campaign.status !== 'ACTIVE') return false
+  if (campaign.expiresAt && campaign.expiresAt.getTime() <= Date.now()) return false
   return true
+}
+
+export interface ActiveFirstOrderOffer {
+  live: boolean
+  config: FirstOrderOfferConfigData
+  campaign: PromotionCampaign | null
+}
+
+// The one read every customer-facing surface (storefront banner/modal,
+// public status endpoint) and the claim flow itself should call --
+// resolving live status, copy, and discount shape from the same source
+// every time, never re-deriving it independently per call site.
+export async function getActiveFirstOrderOffer(): Promise<ActiveFirstOrderOffer> {
+  const [config, campaign] = await Promise.all([getFirstOrderOfferConfig(), getActiveDefaultFirstOrderCampaign()])
+  return { live: computeFirstOrderOfferLive(config, campaign), config, campaign }
 }
 
 export interface UpdateFirstOrderOfferConfigInput {
   enabled?: boolean
-  percentage?: number
-  eligibleProductSlugs?: string[]
-  expiresAt?: Date | null
-  stackable?: boolean
   updatedBy: string
 }
 
 export class InvalidFirstOrderOfferConfigError extends Error {}
 
-export async function updateFirstOrderOfferConfig(
-  input: UpdateFirstOrderOfferConfigInput
-): Promise<FirstOrderOfferConfigData> {
-  if (input.percentage !== undefined && (input.percentage <= 0 || input.percentage > 100)) {
-    throw new InvalidFirstOrderOfferConfigError('Percentage must be greater than 0 and no more than 100.')
-  }
-
-  const data = {
-    enabled: input.enabled,
-    percentage: input.percentage,
-    eligibleProductSlugs: input.eligibleProductSlugs,
-    expiresAt: input.expiresAt,
-    stackable: input.stackable,
-    updatedBy: input.updatedBy,
-  }
-
+// Narrowed to just the master on/off switch -- percentage/eligibleProductSlugs/
+// expiresAt/stackable now live on the active PromotionCampaign
+// (Admin -> Promotions) instead of this config row. Kept the same
+// upsert-on-singleton shape as before rather than introducing a new
+// settings model for one boolean.
+export async function updateFirstOrderOfferConfig(input: UpdateFirstOrderOfferConfigInput): Promise<FirstOrderOfferConfigData> {
   return prisma.firstOrderOfferConfig.upsert({
     where: { id: CONFIG_ID },
-    update: data,
-    create: { id: CONFIG_ID, ...data },
+    update: { enabled: input.enabled, updatedBy: input.updatedBy },
+    create: { id: CONFIG_ID, enabled: input.enabled, updatedBy: input.updatedBy },
   })
-}
-
-export interface ClaimFirstOrderOfferInput {
-  name: string
-  email: string
-  phone: string
-  consent: boolean
-  sourcePage: string
-  referrer?: string | null
-  landingUrl?: string | null
-  utmSource?: string | null
-  utmMedium?: string | null
-  utmCampaign?: string | null
-  utmTerm?: string | null
-  utmContent?: string | null
-}
-
-export interface ClaimFirstOrderOfferResult {
-  claim: Prisma.FirstOrderOfferClaimGetPayload<Record<string, never>>
-  customer: Prisma.CustomerGetPayload<Record<string, never>>
-  isNewCustomer: boolean
-  alreadyClaimed: boolean
-}
-
-export class FirstOrderOfferNotLiveError extends Error {}
-
-// Same name-splitting convention as lib/leads/service.ts's captureLead() --
-// Customer.firstName/lastName are both required but this form only
-// collects one "name" field.
-function splitName(name: string): { firstName: string; lastName: string } {
-  const trimmed = name.trim()
-  const spaceIndex = trimmed.indexOf(' ')
-  if (spaceIndex === -1) return { firstName: trimmed, lastName: '' }
-  return { firstName: trimmed.slice(0, spaceIndex), lastName: trimmed.slice(spaceIndex + 1).trim() }
-}
-
-// Idempotent by design: a customer who somehow submits twice (double-click,
-// retried request, repeat visit) gets their existing claim back rather than
-// a second row or an error -- the DB-level @unique on
-// FirstOrderOfferClaim.customerId is what actually guarantees this holds
-// even under a genuine race (caught below via the P2002 code), not just
-// the upfront findUnique check.
-export async function claimFirstOrderOffer(input: ClaimFirstOrderOfferInput): Promise<ClaimFirstOrderOfferResult> {
-  const config = await getFirstOrderOfferConfig()
-  if (!isFirstOrderOfferLive(config)) {
-    throw new FirstOrderOfferNotLiveError('The first-order offer is not currently available.')
-  }
-
-  const { firstName, lastName } = splitName(input.name)
-  const { customer, isNewCustomer } = await upsertCustomerFromIntake({
-    firstName,
-    lastName,
-    email: input.email,
-    phone: input.phone,
-  })
-
-  const existingClaim = await prisma.firstOrderOfferClaim.findUnique({ where: { customerId: customer.id } })
-  if (existingClaim) {
-    return { claim: existingClaim, customer, isNewCustomer, alreadyClaimed: true }
-  }
-
-  try {
-    const claim = await prisma.$transaction(async (tx) => {
-      const lead = await tx.leadCapture.create({
-        data: {
-          customerId: customer.id,
-          interestType: 'FIRST_ORDER_OFFER',
-          sourcePage: input.sourcePage,
-          referrer: input.referrer ?? undefined,
-          landingUrl: input.landingUrl ?? undefined,
-          utmSource: input.utmSource ?? undefined,
-          utmMedium: input.utmMedium ?? undefined,
-          utmCampaign: input.utmCampaign ?? undefined,
-          utmTerm: input.utmTerm ?? undefined,
-          utmContent: input.utmContent ?? undefined,
-          consent: input.consent,
-        },
-      })
-
-      return tx.firstOrderOfferClaim.create({
-        data: {
-          customerId: customer.id,
-          configId: CONFIG_ID,
-          leadCaptureId: lead.id,
-          // Snapshotted so a later admin change to the live percentage
-          // never retroactively changes what this customer was promised.
-          percentage: config.percentage,
-          consent: input.consent,
-        },
-      })
-    })
-
-    await recordCustomerActivity({
-      customerId: customer.id,
-      eventType: 'FIRST_ORDER_OFFER_CLAIMED',
-      newValue: `${config.percentage}%`,
-      source: 'SYSTEM',
-    })
-
-    return { claim, customer, isNewCustomer, alreadyClaimed: false }
-  } catch (err) {
-    // Unique-constraint race: another request for the same customer won
-    // between our findUnique check and the transaction above. Treat it
-    // the same as the upfront idempotent-return path rather than a 500.
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
-      const claim = await prisma.firstOrderOfferClaim.findUniqueOrThrow({ where: { customerId: customer.id } })
-      return { claim, customer, isNewCustomer, alreadyClaimed: true }
-    }
-    throw err
-  }
 }

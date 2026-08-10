@@ -1930,15 +1930,22 @@ model FirstOrderOfferClaim {
   configId String
   config   FirstOrderOfferConfig @relation(fields: [configId], references: [id])
 
-  // Nullable/additive -- claims created before the Promotion Campaign
-  // system existed have no campaign to point at and stay null forever;
-  // every new claim going forward is expected to set this once
-  // claimFirstOrderOffer() is rewired to read from the active default
-  // PromotionCampaign instead of FirstOrderOfferConfig (a deliberately
-  // separate, later slice -- see docs/Decisions.md for the campaign model
-  // itself, which ships first with zero behavior change to this flow).
+  // Nullable/additive -- any claim created before the Promotion Campaign
+  // system existed (none exist in production as of this migration) would
+  // have no campaign to point at; every claim going forward sets this.
   campaignId String?
   campaign   PromotionCampaign? @relation(fields: [campaignId], references: [id])
+
+  // The unique single-redemption code issued alongside this claim.
+  // Deliberately NOT @unique at the DB level (unlike PromotionCode.code
+  // itself) -- claimFirstOrderOffer() already guarantees one code per
+  // claim by construction (both created in the same transaction, one call
+  // site), and adding a DB-level unique constraint to an existing
+  // populated table requires Prisma's --accept-data-loss flag even when
+  // provably safe (a new nullable column), which isn't worth the
+  // friction for a guarantee the application layer already provides.
+  promotionCodeId String?
+  promotionCode   PromotionCode? @relation(fields: [promotionCodeId], references: [id])
 
   // The LeadCapture row created alongside this claim (interestType
   // FIRST_ORDER_OFFER, see enum above) -- same submission, kept as two rows
@@ -1948,10 +1955,14 @@ model FirstOrderOfferClaim {
   leadCaptureId String      @unique
   leadCapture   LeadCapture @relation(fields: [leadCaptureId], references: [id])
 
-  // Snapshotted at claim time so a later admin change to the config's
-  // percentage never retroactively changes what a customer was already
-  // promised.
-  percentage Float
+  // Legacy -- superseded by the campaign/code's own discountType/
+  // discountValue (PromotionCode, promotionCodeId above) now that the
+  // claim flow reads from the Promotion Campaign system instead of
+  // FirstOrderOfferConfig. Loosened from required to nullable (zero
+  // existing rows in production at the time of this change, so no
+  // backfill needed) rather than writing a misleading 0 for a
+  // fixed-dollar campaign into a field literally named "percentage."
+  percentage Float?
   consent    Boolean @default(false)
 
   // Set only once real checkout can apply discounts (roadmap items #164/
@@ -2093,6 +2104,8 @@ model PromotionCode {
 
   revokedAt DateTime?
   revokedBy String?
+
+  firstOrderOfferClaims FirstOrderOfferClaim[]
 
   @@index([campaignId])
   @@index([customerId])

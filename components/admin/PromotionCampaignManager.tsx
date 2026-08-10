@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { card, input as inputClass, label as labelClass, selectOption, pillPrimary, pillOutline, sectionHeading, mutedText, divider } from '@/components/invoices/theme'
+import { formatDiscountLabel } from '@/lib/promotions/format'
 
 type CampaignStatus = 'DRAFT' | 'SCHEDULED' | 'ACTIVE' | 'RETIRED' | 'ARCHIVED'
 type StackingPolicy = 'NOT_STACKABLE' | 'STACKABLE_WITH_ONE' | 'PRIVILEGED_STACKABLE'
@@ -43,9 +44,6 @@ const STACKING_LABEL: Record<StackingPolicy, string> = {
   PRIVILEGED_STACKABLE: 'Family & Friends class (stacks with one other eligible promotion)',
 }
 
-function formatDiscount(type: 'FIXED' | 'PERCENTAGE', value: number): string {
-  return type === 'PERCENTAGE' ? `${value}% off` : `$${value.toFixed(2)} off`
-}
 
 export function PromotionCampaignManager({ campaigns }: { campaigns: PromotionCampaignView[] }) {
   const router = useRouter()
@@ -249,7 +247,7 @@ function CampaignRow({ campaign, onChanged }: { campaign: PromotionCampaignView;
             )}
           </div>
           <p className={`text-sm ${mutedText} mt-1`}>
-            {campaign.publicTitle} — {formatDiscount(campaign.discountType, campaign.discountValue)}
+            {campaign.publicTitle} — {formatDiscountLabel(campaign.discountType, campaign.discountValue)}
           </p>
           <p className={`text-xs ${mutedText} mt-0.5`}>{STACKING_LABEL[campaign.stackingPolicy]}</p>
         </div>
