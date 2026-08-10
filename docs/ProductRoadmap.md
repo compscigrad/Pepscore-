@@ -265,6 +265,41 @@ A permanent, ongoing UX/branding requirement, not a one-time migration: every cu
 2. Real bulk customer communication and real payment/checkout activation stay OFF throughout — every send during engineering uses synthetic/owner-controlled recipients, exactly as every other communication-adjacent feature this session has shipped.
 3. Only stop for: real bulk customer communication, real payment activation, real money movement, owner-only authentication/paid-provider registration, destructive production changes, a serious security issue, truly blocking factual business data, or an actual usage limit — otherwise continue autonomously across PR slices without a scoping checkpoint, per explicit owner instruction for this phase.
 
+**Phase 3 status: Complete.** All of 3A–3D shipped and are documented in `docs/Decisions.md` #41–#60 and `docs/CaseStudy.md`.
+
+## Phase 4 — Production Readiness & Launch Hardening (added 2026-08-10, owner-directed)
+
+Feature completion is not production readiness. Phase 4's goal: audit the entire live system end-to-end and close the remaining technical, UX, operational, security, reliability, performance, and launch-readiness gaps standing between the current state and a controlled real-customer launch.
+
+**Sub-phases** (each its own audit-then-fix slice, same autonomous cadence as Phase 3 — implement → test → merge → deploy → verify → reconcile roadmap → update case study → continue, no stopping between sub-phases):
+
+- **4A — Full system production audit**: every subsystem (storefront, checkout, identity, portal, invoices, payments, promotions, reorder, backorders, inventory, pricing, admin/CRM, notifications, fulfillment, tracking, analytics, cron, webhooks, auth, database, deployment config) reviewed for actual workflow completeness, not just code existence.
+- **4B — End-to-end customer journeys**: new-customer acquisition (landing → FIRST offer → account → portal → cart → checkout → order → invoice → reservation → fulfillment → tracking → reorder), existing-customer (portal → orders/invoices/tracking → Buy Again → cart), admin-assisted (customer → Previously Purchased → new invoice → pricing/backorder decisions → payment), and backorder (unavailable → purchase → compensation → restock → fulfillment) — verified in sandbox/test mode only.
+- **4C — Customer Portal live QA**: resolve the standing live-browser QA checkpoint (`docs/PendingOwnerActions.md` #7) if a safe test account can be used without real customer communication; verify every portal surface visually in production plus horizontal-access isolation between customers.
+- **4D — Admin operational QA**: every admin surface exercised as real daily-use, looking for operational friction that would require a database edit or developer intervention for a routine action.
+- **4E — Database & data-integrity audit**: orphan records, missing FKs, duplicate identities, inventory/reservation inconsistencies, stale invite states — safe deterministic corrections proceed with audit logging, ambiguous records are pinned for owner review, never auto-mutated.
+- **4F — Security hardening**: authorization boundaries, webhook signature validation, secrets exposure, rate limiting, idempotency, race conditions — fix real vulnerabilities with regression coverage, never weaken a working control.
+- **4G — Fraud/abuse controls**: promo-code abuse, duplicate accounts, payment/refund replay, reservation hoarding — reasonable controls, no unnecessary customer friction.
+- **4H — Performance**: query efficiency, N+1s, pagination, indexes, bundle size, Core Web Vitals — fix measured/obvious risks, not theoretical ones.
+- **4I — Accessibility**: keyboard nav, focus management, contrast, screen-reader labels across storefront/portal/admin.
+- **4J — Mobile/responsive QA**: ~390px/~430px widths across the full system.
+- **4K — Brand QA**: final PepScore Lab naming/logo/gold-gradient/hierarchy consistency pass — no redesign without evidence of a problem.
+- **4L — Email/SMS/communication readiness**: every template's shell/CTA/links/consent language verified, sandbox destinations only.
+- **4M — Payment launch readiness**: re-audit every payment method/flow built in Phase 2; prepare exact owner activation steps; do not activate live payments.
+- **4N — Inventory/fulfillment launch readiness**: stock init/adjustment, reservation concurrency safety, sell-unit conversion, no double-counted physical vial.
+- **4O — Promotion/pricing launch readiness**: campaign CRUD, stacking rules, FIRST/Family & Friends eligibility, admin price-override paths.
+- **4P — Scheduled jobs/automations audit**: fail-closed behavior, idempotency, kill switches, recipient caps on every cron.
+- **4Q — Observability & failure visibility**: failed sends/webhooks/payments/cron runs must be visible to admin without being noisy about theoretical events.
+- **4R — Legal/policy surface audit**: verify existing Terms/Privacy/Refund/RUO-disclaimer surfaces are present and linked — never fabricate or materially rewrite legal language without owner/legal input; pin what's missing.
+- **4S — SEO/indexing final audit**: sitemap, robots, canonicals, structured data, no admin/account indexing, current brand naming.
+- **4T — Backup/recovery/operations audit**: Neon backup/PITR status, Vercel rollback, env-var recovery documentation — no paid products purchased without owner approval.
+- **4U — Launch checklist**: a new `docs/LaunchReadiness.md` with READY / ENGINEERING READY–OWNER ACTION REQUIRED / BLOCKED / DEFERRED / NOT REQUIRED status per launch-critical system — never READY merely because code exists.
+- **4V — Pending Owner Actions reconciliation**: `docs/PendingOwnerActions.md` re-verified against actual current state, stale items resolved/removed.
+- **4W — Controlled launch rehearsal**: the closest full rehearsal possible without real money/postage/bulk communication.
+- **4X — Final production-readiness report**: Production Ready / Engineering Ready–Owner Action Required / Blocked / Deferred / Remaining QA / Owner Actions / a launch recommendation (Not Ready / Ready for Controlled Pilot / Ready for Full Launch), evidence-based.
+
+**Safety constraints (apply to all of 4A–4X, same standing rule as Phase 3)**: real money, real postage, real bulk customer communication, and live-launch switches stay OFF throughout unless explicitly authorized. Only stop autonomous execution for: real bulk customer communication, real payment activation, real money movement, owner-only authentication/paid-provider registration, a destructive production change, a serious security issue, or an actual usage limit — a single owner-blocked item is pinned in `docs/PendingOwnerActions.md` and every other independent sub-phase continues. Case-study maintenance continues throughout as its own permanent requirement, not a Phase 4 checkbox.
+
 ## How this document should be used
 
 Before scoping any Phase 2+ feature, check it against this document: which phase does it belong to, does it depend on an earlier phase or an open decision above, and does it fit inside a phase's stated MVP or full scope. When a phase actually gets built, its *why-this-way* engineering decisions still go in `docs/Decisions.md` and its shipped state still goes in `docs/ChangeLog.md` and `docs/ComponentMap.md` — this document stays about sequencing and scope, not implementation detail. Update it when a phase completes, a priority genuinely changes, or a new open decision surfaces — it should stay a living reflection of what's actually next, not a static plan followed past the point it stops making sense.
