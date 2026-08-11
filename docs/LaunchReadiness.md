@@ -22,7 +22,7 @@
 | Checkout (page + API route) | ENGINEERING READY — OWNER ACTION REQUIRED | Fully built, verified end-to-end via a real Stripe TEST-mode sandbox rehearsal (Decision #66/#70): session creation → payment simulation → fulfillment → stock decrement, all correct. Gated behind `STOREFRONT_CHECKOUT_ENABLED` (off) and real Stripe live keys — both owner actions (`PendingOwnerActions.md` #1). |
 | Promotion code redemption at checkout | READY (engineering) | Server-side authoritative validation, two-phase soft-hold, verified via real-Postgres rehearsal (Decision #62). Activates the moment checkout itself does — no separate gate. |
 | Reservation-hoarding / abuse guard | READY | Per-email concurrent-checkout cap, verified (Decision #69). |
-| Backorder purchasing on the live storefront | BLOCKED | A backordered item gets no `OrderReservation` at all today, and (before Decision #66's fix) had no `InvoiceItem` to apply compensation to; no admin visibility queue exists for a storefront order carrying a backordered line. Real gap, routed to Phase 4N, not yet built. **Recommend resolving before enabling checkout if any current products are backorder-enabled** — otherwise a real customer could buy a backordered item with no compensation path. |
+| Backorder purchasing on the live storefront | READY (engineering) | **RESOLVED (2026-08-11, PR #192, Decision #73)**: checkout now calls the existing `applyBackorder()` on any nonzero shortfall against a `backorderEnabled` product, producing a real `BackorderCondition` + automatic compensation. Verified end to end against real Postgres via synthetic fixtures (no live product currently has `backorderEnabled = true`). Activates the moment checkout itself does — no separate gate. |
 | Payment methods: Card | ENGINEERING READY — OWNER ACTION REQUIRED | Test-mode verified. Needs live Stripe keys. |
 | Payment methods: ACH | ENGINEERING READY — OWNER ACTION REQUIRED | Async lifecycle built and verified (Decision #30). Needs live Stripe keys. |
 | Payment methods: PayPal | ENGINEERING READY — OWNER ACTION REQUIRED | App-side gate built (Decision #32). Needs PayPal enabled on the Stripe account in the Stripe Dashboard (`PendingOwnerActions.md` #2) in addition to live keys. |
@@ -46,7 +46,7 @@
 |---|---|---|
 | Invoices (create/edit/payments/refunds/backorders/shipments) | READY | Most thoroughly-covered admin surface (Decision #68's 4D audit) — every state-changing action has a matching correction/reversal route. In active production use. |
 | Online Storefront Orders (list/detail/cancel/mark-delivered) | READY | Built this Phase 4 cycle (Critical #2/#4, Decision #61) plus the Mark-as-Delivered fix (Decision #68). Verified via the sandbox checkout rehearsal. |
-| Customer/CRM (list/detail/notes/duplicates) | READY, with one known gap | Core CRM solid. No merge path for a weak-match duplicate customer pair — logged, routed to Phase 4E, not yet built (low frequency at current scale). |
+| Customer/CRM (list/detail/notes/duplicates) | READY | Core CRM solid. **RESOLVED (2026-08-11, PR #193, Decision #74)**: `lib/customers/merge.ts` provides a safe-merge-or-explicitly-blocked admin action for a weak-match duplicate customer pair, rendered directly on the duplicate-record banner. Verified end to end against real Postgres (safe-merge and blocked-merge scenarios). |
 | Inventory corrections | READY | Exceptionally complete single-endpoint action set confirmed in the 4D audit — add/remove/reconcile/reverse-last, all real. |
 | Identity review queue | READY | Full approve/dismiss flow, audit-logged. |
 | Sales-origin clarity (Direct/Manual vs. Online Storefront) | READY | Phase 4Z shipped this session — derived, never backfilled, no double-counting by construction. |
@@ -123,13 +123,15 @@
 
 **No real money, real postage, real bulk customer communication, or live-launch switch has been activated at any point.** Every ENGINEERING READY item above is fully built and test-mode-verified, waiting only on an owner action already itemized in `docs/PendingOwnerActions.md`. Every BLOCKED item is a named, real gap — none are hidden or rounded up to READY.
 
-**Backorder handling on live storefront checkout, re-assessed with real data**: the gap itself is real (a fully backordered item gets no `OrderReservation` at all, no admin visibility queue exists). Checked directly against the live database: **zero active products currently have `backorderEnabled = true`** — so this gap, while real, is not reachable by the current catalog as it stands today. It does not block enabling checkout for the current product lineup. It **does** need to be fixed (Phase 4N) before any admin ever flips `backorderEnabled` on for a product, or before Pepscore's catalog grows to include one — recommend treating "fix Phase 4N" as a prerequisite to enabling backorder purchasing specifically, not to checkout generally.
+**Backorder handling on live storefront checkout — RESOLVED (2026-08-11, PR #192, Decision #73)**: the gap was real (a fully backordered item got no `OrderReservation` at all, no admin visibility queue existed). Checkout now calls the existing `applyBackorder()` on any nonzero shortfall against a `backorderEnabled` product, producing a real `BackorderCondition` and automatic compensation, verified end to end against real Postgres via synthetic fixtures (zero live products currently have `backorderEnabled = true`, so this was verified via test fixtures rather than a live product, per standing instruction never to flip a real product's backorder setting merely to test). No longer a gap blocking either checkout activation or backorder purchasing specifically.
+
+**Customer-merge dead end — RESOLVED (2026-08-11, PR #193, Decision #74)**: a weak-match duplicate `Customer` pair previously had no system-provided consolidation path short of a raw database edit. `lib/customers/merge.ts` now provides either a full transactional merge or an explicitly blocked result naming the specific real identity conflict (differing linked portal login, differing Stripe customer, both already claimed a first-order offer) — never a silent dead end. Verified end to end against real Postgres for both outcomes.
 
 ---
 
 ## Phase 4X — Final Production-Readiness Report
 
-**Counts across the checklist above** (64 line items): **41 READY** (including variants noting a scale caveat or one known sub-gap), **11 ENGINEERING READY — OWNER ACTION REQUIRED**, **6 BLOCKED** (of which only 2 are genuine unresolved engineering gaps — see below; the rest are unverified-not-failed items or owner-dependent-but-not-launch-blocking, each labeled with its specific sub-reason in the checklist above), **3 DEFERRED**, **2 NOT REQUIRED**.
+**Counts across the checklist above** (64 line items, recalculated 2026-08-11 after PRs #192/#193): **42 READY** (including variants noting a scale caveat; the customer-merge item's prior "known sub-gap" note is now resolved and removed from the checklist text above, but it was already counted within READY, not BLOCKED), **11 ENGINEERING READY — OWNER ACTION REQUIRED**, **5 BLOCKED** (zero of which are genuine unresolved engineering gaps — the backorder-on-checkout item that was the checklist's one BLOCKED engineering gap is now resolved and moved to READY, see below; the remaining 5 are unverified-not-failed items or owner-dependent-but-not-launch-blocking, each labeled with its specific sub-reason in the checklist above), **3 DEFERRED**, **2 NOT REQUIRED**.
 
 ### Remaining QA (genuinely unverifiable in this environment, not skipped by choice)
 - Color-contrast ratios and real screen-reader testing (4I) — needs dedicated tooling not available here.
@@ -151,8 +153,12 @@
 *(Item 8 resolved this session.)*
 
 ### Blocked (genuine engineering gaps, not owner-dependent)
-1. **Backorder-on-storefront-checkout has no working admin path** — real, but not currently reachable (zero backorder-enabled products today). Fix before enabling backorder purchasing specifically.
-2. **No customer-merge path** for a weak-match duplicate `Customer` pair — low frequency at current scale, real dead-end when it occurs.
+
+**None remaining.** Both items previously listed here are resolved:
+1. ~~Backorder-on-storefront-checkout has no working admin path~~ — **RESOLVED 2026-08-11 (PR #192, Decision #73)**.
+2. ~~No customer-merge path for a weak-match duplicate `Customer` pair~~ — **RESOLVED 2026-08-11 (PR #193, Decision #74)**.
+
+No known independent engineering defect remains that can safely be fixed before pilot. Everything still open in this report is owner action, legal/provider input, a genuinely unverifiable-in-this-environment QA item (see above), or a deliberately deferred/post-launch scope decision.
 
 ### Launch Recommendation
 
@@ -160,6 +166,8 @@
 READY FOR CONTROLLED PILOT
 ```
 
-**Not** "Ready for Full Launch" — real payment activation, SMS, and bulk portal invitations all remain correctly gated behind owner actions that haven't happened yet, and the legal/policy page gap is a real trust surface for a live commerce site that should close before real customers transact. **Not** "Not Ready" either — every genuine *engineering* blocker is narrow, named, and either doesn't affect the current catalog (backorder) or is low-frequency (customer merge); the operational core (invoicing, fulfillment, tracking, CRM, pricing, reorder, notifications, checkout, promotions, security, and abuse controls) is production-validated and has been in real use or real test-mode rehearsal throughout this entire Phase 4 cycle.
+**Not** "Ready for Full Launch" — real payment activation, SMS, and bulk portal invitations all remain correctly gated behind owner actions that haven't happened yet, and the legal/policy page gap is a real trust surface for a live commerce site that should close before real customers transact. The recommendation is **not upgraded** by the resolution of the two engineering gaps below — closing an engineering defect is not the same as an owner/legal/provider activation gate being cleared, and those gates still stand exactly as before. **Not** "Not Ready" either — the operational core (invoicing, fulfillment, tracking, CRM, pricing, reorder, notifications, checkout, promotions, security, and abuse controls) is production-validated and has been in real use or real test-mode rehearsal throughout this entire Phase 4 cycle, and zero known independent engineering defects remain.
 
-**Concretely, before flipping any live switch**: (1) supply at minimum real Terms of Service and Privacy Policy content — the two most load-bearing legal pages for a commerce site; (2) complete the owner actions for whichever payment methods will actually be offered at launch; (3) if backorder purchasing is wanted for any product, complete the Phase 4N fix first. Everything else in this report is either already done or is a background-priority item that doesn't block a controlled pilot with a small, known customer group.
+**Update (2026-08-11)**: the two genuine engineering gaps named in the original version of this report — backorder-on-storefront-checkout (Decision #73) and the customer-merge dead end (Decision #74) — are both resolved, verified end to end against real Postgres, and shipped to production (PRs #192, #193). This closes out every item this report is capable of resolving through engineering work alone.
+
+**Concretely, before flipping any live switch**: (1) supply at minimum real Terms of Service and Privacy Policy content — the two most load-bearing legal pages for a commerce site; (2) complete the owner actions for whichever payment methods will actually be offered at launch. Everything else in this report is either already done or is a background-priority item that doesn't block a controlled pilot with a small, known customer group.
