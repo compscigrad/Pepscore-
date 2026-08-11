@@ -339,6 +339,12 @@ First slice: traced all four required journeys (new-customer acquisition, existi
 
 Remaining 4B scope: sandbox walkthroughs of the other three journeys (existing-customer, admin-assisted, backorder) — continues in a follow-up slice, moving directly into 4C now per the standing no-stop-between-modules instruction.
 
+### 4C status: Horizontal-access isolation verified; live-browser walkthrough owner-blocked (2026-08-10)
+
+**Horizontal-access isolation** (part of 4C's own stated scope): audited every customer-facing portal page (`/account/orders`, `/account/orders/[id]`, `/account/invoices`, `/account/invoices/[id]`, `/account/tracking`) and their backing query functions (`lib/portal/orders.ts`, `lib/portal/invoices.ts`). Every page derives its ownership filter (`userId`/`customerId`) exclusively from `getPortalAuthState()` — itself derived from Clerk's server-side session — never from a client-supplied URL param or request body field; the `[id]` route segment is only ever used as the row-lookup id in combination with the session-derived ownership field, never as the ownership field itself. No horizontal-access vulnerability found across any surface checked.
+
+**Live-browser visual QA walkthrough**: genuinely requires a real, non-admin, customer-side Clerk session — already correctly tracked as owner-blocked in `docs/PendingOwnerActions.md` #7 (this environment only has authenticated access to the admin session). Not re-litigated here; independent work continues per the standing owner-blocker rule. `PORTAL_ENABLED` is also currently unset (defaults off) in this environment (confirmed during Phase 4B journey tracing) — the portal surface itself isn't reachable end-to-end without that flag, which is its own separate rollout-timing decision, not a bug.
+
 ### 4E status: First pass clean (2026-08-10)
 
 Ran a read-only integrity sweep against the real database: duplicate `Customer` emails, orphaned `Order`↔`Invoice` links, `PromotionCode` rows marked `REDEEMED` with no `redeemedOrderId`, `ACTIVE` `OrderReservation`s on a `CANCELLED` order, negative or over-reserved product stock, customers with more than one active portal invite (the exact race PR #173 closed), and historical instances of the `Invoice.customerId` gap PR #175 fixed. **All zero** — no orphans, no duplicates, no invariant violations found.
