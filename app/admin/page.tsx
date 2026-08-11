@@ -39,20 +39,25 @@ async function getStorefrontStats() {
   const now = new Date()
   const startOfYear = new Date(`${now.getFullYear()}-01-01T00:00:00.000Z`)
 
-  const [totalOrders, yearOrders, pendingShipments, yearExpenses] = await Promise.all([
+  // Summed/grouped in the database rather than fetching every order (with
+  // its full item rows, unused here) and every expense row and reducing in
+  // JS -- this ran on every admin dashboard load and grows unbounded with
+  // total order/expense volume once the storefront launches.
+  const [totalOrders, yearRevenueAgg, pendingShipments, yearExpensesByType] = await Promise.all([
     prisma.order.count({ where: { status: { in: ['PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED'] } } }),
-    prisma.order.findMany({
+    prisma.order.aggregate({
       where: { status: { in: ['PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED'] }, createdAt: { gte: startOfYear } },
-      include: { items: true },
+      _sum: { total: true },
     }),
     prisma.order.count({ where: { fulfillmentStatus: 'UNFULFILLED', status: { in: ['PAID', 'PROCESSING'] } } }),
-    prisma.expense.findMany({ where: { date: { gte: startOfYear } } }),
+    prisma.expense.groupBy({ by: ['type'], where: { date: { gte: startOfYear } }, _sum: { amount: true } }),
   ])
 
-  const yearRevenue = yearOrders.reduce((s, o) => s + o.total, 0)
-  const yearCogs = yearExpenses.filter((e) => e.type === 'COGS').reduce((s, e) => s + e.amount, 0)
-  const yearShipping = yearExpenses.filter((e) => e.type === 'SHIPPING').reduce((s, e) => s + e.amount, 0)
-  const yearStripeFees = yearExpenses.filter((e) => e.type === 'STRIPE_FEE').reduce((s, e) => s + e.amount, 0)
+  const sumByType = (type: string) => yearExpensesByType.find((e) => e.type === type)?._sum.amount ?? 0
+  const yearRevenue = yearRevenueAgg._sum.total ?? 0
+  const yearCogs = sumByType('COGS')
+  const yearShipping = sumByType('SHIPPING')
+  const yearStripeFees = sumByType('STRIPE_FEE')
   const yearGrossProfit = yearRevenue - yearCogs
   const yearNetProfit = yearGrossProfit - yearShipping - yearStripeFees
 

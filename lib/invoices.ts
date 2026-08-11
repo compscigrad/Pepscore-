@@ -850,7 +850,7 @@ export interface InvoiceDashboardStats {
 }
 
 export async function getInvoiceDashboardStats(): Promise<InvoiceDashboardStats> {
-  const [totalInvoices, paidInvoices, partiallyPaidInvoices, pendingShipments, deliveredOrders, activeInvoices, allInvoicesForRevenue] =
+  const [totalInvoices, paidInvoices, partiallyPaidInvoices, pendingShipments, deliveredOrders, outstandingAgg, revenueAgg] =
     await Promise.all([
       prisma.invoice.count({ where: { archivedAt: null, deletedAt: null } }),
       prisma.invoice.count({ where: { archivedAt: null, deletedAt: null, paymentStatus: 'PAID' } }),
@@ -859,22 +859,25 @@ export async function getInvoiceDashboardStats(): Promise<InvoiceDashboardStats>
         where: { archivedAt: null, deletedAt: null, deliveryStatus: { in: ['PREPARING', 'PACKED'] } },
       }),
       prisma.invoice.count({ where: { archivedAt: null, deletedAt: null, deliveryStatus: 'DELIVERED' } }),
-      prisma.invoice.findMany({
+      // Summed in the database rather than fetching every row and reducing
+      // in JS -- this ran on every admin dashboard/invoices page load and
+      // grew unbounded with total invoice count (all-time, not date-scoped).
+      prisma.invoice.aggregate({
         where: { archivedAt: null, deletedAt: null, status: { notIn: ['CANCELLED', 'VOID'] } },
-        select: { balanceDue: true },
+        _sum: { balanceDue: true },
       }),
       // Revenue counts archived invoices too — an auto-archived invoice is
       // still a real, fully-paid sale, and organizing it out of the active
       // list shouldn't organize it out of revenue reporting. Trashed
       // invoices never count, though — those are "probably a mistake."
-      prisma.invoice.findMany({
+      prisma.invoice.aggregate({
         where: { deletedAt: null, status: { notIn: ['CANCELLED', 'VOID'] } },
-        select: { total: true },
+        _sum: { total: true },
       }),
     ])
 
-  const outstandingBalance = round2(activeInvoices.reduce((sum, i) => sum + i.balanceDue, 0))
-  const revenue = round2(allInvoicesForRevenue.reduce((sum, i) => sum + i.total, 0))
+  const outstandingBalance = round2(outstandingAgg._sum.balanceDue ?? 0)
+  const revenue = round2(revenueAgg._sum.total ?? 0)
 
   return {
     totalInvoices,
