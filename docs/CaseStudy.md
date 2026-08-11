@@ -422,6 +422,7 @@ Every claim below traces to a real PR number or commit found in `git log`, cross
 | Phase 4H performance fixes + Phase 4I live accessibility verification | #186 | Decision #70 | aggregate()/groupBy() replacing unbounded reduce; 2 missing indexes; live keyboard-nav/focus verification via browser automation |
 | Phase 4J/4K status + brand-casing fix | #188 | — | Real regression found and fixed (Shop PepScore Lab → Pepscore Lab) |
 | Phase 4M/4N-4T re-audit (docs-only) | — | Decision #71 | PaymentReadiness.md addendum; evidence-based status for 6 sub-phases; new PendingOwnerActions #10 |
+| Phase 4U launch checklist + 4V reconciliation + 4W real UI rehearsal | — | Decision #72 | New docs/LaunchReadiness.md; PendingOwnerActions re-verified clean; real checkout UI click-through, one finding flagged for clean re-verification |
 
 ---
 
