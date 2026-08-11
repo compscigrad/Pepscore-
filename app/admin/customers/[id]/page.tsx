@@ -18,6 +18,7 @@ import { resolveReorderLine } from '@/lib/storefront/reorder'
 import type { SellUnit } from '@/lib/pricing/sellUnits'
 import { prisma } from '@/lib/prisma'
 import { PreviouslyPurchasedSection, type PreviouslyPurchasedLine } from '@/components/admin/PreviouslyPurchasedSection'
+import { MergeCustomerButton } from '@/components/admin/MergeCustomerButton'
 import { CorrespondenceHistory } from '@/components/invoices/CorrespondenceHistory'
 import { StatusBadge } from '@/components/invoices/StatusBadge'
 import { InvoiceHistoryFilter } from '@/components/invoices/InvoiceHistoryFilter'
@@ -162,14 +163,17 @@ export default async function CustomerProfilePage({ params, searchParams }: Page
             <p className="text-[11px] font-heading font-bold uppercase tracking-[0.08em] text-amber-300 mb-2">
               Possible Duplicate {duplicates.length === 1 ? 'Record' : 'Records'}
             </p>
-            <div className="space-y-1">
+            <div className="space-y-2">
               {duplicates.map(({ customer: dup, reasons }) => (
-                <p key={dup.id} className="text-sm text-white/70">
-                  <Link href={`/admin/customers/${dup.id}`} className="text-gold-light hover:underline font-medium">
-                    {dup.firstName} {dup.lastName}
-                  </Link>
-                  {dup.company ? ` — ${dup.company}` : ''} — matched on {reasons.map(formatLabel).join(', ')}
-                </p>
+                <div key={dup.id} className="flex items-center justify-between flex-wrap gap-2">
+                  <p className="text-sm text-white/70">
+                    <Link href={`/admin/customers/${dup.id}`} className="text-gold-light hover:underline font-medium">
+                      {dup.firstName} {dup.lastName}
+                    </Link>
+                    {dup.company ? ` — ${dup.company}` : ''} — matched on {reasons.map(formatLabel).join(', ')}
+                  </p>
+                  <MergeCustomerButton survivorId={customer.id} loserId={dup.id} loserName={`${dup.firstName} ${dup.lastName}`.trim()} />
+                </div>
               ))}
             </div>
           </div>
