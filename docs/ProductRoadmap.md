@@ -345,6 +345,16 @@ Remaining 4B scope: sandbox walkthroughs of the other three journeys (existing-c
 
 **Live-browser visual QA walkthrough**: genuinely requires a real, non-admin, customer-side Clerk session — already correctly tracked as owner-blocked in `docs/PendingOwnerActions.md` #7 (this environment only has authenticated access to the admin session). Not re-litigated here; independent work continues per the standing owner-blocker rule. `PORTAL_ENABLED` is also currently unset (defaults off) in this environment (confirmed during Phase 4B journey tracing) — the portal surface itself isn't reachable end-to-end without that flag, which is its own separate rollout-timing decision, not a bug.
 
+### 4G status: First pass — one fix shipped (2026-08-10)
+
+**Reservation hoarding** (fixed): checkout had no cap on how many unpaid `PENDING` orders — each holding real physical stock for up to 25h — a single identity could accumulate simultaneously; only a per-IP velocity limit existed, trivially defeated by IP rotation. Added a per-email concurrent-open-checkout cap (max 3), verified against real Postgres + a running dev server.
+
+**Promo-code abuse**: already covered by existing work — `/api/promotions/validate-code` is rate-limited (20/60s/IP), codes are collision-checked on issuance, and first-order eligibility (`hasAnyPriorOrder`) checks real `Invoice`/`Order` history rather than trusting a claim record alone (Decision #62).
+
+**Duplicate accounts**: already covered — `findPossibleDuplicateCustomers()` surfaces weak matches for admin review, never auto-merges (a deliberate design choice, not a gap for this sub-phase's purposes — see the 4D-routed customer-merge *UI* gap, which is a different, admin-operational concern).
+
+**Payment/refund replay**: Stripe webhook idempotency already established (`Payment.upsert` keyed on `stripePaymentIntentId`); the Invoice refund workflow (create/complete/fail/cancel) was independently confirmed solid during the 4D admin audit.
+
 ### 4D status: First pass — one fix shipped, three findings routed (2026-08-10)
 
 Audited every admin surface (orders, invoices, customers, identity review, inventory, backorders, promotions, settings) for operational friction requiring a database edit or developer intervention for a routine action.
