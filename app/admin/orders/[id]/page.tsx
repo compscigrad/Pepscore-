@@ -9,6 +9,7 @@ import Link from 'next/link'
 import { formatCurrency } from '@/lib/orders'
 import { getOrderDetail, deriveFulfillmentState } from '@/lib/orders/admin'
 import { OrderCancelButton } from '@/components/admin/OrderCancelButton'
+import { OrderMarkDeliveredButton } from '@/components/admin/OrderMarkDeliveredButton'
 import { card, mutedText, sectionHeading } from '@/components/invoices/theme'
 
 function readableLabel(status: string): string {
@@ -59,7 +60,10 @@ export default async function OrderDetailPage({ params }: PageProps) {
               {new Date(order.updatedAt).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
             </p>
           </div>
-          <OrderCancelButton orderId={order.id} disabled={Boolean(cancelDisabledReason)} disabledReason={cancelDisabledReason} />
+          <div className="flex items-start gap-3">
+            {order.status === 'SHIPPED' ? <OrderMarkDeliveredButton orderId={order.id} /> : null}
+            <OrderCancelButton orderId={order.id} disabled={Boolean(cancelDisabledReason)} disabledReason={cancelDisabledReason} />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
