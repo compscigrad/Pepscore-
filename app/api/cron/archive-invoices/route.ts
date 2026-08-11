@@ -7,11 +7,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { sweepAutoArchive } from '@/lib/invoices'
 import { getInvoiceSettings } from '@/lib/invoiceSettings'
+import { safeCompare } from '@/lib/security/safeCompare'
 
 function isAuthorizedCronRequest(req: NextRequest): boolean {
   const secret = process.env.CRON_SECRET
   if (!secret) return false
-  return req.headers.get('authorization') === `Bearer ${secret}`
+  const provided = req.headers.get('authorization')
+  return provided !== null && safeCompare(provided, `Bearer ${secret}`)
 }
 
 export async function GET(req: NextRequest) {

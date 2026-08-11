@@ -24,11 +24,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { stripe } from '@/lib/stripe'
 import { markOrderPaymentFailedOrReturned } from '@/lib/payments/orderFulfillment'
+import { safeCompare } from '@/lib/security/safeCompare'
 
 function isAuthorizedCronRequest(req: NextRequest): boolean {
   const secret = process.env.CRON_SECRET
   if (!secret) return false
-  return req.headers.get('authorization') === `Bearer ${secret}`
+  const provided = req.headers.get('authorization')
+  return provided !== null && safeCompare(provided, `Bearer ${secret}`)
 }
 
 const RESERVATION_HOLD_HOURS = 25
