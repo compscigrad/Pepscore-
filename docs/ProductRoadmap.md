@@ -337,6 +337,12 @@ First slice: traced all four required journeys (new-customer acquisition, existi
 
 Remaining 4B scope: sandbox/test-mode walkthroughs (not just code tracing) of all four journeys, per the sub-phase's original "verified in sandbox/test mode only" requirement — continues in a follow-up slice.
 
+### 4E status: First pass clean (2026-08-10)
+
+Ran a read-only integrity sweep against the real database: duplicate `Customer` emails, orphaned `Order`↔`Invoice` links, `PromotionCode` rows marked `REDEEMED` with no `redeemedOrderId`, `ACTIVE` `OrderReservation`s on a `CANCELLED` order, negative or over-reserved product stock, customers with more than one active portal invite (the exact race PR #173 closed), and historical instances of the `Invoice.customerId` gap PR #175 fixed. **All zero** — no orphans, no duplicates, no invariant violations found.
+
+**Caveat, stated plainly rather than overclaiming**: this environment currently has zero `Order` rows with a linked `Invoice` (real storefront checkout is still off, per `docs/PendingOwnerActions.md` #1), so this pass mostly confirms the *current, small* dataset is clean, not that these invariants are proven to hold under real production volume and concurrency. Recommend re-running the same sweep periodically once real checkout traffic exists — a good candidate for a low-frequency admin-visible health-check cron rather than a one-time audit, folding into Phase 4Q (Observability) rather than being re-scoped as a new item.
+
 ### A note on Phase 5 (do not build yet)
 
 An AI concierge is a real, legitimate future capability but is explicitly **out of scope for Phase 4** — it is not a launch blocker, and for an RUO research-peptide business it needs its own deliberate compliance/product scoping pass (navigation/FAQ/order-status/support-triage only; never dosing, treatment, or human-use guidance) before any implementation begins. Logged here as a Phase 5 (post-launch optimization) candidate per 4Y's own definition of what Phase 5 is for — driven by real post-launch usage and business judgment, not pre-planned scope added mid-Phase-4.
