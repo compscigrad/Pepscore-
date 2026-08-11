@@ -15,6 +15,7 @@ import { SELL_UNIT_DISPLAY_LABEL } from '@/lib/pricing/sellUnits'
 import { reserveForOrderItemTx, releaseAllOrderReservationsTx } from '@/lib/inventory/orderReservations'
 import { getPaymentSettings } from '@/lib/payments/settings'
 import { resolveCustomerIdForCheckout, resolvePromotionCode, PROMOTION_CODE_INVALID_MESSAGE } from '@/lib/promotions/redemption'
+import { getInvoiceLinePriceTier } from '@/lib/pricing/lineOverride'
 import type { CheckoutLineItem, ShippingAddress } from '@/types'
 import type Stripe from 'stripe'
 
@@ -101,6 +102,16 @@ export async function POST(req: NextRequest) {
     const freeShipping = subtotal >= 150
     const shippingCost = freeShipping ? 0 : 0 // Shippo rates fetched post-checkout
 
+    // Resolved once regardless of whether a promotion code was submitted --
+    // an existing Customer/Lead match (by linked userId, else case-
+    // insensitive email) is also how Invoice.customerId gets set below, so
+    // this checkout's Invoice is actually reachable from /account/invoices
+    // and /account/tracking (both customerId-scoped) rather than silently
+    // orphaned. Never creates a new Customer row here -- that's a separate,
+    // larger identity-resolution decision than this fix is scoped to; a
+    // genuinely new guest email simply resolves to null, same as before.
+    const resolvedCustomerId = await resolveCustomerIdForCheckout(userId ?? null, customerEmail)
+
     // Resolve and authoritatively re-validate a promotion code before
     // creating anything -- never trusts a client-calculated discount, and
     // never creates a PENDING Order for a checkout attempt with an invalid
@@ -110,12 +121,11 @@ export async function POST(req: NextRequest) {
     let appliedPromotionCodeId: string | null = null
     let discountAmount = 0
     if (promotionCode) {
-      const customerId = await resolveCustomerIdForCheckout(userId ?? null, customerEmail)
-      if (!customerId) {
+      if (!resolvedCustomerId) {
         return NextResponse.json({ error: PROMOTION_CODE_INVALID_MESSAGE.WRONG_CUSTOMER }, { status: 400 })
       }
       const result = await resolvePromotionCode(promotionCode, {
-        customerId,
+        customerId: resolvedCustomerId,
         cartSubtotal: subtotal,
         cartProductSlugs: products.map((p) => p.slug),
       })
@@ -171,6 +181,7 @@ export async function POST(req: NextRequest) {
             create: {
               invoiceNumber,
               status: 'DRAFT',
+              customerId: resolvedCustomerId ?? undefined,
               customerName,
               customerEmail,
               shippingAddress: JSON.parse(JSON.stringify(shippingAddress)),
@@ -178,6 +189,29 @@ export async function POST(req: NextRequest) {
               total,
               balanceDue: total,
               shippingCost,
+              // Without these, the checkout-created Invoice was an empty
+              // shell with no InvoiceItem rows at all -- unusable by any
+              // invoice-based feature (backorder compensation, itemized
+              // PDF/detail view, admin line editing) for a real storefront
+              // sale. Mirrors the Order.items shape above from the same
+              // already-validated lineItems, using InvoiceItemSellUnit
+              // (the same enum OrderItem.sellUnit already reuses) and the
+              // same vials-consumed computation the reservation call below
+              // uses, so the two records agree on what was actually sold.
+              items: {
+                create: lineItems.map(i => ({
+                  productId: i.productId,
+                  name: i.name,
+                  quantity: i.quantity,
+                  unitPrice: i.unitPrice,
+                  total: i.total,
+                  sellUnit: i.sellUnit,
+                  unitsPerSellUnit: i.unitsPerSellUnit,
+                  priceTier: getInvoiceLinePriceTier(i.sellUnit),
+                  skuSnapshot: productMap.get(i.productId)?.sku ?? undefined,
+                  inventoryQuantityConsumed: computeVialsToReserve(i.quantity, i.unitsPerSellUnit),
+                })),
+              },
             },
           },
         },
