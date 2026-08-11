@@ -16,6 +16,7 @@ import { reserveForOrderItemTx, releaseAllOrderReservationsTx } from '@/lib/inve
 import { getPaymentSettings } from '@/lib/payments/settings'
 import { resolveCustomerIdForCheckout, resolvePromotionCode, PROMOTION_CODE_INVALID_MESSAGE } from '@/lib/promotions/redemption'
 import { getInvoiceLinePriceTier } from '@/lib/pricing/lineOverride'
+import { applyBackorder } from '@/lib/backorders'
 import type { CheckoutLineItem, ShippingAddress } from '@/types'
 import type Stripe from 'stripe'
 
@@ -174,7 +175,7 @@ export async function POST(req: NextRequest) {
     // not a shortfall to block on, it's the whole point of backorder
     // support (lib/storefront/availability.ts already gated non-purchasable
     // items out above; this only re-checks the ones that passed that gate).
-    const order = await prisma.$transaction(async (tx) => {
+    const { order, backorderedInvoiceItemIds } = await prisma.$transaction(async (tx) => {
       const created = await tx.order.create({
         data: {
           orderNumber,
@@ -239,8 +240,17 @@ export async function POST(req: NextRequest) {
             },
           },
         },
-        include: { items: true },
+        include: { items: true, invoice: { include: { items: true } } },
       })
+
+      // Collected here, applied via applyBackorder() *after* this
+      // transaction commits (below) -- never inside it. A hiccup in
+      // backorder/compensation bookkeeping must not roll back an otherwise-
+      // valid Order a customer is actively trying to pay for; the Order and
+      // its reservation shortfall are already the authoritative record of
+      // what happened even if the BackorderCondition application below
+      // fails for some reason (caught and logged there, not re-thrown).
+      const backorderedInvoiceItemIds: string[] = []
 
       for (const orderItem of created.items) {
         const product = productMap.get(orderItem.productId)
@@ -256,9 +266,22 @@ export async function POST(req: NextRequest) {
         if (shortfall > 0 && !product?.backorderEnabled) {
           throw new Error(`${orderItem.name} (${orderItem.size}) no longer has enough stock available — please update your cart.`)
         }
+        if (shortfall > 0 && product?.backorderEnabled) {
+          // Matched by (productId, sellUnit), not array position -- both
+          // Order.items and Invoice.items were created from the same
+          // lineItems array in the same request, but a cart can never have
+          // two lines sharing one (productId, sellUnit) pair (cart-store.ts's
+          // sameLine() already dedupes on exactly that pair), so this is an
+          // unambiguous match without depending on Prisma's nested-create
+          // return ordering, which isn't a documented guarantee.
+          const invoiceItem = created.invoice?.items.find(
+            (ii) => ii.productId === orderItem.productId && ii.sellUnit === orderItem.sellUnit
+          )
+          if (invoiceItem) backorderedInvoiceItemIds.push(invoiceItem.id)
+        }
       }
 
-      return created
+      return { order: created, backorderedInvoiceItemIds }
     })
 
     // Store RUO acknowledgment
@@ -272,6 +295,32 @@ export async function POST(req: NextRequest) {
         ruoText,
       },
     })
+
+    // Apply the real backorder record (+ automatic $25-over-$100 credit,
+    // same policy/idempotency as every admin-applied backorder) for any
+    // line the reservation loop above accepted with a shortfall because
+    // backorderEnabled allowed it -- Phase 4N: previously this shortfall
+    // was silently absorbed with zero record anywhere (not even an
+    // inventory ledger entry), leaving no way for an admin to ever
+    // discover a storefront order needed backorder follow-up. Applied
+    // post-commit, one at a time, each independently caught -- a failure
+    // here must never undo an Order/Stripe-session a customer is actively
+    // paying for; the Order and its reservation shortfall already stand as
+    // the authoritative record even if this bookkeeping step fails.
+    if (order.invoice) {
+      for (const invoiceItemId of backorderedInvoiceItemIds) {
+        try {
+          await applyBackorder({
+            invoiceId: order.invoice.id,
+            invoiceItemId,
+            appliedBy: 'system-storefront-checkout',
+            source: 'SYSTEM',
+          })
+        } catch (backorderErr) {
+          console.error('[checkout] Failed to apply automatic backorder record:', backorderErr)
+        }
+      }
+    }
 
     // Which methods actually show on Stripe's embedded Checkout --
     // admin-configurable (Settings > Payments), never hardcoded. Falls

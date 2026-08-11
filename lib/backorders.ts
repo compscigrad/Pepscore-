@@ -19,6 +19,7 @@ import {
   type InvoiceRefund,
   type BackorderCompensation,
   type BackorderCompensationType,
+  type TrackingEventSource,
 } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { calculateInvoiceTotals, type InvoiceLineItemInput, type InvoiceDiscountInput } from '@/lib/invoice/calculations'
@@ -430,6 +431,15 @@ export interface ApplyBackorderInput {
   // lib/invoice/backorder.ts's computeCompensationSplit. Defaults to
   // 'REFUND' (a pending obligation), matching prior behavior.
   preference?: CompensationDispositionPreference
+  // Optional, defaults to 'MANUAL' -- every pre-existing caller is a real
+  // admin action and stays byte-for-byte unaffected. The first automated
+  // caller (storefront checkout, applying a backorder the instant a
+  // shortfall is detected -- see this function's own comment below) passes
+  // 'SYSTEM' so the resulting CustomerActivityLog/InvoiceActivityLog entries
+  // accurately show no admin was actually involved, rather than the
+  // misleading "MANUAL" this codebase's automatic $25 compensation policy
+  // already treats as a non-admin-judgment action anyway.
+  source?: TrackingEventSource
 }
 
 // Section: admin manually marks a line item backordered. Validates the item
@@ -506,12 +516,12 @@ export async function applyBackorder(input: ApplyBackorderInput) {
       invoiceId: input.invoiceId,
       eventType: 'BACKORDER_APPLIED',
       newValue: activityNote,
-      source: 'MANUAL',
+      source: input.source ?? 'MANUAL',
       userId: input.appliedBy,
     })
   } else {
     await prisma.invoiceActivityLog.create({
-      data: { invoiceId: input.invoiceId, eventType: 'BACKORDER_APPLIED', newValue: activityNote, source: 'MANUAL', userId: input.appliedBy },
+      data: { invoiceId: input.invoiceId, eventType: 'BACKORDER_APPLIED', newValue: activityNote, source: input.source ?? 'MANUAL', userId: input.appliedBy },
     })
   }
 
