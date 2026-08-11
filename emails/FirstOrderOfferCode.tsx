@@ -58,7 +58,7 @@ export function buildFirstOrderOfferCodeHtml(props: FirstOrderOfferCodeProps): s
     ${codePanel}
     ${detailsPanel}
     ${emailCta(signUpUrl, 'Create Your Account')}
-    ${emailCtaOutline(shopUrl, 'Shop PepScore Lab')}
+    ${emailCtaOutline(shopUrl, 'Shop Pepscore Lab')}
     <p style="font-size:12px;color:${EMAIL_COLORS.textMuted};margin:0;text-align:center">Create or sign in to your Pepscore Lab account, then apply this code at checkout on your first qualifying order.</p>
   `
 
