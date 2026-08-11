@@ -69,8 +69,29 @@ export const PRODUCT_IMAGE_MAP: Record<string, string> = {
   'G610':                                          '/images/products/g610.png',
 }
 
+// Must mirror next.config.ts's images.remotePatterns exactly. next/image
+// throws synchronously (crashing the entire page render, not just that one
+// image) for any src whose host isn't in that allowlist -- discovered via a
+// real incident where two leftover test-data rows with an unconfigured
+// `https://example.com/...` imageUrl 500'd the live production homepage for
+// every visitor, since resolveProductImage() had no reason to distrust a
+// non-empty dbUrl. A local `/...`-rooted path never needs remotePatterns
+// (Next only enforces the allowlist for absolute remote URLs), so those are
+// always safe.
+const ALLOWED_REMOTE_IMAGE_HOSTS = [/^files\.stripe\.com$/, /\.supabase\.co$/]
+
+function isSafeProductImageUrl(url: string): boolean {
+  if (url.startsWith('/')) return true
+  try {
+    const { protocol, hostname } = new URL(url)
+    return protocol === 'https:' && ALLOWED_REMOTE_IMAGE_HOSTS.some((p) => p.test(hostname))
+  } catch {
+    return false
+  }
+}
+
 export function resolveProductImage(name: string, dbUrl: string | null | undefined): string {
   if (PRODUCT_IMAGE_MAP[name]) return PRODUCT_IMAGE_MAP[name]
-  if (dbUrl && !LINEUP_IMAGES.has(dbUrl)) return dbUrl
+  if (dbUrl && !LINEUP_IMAGES.has(dbUrl) && isSafeProductImageUrl(dbUrl)) return dbUrl
   return PRODUCT_FALLBACK_IMAGE
 }
