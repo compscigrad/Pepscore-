@@ -417,6 +417,7 @@ Every claim below traces to a real PR number or commit found in `git log`, cross
 | Security/concurrency triage: timing-safe cron auth, portal-invite race, stale comment | #173 | Decision #65 | Closes Phase 4A exit criteria — every Medium/Low finding dispositioned |
 | Phase 4B journey tracing + checkout-Invoice linkage/item fix | #175 | Decision #66 | `Invoice.customerId`/`InvoiceItem` gap fixed; two further findings routed to Phase 4N/4D; resolved a stale `PendingOwnerActions.md` #8 |
 | Live production incident: unconfigured image host crashed the homepage | #178 | Decision #67 | Found and fixed during Phase 4B prep — real homepage 500 in production, root cause + systemic fix + 8 regression tests |
+| Phase 4C/4D/4F first passes + Mark as Delivered | #182 | Decision #68 | Portal isolation verified, admin friction gap fixed, security spot-check clean; 3 findings routed to 4E/4M/4O |
 
 ---
 

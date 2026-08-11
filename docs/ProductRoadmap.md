@@ -345,6 +345,28 @@ Remaining 4B scope: sandbox walkthroughs of the other three journeys (existing-c
 
 **Live-browser visual QA walkthrough**: genuinely requires a real, non-admin, customer-side Clerk session — already correctly tracked as owner-blocked in `docs/PendingOwnerActions.md` #7 (this environment only has authenticated access to the admin session). Not re-litigated here; independent work continues per the standing owner-blocker rule. `PORTAL_ENABLED` is also currently unset (defaults off) in this environment (confirmed during Phase 4B journey tracing) — the portal surface itself isn't reachable end-to-end without that flag, which is its own separate rollout-timing decision, not a bug.
 
+### 4D status: First pass — one fix shipped, three findings routed (2026-08-10)
+
+Audited every admin surface (orders, invoices, customers, identity review, inventory, backorders, promotions, settings) for operational friction requiring a database edit or developer intervention for a routine action.
+
+**Fixed directly**: admin orders had no UI action to mark a shipped order `DELIVERED`, even though the underlying `PATCH /api/admin/orders` endpoint already supported it as a documented low-risk status update — an admin would have needed devtools or a direct DB edit. Added a "Mark as Delivered" button, shown only for a `SHIPPED` order.
+
+**Found solid, no gap**: Invoices (best-covered surface — every state-changing action has a matching correction/reversal route), Identity Review, Inventory corrections (an exceptionally complete single-endpoint action set: `ADD_STOCK`/`REMOVE_STOCK`/`SET_EXACT_COUNT`/`DAMAGE_LOSS`/`REVERSE_LAST`/`RECONCILE`/etc.), and Backorder resolution. Confirmed the single-admin model (`userId === ADMIN_CLERK_USER_ID`) is still accurately scoped — nothing assumes multiple admins yet, matching Phase 2G's deliberate deferral.
+
+**Routed, not fixed here** (each is real work needing its own design pass, not a rushed fix mid-audit):
+- No customer-merge path once two `Customer` rows represent the same person but don't exact-match (auto-merge deliberately never applies on a weak match — by design, per `lib/customers.ts`). A hard dead end (raw `UPDATE` required) whenever it occurs. **Routed to Phase 4E.**
+- No in-app refund action for storefront Orders (Invoices have one; Orders don't — must use the Stripe dashboard directly). Low urgency today (0 real orders exist pre-launch). **Routed to Phase 4M.**
+- No individual `PromotionCode` revoke/reissue route — only bulk campaign-level expiry exists. An edge case (a leaked/undelivered single code), not routine use. **Routed to Phase 4O.**
+
+### 4F status: First pass clean (2026-08-10)
+
+Spot-checked core security-hardening categories beyond what Phase 4A's triage already closed (timing-safe cron auth, the portal-invite race):
+- **Webhook signature validation**: Stripe (`stripe.webhooks.constructEvent`, real HMAC verification via the SDK), Clerk (`verifyWebhook`), Shippo (`safeCompare`-based shared-secret check, now using the shared helper) all confirmed solid. Twilio's inbound webhook (`twilio.validateRequest`) relies on `req.url` correctly reflecting the public HTTPS URL — reliable on Vercel's hosting model, but flagged for an explicit real-signature check once Twilio is actually activated (owner action, not yet done).
+- **Secrets exposure**: repo-wide scan for hardcoded `sk_live_`/`sk_test_`/`whsec_`-shaped strings in source — zero found, everything reads from `process.env`. `.env.local` confirmed gitignored and never committed to history. `NEXT_PUBLIC_*` vars audited — all are genuinely meant to be public (Clerk/Stripe publishable keys, URLs).
+- **Authorization boundaries**: `adminAuthCoverage.test.ts` (existing mechanical regression test) continues to enforce every `app/api/admin/**` route defines and calls the exact required `isAdmin()` shape — already passing.
+
+No new findings this pass — the categories checked were already solid.
+
 ### 4E status: First pass clean (2026-08-10)
 
 Ran a read-only integrity sweep against the real database: duplicate `Customer` emails, orphaned `Order`↔`Invoice` links, `PromotionCode` rows marked `REDEEMED` with no `redeemedOrderId`, `ACTIVE` `OrderReservation`s on a `CANCELLED` order, negative or over-reserved product stock, customers with more than one active portal invite (the exact race PR #173 closed), and historical instances of the `Invoice.customerId` gap PR #175 fixed. **All zero** — no orphans, no duplicates, no invariant violations found.
