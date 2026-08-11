@@ -425,6 +425,8 @@ Every claim below traces to a real PR number or commit found in `git log`, cross
 | Phase 4U launch checklist + 4V reconciliation + 4W real UI rehearsal | — | Decision #72 | New docs/LaunchReadiness.md; PendingOwnerActions re-verified clean; real checkout UI click-through, one finding flagged for clean re-verification |
 | Phase 4N genuine-gap fix: storefront checkout wired into existing backorder architecture | #192 | Decision #73 | `applyBackorder()` now called on any nonzero shortfall against a backorder-enabled product; verified against real Postgres via synthetic fixtures (safe-merge and normal-checkout regression both PASS) |
 | Phase 4E genuine-gap fix: customer-merge dead end replaced with safe-merge-or-explicitly-blocked | #193 | Decision #74 | `lib/customers/merge.ts`; 3 real identity-conflict conditions detected and refused rather than guessed through; verified against real Postgres for both safe-merge and blocked-merge outcomes; closes the last genuine engineering gap named in the Phase 4X report |
+| Docs reconciliation for both resolved pre-pilot gaps | #194 | Decisions #73/#74 | ProductRoadmap/LaunchReadiness/CaseStudy updated; recommendation intentionally held at READY FOR CONTROLLED PILOT |
+| Final admin operational UX audit: customer search normalized-phone matching + Storefront Orders visibility | #195 | — | Reused existing `phoneNumbersMatch` convention rather than inventing a new one; added the one missing profile section; verified via real-Postgres rehearsal, then live against a real production customer record post-deploy |
 
 ---
 
