@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import toast from 'react-hot-toast'
 import { getAttribution } from '@/lib/storefront/attribution'
+import { trackEvent } from '@/lib/analytics/track'
+import { AnalyticsEvent } from '@/lib/analytics/events'
 
 export type LeadInterestType =
   | 'GENERAL_UPDATES'
@@ -97,6 +99,7 @@ export function LeadCaptureTrigger({
         toast.error(data?.error ?? 'Something went wrong — please try again.')
         return
       }
+      trackEvent(AnalyticsEvent.LEAD_CAPTURE_SUBMIT, { interestType, productSlug: productSlug ?? null })
       toast.success("Thanks — we'll be in touch shortly.")
       reset()
       setOpen(false)

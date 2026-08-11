@@ -18,6 +18,8 @@ import { BackorderIndicator } from '@/components/storefront/BackorderIndicator'
 import { BackorderLegend } from '@/components/storefront/BackorderLegend'
 import { STOREFRONT_BACKORDER_CREDIT_AMOUNT, STOREFRONT_BACKORDER_MINIMUM_ORDER_TOTAL } from '@/lib/storefront/backorderPolicy'
 import { getStripeClient } from '@/lib/stripe-client'
+import { trackEvent } from '@/lib/analytics/track'
+import { AnalyticsEvent } from '@/lib/analytics/events'
 
 const fieldInput =
   'w-full border border-white/15 bg-white/[0.04] rounded-lg px-4 py-3 text-[14px] text-white placeholder:text-white/35 focus:outline-none focus:border-[#D4AF37]/50 transition-colors'
@@ -107,6 +109,7 @@ export function CheckoutForm() {
 
   function handleCheckoutClick() {
     if (!validate()) return
+    trackEvent(AnalyticsEvent.BEGIN_CHECKOUT, { itemCount: items.length, hasBackorderedItem })
     setShowRuo(true)
   }
 
@@ -138,6 +141,7 @@ export function CheckoutForm() {
       setPromoDiscountAmount(data.discountAmount)
       setPromoCampaignTitle(data.campaignTitle ?? null)
       setPromoInput('')
+      trackEvent(AnalyticsEvent.PROMOTION_APPLIED, { discountAmount: data.discountAmount })
       toast.success('Promo code applied')
     } catch {
       setPromoError('Something went wrong checking that code — please try again.')

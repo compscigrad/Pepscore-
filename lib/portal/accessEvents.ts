@@ -9,6 +9,8 @@
 // we already processed must never create a second timeline entry.
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
+import { trackServerEvent } from '@/lib/analytics/serverTrack'
+import { AnalyticsEvent } from '@/lib/analytics/events'
 import type { WebhookEvent } from '@clerk/nextjs/webhooks'
 import type { CustomerAccessEventType } from '@prisma/client'
 
@@ -121,13 +123,20 @@ export async function processClerkWebhookEvent(event: WebhookEvent, providerEven
   switch (event.type) {
     case 'user.created':
     case 'user.updated': {
-      return recordAccessEvent(providerEventId, {
+      const outcome = await recordAccessEvent(providerEventId, {
         clerkUserId: event.data.id,
         clerkSessionId: null,
         eventType: event.type === 'user.created' ? 'USER_CREATED' : 'USER_UPDATED',
         eventTimestamp: new Date(event.data.updated_at ?? event.data.created_at ?? Date.now()),
         emailAddress: primaryEmail(event.data),
       })
+      // 'duplicate' means this is a Clerk redelivery of an event already
+      // processed once (see module comment) -- only a genuinely new
+      // 'processed' user.created should ever count as a real signup.
+      if (event.type === 'user.created' && outcome === 'processed') {
+        void trackServerEvent(AnalyticsEvent.ACCOUNT_CREATED, {})
+      }
+      return outcome
     }
     case 'user.deleted': {
       return recordAccessEvent(providerEventId, {

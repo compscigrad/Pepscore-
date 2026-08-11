@@ -5,6 +5,7 @@
 // "Related Strengths" below.
 'use client'
 
+import { useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
@@ -15,6 +16,8 @@ import { BackorderIndicator } from './BackorderIndicator'
 import { BackorderLegend } from './BackorderLegend'
 import { AVAILABILITY_LABEL, isPurchasable, type StorefrontAvailability } from '@/lib/storefront/availability'
 import type { StorefrontPrice } from '@/lib/storefront/pricing'
+import { trackEvent } from '@/lib/analytics/track'
+import { AnalyticsEvent } from '@/lib/analytics/events'
 
 const GENERIC_PLACEHOLDER = '/images/products/default-single-vial.png'
 
@@ -79,6 +82,15 @@ export function ProductDetail({
 }: ProductDetailProps) {
   const { addItem, openCart } = useCartStore()
   const canPurchase = price != null && isPurchasable(availability)
+
+  // Fired once per page load, not per render -- deliberately excludes
+  // `category`/`availability` etc. from the dependency array since this
+  // should only ever represent "a visitor landed on this product," not
+  // re-fire if the same page's derived props happen to change identity.
+  useEffect(() => {
+    trackEvent(AnalyticsEvent.PRODUCT_VIEW, { slug, category, availability })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug])
 
   function handleAdd() {
     if (!canPurchase || price == null) return

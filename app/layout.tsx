@@ -3,6 +3,7 @@
 // so the site builds cleanly before Clerk is configured.
 import type { Metadata } from 'next'
 import { ClerkProvider } from '@clerk/nextjs'
+import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from 'react-hot-toast'
 import { clerkAppearance } from '@/lib/clerkAppearance'
 import { organizationSchema } from '@/lib/storefront/structuredData'
@@ -66,6 +67,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
           <Toaster {...toasterProps} />
           <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: organizationJsonLd }} />
+          <Analytics />
         </body>
       </html>
     )
@@ -79,6 +81,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
           <Toaster {...toasterProps} />
           <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: organizationJsonLd }} />
+          <Analytics />
         </body>
       </html>
     </ClerkProvider>

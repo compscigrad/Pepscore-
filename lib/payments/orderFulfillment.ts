@@ -14,6 +14,8 @@ import { buildOrderConfirmationHtml } from '@/emails/OrderConfirmation'
 import { achPaymentProcessingSubject, buildAchPaymentProcessingHtml } from '@/emails/AchPaymentProcessing'
 import { fulfillAllOrderReservationsTx, releaseAllOrderReservationsTx } from '@/lib/inventory/orderReservations'
 import { finalizeRedemption } from '@/lib/promotions/redemption'
+import { trackServerEvent } from '@/lib/analytics/serverTrack'
+import { AnalyticsEvent } from '@/lib/analytics/events'
 import type { StorefrontPaymentMethodType, Order } from '@prisma/client'
 
 export interface MarkOrderPaidInput {
@@ -65,6 +67,10 @@ export async function markOrderPaid(input: MarkOrderPaidInput): Promise<Order> {
   // Idempotent (see finalizeRedemption's own comment), so a redelivered
   // webhook that reaches this far again is still safe.
   await finalizeRedemption(order.id)
+
+  // Best-effort funnel event -- amount and payment method are transaction
+  // facts, not customer-identifying values, so they're safe to record here.
+  void trackServerEvent(AnalyticsEvent.ORDER_PAID, { orderValue: order.total, methodType: input.methodType })
 
   if (order.invoice) {
     await prisma.invoice.update({ where: { id: order.invoice.id }, data: { status: 'ISSUED', paidAt: new Date() } })

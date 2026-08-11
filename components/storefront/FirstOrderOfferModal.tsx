@@ -11,6 +11,8 @@ import { useState } from 'react'
 import toast from 'react-hot-toast'
 import { getAttribution } from '@/lib/storefront/attribution'
 import { formatDiscountLabel } from '@/lib/promotions/format'
+import { trackEvent } from '@/lib/analytics/track'
+import { AnalyticsEvent } from '@/lib/analytics/events'
 import type { PromotionType } from '@prisma/client'
 
 export interface FirstOrderOfferModalProps {
@@ -63,6 +65,7 @@ export function FirstOrderOfferModal({ publicTitle, discountType, discountValue,
         return
       }
       setClaimed(true)
+      trackEvent(AnalyticsEvent.PROMOTION_CLAIM, { discountType, alreadyClaimed: Boolean(responseData?.alreadyClaimed) })
       toast.success(
         responseData?.alreadyClaimed
           ? "You've already claimed this offer — check your email for details."

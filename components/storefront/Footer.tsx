@@ -76,22 +76,35 @@ export async function Footer() {
             </ul>
           </div>
 
-          {/* Information */}
+          {/* Information -- only ever renders a real link. Lab Results/COAs,
+              Shipping Policy, Returns & Refunds, Terms of Service, and
+              Privacy Policy have no page to link to yet (no COA data model,
+              no drafted legal copy -- see docs/PendingOwnerActions.md), so
+              they render as plain, visibly non-interactive labels rather
+              than a clickable link to nowhere. Restore each as a real Link
+              once its destination exists; don't fabricate legal text to
+              fill the gap sooner. */}
           <div>
             <h4 className="font-heading text-[11px] font-bold tracking-[0.1em] uppercase text-[#D4AF37] mb-3">Information</h4>
             <ul className="space-y-2">
-              {[
-                ['Lab Results / COAs', '#'],
+              {([
+                ['Lab Results / COAs', null],
                 ['Bulk Pricing', '/#bulk'],
-                ['Shipping Policy', '#'],
-                ['Returns & Refunds', '#'],
-                ['Terms of Service', '/terms'],
-                ['Privacy Policy', '/privacy'],
-              ].map(([label, href]) => (
+                ['Shipping Policy', null],
+                ['Returns & Refunds', null],
+                ['Terms of Service', null],
+                ['Privacy Policy', null],
+              ] as const).map(([label, href]) => (
                 <li key={label}>
-                  <Link href={href} className="text-[13px] text-white/60 hover:text-[#D4AF37] transition-colors">
-                    {label}
-                  </Link>
+                  {href ? (
+                    <Link href={href} className="text-[13px] text-white/60 hover:text-[#D4AF37] transition-colors">
+                      {label}
+                    </Link>
+                  ) : (
+                    <span className="text-[13px] text-white/30 cursor-default" title="Coming soon">
+                      {label}
+                    </span>
+                  )}
                 </li>
               ))}
             </ul>
@@ -132,11 +145,13 @@ export async function Footer() {
           <p className="text-[12px] text-white/40">
             © {new Date().getFullYear()} Pepscore Lab — Holistic Research Peptides. All rights reserved. For research purposes only.
           </p>
+          {/* Same non-interactive treatment as the Information column above
+              -- none of these three have a real destination yet. */}
           <div className="flex gap-5">
             {['Privacy', 'Terms', 'COAs'].map(l => (
-              <Link key={l} href="#" className="text-[12px] text-white/40 hover:text-[#D4AF37] transition-colors">
+              <span key={l} className="text-[12px] text-white/25 cursor-default" title="Coming soon">
                 {l}
-              </Link>
+              </span>
             ))}
           </div>
         </div>

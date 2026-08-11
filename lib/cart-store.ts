@@ -7,6 +7,8 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { CartItem } from '@/types'
 import type { SellUnit } from '@/lib/pricing/sellUnits'
+import { trackEvent } from '@/lib/analytics/track'
+import { AnalyticsEvent } from '@/lib/analytics/events'
 
 // A product can now have more than one cart line (e.g. a Standard Case AND
 // an Individual Vial of the same product) -- every line-targeting operation
@@ -45,6 +47,14 @@ export const useCartStore = create<CartStore>()(
 
       addItem: (newItem) => {
         const addQty = newItem.quantity ?? 1
+        // Single choke point for every "add to cart" call site (product
+        // page, Buy Again/reorder) -- fired once per action here rather
+        // than at each caller, since a caller could otherwise be missed.
+        trackEvent(AnalyticsEvent.ADD_TO_CART, {
+          slug: newItem.slug,
+          sellUnit: newItem.sellUnit ?? null,
+          quantity: addQty,
+        })
         set((state) => {
           const existing = state.items.find((i) => sameLine(i, newItem.id, newItem.sellUnit))
           if (existing) {

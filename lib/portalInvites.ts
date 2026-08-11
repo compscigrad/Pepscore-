@@ -23,6 +23,8 @@ import {
   buildPortalAccountClaimedHtml,
 } from '@/emails/PortalInvite'
 import { getPortalInviteState, isPortalInviteUsable } from '@/lib/portalInviteState'
+import { trackServerEvent } from '@/lib/analytics/serverTrack'
+import { AnalyticsEvent } from '@/lib/analytics/events'
 import type { PortalInviteState } from '@/lib/portalInviteState'
 import type { PortalInviteChannel, PortalInviteSource } from '@prisma/client'
 
@@ -239,6 +241,7 @@ export async function claimPortalInvite(input: ClaimPortalInviteInput): Promise<
   })
 
   await sendPortalAccountClaimedEmail(updated)
+  void trackServerEvent(AnalyticsEvent.PORTAL_ACTIVATION, { source: 'INVITE' })
 
   return { ok: true, customer: updated }
 }
