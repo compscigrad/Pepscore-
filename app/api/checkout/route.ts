@@ -19,6 +19,9 @@ import { getInvoiceLinePriceTier } from '@/lib/pricing/lineOverride'
 import type { CheckoutLineItem, ShippingAddress } from '@/types'
 import type Stripe from 'stripe'
 
+// See the reservation-hoarding guard below for why this exists.
+const MAX_CONCURRENT_PENDING_ORDERS_PER_EMAIL = 3
+
 export async function POST(req: NextRequest) {
   try {
     // Authoritative server-side gate -- checked before any Stripe call, any
@@ -64,6 +67,27 @@ export async function POST(req: NextRequest) {
     }
     if (!items?.length) {
       return NextResponse.json({ error: 'Cart is empty' }, { status: 400 })
+    }
+
+    // Reservation-hoarding guard (Phase 4G): each checkout attempt reserves
+    // real physical stock for up to 25h (release-abandoned-reservations
+    // cron) before ever being paid for. Without a per-identity cap, a bad
+    // actor could hold significant inventory hostage by starting many
+    // checkouts and abandoning all of them -- the per-IP rate limit above
+    // bounds velocity but not how many can stay open simultaneously, and IP
+    // rotation defeats it entirely. A real customer essentially never has
+    // several truly concurrent, still-open checkout attempts, so this adds
+    // no friction to normal use.
+    if (customerEmail) {
+      const openPendingCount = await prisma.order.count({
+        where: { customerEmail: { equals: customerEmail, mode: 'insensitive' }, status: 'PENDING' },
+      })
+      if (openPendingCount >= MAX_CONCURRENT_PENDING_ORDERS_PER_EMAIL) {
+        return NextResponse.json(
+          { error: 'You have several checkout attempts already in progress. Please complete or wait for one to expire, then try again.' },
+          { status: 429 }
+        )
+      }
     }
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
