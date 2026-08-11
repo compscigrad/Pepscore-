@@ -165,3 +165,18 @@ Real shipment tracking (carrier-agnostic, `ShippingProvider` abstraction) and pr
 ## 16. Explicit confirmation
 
 No real card was charged. No real ACH debit was pulled. No real Apple Pay/Google Pay/Cash App/PayPal/Venmo payment occurred. No real shipping label was purchased or postage spent. No real bulk (or even single, outside of Resend's existing transactional email pipeline) customer SMS was sent. Every Stripe operation this session — session creation, refunds, disputes, PaymentMethod creation/attach/detach, Customer creation, session expiry — ran against Stripe's test-mode API using `sk_test_…` credentials. Every Twilio-related check this session exercised only the receiving/signature-verification path with `TWILIO_*` left unset, which fails closed by design.
+
+---
+
+## 17. Phase 4M re-audit addendum (2026-08-11)
+
+Re-verified §1's live switches directly, not assumed: `STOREFRONT_CHECKOUT_ENABLED` remains unset in this environment (confirmed via direct `.env.local` inspection this session); Stripe keys remain test-mode (`sk_test_…`/`pk_test_…`, confirmed present). No switch has changed state since this report's original date.
+
+Real payment-adjacent work shipped since this report was written (all Stripe TEST-mode, all verified against real Postgres/a real running dev server, none touching a live switch):
+- **Server-side promotion code redemption at checkout** (Decision #62) — authoritative validation/eligibility/stacking, two-phase soft-hold, proportional Stripe line-item discount scaling.
+- **Reservation-hoarding guard** (Decision #69) — caps concurrent unpaid checkouts per email at 3, closing a real fraud-adjacent gap in the checkout path.
+- **Checkout-created Invoice linkage/items fix** (Decision #66) — `Invoice.customerId` and `InvoiceItem` rows are now correctly populated at checkout time, which is also what makes the storefront backorder-compensation flow's `InvoiceItem` requirement satisfiable for a real online sale (previously it wasn't, for any storefront order — see `docs/ProductRoadmap.md`'s 4B status section).
+
+§12/§15 item 5's Customer Portal Order visibility gap is **resolved** — re-verified during Phase 4B journey tracing that `/account/orders` already correctly queries real storefront `Order` data (not admin-invoice records as this report previously implied needed a design decision); see `docs/PendingOwnerActions.md`'s Resolved Items table.
+
+No new owner action identified beyond §15's existing list. Bottom line from §1 stands unchanged: no live switch has been flipped, no real money has moved.
