@@ -415,6 +415,7 @@ Every claim below traces to a real PR number or commit found in `git log`, cross
 | AOAI flagship-alignment audit + web/funnel analytics foundation | #172 | Decision #63 | `@vercel/analytics` + first-party event catalog; verdict FLAGSHIP ALIGNED WITH MINOR GAPS, zero P0 |
 | Footer dead-link cleanup | #172 | Decision #64 | Replaced dead `#`/`/terms`/`/privacy` links with non-interactive labels; no fabricated legal copy |
 | Security/concurrency triage: timing-safe cron auth, portal-invite race, stale comment | #173 | Decision #65 | Closes Phase 4A exit criteria — every Medium/Low finding dispositioned |
+| Phase 4B journey tracing + checkout-Invoice linkage/item fix | #175 | Decision #66 | `Invoice.customerId`/`InvoiceItem` gap fixed; two further findings routed to Phase 4N/4D; resolved a stale `PendingOwnerActions.md` #8 |
 
 ---
 
