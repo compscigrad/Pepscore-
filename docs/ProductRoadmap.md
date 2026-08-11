@@ -300,6 +300,35 @@ Feature completion is not production readiness. Phase 4's goal: audit the entire
 
 **Safety constraints (apply to all of 4A–4X, same standing rule as Phase 3)**: real money, real postage, real bulk customer communication, and live-launch switches stay OFF throughout unless explicitly authorized. Only stop autonomous execution for: real bulk customer communication, real payment activation, real money movement, owner-only authentication/paid-provider registration, a destructive production change, a serious security issue, or an actual usage limit — a single owner-blocked item is pinned in `docs/PendingOwnerActions.md` and every other independent sub-phase continues. Case-study maintenance continues throughout as its own permanent requirement, not a Phase 4 checkbox.
 
+### 4A status: Complete (closed 2026-08-10)
+
+**Critical findings — all four fixed, tested, merged, and deployed:**
+1. Inventory-reservation race condition + unguarded negative-stock fulfillment (PR #168) — shared `withOptimisticProductLock()` helper applied to all 9 inventory write sites.
+2. Admin Online Storefront Order management + safe cancellation (PR #169) — full search/filter/detail/cancel surface, cancellation respects paid/fulfilled state.
+3. Abandoned-checkout reservation leak (PR #170) — Stripe `checkout.session.expired` webhook + a 25-hour-hold reconciliation cron, both re-confirming against the real Stripe session before releasing.
+4. Server-side promotion code redemption at checkout (PR #171) — authoritative validation/eligibility/stacking, two-phase soft-hold so an abandoned checkout never burns a one-time code, Stripe line items proportionally scaled to the discounted total.
+
+**AOAI flagship-alignment audit** (owner-directed, run mid-4A) — read-only gap analysis against AOAI Solutions' $18,500+ Digital Ecosystem Package; full report published as an artifact. Verdict: FLAGSHIP ALIGNED WITH MINOR GAPS, zero P0 gaps. Findings routed below.
+
+**Findings closed directly (PR #172, #173):**
+- Zero web/funnel analytics existed anywhere in the app (the audit's one genuinely unaddressed gap) — added Vercel Analytics (automatic pageviews/Core Web Vitals) plus a first-party event catalog (`lib/analytics/events.ts`) covering `product_view`, `search`, `add_to_cart`, `begin_checkout`, `promotion_applied`, `lead_capture_submit`, `promotion_claim`, `account_created`, `order_paid`, `portal_activation`, `buy_again` — all properties non-identifying by construction (`lib/analytics/track.ts`/`serverTrack.ts`).
+- Footer dead links (`Lab Results/COAs`, `Shipping Policy`, `Returns & Refunds`, `/terms`, `/privacy`) — replaced with non-interactive labels rather than a clickable 404 or fabricated legal copy; real gap logged as `docs/PendingOwnerActions.md` #9. The header's `#contact` anchor was audited and confirmed already correct (no change needed).
+- Timing-safe comparison applied to all 6 cron routes' `Authorization` header check (previously plain `===`) via a new shared `lib/security/safeCompare.ts`, matching the pattern already used for the Shippo webhook secret.
+- `generatePortalInvite()`'s check-then-create race (could mint two active invites under concurrent admin requests) — closed with a `SELECT ... FOR UPDATE` row lock, verified against real Postgres.
+- A misleading comment on `app/api/account/claim/[token]/route.ts` claiming `proxy.ts` middleware protection that doesn't actually apply to that route — corrected (not a real vulnerability; the route's own `!userId` check is the real, correct boundary).
+
+**Findings routed to their existing Phase 4 sub-phase (not fixed here — seed scope for when that sub-phase runs):**
+- No admin drill-down into individual failed communications (only an aggregate 7-day count exists today) → seeds **4Q**.
+- In-memory rate limiting (`lib/rateLimit.ts`) is a deliberate, already-documented single-instance tradeoff with a clear swap-in path (`@upstash/ratelimit`) if traffic ever requires it → seeds **4Q**/**4H**, not an oversight to fix now.
+- Review/testimonial system and abandoned-cart recovery email — re-verified as correctly, deliberately deferred (Phase 2B exclusion and Phase 2E respectively), not pre-launch requirements. No roadmap change.
+- AI concierge — genuinely new finding, not previously scoped anywhere. Explicitly **not** pulled into Phase 4 (see the Phase 5 note below).
+
+**4A exit criteria, verified:** all four Critical findings fixed with regression/rehearsal coverage and merged/deployed; no real money moved; no real customer communication sent; every Medium/Low finding from this pass has an explicit disposition above (fixed, routed, or reconfirmed-deferred) rather than sitting undispositioned in a report. **Phase 4A is closed.** Continuing directly into 4B onward per the standing no-stop-for-a-report instruction.
+
+### A note on Phase 5 (do not build yet)
+
+An AI concierge is a real, legitimate future capability but is explicitly **out of scope for Phase 4** — it is not a launch blocker, and for an RUO research-peptide business it needs its own deliberate compliance/product scoping pass (navigation/FAQ/order-status/support-triage only; never dosing, treatment, or human-use guidance) before any implementation begins. Logged here as a Phase 5 (post-launch optimization) candidate per 4Y's own definition of what Phase 5 is for — driven by real post-launch usage and business judgment, not pre-planned scope added mid-Phase-4.
+
 ### 4Y — Master roadmap consolidation (added 2026-08-10, owner-directed)
 
 Before final launch readiness is declared, this document (not a new competing file) becomes the single canonical source answering "what's next" — consolidating `docs/Decisions.md`, `docs/PendingOwnerActions.md`, project memory, `docs/CaseStudy.md`, the task tracker, and completed PR history into one status view per system: **Completed** / **Engineering Complete — Activation Pending** / **In Progress** (current Phase 4 work) / **Deferred** (e.g. Shippo) / **Owner Action Required** (references `docs/PendingOwnerActions.md` as the authoritative detail, never duplicates it) / **Post-Launch** (ideas that must not block launch). After Phase 4 completes, the next state is explicitly **Controlled Launch / Activation**, not another speculative feature phase — any future Phase 5 is post-launch optimization driven by real production usage, analytics, customer feedback, and bugs, not pre-planned scope.
