@@ -107,6 +107,18 @@ export default async function CustomerProfilePage({ params, searchParams }: Page
   // builder's existing individualSalesEnabled bypass (Decision #50) -- an
   // admin can reorder an Individual Vial for this customer even if it's not
   // publicly visible on the storefront, same as composing a fresh line.
+  // Storefront Orders (Order.userId -- the same join key getCustomerPurchaseHistory
+  // already uses to pull ordered lines into Previously Purchased). A
+  // customer with no linked portal account has never placed a real
+  // storefront order, so there's nothing to look up.
+  const storefrontOrders = customer.userId
+    ? await prisma.order.findMany({
+        where: { userId: customer.userId },
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, orderNumber: true, status: true, total: true, createdAt: true, invoice: { select: { id: true, invoiceNumber: true } } },
+      })
+    : []
+
   const purchaseHistory = await getCustomerPurchaseHistory(customer.id, customer.userId)
   const purchasedProducts = purchaseHistory.length > 0
     ? await prisma.product.findMany({ where: { id: { in: [...new Set(purchaseHistory.map((h) => h.productId))] } } })
@@ -324,6 +336,54 @@ export default async function CustomerProfilePage({ params, searchParams }: Page
             </div>
           )}
         </div>
+
+        {storefrontOrders.length > 0 ? (
+          <div className={`${card} p-6 space-y-4`}>
+            <h3 className={sectionHeading}>Storefront Orders</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-white/10">
+                    <th className="text-left py-2 pr-4 font-heading text-[11px] font-bold tracking-[0.1em] uppercase text-white/50">Order #</th>
+                    <th className="text-left py-2 pr-4 font-heading text-[11px] font-bold tracking-[0.1em] uppercase text-white/50">Date</th>
+                    <th className="text-left py-2 pr-4 font-heading text-[11px] font-bold tracking-[0.1em] uppercase text-white/50">Total</th>
+                    <th className="text-left py-2 pr-4 font-heading text-[11px] font-bold tracking-[0.1em] uppercase text-white/50">Status</th>
+                    <th className="text-left py-2 font-heading text-[11px] font-bold tracking-[0.1em] uppercase text-white/50">Linked Invoice</th>
+                    <th className="py-2" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {storefrontOrders.map((order) => (
+                    <tr key={order.id} className="border-b border-white/5">
+                      <td className="py-3 pr-4 font-medium text-white whitespace-nowrap">{order.orderNumber}</td>
+                      <td className="py-3 pr-4 text-white/50 whitespace-nowrap">{formatDate(order.createdAt)}</td>
+                      <td className="py-3 pr-4 text-white whitespace-nowrap">{formatCurrency(order.total)}</td>
+                      <td className="py-3 pr-4 whitespace-nowrap">
+                        <span className="text-[10px] font-heading font-bold uppercase tracking-[0.06em] px-2 py-0.5 rounded-full border border-white/15 bg-white/5 text-white/60">
+                          {formatLabel(order.status)}
+                        </span>
+                      </td>
+                      <td className="py-3 text-white/50 whitespace-nowrap">
+                        {order.invoice ? (
+                          <Link href={`/admin/invoices/${order.invoice.id}`} className="text-gold-light hover:underline">
+                            {order.invoice.invoiceNumber}
+                          </Link>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                      <td className="py-3 text-right whitespace-nowrap">
+                        <Link href={`/admin/orders/${order.id}`} className="text-gold-light font-bold text-sm hover:underline">
+                          View →
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : null}
 
         <PreviouslyPurchasedSection customerId={customer.id} lines={previouslyPurchasedLines} />
 
