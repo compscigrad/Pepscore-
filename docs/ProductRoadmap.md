@@ -464,6 +464,14 @@ Before final launch readiness is declared, this document (not a new competing fi
 
 **Constraint**: never rewrite historical financial records merely to add display terminology — the origin is always derived from existing relations at read time, never backfilled onto old rows.
 
+### Final admin operational UX check: Customer Search → Profile → Assisted Sale (2026-08-11, PR #195, owner-directed)
+
+Audited the full `Search → Customer Profile → New Invoice` workflow before handoff back to the owner for product-image/content/provider/launch-preparation work. Confirmed already production-ready and unmodified: `/admin/customers` search is unaffected by invoice archive state by construction; the profile's `+ New Invoice` button already prefills the customer server-side (no re-search inside invoice creation); Previously Purchased → Add to New Invoice, the Individual Vial admin bypass, the Use Once/Update Product Price prompt, and backorder-accommodation reachability are all still correctly wired through the shared `InvoiceItemsTable`/`InvoiceBuilder` components; sales-origin classification is correct by construction (this flow never sets `orderId`); no separate "New Order" action was needed or added.
+
+Two real gaps fixed: (1) `listCustomers()`'s phone search only matched a phone typed in exactly the punctuation it happened to be stored in — fixed by reusing this codebase's own `phoneNumbersMatch`/`digitsOnly` normalized-matching convention (already established by `findCustomerByPhoneFlexible` for the identical problem on the Twilio opt-out path). (2) The customer profile had zero visibility into a customer's real storefront `Order` history — added a Storefront Orders section, rendered only when real orders exist, linking to the existing `/admin/orders/[id]` detail page.
+
+Verified against real Postgres via a disposable rehearsal script (9/9 assertions passing) and, after merge, live against production on a real customer record (`3059842899` correctly found "Marvin Alexander," stored as `(305) 984-2899`) — zero console errors.
+
 ## How this document should be used
 
 Before scoping any Phase 2+ feature, check it against this document: which phase does it belong to, does it depend on an earlier phase or an open decision above, and does it fit inside a phase's stated MVP or full scope. When a phase actually gets built, its *why-this-way* engineering decisions still go in `docs/Decisions.md` and its shipped state still goes in `docs/ChangeLog.md` and `docs/ComponentMap.md` — this document stays about sequencing and scope, not implementation detail. Update it when a phase completes, a priority genuinely changes, or a new open decision surfaces — it should stay a living reflection of what's actually next, not a static plan followed past the point it stops making sense.
