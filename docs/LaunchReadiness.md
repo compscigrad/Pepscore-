@@ -123,4 +123,43 @@
 
 **No real money, real postage, real bulk customer communication, or live-launch switch has been activated at any point.** Every ENGINEERING READY item above is fully built and test-mode-verified, waiting only on an owner action already itemized in `docs/PendingOwnerActions.md`. Every BLOCKED item is a named, real gap — none are hidden or rounded up to READY.
 
-**The one item worth flagging above the rest**: backorder handling on live storefront checkout is a real, unresolved gap (BLOCKED). If any currently-catalogued product has `backorderEnabled = true`, recommend either disabling backorder purchasing for those specific products or completing the Phase 4N fix before flipping `STOREFRONT_CHECKOUT_ENABLED` on — everything else gating real launch is an owner action, not an engineering blocker.
+**Backorder handling on live storefront checkout, re-assessed with real data**: the gap itself is real (a fully backordered item gets no `OrderReservation` at all, no admin visibility queue exists). Checked directly against the live database: **zero active products currently have `backorderEnabled = true`** — so this gap, while real, is not reachable by the current catalog as it stands today. It does not block enabling checkout for the current product lineup. It **does** need to be fixed (Phase 4N) before any admin ever flips `backorderEnabled` on for a product, or before Pepscore's catalog grows to include one — recommend treating "fix Phase 4N" as a prerequisite to enabling backorder purchasing specifically, not to checkout generally.
+
+---
+
+## Phase 4X — Final Production-Readiness Report
+
+**Counts across the checklist above** (64 line items): **41 READY** (including variants noting a scale caveat or one known sub-gap), **11 ENGINEERING READY — OWNER ACTION REQUIRED**, **6 BLOCKED** (of which only 2 are genuine unresolved engineering gaps — see below; the rest are unverified-not-failed items or owner-dependent-but-not-launch-blocking, each labeled with its specific sub-reason in the checklist above), **3 DEFERRED**, **2 NOT REQUIRED**.
+
+### Remaining QA (genuinely unverifiable in this environment, not skipped by choice)
+- Color-contrast ratios and real screen-reader testing (4I) — needs dedicated tooling not available here.
+- Real ~390px/~430px mobile-viewport rendering (4J) — the available browser-automation tool doesn't change this environment's actual rendering viewport.
+- The checkout-page-hard-navigation cart-hydration observation (4W) — needs clean re-verification once local network conditions allow, or a real device.
+- One live customer-side portal browser walkthrough (4C) — needs a real, non-admin Clerk session this environment doesn't have.
+
+### Owner Actions (full detail in `docs/PendingOwnerActions.md`)
+1. Stripe live activation + `STOREFRONT_CHECKOUT_ENABLED`
+2. PayPal Dashboard enablement
+3. Twilio A2P 10DLC registration
+4. Shippo Trust & Safety review (deliberately deferred, not urgent)
+5. Resend domain verification (cosmetic only)
+6. PortalRolloutSettings activation (real bulk communication trigger)
+7. Live customer-side portal QA walkthrough
+9. Legal/policy page content (Terms/Privacy/Shipping/Returns) + COA program decision
+10. Confirm Neon PITR retention window
+
+*(Item 8 resolved this session.)*
+
+### Blocked (genuine engineering gaps, not owner-dependent)
+1. **Backorder-on-storefront-checkout has no working admin path** — real, but not currently reachable (zero backorder-enabled products today). Fix before enabling backorder purchasing specifically.
+2. **No customer-merge path** for a weak-match duplicate `Customer` pair — low frequency at current scale, real dead-end when it occurs.
+
+### Launch Recommendation
+
+```
+READY FOR CONTROLLED PILOT
+```
+
+**Not** "Ready for Full Launch" — real payment activation, SMS, and bulk portal invitations all remain correctly gated behind owner actions that haven't happened yet, and the legal/policy page gap is a real trust surface for a live commerce site that should close before real customers transact. **Not** "Not Ready" either — every genuine *engineering* blocker is narrow, named, and either doesn't affect the current catalog (backorder) or is low-frequency (customer merge); the operational core (invoicing, fulfillment, tracking, CRM, pricing, reorder, notifications, checkout, promotions, security, and abuse controls) is production-validated and has been in real use or real test-mode rehearsal throughout this entire Phase 4 cycle.
+
+**Concretely, before flipping any live switch**: (1) supply at minimum real Terms of Service and Privacy Policy content — the two most load-bearing legal pages for a commerce site; (2) complete the owner actions for whichever payment methods will actually be offered at launch; (3) if backorder purchasing is wanted for any product, complete the Phase 4N fix first. Everything else in this report is either already done or is a background-priority item that doesn't block a controlled pilot with a small, known customer group.
