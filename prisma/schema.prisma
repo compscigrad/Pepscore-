@@ -497,6 +497,8 @@ model OrderItem {
   // raw case count.
   sellUnit         InvoiceItemSellUnit?
   unitsPerSellUnit Int?
+
+  @@index([orderId])
 }
 
 // ─── Invoices ────────────────────────────────────────────────────────────────
@@ -2734,6 +2736,12 @@ model Communication {
   @@index([invoiceId, sentAt])
   @@index([category])
   @@index([providerMessageId])
+  // Supports the admin dashboard's 7-day sent/failed count
+  // (lib/adminDashboard.ts's getAdminOperationsSummary), which filters on
+  // status and sentAt with no customerId/invoiceId equality clause -- none
+  // of the indexes above have status/sentAt as a leading column without
+  // one of those, so that query previously forced a sequential scan.
+  @@index([status, sentAt])
 }
 
 enum CommunicationChannel {
