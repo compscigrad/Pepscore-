@@ -419,6 +419,7 @@ Every claim below traces to a real PR number or commit found in `git log`, cross
 | Live production incident: unconfigured image host crashed the homepage | #178 | Decision #67 | Found and fixed during Phase 4B prep — real homepage 500 in production, root cause + systemic fix + 8 regression tests |
 | Phase 4C/4D/4F first passes + Mark as Delivered | #182 | Decision #68 | Portal isolation verified, admin friction gap fixed, security spot-check clean; 3 findings routed to 4E/4M/4O |
 | Phase 4G: cap concurrent unpaid checkouts per email | #184 | Decision #69 | Reservation-hoarding guard, verified via real Postgres + running dev server |
+| Phase 4H performance fixes + Phase 4I live accessibility verification | #186 | Decision #70 | aggregate()/groupBy() replacing unbounded reduce; 2 missing indexes; live keyboard-nav/focus verification via browser automation |
 
 ---
 
