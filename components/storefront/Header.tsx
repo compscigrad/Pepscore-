@@ -6,6 +6,8 @@ import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { ShoppingCart, Menu, X, Search } from 'lucide-react'
 import { useCartStore } from '@/lib/cart-store'
+import { trackEvent } from '@/lib/analytics/track'
+import { AnalyticsEvent } from '@/lib/analytics/events'
 
 // Loaded client-only (ssr: false) so Clerk components never run during
 // server-side prerendering, where ClerkProvider context isn't available.
@@ -26,6 +28,11 @@ export function Header() {
     e.preventDefault()
     const q = searchValue.trim()
     if (!q) return
+    // Query length only, never the raw query text -- a search term could
+    // incidentally contain something the visitor typed that identifies
+    // them (an email, a name), so this event tracks that a search
+    // happened without recording what was searched for.
+    trackEvent(AnalyticsEvent.SEARCH, { queryLength: q.length })
     router.push(`/search?q=${encodeURIComponent(q)}`)
     setSearchOpen(false)
     setMenuOpen(false)

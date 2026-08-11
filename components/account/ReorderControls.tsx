@@ -9,6 +9,8 @@
 import toast from 'react-hot-toast'
 import { useCartStore } from '@/lib/cart-store'
 import { REORDER_UNAVAILABLE_MESSAGE, type ResolvedReorderLine } from '@/lib/storefront/reorder'
+import { trackEvent } from '@/lib/analytics/track'
+import { AnalyticsEvent } from '@/lib/analytics/events'
 
 export interface ReorderLineView {
   key: string
@@ -46,6 +48,7 @@ export function BuyAgainButton({ line }: { line: ReorderLineView }) {
 
   function handleClick() {
     if (resolved.status !== 'RESOLVED') return
+    trackEvent(AnalyticsEvent.BUY_AGAIN, { slug: line.slug, mode: 'single' })
     addItem(toCartItem(line, resolved))
     toast.success(`${line.name} added to cart`)
     openCart()
@@ -73,6 +76,7 @@ export function ReorderAllButton({ lines }: { lines: ReorderLineView[] }) {
   if (resolvable.length === 0) return null
 
   function handleClick() {
+    trackEvent(AnalyticsEvent.BUY_AGAIN, { mode: 'all', itemCount: resolvable.length })
     for (const line of resolvable) {
       addItem(toCartItem(line, line.resolved))
     }
