@@ -67,6 +67,26 @@ export async function listCustomers(params: ListCustomersParams = {}) {
     })
   }
 
+  // The plain `contains` below only ever matches a phone typed in exactly
+  // the same punctuation as it happens to be stored in (Customer.phone has
+  // no write-time normalization -- see findCustomerByPhoneFlexible's own
+  // comment). An admin taking a phone number over the phone rarely types it
+  // back in the same format it was originally entered in, so a search-by-
+  // phone would silently miss real customers. Reuse the same digits-only
+  // last-10 comparison findCustomerByPhoneFlexible already established as
+  // this identity system's normalized-phone-match convention, applied here
+  // to every customer with a phone on file rather than just the first
+  // match -- same accepted at-today's-scale tradeoff, same fix path
+  // (a normalized-phone column + index) if that scale assumption ever stops
+  // holding.
+  const searchDigits = search ? digitsOnly(search) : ''
+  const phoneMatchIds =
+    searchDigits.length >= 7
+      ? (await prisma.customer.findMany({ where: { phone: { not: null } }, select: { id: true, phone: true } }))
+          .filter((c) => c.phone && phoneNumbersMatch(c.phone, search!))
+          .map((c) => c.id)
+      : []
+
   const where: Prisma.CustomerWhereInput = {
     ...(status ? { status } : {}),
     ...(leadStatus ? { leadStatus } : {}),
@@ -86,6 +106,7 @@ export async function listCustomers(params: ListCustomersParams = {}) {
             { company: { contains: search, mode: 'insensitive' } },
             { email: { contains: search, mode: 'insensitive' } },
             { phone: { contains: search, mode: 'insensitive' } },
+            ...(phoneMatchIds.length > 0 ? [{ id: { in: phoneMatchIds } }] : []),
           ],
         }
       : {}),
