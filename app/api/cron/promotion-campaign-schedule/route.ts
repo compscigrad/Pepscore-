@@ -15,11 +15,13 @@
 // cron in this project.
 import { NextRequest, NextResponse } from 'next/server'
 import { activateDueScheduledCampaigns } from '@/lib/promotions/campaigns'
+import { safeCompare } from '@/lib/security/safeCompare'
 
 function isAuthorizedCronRequest(req: NextRequest): boolean {
   const secret = process.env.CRON_SECRET
   if (!secret) return false
-  return req.headers.get('authorization') === `Bearer ${secret}`
+  const provided = req.headers.get('authorization')
+  return provided !== null && safeCompare(provided, `Bearer ${secret}`)
 }
 
 export async function GET(req: NextRequest) {

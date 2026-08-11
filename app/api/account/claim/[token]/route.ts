@@ -1,8 +1,11 @@
 // POST /api/account/claim/[token] — the one endpoint that ever links a
-// Clerk User to a Customer. Requires the caller to already be signed in
-// (this path lives under /account(.*), already Clerk-protected by
-// proxy.ts) and derives the "proof of ownership" email from Clerk's own
-// server-side user object — never from anything in the request body.
+// Clerk User to a Customer. Requires the caller to already be signed in --
+// note proxy.ts's protected-route matcher covers `/account(.*)` (the page)
+// but NOT `/api/account(.*)` (this route), so the `!userId` check below is
+// this route's own real auth boundary, not a backstop for middleware
+// protection that doesn't actually apply here. Derives the "proof of
+// ownership" email from Clerk's own server-side user object — never from
+// anything in the request body.
 import { NextRequest, NextResponse } from 'next/server'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { claimPortalInvite } from '@/lib/portalInvites'

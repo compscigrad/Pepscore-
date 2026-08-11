@@ -26,6 +26,7 @@
 // own; every one of 1-6 defaults to the safe state.
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { safeCompare } from '@/lib/security/safeCompare'
 import { isInviteRemindersEnabled } from '@/lib/portalAuth'
 import { isPortalRolloutPaused } from '@/lib/portal/rollout'
 import { getReminderSafetyConfig, planReminderBatch, type ReminderCandidate } from '@/lib/portal/reminderSafety'
@@ -37,7 +38,8 @@ import { portalInviteReminderSubject, buildPortalInviteReminderHtml, portalInvit
 function isAuthorizedCronRequest(req: NextRequest): boolean {
   const secret = process.env.CRON_SECRET
   if (!secret) return false
-  return req.headers.get('authorization') === `Bearer ${secret}`
+  const provided = req.headers.get('authorization')
+  return provided !== null && safeCompare(provided, `Bearer ${secret}`)
 }
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? ''

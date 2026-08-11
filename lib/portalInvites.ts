@@ -51,9 +51,14 @@ export class PortalInviteError extends Error {}
 // The requirement-11-style safeguard (see lib/intakeLinks.ts's
 // findActiveIntakeLinkFor): don't silently mint a second active invite for
 // a customer who already has one outstanding — surface it for reuse/resend
-// instead.
-export async function findActivePortalInviteFor(customerId: string): Promise<CustomerPortalInvite | null> {
-  const candidates = await prisma.customerPortalInvite.findMany({
+// instead. Accepts an optional transaction client so generatePortalInvite
+// below can run this check inside the same lock/transaction as its create();
+// every other caller keeps using the default module-level client unchanged.
+export async function findActivePortalInviteFor(
+  customerId: string,
+  db: Pick<typeof prisma, 'customerPortalInvite'> = prisma
+): Promise<CustomerPortalInvite | null> {
+  const candidates = await db.customerPortalInvite.findMany({
     where: { customerId, revokedAt: null, claimedAt: null },
     orderBy: { createdAt: 'desc' },
   })
@@ -61,30 +66,43 @@ export async function findActivePortalInviteFor(customerId: string): Promise<Cus
 }
 
 export async function generatePortalInvite(input: GeneratePortalInviteInput): Promise<CustomerPortalInvite> {
-  const customer = await prisma.customer.findUniqueOrThrow({ where: { id: input.customerId } })
-  if (!customer.email) {
-    throw new PortalInviteError('This customer has no email on file — an email is required to verify portal-account ownership.')
-  }
-  if (customer.userId) {
-    throw new PortalInviteError('This customer already has a linked portal account.')
-  }
+  // Check-then-create was previously two unlocked reads/writes -- two
+  // concurrent calls for the same customer (an admin double-click, two
+  // admin tabs) could both pass the "no active invite yet" check before
+  // either's create() committed, minting two active invites (and sending
+  // the customer two invite emails). FOR UPDATE serializes concurrent
+  // callers on the same customer row so the second call always sees the
+  // first's invite once it commits.
+  const { customer, invite, isNew } = await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "Customer" WHERE id = ${input.customerId} FOR UPDATE`
+    const customer = await tx.customer.findUniqueOrThrow({ where: { id: input.customerId } })
+    if (!customer.email) {
+      throw new PortalInviteError('This customer has no email on file — an email is required to verify portal-account ownership.')
+    }
+    if (customer.userId) {
+      throw new PortalInviteError('This customer already has a linked portal account.')
+    }
 
-  const existing = await findActivePortalInviteFor(input.customerId)
-  if (existing) return existing
+    const existing = await findActivePortalInviteFor(input.customerId, tx)
+    if (existing) return { customer, invite: existing, isNew: false }
 
-  const token = crypto.randomBytes(24).toString('hex')
-  const expiresAt = new Date(Date.now() + INVITE_EXPIRY_HOURS * 60 * 60 * 1000)
+    const token = crypto.randomBytes(24).toString('hex')
+    const expiresAt = new Date(Date.now() + INVITE_EXPIRY_HOURS * 60 * 60 * 1000)
 
-  const invite = await prisma.customerPortalInvite.create({
-    data: {
-      customerId: input.customerId,
-      token,
-      createdBy: input.createdBy,
-      expiresAt,
-      channel: input.channel ?? 'EMAIL',
-      source: input.source ?? 'ADMIN',
-    },
+    const created = await tx.customerPortalInvite.create({
+      data: {
+        customerId: input.customerId,
+        token,
+        createdBy: input.createdBy,
+        expiresAt,
+        channel: input.channel ?? 'EMAIL',
+        source: input.source ?? 'ADMIN',
+      },
+    })
+    return { customer, invite: created, isNew: true }
   })
+
+  if (!isNew) return invite
 
   await recordCustomerActivity({
     customerId: input.customerId,
