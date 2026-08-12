@@ -2571,7 +2571,20 @@ model ComplianceAcknowledgment {
   userAgent String?
   // Full RUO text the customer agreed to
   ruoText   String
+  // Disclaimer version this acceptance covers (lib/compliance/ruo.ts's
+  // RUO_VERSION at the time of acceptance). A signed-in User's acceptance
+  // is checked per-version -- a later version bump requires renewed
+  // acceptance without erasing the prior version's acceptance history.
+  // Defaulted for backward compatibility with rows written before this
+  // field existed (all real historical rows predate any version bump).
+  version   String   @default("v1")
+  // Source of this acceptance: "checkout" (per-order, guest or signed-in),
+  // "standalone" (a signed-in customer's one-time acceptance recorded
+  // outside any specific order, e.g. at first protected action).
+  source    String   @default("checkout")
   agreedAt  DateTime @default(now())
+
+  @@index([userId, version])
 }
 
 // ─── Accounting ──────────────────────────────────────────────────────────────

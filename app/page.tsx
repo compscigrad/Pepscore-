@@ -10,8 +10,11 @@ import { ContactSection } from '@/components/storefront/ContactSection'
 import { ProductCard, type ProductCardProps } from '@/components/storefront/ProductCard'
 import { CartSidebar } from '@/components/storefront/CartSidebar'
 import { LeadCaptureTrigger } from '@/components/storefront/LeadCaptureTrigger'
+import { CatalogDirectory } from '@/components/storefront/CatalogDirectory'
+import { HomeSearchBar } from '@/components/storefront/HomeSearchBar'
 import { getStorefrontPrice } from '@/lib/storefront/pricing'
 import { groupByName } from '@/lib/storefront/groupByName'
+import { applyHomepagePriority } from '@/lib/storefront/homepagePriority'
 import { getCurrentCustomerSpaEligible } from '@/lib/storefront/spaEligibility'
 
 // Note: resolving the current visitor's SPA eligibility below calls Clerk's
@@ -38,7 +41,7 @@ async function getProducts() {
 export default async function HomePage() {
   // Gracefully fall back to empty array if DB isn't configured yet
   const [rawProducts, spaEligible] = await Promise.all([getProducts().catch(() => []), getCurrentCustomerSpaEligible()])
-  const products = groupByName(rawProducts, { spaEligible })
+  const products = applyHomepagePriority(groupByName(rawProducts, { spaEligible }))
 
   // Flat, priced rows for the reference pricing table below — built from the
   // same real query, not the old hardcoded PRICING_TABLE. Only products that
@@ -82,7 +85,7 @@ export default async function HomePage() {
                 Serious Research
               </h1>
               <p className="text-[17px] font-light text-white/60 leading-[1.7] mb-9 max-w-[480px]">
-                Pepscore Lab delivers pharmaceutical-quality research peptides with independently verified purity above 98%. Trusted by laboratories worldwide for consistent, reliable compounds.
+                Pepscore Lab supplies research-grade peptides synthesized under GMP-compliant conditions and verified to ≥98% purity by independent third-party labs. Our catalog covers the compound classes serious research programs rely on — from metabolic regulators to longevity and cognitive research peptides — backed by consistent lot-to-lot quality and responsive researcher support.
               </p>
               <div className="flex gap-4 flex-wrap">
                 <Link
@@ -123,6 +126,12 @@ export default async function HomePage() {
             </div>
           </div>
         </section>
+
+        {/* ── Catalog Directory ────────────────────────────────────────────── */}
+        <CatalogDirectory />
+
+        {/* ── Search ───────────────────────────────────────────────────────── */}
+        <HomeSearchBar />
 
         {/* ── Products ─────────────────────────────────────────────────────── */}
         <section id="products" className="py-24 px-6 bg-black">
@@ -254,7 +263,7 @@ export default async function HomePage() {
               {[
                 { icon:'🔬', title:'Third-Party Verified', body:'Every batch undergoes independent laboratory testing for purity above 98%, confirmed by HPLC and mass spectrometry.' },
                 { icon:'❄️', title:'Cold-Chain Shipping', body:'All products ship temperature-controlled to maintain molecular integrity from our facility to your laboratory.' },
-                { icon:'📋', title:'Certificates of Analysis', body:'Full COAs accompany every order, providing complete transparency on composition, purity, and testing results.' },
+                { icon:'📋', title:'COA Certified Products', body:'Every compound is independently lab-tested, with Certificate of Analysis documentation on file for composition and purity verification.' },
                 { icon:'⚡', title:'Fast Fulfillment', body:'Orders processed and shipped within 24–48 hours. Bulk orders receive priority handling and a dedicated account contact.' },
               ].map(f => (
                 <div key={f.title} className="bg-[#0d0d0d] border border-[#D4AF37]/15 rounded-2xl p-8 text-center transition-all hover:-translate-y-1 hover:border-[#D4AF37]/40">

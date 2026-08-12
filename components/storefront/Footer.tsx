@@ -145,14 +145,22 @@ export async function Footer() {
           <p className="text-[12px] text-white/40">
             © {new Date().getFullYear()} Pepscore Lab — Holistic Research Peptides. All rights reserved. For research purposes only.
           </p>
-          {/* Same non-interactive treatment as the Information column above
-              -- none of these three have a real destination yet. */}
-          <div className="flex gap-5">
+          <div className="flex gap-5 items-center">
+            {/* Same non-interactive treatment as the Information column
+                above -- none of these three have a real destination yet. */}
             {['Privacy', 'Terms', 'COAs'].map(l => (
               <span key={l} className="text-[12px] text-white/25 cursor-default" title="Coming soon">
                 {l}
               </span>
             ))}
+            {/* Discreet, staff-only entry point -- deliberately understated
+                relative to the customer-facing "Customer Sign In" header
+                CTA, never removed/hidden, real server-side authorization
+                (lib/isAdmin.ts) still gates /admin regardless of who
+                clicks this. */}
+            <Link href="/sign-in?redirect_url=/admin" className="text-[12px] text-white/25 hover:text-white/50 transition-colors">
+              Admin Sign In
+            </Link>
           </div>
         </div>
       </div>

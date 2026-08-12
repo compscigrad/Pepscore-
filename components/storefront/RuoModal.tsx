@@ -4,6 +4,7 @@
 
 import { useState } from 'react'
 import { AlertTriangle } from 'lucide-react'
+import { RUO_TEXT } from '@/lib/compliance/ruo'
 
 interface RuoModalProps {
   onConfirm: () => void
@@ -11,8 +12,10 @@ interface RuoModalProps {
   isLoading?: boolean
 }
 
-export const RUO_TEXT =
-  'I confirm that I am a qualified researcher purchasing these products for legitimate research purposes only. I acknowledge that all Pepscore Lab products are for Research Use Only (RUO). They are NOT intended for human use, human consumption, diagnostic use, therapeutic use, or veterinary use. I will handle all products in accordance with applicable laws and regulations.'
+// RUO_TEXT itself now lives in lib/compliance/ruo.ts (the single source of
+// truth also used server-side when recording acceptance) -- re-exported
+// here so existing callers importing it from this file keep working.
+export { RUO_TEXT }
 
 export function RuoModal({ onConfirm, onCancel, isLoading }: RuoModalProps) {
   const [checked, setChecked] = useState(false)

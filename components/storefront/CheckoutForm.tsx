@@ -5,9 +5,10 @@
 // page.tsx is the server-side gate) -- see lib/storefront/checkoutGate.ts.
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
+import { useAuth } from '@clerk/nextjs'
 import { EmbeddedCheckoutProvider, EmbeddedCheckout } from '@stripe/react-stripe-js'
 import { useCartStore } from '@/lib/cart-store'
 import { Header } from '@/components/storefront/Header'
@@ -57,6 +58,22 @@ export function CheckoutForm() {
   const [showRuo, setShowRuo] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [clientSecret, setClientSecret] = useState<string | null>(null)
+
+  // A signed-in customer who already accepted the current RUO version
+  // shouldn't be interrupted with the modal on every order (docs/
+  // ProductRoadmap.md homepage/compliance sprint). Guests always get the
+  // modal -- alreadyAcceptedRuo stays false for a signed-out visitor, no
+  // lookup needed. Checked once per checkout-page visit, not per click.
+  const { isSignedIn } = useAuth()
+  const [alreadyAcceptedRuo, setAlreadyAcceptedRuo] = useState(false)
+
+  useEffect(() => {
+    if (!isSignedIn) return
+    fetch('/api/compliance/ruo/status')
+      .then((res) => res.json())
+      .then((data) => setAlreadyAcceptedRuo(!!data.accepted))
+      .catch(() => setAlreadyAcceptedRuo(false))
+  }, [isSignedIn])
 
   // Promotion code (Phase 4A Critical #1). appliedCode is the exact string
   // sent to /api/checkout on confirm -- discountAmount here is a preview
@@ -110,7 +127,15 @@ export function CheckoutForm() {
   function handleCheckoutClick() {
     if (!validate()) return
     trackEvent(AnalyticsEvent.BEGIN_CHECKOUT, { itemCount: items.length, hasBackorderedItem })
-    setShowRuo(true)
+    // Signed-in customer who already accepted the current RUO version:
+    // proceed straight to payment, no repeat interruption. Everyone else
+    // (guest, or a signed-in customer on a version they haven't accepted
+    // yet) sees the modal.
+    if (alreadyAcceptedRuo) {
+      void handleRuoConfirm()
+    } else {
+      setShowRuo(true)
+    }
   }
 
   async function handleApplyPromo() {

@@ -17,6 +17,7 @@ import { getPaymentSettings } from '@/lib/payments/settings'
 import { resolveCustomerIdForCheckout, resolvePromotionCode, PROMOTION_CODE_INVALID_MESSAGE } from '@/lib/promotions/redemption'
 import { getInvoiceLinePriceTier } from '@/lib/pricing/lineOverride'
 import { applyBackorder } from '@/lib/backorders'
+import { recordRuoAcceptance } from '@/lib/compliance/ruo'
 import type { CheckoutLineItem, ShippingAddress } from '@/types'
 import type Stripe from 'stripe'
 
@@ -51,7 +52,6 @@ export async function POST(req: NextRequest) {
       customerEmail,
       customerName,
       ruoAgreed,
-      ruoText,
       promotionCode,
     }: {
       items: CheckoutLineItem[]
@@ -59,7 +59,6 @@ export async function POST(req: NextRequest) {
       customerEmail: string
       customerName: string
       ruoAgreed: boolean
-      ruoText: string
       promotionCode?: string
     } = body
 
@@ -284,16 +283,20 @@ export async function POST(req: NextRequest) {
       return { order: created, backorderedInvoiceItemIds }
     })
 
-    // Store RUO acknowledgment
-    await prisma.complianceAcknowledgment.create({
-      data: {
-        orderId: order.id,
-        userId: userId ?? undefined,
-        sessionId: undefined,
-        ipAddress: req.headers.get('x-forwarded-for') ?? req.headers.get('x-real-ip') ?? undefined,
-        userAgent: req.headers.get('user-agent') ?? undefined,
-        ruoText,
-      },
+    // Store RUO acknowledgment -- always recorded per-order (audit trail
+    // tied to this specific purchase), whether the customer just clicked
+    // through the modal (guest, or a signed-in customer's first
+    // acceptance of the current version) or the client skipped showing it
+    // because /api/compliance/ruo/status already confirmed a signed-in
+    // customer accepted this version previously -- either way ruoAgreed
+    // must be true (checked above) before a checkout session is ever
+    // created.
+    await recordRuoAcceptance({
+      orderId: order.id,
+      userId: userId ?? undefined,
+      ipAddress: req.headers.get('x-forwarded-for') ?? req.headers.get('x-real-ip'),
+      userAgent: req.headers.get('user-agent'),
+      source: 'checkout',
     })
 
     // Apply the real backorder record (+ automatic $25-over-$100 credit,

@@ -41,9 +41,15 @@ export function ClerkAuthButtons() {
         <UserButton afterSignOutUrl="/" />
       </SignedIn>
       <SignedOut>
-        <SignInButton mode="modal">
+        {/* fallbackRedirectUrl carries the explicit customer-intent signal
+            (?portal=customer) that app/account/page.tsx's
+            shouldRedirectAdminToAdminDashboard() checks -- so this click
+            always resolves to customer intent, never silently inherited
+            from whatever Clerk session happens to exist (same pattern the
+            landing page's Customer Portal CTA already uses). */}
+        <SignInButton mode="modal" fallbackRedirectUrl="/account?portal=customer">
           <button className="font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/80 hover:text-[#D4AF37] transition-colors">
-            Sign In
+            Customer Sign In
           </button>
         </SignInButton>
       </SignedOut>
