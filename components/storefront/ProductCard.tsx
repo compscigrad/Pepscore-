@@ -9,6 +9,7 @@ import { SingleVialImage } from './SingleVialImage'
 import { BackorderIndicator } from './BackorderIndicator'
 import { isPurchasable, AVAILABILITY_LABEL, type StorefrontAvailability } from '@/lib/storefront/availability'
 import { categoriesForProductName } from '@/lib/storefront/merchandisingTaxonomy'
+import type { SellUnit } from '@/lib/pricing/sellUnits'
 
 // Any imageUrl pointing at this path triggers the dynamic SVG vial renderer.
 const GENERIC_PLACEHOLDER = '/images/products/default-single-vial.png'
@@ -63,16 +64,42 @@ export interface ProductCardProps {
 
 export function ProductCard({ name, featured, category, description, imageUrl, badge, variants }: ProductCardProps) {
   const [selectedIdx, setSelectedIdx] = useState(0)
+  // Which sell unit the customer wants to buy -- only ever offered as a
+  // real choice when this variant has a publicly enabled individual-vial
+  // price (v.individualVialPrice is already gated by
+  // lib/storefront/pricing.ts, never populated for a stored-but-disabled
+  // price like Tesamorelin/AOD-9604/KLOW/Botulinum Toxin). Reset to
+  // Standard Case whenever the selected size changes, so a size that
+  // doesn't offer Individual Vial can never carry a stale selection.
+  const [sellUnit, setSellUnit] = useState<SellUnit>('CASE_STANDARD')
   const { addItem, openCart } = useCartStore()
 
   const v = variants[selectedIdx]
-  const hasPrice = v.standardCasePrice != null
+  const canSelectIndividualVial = v.individualVialPrice != null
+  const effectiveSellUnit: SellUnit = canSelectIndividualVial ? sellUnit : 'CASE_STANDARD'
+  const activePrice = effectiveSellUnit === 'INDIVIDUAL_VIAL' ? v.individualVialPrice : v.standardCasePrice
+  const hasPrice = activePrice != null
   const canPurchase = hasPrice && isPurchasable(v.availability)
 
+  function selectSize(i: number) {
+    setSelectedIdx(i)
+    setSellUnit('CASE_STANDARD')
+  }
+
   function handleAdd() {
-    if (!canPurchase || v.standardCasePrice == null) return
-    addItem({ id: v.id, slug: v.slug, name, size: v.size, price: v.standardCasePrice, imageUrl, backordered: v.availability === 'BACKORDERED' })
-    toast.success(`${name} ${v.size} added to cart`)
+    if (!canPurchase || activePrice == null) return
+    addItem({
+      id: v.id,
+      slug: v.slug,
+      name,
+      size: v.size,
+      price: activePrice,
+      imageUrl,
+      backordered: v.availability === 'BACKORDERED',
+      sellUnit: effectiveSellUnit,
+      unitsPerSellUnit: effectiveSellUnit === 'INDIVIDUAL_VIAL' ? 1 : v.unitsPerCase,
+    })
+    toast.success(`${name} ${v.size} (${effectiveSellUnit === 'INDIVIDUAL_VIAL' ? 'Individual Vial' : 'Standard Case'}) added to cart`)
     openCart()
   }
 
@@ -153,7 +180,7 @@ export function ProductCard({ name, featured, category, description, imageUrl, b
                 {variants.map((variant, i) => (
                   <button
                     key={variant.slug}
-                    onClick={() => setSelectedIdx(i)}
+                    onClick={() => selectSize(i)}
                     className={`px-2.5 py-1 rounded-full text-[11px] font-heading font-bold tracking-[0.04em] transition-all ${
                       i === selectedIdx
                         ? 'bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] text-black'
@@ -177,15 +204,38 @@ export function ProductCard({ name, featured, category, description, imageUrl, b
 
           {hasPrice ? (
             <>
-              {/* Standard case price */}
+              {/* Sell-unit selector — a real, purchasable choice, not just a
+                  reference number. Only rendered when this variant's
+                  individual-vial price is publicly enabled
+                  (lib/storefront/pricing.ts already withholds it entirely
+                  for a stored-but-disabled price). */}
+              {canSelectIndividualVial && (
+                <div className="flex gap-1.5">
+                  {(['CASE_STANDARD', 'INDIVIDUAL_VIAL'] as const).map((unit) => (
+                    <button
+                      key={unit}
+                      onClick={() => setSellUnit(unit)}
+                      className={`flex-1 px-2 py-1.5 rounded-lg text-[10px] font-heading font-bold tracking-[0.04em] uppercase transition-all ${
+                        effectiveSellUnit === unit
+                          ? 'bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] text-black'
+                          : 'border border-[#D4AF37]/25 text-white/60 hover:border-[#D4AF37] hover:text-[#D4AF37]'
+                      }`}
+                    >
+                      {unit === 'CASE_STANDARD' ? 'Standard Case' : 'Individual Vial'}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Selected-unit price */}
               <div className="bg-white/[0.03] border border-[#D4AF37]/15 rounded-lg p-3 flex items-center justify-between">
                 <div>
                   <p className="text-[9px] font-bold text-white/40 uppercase tracking-[0.07em] mb-0.5">
-                    {v.unitsPerCase ? `Case of ${v.unitsPerCase}` : 'Standard Case'}
+                    {effectiveSellUnit === 'INDIVIDUAL_VIAL' ? 'Individual Vial' : v.unitsPerCase ? `Case of ${v.unitsPerCase}` : 'Standard Case'}
                   </p>
-                  <p className="font-heading text-[18px] font-extrabold text-white">${v.standardCasePrice}</p>
+                  <p className="font-heading text-[18px] font-extrabold text-white">${activePrice}</p>
                 </div>
-                {v.individualVialPrice != null && (
+                {canSelectIndividualVial && effectiveSellUnit === 'CASE_STANDARD' && (
                   <div className="text-right">
                     <p className="text-[9px] font-bold text-white/40 uppercase tracking-[0.07em] mb-0.5">Per Vial</p>
                     <p className="font-heading text-[14px] font-bold text-[#D4AF37]">${v.individualVialPrice}</p>
@@ -194,8 +244,9 @@ export function ProductCard({ name, featured, category, description, imageUrl, b
               </div>
 
               {/* SPA case price — only ever populated for an admin-granted
-                  eligible signed-in customer, see lib/storefront/pricing.ts */}
-              {v.spaCasePrice != null && (
+                  eligible signed-in customer, see lib/storefront/pricing.ts.
+                  Standard Case pricing only; not offered for Individual Vial. */}
+              {v.spaCasePrice != null && effectiveSellUnit === 'CASE_STANDARD' && (
                 <div className="bg-[#D4AF37]/8 border border-[#D4AF37]/25 rounded-lg p-2.5 flex items-center justify-between">
                   <p className="text-[10px] font-bold uppercase tracking-[0.06em] text-[#D4AF37]">SPA Price</p>
                   <p className="font-heading text-[15px] font-bold text-[#D4AF37]">${v.spaCasePrice}</p>

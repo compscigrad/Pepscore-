@@ -54,7 +54,11 @@ export function CatalogDirectory() {
           <div className="h-px flex-1 bg-gradient-to-r from-[#D4AF37]/40 to-transparent" />
         </div>
 
-        {/* The "gold bar" tray */}
+        {/* The "gold bar" tray — the FULL container reads as worked metal
+            now (2026-08-12 revision pass #3), not just a gold outline
+            around a dark panel. Tiles inside stay dark/charcoal (an
+            "engraved plate set into gold") so label text stays legible
+            rather than gold-on-gold. */}
         <div
           className="relative rounded-2xl p-[3px] shadow-[0_24px_64px_rgba(0,0,0,0.55)]"
           style={{ background: 'linear-gradient(115deg, #6B5313 0%, #D4AF37 22%, #F3DA8C 45%, #D4AF37 68%, #8A6B1A 88%, #6B5313 100%)' }}
@@ -64,26 +68,38 @@ export function CatalogDirectory() {
             className="absolute inset-x-3 top-0 h-px pointer-events-none"
             style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.75), transparent)' }}
           />
-          <div className="rounded-[13px] bg-gradient-to-b from-[#0d0d0d] to-[#050505] px-4 py-4 sm:px-5 sm:py-5">
-            <div className="flex gap-3 overflow-x-auto pb-1 [scrollbar-width:thin] snap-x snap-mandatory sm:flex-wrap sm:overflow-visible">
+          <div
+            className="relative rounded-[13px] px-4 py-5 sm:px-6 sm:py-6"
+            style={{ background: 'linear-gradient(160deg, #C9A227 0%, #E8C84A 18%, #D4AF37 40%, #B8912A 65%, #8A6B1A 100%)' }}
+          >
+            {/* Inner ambient shimmer */}
+            <div
+              className="absolute inset-0 rounded-[13px] pointer-events-none opacity-60"
+              style={{ background: 'radial-gradient(ellipse 500px 200px at 30% 0%, rgba(255,255,255,0.35) 0%, transparent 60%)' }}
+            />
+            <div className="relative flex gap-3 overflow-x-auto pb-1 [scrollbar-width:thin] snap-x snap-mandatory sm:flex-wrap sm:overflow-visible">
               {ENTRIES.map((entry) => {
                 const Icon = entry.icon
                 return (
                   <Link
                     key={entry.label}
                     href={entry.href}
-                    className="group snap-start flex-shrink-0 flex items-center gap-2.5 whitespace-nowrap rounded-xl border border-[#D4AF37]/30 bg-gradient-to-b from-white/[0.04] to-transparent px-4 py-3 transition-all hover:border-[#D4AF37]/70 hover:from-[#D4AF37]/10 hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37] focus-visible:outline-offset-2"
+                    className="group snap-start flex-shrink-0 flex items-center gap-2.5 whitespace-nowrap rounded-xl border border-black/20 bg-gradient-to-b from-[#1c1c1c] to-[#0a0a0a] px-4 py-3 shadow-[0_4px_12px_rgba(0,0,0,0.35)] transition-all hover:border-[#F0D375]/60 hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-black focus-visible:outline-offset-2"
                   >
                     <Icon size={16} strokeWidth={1.75} className="text-[#D4AF37] group-hover:text-[#F0D375] transition-colors flex-shrink-0" />
-                    <span className="font-heading text-[12px] font-semibold tracking-[0.03em] text-white/85 group-hover:text-[#F0D375] transition-colors">
+                    <span className="font-heading text-[12px] font-semibold tracking-[0.03em] text-white/90 group-hover:text-[#F0D375] transition-colors">
                       {entry.label}
                     </span>
                   </Link>
                 )
               })}
+              {/* Deliberately the opposite treatment of the gold tiles above
+                  -- a solid dark/graphite button so it stays unmistakably
+                  visible and clickable against the now fully-gold tray,
+                  never gold-on-gold. */}
               <Link
                 href="/categories"
-                className="snap-start flex-shrink-0 flex items-center whitespace-nowrap rounded-xl px-4 py-3 font-heading text-[12px] font-bold tracking-[0.03em] text-[#D4AF37]/80 hover:text-[#F0D375] underline underline-offset-4 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37] focus-visible:outline-offset-2"
+                className="snap-start flex-shrink-0 flex items-center whitespace-nowrap rounded-xl border border-black/30 bg-gradient-to-b from-[#2a2a2a] to-[#141414] px-4 py-3 font-heading text-[12px] font-bold tracking-[0.03em] text-[#F5E6C8] shadow-[0_4px_12px_rgba(0,0,0,0.35)] transition-all hover:border-[#F0D375]/50 hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-black focus-visible:outline-offset-2"
               >
                 View All Categories →
               </Link>

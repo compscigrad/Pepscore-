@@ -161,23 +161,28 @@ export default async function HomePage() {
               <p className="text-[16px] font-light text-white/60 max-w-[540px] mx-auto">Scale your research without scaling your costs.</p>
               <div className="w-11 h-[3px] bg-gradient-to-r from-[#D4AF37] to-[#E8C84A] mx-auto mt-3.5 rounded-full" />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-10">
+            {/* Accurate owner-specified case-quantity discount schedule --
+                off the Standard Case price, not individual-vial pricing.
+                Informational/marketing copy today; not yet an automatic
+                checkout-applied discount (see docs/PendingOwnerActions.md
+                if real enforcement is wanted). */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
               {[
-                { icon:'🧪', title:'Single Unit', disc:'Standard', desc:'Order any product at regular pricing. No minimums — perfect for evaluating new compounds.', featured: false },
-                { icon:'📦', title:'Bulk 5', disc:'Save ~54%', desc:'Order 5 units and unlock significant per-unit savings. Ideal for ongoing research programs.', featured: false },
-                { icon:'🏆', title:'Bulk 10', disc:'Lowest Price', desc:'Our best value tier. Maximize your research budget with the lowest per-unit pricing available.', featured: true },
+                { range: '3–4 cases', save: 'Save 5%', featured: false },
+                { range: '5–9 cases', save: 'Save 8%', featured: false },
+                { range: '10–14 cases', save: 'Save 10%', featured: false },
+                { range: '15+ cases', save: 'Save 15%', featured: true },
               ].map(c => (
-                <div key={c.title} className={`relative overflow-hidden rounded-2xl p-7 text-center border transition-all hover:-translate-y-1 ${c.featured ? 'border-[#D4AF37]/50 bg-[#D4AF37]/10' : 'border-[#D4AF37]/20 bg-white/[0.03]'}`}>
+                <div key={c.range} className={`relative overflow-hidden rounded-2xl p-6 text-center border transition-all hover:-translate-y-1 ${c.featured ? 'border-[#D4AF37]/50 bg-[#D4AF37]/10' : 'border-[#D4AF37]/20 bg-white/[0.03]'}`}>
                   {c.featured && (
                     <div className="absolute top-3.5 right-[-22px] bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] text-black text-[9px] font-bold tracking-[0.1em] px-8 py-1 rotate-45">BEST VALUE</div>
                   )}
-                  <div className="text-4xl mb-3">{c.icon}</div>
-                  <h3 className="font-heading text-[19px] font-bold text-white mb-1.5">{c.title}</h3>
-                  <div className="font-heading text-[34px] font-extrabold bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] bg-clip-text text-transparent mb-1.5">{c.disc}</div>
-                  <p className="text-[13px] text-white/55 leading-relaxed">{c.desc}</p>
+                  <h3 className="font-heading text-[15px] font-bold text-white mb-1.5">{c.range}</h3>
+                  <div className="font-heading text-[26px] font-extrabold bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] bg-clip-text text-transparent">{c.save}</div>
                 </div>
               ))}
             </div>
+            <p className="text-center text-[12px] text-white/40 mb-10 -mt-4">Discount applies off the Standard Case price. Contact us to arrange bulk-quantity orders.</p>
             <div className="text-center">
               <LeadCaptureTrigger
                 interestType="SPA_WHOLESALE_INQUIRY"
@@ -244,7 +249,7 @@ export default async function HomePage() {
                 At Pepscore Lab, we believe breakthrough research begins with reliable lyophilized compounds. Founded by scientists with a passion for precision biochemistry, we supply research-grade peptides to laboratories that demand the highest standards of purity and consistency.
               </p>
               <p className="text-[15px] text-white/65 leading-[1.8] mb-6">
-                Our catalog spans the most studied peptide classes — from metabolic regulators like Semaglutide and Tirzepatide, to longevity compounds like Epithalon and NAD+. Each product is synthesized under GMP-compliant conditions and independently verified before it reaches your bench.
+                Our catalog spans the most studied peptide classes — from metabolic regulators like Semaglutide and Tirzepatide, to longevity compounds like Epithalon and NAD+. Each product is synthesized under GMP-compliant pharmaceutical-grade conditions and independently verified before it reaches you.
               </p>
               <div className="space-y-3.5">
                 {[
