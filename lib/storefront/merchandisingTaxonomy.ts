@@ -50,7 +50,12 @@ export const MERCHANDISING_TAXONOMY: MerchandisingCategory[] = [
     label: 'Growth Hormone / Performance Research',
     description: 'Growth-hormone secretagogues and related compounds studied for endocrine and performance research.',
     icon: Dumbbell,
-    productNames: ['Ipamorelin', 'Sermorelin Acetate', 'CJC-1295 With DAC', 'CJC-1295 No DAC', 'CJC-1295 without DAC 5mg + Ipamorelin 5mg', 'HGH', 'IGF-ILR3', 'IGF-DES', 'GHRP-6 Acetate'],
+    // Order matters (2026-08-12 merchandising fix): Ipamorelin leads, the
+    // CJC-Ipamorelin-without-DAC blend immediately follows it, then the
+    // remaining CJC-1295 variants -- see productNamesOrdered in
+    // app/categories/[slug]/page.tsx, which sorts the category page by
+    // this exact array order rather than database creation date.
+    productNames: ['Ipamorelin', 'CJC-1295 without DAC 5mg + Ipamorelin 5mg', 'CJC-1295 No DAC', 'CJC-1295 With DAC', 'Sermorelin Acetate', 'HGH', 'IGF-ILR3', 'IGF-DES', 'GHRP-6 Acetate'],
   },
   {
     slug: 'recovery-injury-research',

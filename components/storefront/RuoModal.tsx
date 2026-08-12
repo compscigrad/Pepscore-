@@ -1,10 +1,16 @@
-// RUO compliance acknowledgment modal — shown before Stripe Checkout
-// Customer must check the box and click Continue before payment proceeds
+// RUO compliance acknowledgment modal -- shown before Stripe Checkout for
+// a guest (every time) or a signed-in customer who hasn't yet accepted
+// the current version (see CheckoutForm.tsx / lib/compliance/ruo.ts).
+// Requires two distinct affirmative checkboxes (age + RUO/Terms/Privacy
+// agreement) -- neither pre-checked, neither satisfied by merely opening
+// the modal or continuing to browse.
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
+import Link from 'next/link'
 import { AlertTriangle } from 'lucide-react'
-import { RUO_TEXT } from '@/lib/compliance/ruo'
+import { RUO_TEXT, RUO_INTRO_TEXT, RUO_AGE_TEXT } from '@/lib/compliance/ruo'
 
 interface RuoModalProps {
   onConfirm: () => void
@@ -18,43 +24,82 @@ interface RuoModalProps {
 export { RUO_TEXT }
 
 export function RuoModal({ onConfirm, onCancel, isLoading }: RuoModalProps) {
-  const [checked, setChecked] = useState(false)
+  const [ageConfirmed, setAgeConfirmed] = useState(false)
+  const [agreementConfirmed, setAgreementConfirmed] = useState(false)
+  const canContinue = ageConfirmed && agreementConfirmed
 
   return (
     <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4 bg-black/70">
-      <div className="bg-[#0d0d0d] border border-[#D4AF37]/20 rounded-2xl max-w-[520px] w-full shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden">
+      <div className="relative bg-gradient-to-b from-[#141414] to-[#0a0a0a] border border-[#D4AF37]/30 rounded-2xl max-w-[540px] w-full shadow-[0_24px_64px_rgba(0,0,0,0.6)] overflow-hidden">
+        {/* Extremely subtle scientific watermark -- never competes with the
+            required-reading text above it. */}
+        <Image
+          src="/images/brand/dna-molecular-bg.png"
+          alt=""
+          fill
+          aria-hidden="true"
+          className="object-cover object-right opacity-[0.04] pointer-events-none"
+          sizes="540px"
+        />
 
-        {/* Warning header */}
-        <div className="bg-amber-400/10 border-b border-amber-400/25 px-6 py-4 flex items-center gap-3">
+        {/* Header */}
+        <div className="relative bg-amber-400/10 border-b border-amber-400/25 px-6 py-4 flex items-center gap-3">
           <AlertTriangle className="text-amber-400 flex-shrink-0" size={22} />
           <div>
-            <h2 className="font-heading text-[15px] font-bold text-white">Research Use Only — Required Acknowledgment</h2>
-            <p className="text-[12px] text-white/50 mt-0.5">You must confirm compliance before checkout</p>
+            <h2 className="font-heading text-[15px] font-bold text-white flex items-center gap-2">
+              <Image src="/images/email-logo-mark.png" alt="" width={16} height={16} className="w-4 h-4" />
+              Research Use Agreement
+            </h2>
+            <p className="text-[12px] text-white/50 mt-0.5">Confirmation required before checkout</p>
           </div>
         </div>
 
         {/* Body */}
-        <div className="px-6 py-5">
-          <div className="bg-white/[0.04] rounded-lg p-4 text-[13px] text-white/65 leading-relaxed mb-5">
-            {RUO_TEXT}
-          </div>
+        <div className="relative px-6 py-5">
+          <p className="text-[13px] text-white/70 leading-relaxed mb-5">{RUO_INTRO_TEXT}</p>
 
-          {/* Checkbox */}
-          <label className="flex items-start gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={checked}
-              onChange={e => setChecked(e.target.checked)}
-              className="mt-0.5 w-4 h-4 accent-[#D4AF37] cursor-pointer"
-            />
-            <span className="text-[13px] text-white/80 leading-relaxed select-none">
-              I have read and agree to the above Research Use Only terms. I understand that misuse of these research compounds is prohibited.
-            </span>
-          </label>
+          <div className="space-y-3.5">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={ageConfirmed}
+                onChange={(e) => setAgeConfirmed(e.target.checked)}
+                className="mt-0.5 w-4 h-4 accent-[#D4AF37] cursor-pointer flex-shrink-0"
+              />
+              <span className="text-[13px] text-white/85 leading-relaxed select-none">{RUO_AGE_TEXT}</span>
+            </label>
+
+            {/* Same wording as RUO_AGREEMENT_TEXT (lib/compliance/ruo.ts) --
+                duplicated here rather than rendered from the constant
+                because this version embeds real Terms/Privacy links
+                mid-sentence. Keep both in sync if the copy changes. */}
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={agreementConfirmed}
+                onChange={(e) => setAgreementConfirmed(e.target.checked)}
+                className="mt-0.5 w-4 h-4 accent-[#D4AF37] cursor-pointer flex-shrink-0"
+              />
+              <span className="text-[13px] text-white/85 leading-relaxed select-none">
+                I agree that products and information on this website are provided for laboratory research use only
+                and are not intended for use in or on humans or animals. I will not use any products or information
+                from this website for diagnosis, treatment, cure, or prevention of any condition. I agree to follow
+                applicable laws and regulations, and I agree to the{' '}
+                <Link href="/terms" target="_blank" rel="noopener noreferrer" className="text-[#D4AF37] hover:underline">
+                  Terms of Service
+                </Link>{' '}
+                and{' '}
+                <Link href="/privacy" target="_blank" rel="noopener noreferrer" className="text-[#D4AF37] hover:underline">
+                  Privacy Policy
+                </Link>
+                .
+              </span>
+            </label>
+          </div>
         </div>
 
         {/* Actions */}
-        <div className="px-6 pb-6 flex gap-3">
+        <div className="relative px-6 pb-6 flex gap-3">
           <button
             onClick={onCancel}
             className="flex-1 border border-white/20 text-white/70 font-heading text-[12px] font-bold tracking-[0.06em] uppercase py-3 rounded-full hover:bg-white/5 transition-colors"
@@ -63,10 +108,10 @@ export function RuoModal({ onConfirm, onCancel, isLoading }: RuoModalProps) {
           </button>
           <button
             onClick={onConfirm}
-            disabled={!checked || isLoading}
+            disabled={!canContinue || isLoading}
             className="flex-1 bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] disabled:opacity-40 disabled:cursor-not-allowed text-black font-heading text-[12px] font-bold tracking-[0.06em] uppercase py-3 rounded-full transition-all"
           >
-            {isLoading ? 'Processing…' : 'Continue to Payment'}
+            {isLoading ? 'Processing…' : 'Accept & Continue'}
           </button>
         </div>
       </div>

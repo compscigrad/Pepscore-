@@ -45,13 +45,18 @@ export default async function CategoryDetailPage({ params }: PageProps) {
   const category = getMerchandisingCategory(slug)
   if (!category) notFound()
 
-  const [rows, spaEligible] = await Promise.all([
+  const [unorderedRows, spaEligible] = await Promise.all([
     prisma.product.findMany({
       where: { name: { in: category.productNames }, pricingStatus: { not: 'INACTIVE' } },
       orderBy: { createdAt: 'asc' },
     }),
     getCurrentCustomerSpaEligible(),
   ])
+  // Sorted by the taxonomy's own productNames order (a deliberate
+  // merchandising sequence, e.g. Ipamorelin -> CJC-Ipamorelin-without-DAC
+  // -> the other CJC-1295 variants), not database creation order --
+  // groupByName still applies its own featured-first rule on top of this.
+  const rows = [...unorderedRows].sort((a, b) => category.productNames.indexOf(a.name) - category.productNames.indexOf(b.name))
   const products = groupByName(rows, { spaEligible })
   const Icon = category.icon
   const jsonLd = breadcrumbSchema([

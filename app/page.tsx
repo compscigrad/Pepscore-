@@ -126,8 +126,15 @@ export default async function HomePage() {
         <HomeSearchBar />
 
         {/* ── Products ─────────────────────────────────────────────────────── */}
-        <section id="products" className="py-24 px-6 bg-black">
-          <div className="max-w-[1200px] mx-auto">
+        <section id="products" className="relative py-24 px-6 bg-black">
+          {/* Confined to the section's top band (heading area only) --
+              molecular-network texture, zoomed and flipped for variety
+              against the hero's DNA helix, fading out well before the
+              product grid so card readability is never affected. */}
+          <div className="absolute inset-x-0 top-0 h-[420px] overflow-hidden pointer-events-none">
+            <ScientificBackground intensity="subtle" position="object-top" zoom={1.6} flip fadeLeft={false} fadeBottom />
+          </div>
+          <div className="max-w-[1200px] mx-auto relative">
             <div className="text-center mb-14">
               <span className="font-heading text-[11px] font-bold tracking-[0.15em] uppercase text-[#D4AF37] mb-3 block">Research Catalog</span>
               <h2 className="font-heading text-[clamp(26px,4vw,38px)] font-bold text-white mb-3">Premium Research Peptides</h2>
@@ -155,8 +162,13 @@ export default async function HomePage() {
         </section>
 
         {/* ── Bulk Section ─────────────────────────────────────────────────── */}
-        <section id="bulk" className="py-20 px-6 bg-gradient-to-br from-[#0d0d0d] to-black text-white">
-          <div className="max-w-[1000px] mx-auto">
+        <section id="bulk" className="relative overflow-hidden py-20 px-6 bg-gradient-to-br from-[#0d0d0d] to-black text-white">
+          {/* Particle-field motif (the source asset's lower-left wave/dot
+              texture, sampled via object-position rather than the DNA
+              helix) -- a softer transition beat between the busier
+              Products grid above and the Trust cards below. */}
+          <ScientificBackground intensity="subtle" position="object-left-bottom" zoom={1.8} fadeRight fadeTop />
+          <div className="max-w-[1000px] mx-auto relative">
             <div className="text-center mb-11">
               <span className="font-heading text-[11px] font-bold tracking-[0.15em] uppercase text-[#D4AF37]/70 mb-3 block">Volume Savings</span>
               <h2 className="font-heading text-[clamp(26px,4vw,38px)] font-bold text-white mb-3">Bulk Pricing for Researchers</h2>
@@ -200,6 +212,10 @@ export default async function HomePage() {
 
         {/* ── Features ─────────────────────────────────────────────────────── */}
         <section id="features" className="relative overflow-hidden py-24 px-6 bg-gradient-to-b from-black via-[#0a0906] to-black">
+          {/* Molecular-bond texture on the opposite side from the Bulk
+              section's particle field above -- negative-space rhythm, not
+              a full DNA helix repeat. */}
+          <ScientificBackground intensity="subtle" position="object-right-top" zoom={2} fadeLeft fadeBottom />
           <div
             className="absolute inset-0 pointer-events-none"
             style={{ background: 'radial-gradient(ellipse 700px 400px at 85% 20%, rgba(212,175,55,0.06) 0%, transparent 70%)' }}
@@ -214,18 +230,37 @@ export default async function HomePage() {
               <p className="text-[16px] font-light text-white/55 max-w-[540px] mx-auto">Every vial is backed by rigorous quality assurance and a commitment to research excellence.</p>
               <div className="w-11 h-[3px] bg-gradient-to-r from-[#F6D365] via-[#D4AF37] to-[#C99A20] mx-auto mt-3.5 rounded-full" />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-7">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-7">
               {[
                 { icon:'🔬', title:'Third-Party Verified', body:'Every batch undergoes independent laboratory testing for purity above 98%, confirmed by HPLC and mass spectrometry.' },
                 { icon:'📦', title:'Lyophilized Stability', body:'Products ship lyophilized (freeze-dried) for room-temperature shelf stability from our facility to your laboratory.' },
                 { icon:'📋', title:'COA Certified Products', body:'Every compound is independently lab-tested, with Certificate of Analysis documentation on file for composition and purity verification.' },
                 { icon:'⚡', title:'Fast Fulfillment', body:'Orders processed and shipped within 24–48 hours. Bulk orders receive priority handling and a dedicated account contact.' },
+                // Carried over from the landing page (owner-approved wording,
+                // preserved verbatim). "Sterile Manufacturing" describes the
+                // certified pharmaceutical laboratory's environment, not a
+                // Pepscore Lab-operated facility -- same distinction the
+                // Mission copy above already draws.
+                { icon:'🔒', title:'Sterile Manufacturing', body:'Controlled clean-room environments and sterile synthesis protocols for pharmaceutical-grade consistency.' },
+                { icon:'🤝', title:'Wholesale Partnerships', body:'Tiered wholesale pricing, dedicated account management, and priority fulfillment for volume buyers.', wholesale: true },
               ].map(f => (
                 <div key={f.title} className="relative overflow-hidden bg-gradient-to-b from-[#141414] to-[#0a0a0a] border border-[#D4AF37]/15 rounded-2xl p-8 text-center transition-all hover:-translate-y-1 hover:border-[#D4AF37]/45 hover:shadow-[0_16px_40px_rgba(212,175,55,0.10)]">
                   <div className="absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-[#D4AF37]/40 to-transparent" />
                   <div className="w-[62px] h-[62px] bg-gradient-to-br from-[#D4AF37]/15 to-[#D4AF37]/5 border border-[#D4AF37]/20 rounded-full flex items-center justify-center mx-auto mb-4 text-[26px]">{f.icon}</div>
                   <h3 className="font-heading text-[16px] font-bold text-white mb-2.5">{f.title}</h3>
-                  <p className="text-[13px] text-white/55 leading-[1.7]">{f.body}</p>
+                  <p className="text-[13px] text-white/55 leading-[1.7] mb-0">{f.body}</p>
+                  {f.wholesale && (
+                    <div className="mt-4">
+                      <LeadCaptureTrigger
+                        interestType="SPA_WHOLESALE_INQUIRY"
+                        modalTitle="Inquire About Wholesale Partnerships"
+                        modalDescription="Tell us about your volume needs and a member of our team will follow up with wholesale pricing and account details."
+                        showMessageField
+                        triggerLabel="Inquire About Wholesale →"
+                        triggerClassName="text-[11px] font-heading font-bold tracking-[0.06em] uppercase text-[#D4AF37] hover:text-[#F0D375] transition-colors"
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

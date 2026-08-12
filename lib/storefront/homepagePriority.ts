@@ -12,8 +12,14 @@ const PRIORITY_TIERS: string[][] = [
   ['Semaglutide', 'Tirzepatide', 'Retatrutide', 'Survodutide', 'Mazdutide', 'Cagrilintide', 'Cagrilintide 2.5mg + Semaglutide 2.5mg', 'Cagrilintide 5mg + Semaglutide 5mg'],
   // 2. NAD+
   ['NAD+'],
-  // 3. CJC products / Ipamorelin, per the authoritative catalog's real product names
-  ['CJC-1295 No DAC', 'CJC-1295 With DAC', 'Ipamorelin'],
+  // 3. CJC products / Ipamorelin, per the authoritative catalog's real
+  // product names. Order matters here (2026-08-12 merchandising fix):
+  // Ipamorelin leads, the CJC-Ipamorelin-without-DAC blend immediately
+  // follows it, then the remaining CJC-1295 variants -- previously this
+  // blend product wasn't listed in any priority tier at all, so it fell
+  // through to unordered DB-creation-date order and landed next to KLOW
+  // by coincidence, not by design.
+  ['Ipamorelin', 'CJC-1295 without DAC 5mg + Ipamorelin 5mg', 'CJC-1295 No DAC', 'CJC-1295 With DAC'],
   // 4. GLOW70
   ['GLOW70'],
   // 5. Tesamorelin

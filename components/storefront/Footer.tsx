@@ -2,6 +2,7 @@
 import Link from 'next/link'
 import { LeadCaptureTrigger } from './LeadCaptureTrigger'
 import { FirstOrderOfferModal } from './FirstOrderOfferModal'
+import { ScientificBackground } from './ScientificBackground'
 import { getActiveFirstOrderOffer } from '@/lib/promotions/firstOrderOffer'
 import { formatDiscountLabel } from '@/lib/promotions/format'
 
@@ -16,8 +17,13 @@ export async function Footer() {
   const offer = await getActiveFirstOrderOffer()
 
   return (
-    <footer className="bg-black text-white pt-14 pb-7 px-6">
-      <div className="max-w-[1200px] mx-auto">
+    <footer className="relative overflow-hidden bg-black text-white pt-14 pb-7 px-6">
+      {/* Final, very subtle scientific watermark -- the page's last beat
+          of the DNA/molecular system rather than an abrupt return to
+          plain black. Confined and heavily faded so every footer link
+          stays fully readable. */}
+      <ScientificBackground intensity="subtle" position="object-right-bottom" zoom={1.5} fadeLeft fadeTop />
+      <div className="max-w-[1200px] mx-auto relative">
 
         {offer.live && offer.campaign && (
           <div className="mb-11 rounded-2xl border border-[#D4AF37]/30 bg-gradient-to-br from-[#D4AF37]/10 via-transparent to-transparent p-6 flex flex-wrap items-center justify-between gap-4">
