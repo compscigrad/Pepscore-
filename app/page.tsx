@@ -132,7 +132,7 @@ export default async function HomePage() {
               against the hero's DNA helix, fading out well before the
               product grid so card readability is never affected. */}
           <div className="absolute inset-x-0 top-0 h-[420px] overflow-hidden pointer-events-none">
-            <ScientificBackground intensity="subtle" position="object-top" zoom={1.6} flip fadeLeft={false} fadeBottom />
+            <ScientificBackground intensity="medium" position="object-top" zoom={1.6} flip fadeLeft={false} fadeBottom />
           </div>
           <div className="max-w-[1200px] mx-auto relative">
             <div className="text-center mb-14">
@@ -167,7 +167,7 @@ export default async function HomePage() {
               texture, sampled via object-position rather than the DNA
               helix) -- a softer transition beat between the busier
               Products grid above and the Trust cards below. */}
-          <ScientificBackground intensity="subtle" position="object-left-bottom" zoom={1.8} fadeRight fadeTop />
+          <ScientificBackground intensity="medium" position="object-left-bottom" zoom={1.8} fadeRight fadeTop />
           <div className="max-w-[1000px] mx-auto relative">
             <div className="text-center mb-11">
               <span className="font-heading text-[11px] font-bold tracking-[0.15em] uppercase text-[#D4AF37]/70 mb-3 block">Volume Savings</span>
@@ -200,10 +200,10 @@ export default async function HomePage() {
             <div className="text-center">
               <LeadCaptureTrigger
                 interestType="SPA_WHOLESALE_INQUIRY"
-                modalTitle="Inquire About Bulk Orders"
+                modalTitle="Inquire About Wholesale Orders"
                 modalDescription="Tell us about your research volume needs and a member of our team will follow up with SPA/wholesale pricing."
                 showMessageField
-                triggerLabel="Inquire About Bulk Orders"
+                triggerLabel="Inquire About Wholesale Orders"
                 triggerClassName="inline-block bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] text-black font-heading text-[13px] font-bold tracking-[0.08em] uppercase px-8 py-4 rounded-full transition-all hover:-translate-y-0.5 hover:shadow-[0_10px_32px_rgba(212,175,55,0.45)]"
               />
             </div>
@@ -212,10 +212,11 @@ export default async function HomePage() {
 
         {/* ── Features ─────────────────────────────────────────────────────── */}
         <section id="features" className="relative overflow-hidden py-24 px-6 bg-gradient-to-b from-black via-[#0a0906] to-black">
-          {/* Molecular-bond texture on the opposite side from the Bulk
-              section's particle field above -- negative-space rhythm, not
-              a full DNA helix repeat. */}
-          <ScientificBackground intensity="subtle" position="object-right-top" zoom={2} fadeLeft fadeBottom />
+          {/* Bolder amino-chain/molecular-bond moment -- one of the
+              "sometimes stronger" beats in the page's overall rhythm,
+              deliberately on the opposite side from the Bulk section's
+              particle field above rather than a repeat of it. */}
+          <ScientificBackground intensity="strong" position="object-right-top" zoom={2} fadeLeft fadeBottom />
           <div
             className="absolute inset-0 pointer-events-none"
             style={{ background: 'radial-gradient(ellipse 700px 400px at 85% 20%, rgba(212,175,55,0.06) 0%, transparent 70%)' }}
@@ -242,25 +243,17 @@ export default async function HomePage() {
                 // Pepscore Lab-operated facility -- same distinction the
                 // Mission copy above already draws.
                 { icon:'🔒', title:'Sterile Manufacturing', body:'Controlled clean-room environments and sterile synthesis protocols for pharmaceutical-grade consistency.' },
-                { icon:'🤝', title:'Wholesale Partnerships', body:'Tiered wholesale pricing, dedicated account management, and priority fulfillment for volume buyers.', wholesale: true },
+                // No CTA in this card by design (2026-08-12) -- a nested
+                // LeadCaptureTrigger here caused a scroll glitch, and the
+                // Bulk section above already carries the homepage's one
+                // wholesale-inquiry CTA; this card stays informational.
+                { icon:'🤝', title:'Wholesale Partnerships', body:'Tiered wholesale pricing, dedicated account management, and priority fulfillment for volume buyers.' },
               ].map(f => (
                 <div key={f.title} className="relative overflow-hidden bg-gradient-to-b from-[#141414] to-[#0a0a0a] border border-[#D4AF37]/15 rounded-2xl p-8 text-center transition-all hover:-translate-y-1 hover:border-[#D4AF37]/45 hover:shadow-[0_16px_40px_rgba(212,175,55,0.10)]">
                   <div className="absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-[#D4AF37]/40 to-transparent" />
                   <div className="w-[62px] h-[62px] bg-gradient-to-br from-[#D4AF37]/15 to-[#D4AF37]/5 border border-[#D4AF37]/20 rounded-full flex items-center justify-center mx-auto mb-4 text-[26px]">{f.icon}</div>
                   <h3 className="font-heading text-[16px] font-bold text-white mb-2.5">{f.title}</h3>
                   <p className="text-[13px] text-white/55 leading-[1.7] mb-0">{f.body}</p>
-                  {f.wholesale && (
-                    <div className="mt-4">
-                      <LeadCaptureTrigger
-                        interestType="SPA_WHOLESALE_INQUIRY"
-                        modalTitle="Inquire About Wholesale Partnerships"
-                        modalDescription="Tell us about your volume needs and a member of our team will follow up with wholesale pricing and account details."
-                        showMessageField
-                        triggerLabel="Inquire About Wholesale →"
-                        triggerClassName="text-[11px] font-heading font-bold tracking-[0.06em] uppercase text-[#D4AF37] hover:text-[#F0D375] transition-colors"
-                      />
-                    </div>
-                  )}
                 </div>
               ))}
             </div>
@@ -269,7 +262,12 @@ export default async function HomePage() {
 
         {/* ── About ────────────────────────────────────────────────────────── */}
         <section id="about" className="relative overflow-hidden py-24 px-6 bg-black">
-          <ScientificBackground intensity="medium" position="object-left" fadeLeft={false} fadeRight />
+          {/* Full, unzoomed DNA helix mirrored onto the left edge (object-
+              position samples the source's right-side helix, then flip
+              mirrors the whole rendered box so it lands on the left) --
+              the page's second strong DNA moment after the hero, not
+              just molecular texture. */}
+          <ScientificBackground intensity="strong" position="object-right" flip fadeLeft={false} fadeRight />
           <div
             className="absolute inset-0 pointer-events-none"
             style={{ background: 'radial-gradient(ellipse 640px 500px at 15% 80%, rgba(212,175,55,0.06) 0%, transparent 65%)' }}

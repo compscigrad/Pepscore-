@@ -52,7 +52,7 @@ export function CatalogDirectory() {
           clear of the tray itself (fades to nothing before reaching it)
           so it never competes with the metallic treatment or the tile
           labels. */}
-      <ScientificBackground intensity="subtle" position="object-right" fadeLeft fadeRight />
+      <ScientificBackground intensity="medium" position="object-right" fadeLeft fadeRight />
       <div className="max-w-[1200px] mx-auto relative">
         <div className="flex items-center gap-3 mb-5">
           <span className="font-heading text-[11px] font-bold tracking-[0.18em] uppercase bg-gradient-to-r from-[#F0D375] via-[#D4AF37] to-[#8A6B1A] bg-clip-text text-transparent">

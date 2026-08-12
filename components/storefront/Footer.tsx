@@ -22,7 +22,7 @@ export async function Footer() {
           of the DNA/molecular system rather than an abrupt return to
           plain black. Confined and heavily faded so every footer link
           stays fully readable. */}
-      <ScientificBackground intensity="subtle" position="object-right-bottom" zoom={1.5} fadeLeft fadeTop />
+      <ScientificBackground intensity="medium" position="object-right-bottom" zoom={1.5} fadeLeft fadeTop />
       <div className="max-w-[1200px] mx-auto relative">
 
         {offer.live && offer.campaign && (

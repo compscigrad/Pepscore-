@@ -6,6 +6,7 @@
 'use client'
 
 import { useState } from 'react'
+import { ScientificBackground } from './ScientificBackground'
 
 type Status = 'idle' | 'submitting' | 'success' | 'error'
 
@@ -50,13 +51,17 @@ export function ContactSection() {
   }
 
   return (
-    <section id="contact" className="py-24 px-6 bg-black">
-      <div className="max-w-[640px] mx-auto">
+    <section id="contact" className="relative overflow-hidden py-24 px-6 bg-black">
+      {/* Fills the gap between the gold CTA banner and the Footer's own
+          watermark, so the scientific-art system stays continuous rather
+          than having a plain-black dead zone right before the page ends. */}
+      <ScientificBackground intensity="medium" position="object-left-top" zoom={1.7} fadeRight fadeBottom />
+      <div className="max-w-[640px] mx-auto relative">
         <div className="text-center mb-11">
           <span className="font-heading text-[11px] font-bold tracking-[0.15em] uppercase text-[#D4AF37] mb-3 block">Get In Touch</span>
           <h2 className="font-heading text-[clamp(26px,4vw,38px)] font-bold text-white mb-3">Contact Us</h2>
           <p className="text-[16px] font-light text-white/55 max-w-[480px] mx-auto leading-[1.7]">
-            Questions, bulk pricing, or a custom research quote — send us a message and our team will follow up.
+            Questions, wholesale pricing, or a custom research quote — send us a message and our team will follow up.
           </p>
           <div className="w-11 h-[3px] bg-gradient-to-r from-[#F6D365] via-[#D4AF37] to-[#C99A20] mx-auto mt-3.5 rounded-full" />
         </div>

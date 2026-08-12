@@ -69,7 +69,6 @@ export function Header() {
           {[
             ['Products', '/#products'],
             ['Categories', '/categories'],
-            ['Pricing', '/#pricing'],
             ['Bulk Orders', '/#bulk'],
             ['Why Us', '/#features'],
             ['About', '/#about'],
@@ -158,7 +157,6 @@ export function Header() {
           {[
             ['Products', '/#products'],
             ['Categories', '/categories'],
-            ['Pricing', '/#pricing'],
             ['Bulk Orders', '/#bulk'],
             ['Why Us', '/#features'],
             ['About', '/#about'],
