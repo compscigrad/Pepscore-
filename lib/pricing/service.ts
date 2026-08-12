@@ -4,8 +4,25 @@
 // an explicit admin action (setActivePricing / setManualOverride below).
 import { Prisma, type PriceChangeSource, type Product } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
-import { calculateSuggestedPricing } from './engine'
+import { calculateSuggestedPricing, SPA_TO_STANDARD_RATIO } from './engine'
 import { recordPriceChanges } from './history'
+
+// Pricing invariant (2026-08-12 revision pass #4, owner-directed): SPA is a
+// discounted case tier and must always be strictly cheaper than Standard
+// Case. Thrown -- never silently written -- whenever an admin edit would
+// leave the two tiers contradictory (e.g. changing Standard Case down
+// without also lowering an already-set SPA). Carries a proposed corrected
+// SPA (the Retatrutide-derived ratio applied to the new Standard Case,
+// rounded to the nearest $10) so the caller can offer it as a one-click
+// fix rather than making the admin guess a new number.
+export class SpaPricingInvariantError extends Error {
+  constructor(public standardCasePrice: number, public currentSpaCasePrice: number, public proposedSpaCasePrice: number) {
+    super(
+      `SPA pricing is now higher than or equal to Standard Case pricing ($${currentSpaCasePrice} >= $${standardCasePrice}). Proposed SPA: $${proposedSpaCasePrice}.`
+    )
+    this.name = 'SpaPricingInvariantError'
+  }
+}
 
 export async function recalculateSuggestedPricing(productId: string, supplierCaseCost: number): Promise<Product> {
   const suggested = calculateSuggestedPricing(supplierCaseCost)
@@ -57,6 +74,17 @@ export async function setActivePricing(productId: string, input: SetActivePricin
       where: { id: productId },
       data: { ...input, lastPricingReviewAt: new Date() },
     })
+
+    // SPA-below-Standard invariant -- checked against the final resulting
+    // state (not just the fields this call happened to touch), so it
+    // catches both "lowered Standard below an untouched SPA" and "raised
+    // SPA above an untouched Standard." Throwing here rolls back the
+    // whole transaction -- never a partially-written contradictory pair.
+    if (after.activeStandardCasePrice != null && after.activeSpaCasePrice != null && after.activeSpaCasePrice >= after.activeStandardCasePrice) {
+      const proposedSpaCasePrice = Math.min(after.activeSpaCasePrice, Math.round((after.activeStandardCasePrice * SPA_TO_STANDARD_RATIO) / 10) * 10)
+      throw new SpaPricingInvariantError(after.activeStandardCasePrice, after.activeSpaCasePrice, proposedSpaCasePrice)
+    }
+
     await recordPriceChanges(tx, { before, after, actorId: context.actorId, source: context.source, reason: context.reason })
     return after
   })

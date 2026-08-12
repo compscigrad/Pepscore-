@@ -1,13 +1,26 @@
 // Pure suggested-pricing calculation. No DB access, no side effects.
 //
 // Multipliers are calibrated against a supplier CASE cost (10-vial case),
-// not a per-vial cost -- verified against the authoritative RUO price table
-// (Pepscore_RUO_Price_Table.xlsx, "Pricing Rules" sheet, 2026-08-06): every
-// one of the 119 rows reproduces exactly as
-// round(supplierCaseCost * multiplier, 2), including the sheet's own worked
-// example (Retatrutide 60mg: 326 * 1.0736196319018405 = 350.00).
-export const STANDARD_CASE_MULTIPLIER = 8.052147239263803
-export const SPA_CASE_MULTIPLIER = 5.674846625766871
+// not a per-vial cost.
+//
+// STANDARD/SPA replaced 2026-08-12 (pricing revision pass #4) -- the prior
+// STANDARD_CASE_MULTIPLIER (8.052147239263803) and SPA_CASE_MULTIPLIER
+// (5.674846625766871), verified against the authoritative RUO price table
+// (Pepscore_RUO_Price_Table.xlsx, 2026-08-06), were retired by explicit
+// owner instruction as producing RUO-market prices that were too high.
+// The new model: Standard Case = supplierCaseCost x 4, SPA Case =
+// Standard Case x ~0.705 -- the ratio derived directly from Retatrutide's
+// own real approved per-strength pricing (10 rows, ratio range
+// 0.7046-0.7052), not re-derived from the retired formula (the two only
+// coincide because Retatrutide's currently-approved price happens to be
+// old-formula-derived too). Both round to the nearest $10 ("commercial
+// rounding"), not the nearest dollar.
+//
+// INDIVIDUAL_VIAL_MULTIPLIER is UNCHANGED -- no replacement formula has
+// been specified for it yet; only Standard/SPA were redefined. Revisit
+// once the owner gives an explicit individual-vial pricing rule.
+export const STANDARD_CASE_MULTIPLIER = 4
+export const SPA_TO_STANDARD_RATIO = 0.705
 export const INDIVIDUAL_VIAL_MULTIPLIER = 1.0736196319018405
 
 export interface SuggestedPricing {
@@ -16,9 +29,13 @@ export interface SuggestedPricing {
   suggestedIndividualVialPrice: number
 }
 
-// The authoritative price table rounds every suggestion to the nearest
-// whole dollar (matching every existing catalog price, which is always a
-// whole number) -- not the nearest cent.
+// "Commercial rounding to the nearest $10" for Standard/SPA -- distinct
+// from Individual Vial's nearest-whole-dollar rounding, which follows the
+// old, still-unreplaced per-vial formula.
+function roundToTen(n: number): number {
+  return Math.round(n / 10) * 10
+}
+
 function roundToDollar(n: number): number {
   return Math.round(n)
 }
@@ -27,9 +44,18 @@ export function calculateSuggestedPricing(supplierCaseCost: number): SuggestedPr
   if (!Number.isFinite(supplierCaseCost) || supplierCaseCost < 0) {
     throw new Error('supplierCaseCost must be a non-negative finite number')
   }
+  const suggestedStandardCasePrice = roundToTen(supplierCaseCost * STANDARD_CASE_MULTIPLIER)
+  let suggestedSpaCasePrice = roundToTen(suggestedStandardCasePrice * SPA_TO_STANDARD_RATIO)
+  // Pricing invariant: SPA (a discounted case tier) must always be
+  // strictly cheaper than Standard Case -- never silently produce a
+  // contradictory pair, even at small supplier costs where rounding could
+  // otherwise collide the two.
+  if (suggestedStandardCasePrice > 0 && suggestedSpaCasePrice >= suggestedStandardCasePrice) {
+    suggestedSpaCasePrice = suggestedStandardCasePrice - 10
+  }
   return {
-    suggestedStandardCasePrice: roundToDollar(supplierCaseCost * STANDARD_CASE_MULTIPLIER),
-    suggestedSpaCasePrice: roundToDollar(supplierCaseCost * SPA_CASE_MULTIPLIER),
+    suggestedStandardCasePrice,
+    suggestedSpaCasePrice,
     suggestedIndividualVialPrice: roundToDollar(supplierCaseCost * INDIVIDUAL_VIAL_MULTIPLIER),
   }
 }

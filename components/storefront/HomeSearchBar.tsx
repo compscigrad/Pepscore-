@@ -39,7 +39,7 @@ export function HomeSearchBar() {
           />
           <button
             type="submit"
-            className="absolute right-2 top-1/2 -translate-y-1/2 bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] text-black font-heading text-[11px] font-bold tracking-[0.06em] uppercase px-5 py-2.5 rounded-full hover:-translate-y-1/2 hover:shadow-[0_4px_16px_rgba(212,175,55,0.4)] transition-shadow"
+            className="absolute right-2 top-1/2 -translate-y-1/2 bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] text-black font-heading text-[11px] font-bold tracking-[0.06em] uppercase px-5 py-2.5 rounded-full hover:-translate-y-1/2 hover:shadow-[0_4px_16px_rgba(212,175,55,0.4)] transition-shadow"
           >
             Search
           </button>

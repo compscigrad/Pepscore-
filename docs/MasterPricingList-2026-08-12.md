@@ -1,0 +1,109 @@
+# Pepscore Lab — Internal Master Pricing List
+
+**Generated:** 2026-08-12 (pricing revision pass #4) — internal/admin reference only, never for public distribution. Includes hidden Individual Vial rates for products where public sales are currently disabled.
+
+**Retatrutide SPA reference ratio:** SPA ≈ Standard Case × 0.705 (derived from Retatrutide's own real approved per-strength pricing, 10 rows, ratio range 0.7046–0.7052).
+
+| Product | Strength | Units/Case | Standard Case | SPA Case | Individual Vial (stored) | Public Individual Enabled? | Bulk 3-4 (5%) | Bulk 5-9 (8%) | Bulk 10-14 (10%) | Bulk 15+ (15%) | Supplier Cost | Pricing Source |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 5-Amino-1MQ | 10mg | 10 | $230 | $160 | $62 | no (hidden) | $220 | $210 | $210 | $200 | $58 | Wholesale x4 + Retatrutide SPA ratio |
+| 5-Amino-1MQ | 50mg | 10 | $350 | $250 | $94 | no (hidden) | $330 | $320 | $320 | $300 | $88 | Wholesale x4 + Retatrutide SPA ratio |
+| 5-Amino-1MQ | 5mg | 10 | $170 | $120 | $46 | no (hidden) | $160 | $160 | $150 | $140 | $43 | Wholesale x4 + Retatrutide SPA ratio |
+| AOD 9604 | 5mg | 10 | $375 | $260 | $42 | no (hidden) | $360 | $350 | $340 | $320 | $102 | Owner Override |
+| Ara-290 | 10mg | 10 | $320 | $230 | $86 | no (hidden) | $300 | $290 | $290 | $270 | $80 | Wholesale x4 + Retatrutide SPA ratio |
+| B12 1mg/ml | 10ml | 10 | $190 | $130 | $52 | no (hidden) | $180 | $170 | $170 | $160 | $48 | Wholesale x4 + Retatrutide SPA ratio |
+| BPC 157 | 10mg | 10 | $310 | $220 | $84 | no (hidden) | $290 | $290 | $280 | $260 | $78 | Wholesale x4 + Retatrutide SPA ratio |
+| BPC 157 | 5mg | 10 | $210 | $150 | $56 | no (hidden) | $200 | $190 | $190 | $180 | $52 | Wholesale x4 + Retatrutide SPA ratio |
+| Botulinum Toxin | 100 units | 10 | $580 | $410 | $156 | no (hidden) | $550 | $530 | $520 | $490 | $145 | Wholesale x4 + Retatrutide SPA ratio |
+| CJC-1295 No DAC | 10mg | 10 | $460 | $320 | $125 | no (hidden) | $440 | $420 | $410 | $390 | $116 | Wholesale x4 + Retatrutide SPA ratio |
+| CJC-1295 No DAC | 5mg | 10 | $350 | $250 | $93 | no (hidden) | $330 | $320 | $320 | $300 | $87 | Wholesale x4 + Retatrutide SPA ratio |
+| CJC-1295 With DAC | 2mg | 10 | $460 | $320 | $125 | no (hidden) | $440 | $420 | $410 | $390 | $116 | Wholesale x4 + Retatrutide SPA ratio |
+| CJC-1295 With DAC | 5mg | 10 | $660 | $470 | $176 | no (hidden) | $630 | $610 | $590 | $560 | $164 | Wholesale x4 + Retatrutide SPA ratio |
+| CJC-1295 without DAC 5mg + Ipamorelin 5mg | 10mg | 10 | $797 | $562 | $106 | YES | $760 | $730 | $720 | $680 | $99 | Protected (unchanged this pass) |
+| Cagrilintide | 10mg | 10 | $780 | $550 | $210 | no (hidden) | $740 | $720 | $700 | $660 | $196 | Wholesale x4 + Retatrutide SPA ratio |
+| Cagrilintide | 5mg | 10 | $400 | $280 | $108 | no (hidden) | $380 | $370 | $360 | $340 | $101 | Wholesale x4 + Retatrutide SPA ratio |
+| Cagrilintide 2.5mg + Semaglutide 2.5mg | 5mg | 10 | $420 | $300 | $112 | no (hidden) | $400 | $390 | $380 | $360 | $104 | Wholesale x4 + Retatrutide SPA ratio |
+| Cagrilintide 5mg + Semaglutide 5mg | 10mg | 10 | $630 | $440 | $170 | no (hidden) | $600 | $580 | $570 | $540 | $158 | Wholesale x4 + Retatrutide SPA ratio |
+| Cerebrolysin (6 vials) | 60mg | 6 | $190 | $130 | $86 | no (hidden) | $180 | $170 | $170 | $160 | $48 | Wholesale x4 + Retatrutide SPA ratio |
+| DSIP | 15mg | 10 | $400 | $280 | $106 | no (hidden) | $380 | $370 | $360 | $340 | $99 | Wholesale x4 + Retatrutide SPA ratio |
+| DSIP | 5mg | 10 | $230 | $160 | $62 | no (hidden) | $220 | $210 | $210 | $200 | $58 | Wholesale x4 + Retatrutide SPA ratio |
+| Dermorphin | 5mg | 10 | $230 | $160 | $62 | no (hidden) | $220 | $210 | $210 | $200 | $58 | Wholesale x4 + Retatrutide SPA ratio |
+| Epithalon | 10mg | 10 | $190 | $130 | $52 | no (hidden) | $180 | $170 | $170 | $160 | $48 | Wholesale x4 + Retatrutide SPA ratio |
+| Epithalon | 50mg | 10 | $490 | $350 | $132 | no (hidden) | $470 | $450 | $440 | $420 | $123 | Wholesale x4 + Retatrutide SPA ratio |
+| G610 | 10mg | 10 | $220 | $160 | $58 | no (hidden) | $210 | $200 | $200 | $190 | $54 | Wholesale x4 + Retatrutide SPA ratio |
+| GHK-Cu | 100mg | 10 | $230 | $160 | $62 | no (hidden) | $220 | $210 | $210 | $200 | $58 | Wholesale x4 + Retatrutide SPA ratio |
+| GHK-Cu | 50mg | 10 | $140 | $100 | $39 | no (hidden) | $130 | $130 | $130 | $120 | $36 | Wholesale x4 + Retatrutide SPA ratio |
+| GHRP-6 Acetate | 5mg | 10 | $190 | $130 | $52 | no (hidden) | $180 | $170 | $170 | $160 | $48 | Wholesale x4 + Retatrutide SPA ratio |
+| GLOW70 | 70mg | 10 | $725 | $565 | $89 | YES | $690 | $670 | $650 | $620 | $186 | Protected (unchanged this pass) |
+| Glutathione | 1200mg | 10 | $580 | $409 | $65 | YES | $550 | $530 | $520 | $490 | $72 | Owner Override |
+| Glutathione | 1500mg | 10 | $700 | $539 | $75 | YES | $670 | $640 | $630 | $600 | $95 | Owner Override |
+| Glutathione | 600mg | 10 | $350 | $238 | $40 | YES | $330 | $320 | $320 | $300 | $42 | Owner Override |
+| HCG | 10000iu | 10 | $580 | $410 | $171 | no (hidden) | $550 | $530 | $520 | $490 | $159 | Owner Override |
+| HCG | 5000iu | 10 | $280 | $200 | $98 | no (hidden) | $270 | $260 | $250 | $240 | $91 | Owner Override |
+| HGH | 10iu | 10 | $250 | $180 | $67 | no (hidden) | $240 | $230 | $230 | $210 | $62 | Wholesale x4 + Retatrutide SPA ratio |
+| HGH | 15iu | 10 | $350 | $250 | $93 | no (hidden) | $330 | $320 | $320 | $300 | $87 | Wholesale x4 + Retatrutide SPA ratio |
+| HGH | 24iu | 10 | $680 | $480 | $181 | no (hidden) | $650 | $630 | $610 | $580 | $169 | Wholesale x4 + Retatrutide SPA ratio |
+| HMG | 75iu | 10 | $290 | $200 | $77 | no (hidden) | $280 | $270 | $260 | $250 | $72 | Wholesale x4 + Retatrutide SPA ratio |
+| Humanin | 10mg | 10 | $1180 | $830 | $317 | no (hidden) | $1120 | $1090 | $1060 | $1000 | $295 | Wholesale x4 + Retatrutide SPA ratio |
+| IGF-DES | 2mg | 10 | $300 | $210 | $81 | no (hidden) | $290 | $280 | $270 | $260 | $75 | Wholesale x4 + Retatrutide SPA ratio |
+| Ipamorelin | 10mg | 10 | $300 | $210 | $79 | no (hidden) | $290 | $280 | $270 | $260 | $74 | Wholesale x4 + Retatrutide SPA ratio |
+| Ipamorelin | 5mg | 10 | $210 | $150 | $56 | no (hidden) | $200 | $190 | $190 | $180 | $52 | Wholesale x4 + Retatrutide SPA ratio |
+| KLOW | 80mg | 10 | $960 | $680 | $257 | no (hidden) | $910 | $880 | $860 | $820 | $239 | Owner Override |
+| KissPeptin-10 | 10mg | 10 | $380 | $270 | $102 | no (hidden) | $360 | $350 | $340 | $320 | $95 | Wholesale x4 + Retatrutide SPA ratio |
+| KissPeptin-10 | 5mg | 10 | $250 | $180 | $67 | no (hidden) | $240 | $230 | $230 | $210 | $62 | Wholesale x4 + Retatrutide SPA ratio |
+| LL37 | 5mg | 10 | $390 | $270 | $104 | no (hidden) | $370 | $360 | $350 | $330 | $97 | Wholesale x4 + Retatrutide SPA ratio |
+| MOTS-c | 10mg | 10 | $300 | $210 | $79 | no (hidden) | $290 | $280 | $270 | $260 | $74 | Wholesale x4 + Retatrutide SPA ratio |
+| MOTS-c | 40mg | 10 | $720 | $510 | $194 | no (hidden) | $680 | $660 | $650 | $610 | $181 | Wholesale x4 + Retatrutide SPA ratio |
+| MT-2 | 10mg | 10 | $230 | $160 | $61 | no (hidden) | $220 | $210 | $210 | $200 | $57 | Wholesale x4 + Retatrutide SPA ratio |
+| Mazdutide | 10mg | 10 | $810 | $570 | $218 | no (hidden) | $770 | $750 | $730 | $690 | $203 | Wholesale x4 + Retatrutide SPA ratio |
+| NAD+ | 100mg | 10 | $451 | $318 | $60 | YES | $430 | $410 | $410 | $380 | $56 | Protected (unchanged this pass) |
+| NAD+ | 500mg | 10 | $709 | $499 | $94 | YES | $670 | $650 | $640 | $600 | $88 | Protected (unchanged this pass) |
+| Oxytocin | 10mg | 10 | $280 | $200 | $75 | no (hidden) | $270 | $260 | $250 | $240 | $70 | Wholesale x4 + Retatrutide SPA ratio |
+| Oxytocin | 2mg | 10 | $170 | $120 | $46 | no (hidden) | $160 | $160 | $150 | $140 | $43 | Wholesale x4 + Retatrutide SPA ratio |
+| PNC 27 | 10mg | 10 | $660 | $470 | $176 | no (hidden) | $630 | $610 | $590 | $560 | $164 | Wholesale x4 + Retatrutide SPA ratio |
+| PNC 27 | 5mg | 10 | $400 | $280 | $106 | no (hidden) | $380 | $370 | $360 | $340 | $99 | Wholesale x4 + Retatrutide SPA ratio |
+| PT-141 | 10mg | 10 | $260 | $180 | $69 | YES | $250 | $240 | $230 | $220 | $64 | Wholesale x4 + Retatrutide SPA ratio |
+| Pinealon | 10mg | 10 | $290 | $200 | $77 | no (hidden) | $280 | $270 | $260 | $250 | $72 | Wholesale x4 + Retatrutide SPA ratio |
+| Pinealon | 20mg | 10 | $400 | $280 | $106 | no (hidden) | $380 | $370 | $360 | $340 | $99 | Wholesale x4 + Retatrutide SPA ratio |
+| Pinealon | 5mg | 10 | $210 | $150 | $56 | no (hidden) | $200 | $190 | $190 | $180 | $52 | Wholesale x4 + Retatrutide SPA ratio |
+| Retatrutide | 10mg | 10 | $878 | $619 | $117 | YES | $830 | $810 | $790 | $750 | $109 | Protected (unchanged this pass) |
+| Retatrutide | 15mg | 10 | $1143 | $806 | $152 | YES | $1090 | $1050 | $1030 | $970 | $142 | Protected (unchanged this pass) |
+| Retatrutide | 20mg | 10 | $1457 | $1027 | $194 | YES | $1380 | $1340 | $1310 | $1240 | $181 | Protected (unchanged this pass) |
+| Retatrutide | 24mg | 10 | $1554 | $1095 | $207 | YES | $1480 | $1430 | $1400 | $1320 | $193 | Protected (unchanged this pass) |
+| Retatrutide | 30mg | 10 | $1723 | $1214 | $230 | YES | $1640 | $1590 | $1550 | $1460 | $214 | Protected (unchanged this pass) |
+| Retatrutide | 36mg | 10 | $1924 | $1356 | $257 | YES | $1830 | $1770 | $1730 | $1640 | $239 | Protected (unchanged this pass) |
+| Retatrutide | 40mg | 10 | $2214 | $1561 | $295 | YES | $2100 | $2040 | $1990 | $1880 | $275 | Protected (unchanged this pass) |
+| Retatrutide | 50mg | 10 | $2512 | $1771 | $335 | YES | $2390 | $2310 | $2260 | $2140 | $312 | Protected (unchanged this pass) |
+| Retatrutide | 5mg | 10 | $644 | $454 | $86 | YES | $610 | $590 | $580 | $550 | $80 | Protected (unchanged this pass) |
+| Retatrutide | 60mg | 10 | $2625 | $1850 | $350 | YES | $2490 | $2420 | $2360 | $2230 | $326 | Protected (unchanged this pass) |
+| SLU-PP-332 | 5mg | 10 | $450 | $320 | $121 | no (hidden) | $430 | $410 | $410 | $380 | $113 | Wholesale x4 + Retatrutide SPA ratio |
+| SS-31 | 10mg | 10 | $380 | $270 | $101 | no (hidden) | $360 | $350 | $340 | $320 | $94 | Wholesale x4 + Retatrutide SPA ratio |
+| SS-31 | 50mg | 10 | $1480 | $1040 | $396 | no (hidden) | $1410 | $1360 | $1330 | $1260 | $369 | Wholesale x4 + Retatrutide SPA ratio |
+| Selank | 11mg | 10 | $300 | $210 | $81 | no (hidden) | $290 | $280 | $270 | $260 | $75 | Wholesale x4 + Retatrutide SPA ratio |
+| Selank | 5mg | 10 | $170 | $120 | $46 | no (hidden) | $160 | $160 | $150 | $140 | $43 | Wholesale x4 + Retatrutide SPA ratio |
+| Semaglutide | 10mg | 10 | $443 | $312 | $59 | YES | $420 | $410 | $400 | $380 | $55 | Protected (unchanged this pass) |
+| Semaglutide | 15mg | 10 | $620 | $437 | $83 | YES | $590 | $570 | $560 | $530 | $77 | Protected (unchanged this pass) |
+| Semaglutide | 20mg | 10 | $692 | $488 | $92 | YES | $660 | $640 | $620 | $590 | $86 | Protected (unchanged this pass) |
+| Semaglutide | 30mg | 10 | $854 | $602 | $114 | YES | $810 | $790 | $770 | $730 | $106 | Protected (unchanged this pass) |
+| Semaglutide | 5mg | 10 | $370 | $261 | $49 | YES | $350 | $340 | $330 | $310 | $46 | Protected (unchanged this pass) |
+| Semax | 11mg | 10 | $330 | $230 | $89 | no (hidden) | $310 | $300 | $300 | $280 | $83 | Wholesale x4 + Retatrutide SPA ratio |
+| Semax | 5mg | 10 | $170 | $120 | $46 | no (hidden) | $160 | $160 | $150 | $140 | $43 | Wholesale x4 + Retatrutide SPA ratio |
+| Sermorelin Acetate | 10mg | 10 | $480 | $340 | $129 | no (hidden) | $460 | $440 | $430 | $410 | $120 | Wholesale x4 + Retatrutide SPA ratio |
+| Sermorelin Acetate | 5mg | 10 | $340 | $240 | $90 | no (hidden) | $320 | $310 | $310 | $290 | $84 | Wholesale x4 + Retatrutide SPA ratio |
+| Snap-8 | 10mg | 10 | $230 | $160 | $62 | no (hidden) | $220 | $210 | $210 | $200 | $58 | Wholesale x4 + Retatrutide SPA ratio |
+| Survodutide | 10mg | 10 | $1200 | $850 | $322 | no (hidden) | $1140 | $1100 | $1080 | $1020 | $300 | Wholesale x4 + Retatrutide SPA ratio |
+| TB500 | 10mg | 10 | $488 | $340 | $166 | no (hidden) | $460 | $450 | $440 | $410 | $155 | Owner Override |
+| TB500 | 5mg | 10 | $250 | $180 | $108 | no (hidden) | $240 | $230 | $230 | $210 | $101 | Owner Override |
+| Tesamorelin | 10mg | 10 | $775 | $700 | $80 | no (hidden) | $740 | $710 | $700 | $660 | $177 | Protected (unchanged this pass) |
+| Tesamorelin | 5mg | 10 | $395 | $355 | $45 | no (hidden) | $380 | $360 | $360 | $340 | — | Protected (unchanged this pass) |
+| Thymalin | 10mg | 10 | $320 | $230 | $87 | no (hidden) | $300 | $290 | $290 | $270 | $81 | Wholesale x4 + Retatrutide SPA ratio |
+| Thymosin Alpha-1 | 10mg | 10 | $660 | $470 | $176 | no (hidden) | $630 | $610 | $590 | $560 | $164 | Wholesale x4 + Retatrutide SPA ratio |
+| Thymosin Alpha-1 | 5mg | 10 | $440 | $310 | $117 | no (hidden) | $420 | $400 | $400 | $370 | $109 | Wholesale x4 + Retatrutide SPA ratio |
+| Tirzepatide | 10mg | 10 | $491 | $346 | $65 | YES | $470 | $450 | $440 | $420 | $61 | Protected (unchanged this pass) |
+| Tirzepatide | 15mg | 10 | $652 | $460 | $87 | YES | $620 | $600 | $590 | $550 | $81 | Protected (unchanged this pass) |
+| Tirzepatide | 20mg | 10 | $878 | $619 | $117 | YES | $830 | $810 | $790 | $750 | $109 | Protected (unchanged this pass) |
+| Tirzepatide | 30mg | 10 | $1031 | $726 | $137 | YES | $980 | $950 | $930 | $880 | $128 | Protected (unchanged this pass) |
+| Tirzepatide | 40mg | 10 | $1224 | $863 | $163 | YES | $1160 | $1130 | $1100 | $1040 | $152 | Protected (unchanged this pass) |
+| Tirzepatide | 50mg | 10 | $1635 | $1152 | $218 | YES | $1550 | $1500 | $1470 | $1390 | $203 | Protected (unchanged this pass) |
+| Tirzepatide | 5mg | 10 | $395 | $278 | $53 | YES | $380 | $360 | $360 | $340 | $49 | Protected (unchanged this pass) |
+| Tirzepatide | 60mg | 10 | $1868 | $1317 | $249 | YES | $1770 | $1720 | $1680 | $1590 | $232 | Protected (unchanged this pass) |

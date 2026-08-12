@@ -58,7 +58,7 @@ export default async function CategoriesIndexPage() {
           <div className="max-w-[1200px] mx-auto relative">
             <span className="font-heading text-[11px] font-bold tracking-[0.15em] uppercase text-[#D4AF37] mb-3 block">Explore the Catalog</span>
             <h1 className="font-heading text-[clamp(28px,4.5vw,44px)] font-extrabold mb-3">
-              <span className="bg-gradient-to-br from-[#D4AF37] via-[#E8C84A] to-[#8A6B1A] bg-clip-text text-transparent">Research Peptide</span>{' '}
+              <span className="bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#8A6B1A] bg-clip-text text-transparent">Research Peptide</span>{' '}
               <span className="text-white">Categories</span>
             </h1>
             <p className="text-[15px] text-white/55 font-light mb-10 max-w-[640px]">

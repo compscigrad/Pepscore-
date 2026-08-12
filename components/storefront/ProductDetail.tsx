@@ -18,6 +18,7 @@ import { AVAILABILITY_LABEL, isPurchasable, type StorefrontAvailability } from '
 import type { StorefrontPrice } from '@/lib/storefront/pricing'
 import { trackEvent } from '@/lib/analytics/track'
 import { AnalyticsEvent } from '@/lib/analytics/events'
+import { ScientificBackground } from './ScientificBackground'
 
 const GENERIC_PLACEHOLDER = '/images/products/default-single-vial.png'
 
@@ -115,9 +116,16 @@ export function ProductDetail({
   }
 
   return (
-    <main className="bg-black min-h-screen">
+    <main className="relative overflow-hidden bg-black min-h-screen">
+      {/* Corner watermark only -- product content (image, price, Add to
+          Cart) must stay fully dominant here, so this is confined to a
+          fixed-height region at the top rather than a full-bleed
+          treatment down the whole page. */}
+      <div className="absolute inset-x-0 top-0 h-[480px]">
+        <ScientificBackground intensity="subtle" position="object-right" fadeLeft />
+      </div>
       {/* Breadcrumbs */}
-      <div className="max-w-[1200px] mx-auto px-6 pt-6 pb-2">
+      <div className="max-w-[1200px] mx-auto px-6 pt-6 pb-2 relative">
         <nav aria-label="Breadcrumb" className="text-[12px] text-white/45 flex items-center gap-2 flex-wrap">
           <Link href="/" className="hover:text-[#D4AF37] transition-colors">Home</Link>
           <span>/</span>
@@ -187,7 +195,7 @@ export function ProductDetail({
                 <button
                   onClick={handleAdd}
                   disabled={!canPurchase}
-                  className="w-full bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] hover:shadow-[0_4px_16px_rgba(212,175,55,0.4)] text-black font-heading text-[13px] font-bold tracking-[0.08em] uppercase py-3.5 rounded-full transition-all disabled:bg-white/10 disabled:bg-none disabled:text-white/40 disabled:cursor-not-allowed disabled:shadow-none"
+                  className="w-full bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] hover:shadow-[0_4px_16px_rgba(212,175,55,0.4)] text-black font-heading text-[13px] font-bold tracking-[0.08em] uppercase py-3.5 rounded-full transition-all disabled:bg-white/10 disabled:bg-none disabled:text-white/40 disabled:cursor-not-allowed disabled:shadow-none"
                 >
                   {canPurchase ? 'Add to Cart' : availabilityMessageOverride || AVAILABILITY_LABEL[availability]}
                 </button>

@@ -78,7 +78,7 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
           <div className="flex flex-col sm:flex-row gap-3">
             <Link
               href="/account/orders"
-              className="flex-1 bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] text-black font-heading text-[13px] font-bold tracking-[0.08em] uppercase py-3 rounded-full text-center transition-all hover:shadow-[0_4px_16px_rgba(212,175,55,0.4)]"
+              className="flex-1 bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] text-black font-heading text-[13px] font-bold tracking-[0.08em] uppercase py-3 rounded-full text-center transition-all hover:shadow-[0_4px_16px_rgba(212,175,55,0.4)]"
             >
               View My Orders
             </Link>

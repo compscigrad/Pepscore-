@@ -17,6 +17,7 @@ import { getMerchandisingCategory, MERCHANDISING_TAXONOMY } from '@/lib/storefro
 import { groupByName } from '@/lib/storefront/groupByName'
 import { getCurrentCustomerSpaEligible } from '@/lib/storefront/spaEligibility'
 import { breadcrumbSchema } from '@/lib/storefront/structuredData'
+import { ScientificBackground } from '@/components/storefront/ScientificBackground'
 
 export const revalidate = 60
 
@@ -76,6 +77,7 @@ export default async function CategoryDetailPage({ params }: PageProps) {
         </div>
 
         <div className="relative overflow-hidden py-10 px-6">
+          <ScientificBackground intensity="subtle" position="object-right" fadeLeft />
           <div
             className="absolute inset-0 pointer-events-none"
             style={{ background: 'radial-gradient(ellipse 800px 400px at 10% 0%, rgba(212,175,55,0.08) 0%, transparent 70%)' }}

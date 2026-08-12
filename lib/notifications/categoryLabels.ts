@@ -38,6 +38,7 @@ const CATEGORY_LABELS: Record<MessageCategory, string> = {
   SUPPORT_REQUEST_RECEIVED: 'Support Request',
   ADMIN_INTAKE_ALERT: 'Account Update',
   ADMIN_DELIVERY_FAILURE_ALERT: 'Account Update',
+  ADMIN_PRICING_REPORT: 'Pricing Report',
 }
 
 // Never falls back to the raw category string — a category this app somehow

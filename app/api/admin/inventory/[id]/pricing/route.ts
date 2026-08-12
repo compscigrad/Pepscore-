@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { z } from 'zod'
-import { recalculateSuggestedPricing, setActivePricing } from '@/lib/pricing/service'
+import { recalculateSuggestedPricing, setActivePricing, SpaPricingInvariantError } from '@/lib/pricing/service'
 
 function isAdmin(userId: string | null) {
   return userId === process.env.ADMIN_CLERK_USER_ID
@@ -64,6 +64,15 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
   } catch (err: unknown) {
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: 'Validation failed', issues: err.issues }, { status: 400 })
+    }
+    if (err instanceof SpaPricingInvariantError) {
+      // Surfaced verbatim so the admin UI can offer the proposed corrected
+      // SPA as a one-click fix, or let the admin type a different lower
+      // value -- never silently written either way.
+      return NextResponse.json(
+        { error: err.message, standardCasePrice: err.standardCasePrice, currentSpaCasePrice: err.currentSpaCasePrice, proposedSpaCasePrice: err.proposedSpaCasePrice },
+        { status: 400 }
+      )
     }
     const message = err instanceof Error ? err.message : 'Pricing update failed'
     console.error('[admin/inventory/:id/pricing PATCH]', err)

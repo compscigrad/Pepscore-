@@ -58,7 +58,7 @@ export function ContactSection() {
           <p className="text-[16px] font-light text-white/55 max-w-[480px] mx-auto leading-[1.7]">
             Questions, bulk pricing, or a custom research quote — send us a message and our team will follow up.
           </p>
-          <div className="w-11 h-[3px] bg-gradient-to-r from-[#D4AF37] to-[#E8C84A] mx-auto mt-3.5 rounded-full" />
+          <div className="w-11 h-[3px] bg-gradient-to-r from-[#F6D365] via-[#D4AF37] to-[#C99A20] mx-auto mt-3.5 rounded-full" />
         </div>
 
         {status === 'success' ? (
@@ -134,7 +134,7 @@ export function ContactSection() {
             <button
               type="submit"
               disabled={status === 'submitting'}
-              className="w-full bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] text-black font-heading text-[13px] font-bold tracking-[0.08em] uppercase px-8 py-4 rounded-full transition-all hover:-translate-y-0.5 hover:shadow-[0_10px_32px_rgba(212,175,55,0.45)] disabled:opacity-60 disabled:hover:translate-y-0"
+              className="w-full bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] text-black font-heading text-[13px] font-bold tracking-[0.08em] uppercase px-8 py-4 rounded-full transition-all hover:-translate-y-0.5 hover:shadow-[0_10px_32px_rgba(212,175,55,0.45)] disabled:opacity-60 disabled:hover:translate-y-0"
             >
               {status === 'submitting' ? 'Sending…' : 'Send Message'}
             </button>

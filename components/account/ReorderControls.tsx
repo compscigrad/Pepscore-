@@ -88,7 +88,7 @@ export function ReorderAllButton({ lines }: { lines: ReorderLineView[] }) {
     <button
       type="button"
       onClick={handleClick}
-      className="bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] hover:shadow-[0_4px_16px_rgba(212,175,55,0.4)] text-black font-heading text-[11px] font-bold tracking-[0.06em] uppercase px-4 py-2 rounded-full transition-all"
+      className="bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] hover:shadow-[0_4px_16px_rgba(212,175,55,0.4)] text-black font-heading text-[11px] font-bold tracking-[0.06em] uppercase px-4 py-2 rounded-full transition-all"
     >
       Reorder All
     </button>

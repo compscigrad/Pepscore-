@@ -14,6 +14,7 @@
 import Link from 'next/link'
 import type { LucideIcon } from 'lucide-react'
 import { Scale, Hourglass, Dumbbell, Layers, Flame, Bandage, Brain, HeartHandshake, Sparkles } from 'lucide-react'
+import { ScientificBackground } from './ScientificBackground'
 
 interface DirectoryEntry {
   label: string
@@ -45,8 +46,14 @@ const ENTRIES: DirectoryEntry[] = [
 
 export function CatalogDirectory() {
   return (
-    <nav aria-label="Product catalog directory" className="relative bg-black py-10 px-6">
-      <div className="max-w-[1200px] mx-auto">
+    <nav aria-label="Product catalog directory" className="relative overflow-hidden bg-black py-10 px-6">
+      {/* Faint scientific-art layer around the gold tray -- a contrast
+          beat between "luxury gold" and "research science", kept well
+          clear of the tray itself (fades to nothing before reaching it)
+          so it never competes with the metallic treatment or the tile
+          labels. */}
+      <ScientificBackground intensity="subtle" position="object-right" fadeLeft fadeRight />
+      <div className="max-w-[1200px] mx-auto relative">
         <div className="flex items-center gap-3 mb-5">
           <span className="font-heading text-[11px] font-bold tracking-[0.18em] uppercase bg-gradient-to-r from-[#F0D375] via-[#D4AF37] to-[#8A6B1A] bg-clip-text text-transparent">
             Catalog Directory
@@ -54,23 +61,25 @@ export function CatalogDirectory() {
           <div className="h-px flex-1 bg-gradient-to-r from-[#D4AF37]/40 to-transparent" />
         </div>
 
-        {/* The "gold bar" tray — the FULL container reads as worked metal
-            now (2026-08-12 revision pass #3), not just a gold outline
-            around a dark panel. Tiles inside stay dark/charcoal (an
+        {/* The "gold bar" tray — the FULL container reads as polished
+            bullion / 24k jewelry gold (2026-08-12 gold-system revision),
+            using the global luxury-gold token progression (app/globals.css
+            .bg-gold-luxury) instead of the flatter mustard/ochre/brown
+            tones this used before. Tiles inside stay dark/charcoal (an
             "engraved plate set into gold") so label text stays legible
             rather than gold-on-gold. */}
         <div
           className="relative rounded-2xl p-[3px] shadow-[0_24px_64px_rgba(0,0,0,0.55)]"
-          style={{ background: 'linear-gradient(115deg, #6B5313 0%, #D4AF37 22%, #F3DA8C 45%, #D4AF37 68%, #8A6B1A 88%, #6B5313 100%)' }}
+          style={{ background: 'linear-gradient(115deg, #C99A20 0%, #F6D365 22%, #FFF1A8 45%, #F6D365 68%, #E8C24A 88%, #C99A20 100%)' }}
         >
           {/* Specular highlight sweeping the top edge of the bar */}
           <div
             className="absolute inset-x-3 top-0 h-px pointer-events-none"
-            style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.75), transparent)' }}
+            style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.85), transparent)' }}
           />
           <div
             className="relative rounded-[13px] px-4 py-5 sm:px-6 sm:py-6"
-            style={{ background: 'linear-gradient(160deg, #C9A227 0%, #E8C84A 18%, #D4AF37 40%, #B8912A 65%, #8A6B1A 100%)' }}
+            style={{ background: 'linear-gradient(160deg, #F7DF72 0%, #F6D365 18%, #E8C24A 40%, #D4AF37 62%, #C99A20 85%, #E8C24A 100%)' }}
           >
             {/* Inner ambient shimmer */}
             <div

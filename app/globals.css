@@ -40,4 +40,21 @@
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
+
+  /* Global PepScore Lab luxury-gold system (2026-08-12 pricing/gold
+     revision pass) -- polished bullion / 24k jewelry gold with champagne
+     highlights, replacing the flatter mustard/ochre 2-stop gradient used
+     across the storefront. Reusable token: reference this same 6-stop
+     progression (#FFF1A8 -> #F6D365 -> #E8C24A -> #D4AF37 -> #C99A20 ->
+     #F7DF72) anywhere a strong gold surface is needed (Catalog Directory
+     tray, premium callouts) rather than inventing another one-off gold. */
+  .bg-gold-luxury {
+    background: linear-gradient(135deg, #FFF1A8 0%, #F6D365 20%, #E8C24A 40%, #D4AF37 60%, #C99A20 80%, #F7DF72 100%);
+  }
+  .text-gold-luxury {
+    background: linear-gradient(135deg, #FFF1A8 0%, #F6D365 20%, #E8C24A 40%, #D4AF37 60%, #C99A20 80%, #F7DF72 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
 }

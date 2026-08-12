@@ -32,7 +32,7 @@ export async function Footer() {
               discountType={offer.campaign.discountType}
               discountValue={offer.campaign.discountValue}
               triggerLabel={`Claim ${formatDiscountLabel(offer.campaign.discountType, offer.campaign.discountValue)} →`}
-              triggerClassName="shrink-0 bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] hover:shadow-[0_4px_16px_rgba(212,175,55,0.4)] text-black font-heading text-[12px] font-bold tracking-[0.08em] uppercase px-6 py-3 rounded-full transition-all"
+              triggerClassName="shrink-0 bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] hover:shadow-[0_4px_16px_rgba(212,175,55,0.4)] text-black font-heading text-[12px] font-bold tracking-[0.08em] uppercase px-6 py-3 rounded-full transition-all"
             />
           </div>
         )}
@@ -44,7 +44,7 @@ export async function Footer() {
           <div>
             <p className="font-heading text-[19px] font-extrabold tracking-[-0.01em] leading-none mb-3">
               <span className="text-white">Pepscore</span>{' '}
-              <span className="bg-gradient-to-br from-[#D4AF37] via-[#E8C84A] to-[#D4AF37] bg-clip-text text-transparent">Lab</span>
+              <span className="bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] bg-clip-text text-transparent">Lab</span>
             </p>
             <p className="text-[13px] text-white/55 leading-relaxed mb-4">
               Precision-grade research peptides for laboratories that refuse to compromise on quality or consistency.
@@ -127,7 +127,7 @@ export async function Footer() {
             <div className="mt-4">
               <Link
                 href="/#products"
-                className="inline-block bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] hover:shadow-[0_4px_16px_rgba(212,175,55,0.4)] text-black font-heading text-[12px] font-bold tracking-[0.08em] uppercase px-5 py-2.5 rounded-full transition-all"
+                className="inline-block bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] hover:shadow-[0_4px_16px_rgba(212,175,55,0.4)] text-black font-heading text-[12px] font-bold tracking-[0.08em] uppercase px-5 py-2.5 rounded-full transition-all"
               >
                 Order Now
               </Link>

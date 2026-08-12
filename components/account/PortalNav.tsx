@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { UserButton } from '@clerk/nextjs'
+import { ScientificBackground } from '@/components/storefront/ScientificBackground'
 
 const NAV_ITEMS = [
   { href: '/account', label: 'Dashboard' },
@@ -19,8 +20,12 @@ export function PortalNav() {
   const pathname = usePathname()
 
   return (
-    <header className="sticky top-0 z-20 bg-dark/95 backdrop-blur border-b border-white/10">
-      <div className="max-w-[960px] mx-auto px-4">
+    <header className="relative overflow-hidden sticky top-0 z-20 bg-dark/95 backdrop-blur border-b border-white/10">
+      {/* Very restrained -- operational clarity matters more than
+          decorative artwork in the portal; the near-opaque header
+          background + blur already keeps this close to invisible. */}
+      <ScientificBackground intensity="subtle" position="object-right" fadeLeft />
+      <div className="max-w-[960px] mx-auto px-4 relative">
         <div className="flex items-center justify-between h-16">
           <Link href="/account" className="font-heading text-lg font-bold text-white tracking-[0.05em]">
             PEPSCORE <span className="text-gold-light">LAB</span>

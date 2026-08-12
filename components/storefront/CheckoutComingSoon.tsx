@@ -17,7 +17,7 @@ export function CheckoutComingSoon() {
           <p className="text-[14px] text-white/60 leading-relaxed mb-8">{STOREFRONT_CHECKOUT_DISABLED_MESSAGE}</p>
           <Link
             href="/#products"
-            className="inline-block bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] text-black font-heading text-[13px] font-bold tracking-[0.08em] uppercase px-6 py-3 rounded-full transition-all hover:shadow-[0_4px_16px_rgba(212,175,55,0.4)]"
+            className="inline-block bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] text-black font-heading text-[13px] font-bold tracking-[0.08em] uppercase px-6 py-3 rounded-full transition-all hover:shadow-[0_4px_16px_rgba(212,175,55,0.4)]"
           >
             Browse Products
           </Link>

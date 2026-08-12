@@ -64,7 +64,7 @@ export function RuoModal({ onConfirm, onCancel, isLoading }: RuoModalProps) {
           <button
             onClick={onConfirm}
             disabled={!checked || isLoading}
-            className="flex-1 bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] disabled:opacity-40 disabled:cursor-not-allowed text-black font-heading text-[12px] font-bold tracking-[0.06em] uppercase py-3 rounded-full transition-all"
+            className="flex-1 bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] disabled:opacity-40 disabled:cursor-not-allowed text-black font-heading text-[12px] font-bold tracking-[0.06em] uppercase py-3 rounded-full transition-all"
           >
             {isLoading ? 'Processing…' : 'Continue to Payment'}
           </button>

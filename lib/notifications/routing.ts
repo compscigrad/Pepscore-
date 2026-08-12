@@ -60,6 +60,11 @@ export type MessageCategory =
   // email) failed outright — distinct from ADMIN_INTAKE_ALERT so the two can
   // route differently later if needed, even though today both land on Orders.
   | 'ADMIN_DELIVERY_FAILURE_ALERT'
+  // Admin-facing: the finalized master pricing list, sent once after the
+  // owner explicitly approves a pricing revision pass -- never automated,
+  // never customer-visible. Routes through admin@, not orders@, since this
+  // is a business/pricing decision record, not an order-fulfillment alert.
+  | 'ADMIN_PRICING_REPORT'
 
 interface RoutedSender {
   fromName: string
@@ -103,6 +108,7 @@ const ROUTING: Record<MessageCategory, RoutedSender> = {
 
   ADMIN_INTAKE_ALERT: { fromName: 'Pepscore Orders', replyTo: ORDERS_EMAIL },
   ADMIN_DELIVERY_FAILURE_ALERT: { fromName: 'Pepscore Orders', replyTo: ORDERS_EMAIL },
+  ADMIN_PRICING_REPORT: { fromName: 'Pepscore Lab', replyTo: ADMIN_EMAIL },
 }
 
 export interface ResolvedSender {

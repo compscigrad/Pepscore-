@@ -97,7 +97,7 @@ export function CheckoutForm() {
             <h2 className="font-heading text-xl font-bold mb-2 text-white">Your cart is empty</h2>
             <button
               onClick={() => router.push('/#products')}
-              className="mt-4 bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] text-black font-heading text-[13px] font-bold tracking-[0.08em] uppercase px-6 py-3 rounded-full transition-all hover:shadow-[0_4px_16px_rgba(212,175,55,0.4)]"
+              className="mt-4 bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] text-black font-heading text-[13px] font-bold tracking-[0.08em] uppercase px-6 py-3 rounded-full transition-all hover:shadow-[0_4px_16px_rgba(212,175,55,0.4)]"
             >
               Shop Products
             </button>
@@ -444,7 +444,7 @@ export function CheckoutForm() {
 
                 <button
                   onClick={handleCheckoutClick}
-                  className="w-full mt-6 bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] text-black font-heading text-[13px] font-bold tracking-[0.08em] uppercase py-4 rounded-full transition-all hover:shadow-[0_4px_16px_rgba(212,175,55,0.4)]"
+                  className="w-full mt-6 bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] text-black font-heading text-[13px] font-bold tracking-[0.08em] uppercase py-4 rounded-full transition-all hover:shadow-[0_4px_16px_rgba(212,175,55,0.4)]"
                 >
                   Confirm RUO & Pay
                 </button>

@@ -109,7 +109,7 @@ export function ProductCard({ name, featured, category, description, imageUrl, b
           Featured (admin-set, Phase 2B item 6) takes the right so both can
           show at once without overlapping. */}
       {badge && (
-        <div className="absolute top-3 left-3 z-10 bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] text-black font-heading text-[10px] font-bold tracking-[0.08em] uppercase px-2.5 py-1 rounded-full">
+        <div className="absolute top-3 left-3 z-10 bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] text-black font-heading text-[10px] font-bold tracking-[0.08em] uppercase px-2.5 py-1 rounded-full">
           {badge}
         </div>
       )}
@@ -160,9 +160,15 @@ export function ProductCard({ name, featured, category, description, imageUrl, b
           {category}
         </Link>
 
-        {/* Product name — links to the currently selected variant's page */}
-        <Link href={`/products/${v.slug}`} className="flex items-center gap-1.5 mb-2 w-fit">
+        {/* Product name + strength — the strength/unit label must always be
+            visible here regardless of variant count. Before this fix, a
+            single-strength product (most of the catalog -- MT-2,
+            Dermorphin, HMG, Cerebrolysin, KLOW, Botulinum Toxin, etc.)
+            never rendered its size anywhere on the card, because the size
+            pills below only render when variants.length > 1. */}
+        <Link href={`/products/${v.slug}`} className="flex items-center gap-2 mb-2 w-fit flex-wrap">
           <h3 className="font-heading text-[17px] font-bold text-white leading-tight hover:text-[#D4AF37] transition-colors">{name}</h3>
+          <span className="font-heading text-[11px] font-bold text-[#D4AF37]/80 tracking-[0.02em]">{v.size}</span>
           {v.availability === 'BACKORDERED' && <BackorderIndicator />}
         </Link>
 
@@ -183,7 +189,7 @@ export function ProductCard({ name, featured, category, description, imageUrl, b
                     onClick={() => selectSize(i)}
                     className={`px-2.5 py-1 rounded-full text-[11px] font-heading font-bold tracking-[0.04em] transition-all ${
                       i === selectedIdx
-                        ? 'bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] text-black'
+                        ? 'bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] text-black'
                         : 'border border-[#D4AF37]/25 text-white/60 hover:border-[#D4AF37] hover:text-[#D4AF37]'
                     }`}
                   >
@@ -217,7 +223,7 @@ export function ProductCard({ name, featured, category, description, imageUrl, b
                       onClick={() => setSellUnit(unit)}
                       className={`flex-1 px-2 py-1.5 rounded-lg text-[10px] font-heading font-bold tracking-[0.04em] uppercase transition-all ${
                         effectiveSellUnit === unit
-                          ? 'bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] text-black'
+                          ? 'bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] text-black'
                           : 'border border-[#D4AF37]/25 text-white/60 hover:border-[#D4AF37] hover:text-[#D4AF37]'
                       }`}
                     >
@@ -259,7 +265,7 @@ export function ProductCard({ name, featured, category, description, imageUrl, b
               <button
                 onClick={handleAdd}
                 disabled={!canPurchase}
-                className="bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] hover:shadow-[0_4px_16px_rgba(212,175,55,0.4)] text-black font-heading text-[11px] font-bold tracking-[0.05em] uppercase w-full py-2.5 rounded-full transition-all hover:scale-[1.02] disabled:bg-white/10 disabled:bg-none disabled:text-white/40 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:shadow-none"
+                className="bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] hover:shadow-[0_4px_16px_rgba(212,175,55,0.4)] text-black font-heading text-[11px] font-bold tracking-[0.05em] uppercase w-full py-2.5 rounded-full transition-all hover:scale-[1.02] disabled:bg-white/10 disabled:bg-none disabled:text-white/40 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:shadow-none"
               >
                 {canPurchase ? `Add to Cart${variants.length > 1 ? ` · ${v.size}` : ''}` : v.availabilityMessageOverride || AVAILABILITY_LABEL[v.availability]}
               </button>

@@ -12,6 +12,7 @@ import { CartSidebar } from '@/components/storefront/CartSidebar'
 import { LeadCaptureTrigger } from '@/components/storefront/LeadCaptureTrigger'
 import { CatalogDirectory } from '@/components/storefront/CatalogDirectory'
 import { HomeSearchBar } from '@/components/storefront/HomeSearchBar'
+import { ScientificBackground } from '@/components/storefront/ScientificBackground'
 import { groupByName } from '@/lib/storefront/groupByName'
 import { applyHomepagePriority } from '@/lib/storefront/homepagePriority'
 import { getCurrentCustomerSpaEligible } from '@/lib/storefront/spaEligibility'
@@ -56,6 +57,7 @@ export default async function HomePage() {
       <main className="bg-black">
         {/* ── Hero ──────────────────────────────────────────────────────────── */}
         <section className="relative overflow-hidden bg-black py-20 px-6">
+          <ScientificBackground intensity="strong" position="object-right" fadeLeft />
           <div
             className="absolute inset-0 pointer-events-none"
             style={{ background: 'radial-gradient(ellipse 640px 640px at 15% 50%, rgba(212,175,55,0.08) 0%, transparent 65%)' }}
@@ -64,23 +66,23 @@ export default async function HomePage() {
             <div>
               <p className="font-heading text-[28px] font-extrabold tracking-[-0.01em] leading-none mb-6">
                 <span className="text-white">Pepscore</span>{' '}
-                <span className="bg-gradient-to-br from-[#D4AF37] via-[#E8C84A] to-[#D4AF37] bg-clip-text text-transparent">Lab</span>
+                <span className="bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] bg-clip-text text-transparent">Lab</span>
               </p>
               <div className="inline-block bg-[#D4AF37]/10 border border-[#D4AF37]/35 rounded-full px-4 py-1.5 font-heading text-[11px] font-bold tracking-[0.12em] uppercase mb-5 text-[#D4AF37]">
                 Holistic Research Peptides
               </div>
               <h1 className="font-heading text-[clamp(34px,5vw,54px)] font-extrabold leading-[1.1] text-white mb-5">
                 Precision-Grade<br />
-                <span className="bg-gradient-to-br from-[#D4AF37] via-[#E8C84A] to-[#D4AF37] bg-clip-text text-transparent">Peptides</span> for<br />
+                <span className="bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] bg-clip-text text-transparent">Peptides</span> for<br />
                 Serious Research
               </h1>
               <p className="text-[17px] font-light text-white/60 leading-[1.7] mb-9 max-w-[480px]">
-                Pepscore Lab supplies research-grade peptides synthesized under GMP-compliant conditions and verified to ≥98% purity by independent third-party labs. Our catalog covers the compound classes serious research programs rely on — from metabolic regulators to longevity and cognitive research peptides — backed by consistent lot-to-lot quality and responsive researcher support.
+                Pepscore Lab supplies research-grade peptides produced through a certified pharmaceutical laboratory under GMP-compliant manufacturing standards and verified to ≥98% purity by independent third-party labs. Our catalog covers the compound classes serious research programs rely on — from metabolic regulators to longevity and cognitive research peptides — backed by consistent lot-to-lot quality and responsive researcher support.
               </p>
               <div className="flex gap-4 flex-wrap">
                 <Link
                   href="#products"
-                  className="bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] text-black font-heading text-[13px] font-bold tracking-[0.08em] uppercase px-8 py-4 rounded-full transition-all hover:-translate-y-0.5 hover:shadow-[0_10px_32px_rgba(212,175,55,0.45)]"
+                  className="bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] text-black font-heading text-[13px] font-bold tracking-[0.08em] uppercase px-8 py-4 rounded-full transition-all hover:-translate-y-0.5 hover:shadow-[0_10px_32px_rgba(212,175,55,0.45)]"
                 >
                   Shop All Products
                 </Link>
@@ -96,7 +98,7 @@ export default async function HomePage() {
               <div className="flex gap-9 mt-11 pt-7 border-t border-[#D4AF37]/15 flex-wrap">
                 {[['≥98%','Verified Purity'],['8+','Peptide Compounds'],['Bulk','Pricing Available']].map(([v,l]) => (
                   <div key={l}>
-                    <h3 className="font-heading text-[26px] font-extrabold bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] bg-clip-text text-transparent">{v}</h3>
+                    <h3 className="font-heading text-[26px] font-extrabold bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] bg-clip-text text-transparent">{v}</h3>
                     <p className="text-[12px] text-white/40 m-0">{l}</p>
                   </div>
                 ))}
@@ -132,7 +134,7 @@ export default async function HomePage() {
               <p className="text-[16px] font-light text-white/55 max-w-[540px] mx-auto leading-[1.7]">
                 Every compound is third-party tested, precisely dosed, and formulated for research excellence.
               </p>
-              <div className="w-11 h-[3px] bg-gradient-to-r from-[#D4AF37] to-[#E8C84A] mx-auto mt-3.5 rounded-full" />
+              <div className="w-11 h-[3px] bg-gradient-to-r from-[#F6D365] via-[#D4AF37] to-[#C99A20] mx-auto mt-3.5 rounded-full" />
             </div>
 
             {products.length > 0 ? (
@@ -159,7 +161,7 @@ export default async function HomePage() {
               <span className="font-heading text-[11px] font-bold tracking-[0.15em] uppercase text-[#D4AF37]/70 mb-3 block">Volume Savings</span>
               <h2 className="font-heading text-[clamp(26px,4vw,38px)] font-bold text-white mb-3">Bulk Pricing for Researchers</h2>
               <p className="text-[16px] font-light text-white/60 max-w-[540px] mx-auto">Scale your research without scaling your costs.</p>
-              <div className="w-11 h-[3px] bg-gradient-to-r from-[#D4AF37] to-[#E8C84A] mx-auto mt-3.5 rounded-full" />
+              <div className="w-11 h-[3px] bg-gradient-to-r from-[#F6D365] via-[#D4AF37] to-[#C99A20] mx-auto mt-3.5 rounded-full" />
             </div>
             {/* Accurate owner-specified case-quantity discount schedule --
                 off the Standard Case price, not individual-vial pricing.
@@ -175,10 +177,10 @@ export default async function HomePage() {
               ].map(c => (
                 <div key={c.range} className={`relative overflow-hidden rounded-2xl p-6 text-center border transition-all hover:-translate-y-1 ${c.featured ? 'border-[#D4AF37]/50 bg-[#D4AF37]/10' : 'border-[#D4AF37]/20 bg-white/[0.03]'}`}>
                   {c.featured && (
-                    <div className="absolute top-3.5 right-[-22px] bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] text-black text-[9px] font-bold tracking-[0.1em] px-8 py-1 rotate-45">BEST VALUE</div>
+                    <div className="absolute top-3.5 right-[-22px] bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] text-black text-[9px] font-bold tracking-[0.1em] px-8 py-1 rotate-45">BEST VALUE</div>
                   )}
                   <h3 className="font-heading text-[15px] font-bold text-white mb-1.5">{c.range}</h3>
-                  <div className="font-heading text-[26px] font-extrabold bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] bg-clip-text text-transparent">{c.save}</div>
+                  <div className="font-heading text-[26px] font-extrabold bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] bg-clip-text text-transparent">{c.save}</div>
                 </div>
               ))}
             </div>
@@ -190,7 +192,7 @@ export default async function HomePage() {
                 modalDescription="Tell us about your research volume needs and a member of our team will follow up with SPA/wholesale pricing."
                 showMessageField
                 triggerLabel="Inquire About Bulk Orders"
-                triggerClassName="inline-block bg-gradient-to-br from-[#D4AF37] to-[#E8C84A] text-black font-heading text-[13px] font-bold tracking-[0.08em] uppercase px-8 py-4 rounded-full transition-all hover:-translate-y-0.5 hover:shadow-[0_10px_32px_rgba(212,175,55,0.45)]"
+                triggerClassName="inline-block bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] text-black font-heading text-[13px] font-bold tracking-[0.08em] uppercase px-8 py-4 rounded-full transition-all hover:-translate-y-0.5 hover:shadow-[0_10px_32px_rgba(212,175,55,0.45)]"
               />
             </div>
           </div>
@@ -206,11 +208,11 @@ export default async function HomePage() {
             <div className="text-center mb-14">
               <span className="font-heading text-[11px] font-bold tracking-[0.15em] uppercase text-[#D4AF37] mb-3 block">Why Researchers Choose Us</span>
               <h2 className="font-heading text-[clamp(26px,4vw,38px)] font-bold mb-3">
-                <span className="bg-gradient-to-br from-[#D4AF37] via-[#E8C84A] to-[#8A6B1A] bg-clip-text text-transparent">The Pepscore Lab</span>{' '}
+                <span className="bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#8A6B1A] bg-clip-text text-transparent">The Pepscore Lab</span>{' '}
                 <span className="text-white">Standard</span>
               </h2>
               <p className="text-[16px] font-light text-white/55 max-w-[540px] mx-auto">Every vial is backed by rigorous quality assurance and a commitment to research excellence.</p>
-              <div className="w-11 h-[3px] bg-gradient-to-r from-[#D4AF37] to-[#E8C84A] mx-auto mt-3.5 rounded-full" />
+              <div className="w-11 h-[3px] bg-gradient-to-r from-[#F6D365] via-[#D4AF37] to-[#C99A20] mx-auto mt-3.5 rounded-full" />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-7">
               {[
@@ -232,6 +234,7 @@ export default async function HomePage() {
 
         {/* ── About ────────────────────────────────────────────────────────── */}
         <section id="about" className="relative overflow-hidden py-24 px-6 bg-black">
+          <ScientificBackground intensity="medium" position="object-left" fadeLeft={false} fadeRight />
           <div
             className="absolute inset-0 pointer-events-none"
             style={{ background: 'radial-gradient(ellipse 640px 500px at 15% 80%, rgba(212,175,55,0.06) 0%, transparent 65%)' }}
@@ -244,12 +247,12 @@ export default async function HomePage() {
             <div>
               <span className="font-heading text-[11px] font-bold tracking-[0.15em] uppercase text-[#D4AF37] mb-3 block">Our Mission</span>
               <h2 className="font-heading text-[clamp(26px,4vw,38px)] font-bold text-white mb-2">Holistic Peptides Rooted in Science</h2>
-              <div className="w-11 h-[3px] bg-gradient-to-r from-[#D4AF37] to-[#E8C84A] mb-6 rounded-full" />
+              <div className="w-11 h-[3px] bg-gradient-to-r from-[#F6D365] via-[#D4AF37] to-[#C99A20] mb-6 rounded-full" />
               <p className="text-[15px] text-white/65 leading-[1.8] mb-4">
-                At Pepscore Lab, we believe breakthrough research begins with reliable lyophilized compounds. Founded by scientists with a passion for precision biochemistry, we supply research-grade peptides to laboratories that demand the highest standards of purity and consistency.
+                Pepscore Lab provides pharmaceutical-grade research compounds produced through a certified pharmaceutical laboratory and supported by GMP-compliant manufacturing standards and third-party testing. We focus on delivering reliable, consistently produced lyophilized compounds for research use only.
               </p>
               <p className="text-[15px] text-white/65 leading-[1.8] mb-6">
-                Our catalog spans the most studied peptide classes — from metabolic regulators like Semaglutide and Tirzepatide, to longevity compounds like Epithalon and NAD+. Each product is synthesized under GMP-compliant pharmaceutical-grade conditions and independently verified before it reaches you.
+                Our catalog spans the most studied peptide classes — from metabolic regulators like Semaglutide and Tirzepatide, to longevity compounds like Epithalon and NAD+. Each product is produced under GMP-compliant manufacturing standards and independently verified before it reaches you.
               </p>
               <div className="space-y-3.5">
                 {[
