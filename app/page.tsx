@@ -12,7 +12,6 @@ import { CartSidebar } from '@/components/storefront/CartSidebar'
 import { LeadCaptureTrigger } from '@/components/storefront/LeadCaptureTrigger'
 import { CatalogDirectory } from '@/components/storefront/CatalogDirectory'
 import { HomeSearchBar } from '@/components/storefront/HomeSearchBar'
-import { getStorefrontPrice } from '@/lib/storefront/pricing'
 import { groupByName } from '@/lib/storefront/groupByName'
 import { applyHomepagePriority } from '@/lib/storefront/homepagePriority'
 import { getCurrentCustomerSpaEligible } from '@/lib/storefront/spaEligibility'
@@ -42,15 +41,6 @@ export default async function HomePage() {
   // Gracefully fall back to empty array if DB isn't configured yet
   const [rawProducts, spaEligible] = await Promise.all([getProducts().catch(() => []), getCurrentCustomerSpaEligible()])
   const products = applyHomepagePriority(groupByName(rawProducts, { spaEligible }))
-
-  // Flat, priced rows for the reference pricing table below — built from the
-  // same real query, not the old hardcoded PRICING_TABLE. Only products that
-  // have actually been through pricing review and have an approved active
-  // price appear here; the section itself is omitted entirely rather than
-  // ever show a fabricated number.
-  const pricedRows = rawProducts
-    .map((p) => ({ name: p.name, size: p.size, price: getStorefrontPrice(p, { spaEligible }) }))
-    .filter((r): r is { name: string; size: string; price: NonNullable<ReturnType<typeof getStorefrontPrice>> } => r.price != null)
 
   return (
     <>
@@ -162,55 +152,6 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* ── Pricing Table ────────────────────────────────────────────────── */}
-        {/* Omitted entirely, not shown empty, when no product has an
-            approved active price yet — never render a placeholder table
-            with fabricated numbers. */}
-        {pricedRows.length > 0 && (
-          <section id="pricing" className="py-24 px-6 bg-black">
-            <div className="max-w-[960px] mx-auto">
-              <div className="text-center mb-14">
-                <span className="font-heading text-[11px] font-bold tracking-[0.15em] uppercase text-[#D4AF37] mb-3 block">Transparent Pricing</span>
-                <h2 className="font-heading text-[clamp(26px,4vw,38px)] font-bold text-white mb-3">Full Pricing Reference</h2>
-                <p className="text-[16px] font-light text-white/55 max-w-[540px] mx-auto">Standard case pricing for every published product. All prices in USD.</p>
-                <div className="w-11 h-[3px] bg-gradient-to-r from-[#D4AF37] to-[#E8C84A] mx-auto mt-3.5 rounded-full" />
-              </div>
-              <div className="overflow-x-auto rounded-2xl border border-[#D4AF37]/15">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr>
-                      {['Product', 'Vial Size', 'Standard Case', 'Per Vial'].map((h) => (
-                        <th key={h} className="bg-white/[0.04] text-white font-heading text-[12px] font-bold tracking-[0.08em] uppercase py-3.5 px-4 text-left first:text-left [&:not(:first-child)]:text-center">
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pricedRows.map((row, i) => (
-                      <tr key={`${row.name}-${row.size}`} className={i % 2 === 1 ? 'bg-white/[0.02]' : ''}>
-                        <td className="py-3.5 px-4 text-[14px] border-t border-[#D4AF37]/10 font-heading font-bold text-white">{row.name}</td>
-                        <td className="py-3.5 px-4 text-[14px] border-t border-[#D4AF37]/10 text-center font-heading font-semibold text-white/80">{row.size}</td>
-                        <td className="py-3.5 px-4 text-[14px] border-t border-[#D4AF37]/10 text-center font-heading font-semibold text-white/80">
-                          ${row.price.standardCasePrice}
-                          {row.price.unitsPerCase ? ` / case of ${row.price.unitsPerCase}` : ''}
-                        </td>
-                        <td className="py-3.5 px-4 text-[14px] border-t border-[#D4AF37]/10 text-center font-heading font-semibold text-white/80">
-                          {row.price.individualVialPrice != null ? `$${row.price.individualVialPrice}` : '—'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <p className="text-center mt-5 text-[13px] text-white/45">
-                All products for research purposes only.{' '}
-                <Link href="#contact" className="text-[#D4AF37] hover:underline">Contact us</Link> for custom bulk quotes.
-              </p>
-            </div>
-          </section>
-        )}
-
         {/* ── Bulk Section ─────────────────────────────────────────────────── */}
         <section id="bulk" className="py-20 px-6 bg-gradient-to-br from-[#0d0d0d] to-black text-white">
           <div className="max-w-[1000px] mx-auto">
@@ -251,23 +192,31 @@ export default async function HomePage() {
         </section>
 
         {/* ── Features ─────────────────────────────────────────────────────── */}
-        <section id="features" className="py-24 px-6 bg-black">
-          <div className="max-w-[1200px] mx-auto">
+        <section id="features" className="relative overflow-hidden py-24 px-6 bg-gradient-to-b from-black via-[#0a0906] to-black">
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{ background: 'radial-gradient(ellipse 700px 400px at 85% 20%, rgba(212,175,55,0.06) 0%, transparent 70%)' }}
+          />
+          <div className="max-w-[1200px] mx-auto relative">
             <div className="text-center mb-14">
               <span className="font-heading text-[11px] font-bold tracking-[0.15em] uppercase text-[#D4AF37] mb-3 block">Why Researchers Choose Us</span>
-              <h2 className="font-heading text-[clamp(26px,4vw,38px)] font-bold text-white mb-3">The Pepscore Lab Standard</h2>
+              <h2 className="font-heading text-[clamp(26px,4vw,38px)] font-bold mb-3">
+                <span className="bg-gradient-to-br from-[#D4AF37] via-[#E8C84A] to-[#8A6B1A] bg-clip-text text-transparent">The Pepscore Lab</span>{' '}
+                <span className="text-white">Standard</span>
+              </h2>
               <p className="text-[16px] font-light text-white/55 max-w-[540px] mx-auto">Every vial is backed by rigorous quality assurance and a commitment to research excellence.</p>
               <div className="w-11 h-[3px] bg-gradient-to-r from-[#D4AF37] to-[#E8C84A] mx-auto mt-3.5 rounded-full" />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-7">
               {[
                 { icon:'🔬', title:'Third-Party Verified', body:'Every batch undergoes independent laboratory testing for purity above 98%, confirmed by HPLC and mass spectrometry.' },
-                { icon:'❄️', title:'Cold-Chain Shipping', body:'All products ship temperature-controlled to maintain molecular integrity from our facility to your laboratory.' },
+                { icon:'📦', title:'Lyophilized Stability', body:'Products ship lyophilized (freeze-dried) for room-temperature shelf stability from our facility to your laboratory.' },
                 { icon:'📋', title:'COA Certified Products', body:'Every compound is independently lab-tested, with Certificate of Analysis documentation on file for composition and purity verification.' },
                 { icon:'⚡', title:'Fast Fulfillment', body:'Orders processed and shipped within 24–48 hours. Bulk orders receive priority handling and a dedicated account contact.' },
               ].map(f => (
-                <div key={f.title} className="bg-[#0d0d0d] border border-[#D4AF37]/15 rounded-2xl p-8 text-center transition-all hover:-translate-y-1 hover:border-[#D4AF37]/40">
-                  <div className="w-[62px] h-[62px] bg-[#D4AF37]/10 rounded-full flex items-center justify-center mx-auto mb-4 text-[26px]">{f.icon}</div>
+                <div key={f.title} className="relative overflow-hidden bg-gradient-to-b from-[#141414] to-[#0a0a0a] border border-[#D4AF37]/15 rounded-2xl p-8 text-center transition-all hover:-translate-y-1 hover:border-[#D4AF37]/45 hover:shadow-[0_16px_40px_rgba(212,175,55,0.10)]">
+                  <div className="absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-[#D4AF37]/40 to-transparent" />
+                  <div className="w-[62px] h-[62px] bg-gradient-to-br from-[#D4AF37]/15 to-[#D4AF37]/5 border border-[#D4AF37]/20 rounded-full flex items-center justify-center mx-auto mb-4 text-[26px]">{f.icon}</div>
                   <h3 className="font-heading text-[16px] font-bold text-white mb-2.5">{f.title}</h3>
                   <p className="text-[13px] text-white/55 leading-[1.7]">{f.body}</p>
                 </div>
@@ -277,8 +226,12 @@ export default async function HomePage() {
         </section>
 
         {/* ── About ────────────────────────────────────────────────────────── */}
-        <section id="about" className="py-24 px-6 bg-black">
-          <div className="max-w-[1200px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-[72px] items-center">
+        <section id="about" className="relative overflow-hidden py-24 px-6 bg-black">
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{ background: 'radial-gradient(ellipse 640px 500px at 15% 80%, rgba(212,175,55,0.06) 0%, transparent 65%)' }}
+          />
+          <div className="max-w-[1200px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-[72px] items-center relative">
             <div className="relative">
               <Image src="/images/hero-vials.jpeg" alt="Pepscore Lab Peptide Collection" width={600} height={500} className="w-full rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.5)]" />
               <div className="absolute inset-[-14px_-14px_14px_14px] border border-[#D4AF37]/30 rounded-2xl -z-10 hidden md:block" />
@@ -288,7 +241,7 @@ export default async function HomePage() {
               <h2 className="font-heading text-[clamp(26px,4vw,38px)] font-bold text-white mb-2">Holistic Peptides Rooted in Science</h2>
               <div className="w-11 h-[3px] bg-gradient-to-r from-[#D4AF37] to-[#E8C84A] mb-6 rounded-full" />
               <p className="text-[15px] text-white/65 leading-[1.8] mb-4">
-                At Pepscore Lab, we believe breakthrough research begins with reliable raw materials. Founded by scientists with a passion for precision biochemistry, we supply research-grade peptides to laboratories that demand the highest standards of purity and consistency.
+                At Pepscore Lab, we believe breakthrough research begins with reliable lyophilized compounds. Founded by scientists with a passion for precision biochemistry, we supply research-grade peptides to laboratories that demand the highest standards of purity and consistency.
               </p>
               <p className="text-[15px] text-white/65 leading-[1.8] mb-6">
                 Our catalog spans the most studied peptide classes — from metabolic regulators like Semaglutide and Tirzepatide, to longevity compounds like Epithalon and NAD+. Each product is synthesized under GMP-compliant conditions and independently verified before it reaches your bench.

@@ -76,24 +76,19 @@ export async function Footer() {
             </ul>
           </div>
 
-          {/* Information -- only ever renders a real link. Lab Results/COAs,
-              Shipping Policy, Returns & Refunds, Terms of Service, and
-              Privacy Policy have no page to link to yet (no COA data model,
-              no drafted legal copy -- see docs/PendingOwnerActions.md), so
-              they render as plain, visibly non-interactive labels rather
-              than a clickable link to nowhere. Restore each as a real Link
-              once its destination exists; don't fabricate legal text to
-              fill the gap sooner. */}
+          {/* Information -- every link below now has a real destination
+              (docs/PendingOwnerActions.md tracks the owner/legal review
+              still needed on the drafted policy content itself). */}
           <div>
             <h4 className="font-heading text-[11px] font-bold tracking-[0.1em] uppercase text-[#D4AF37] mb-3">Information</h4>
             <ul className="space-y-2">
               {([
-                ['Lab Results / COAs', null],
+                ['Lab Results / COAs', '/lab-results'],
                 ['Bulk Pricing', '/#bulk'],
-                ['Shipping Policy', null],
-                ['Returns & Refunds', null],
-                ['Terms of Service', null],
-                ['Privacy Policy', null],
+                ['Shipping Policy', '/shipping'],
+                ['Returns & Refunds', '/returns'],
+                ['Terms of Service', '/terms'],
+                ['Privacy Policy', '/privacy'],
               ] as const).map(([label, href]) => (
                 <li key={label}>
                   {href ? (
@@ -146,12 +141,14 @@ export async function Footer() {
             © {new Date().getFullYear()} Pepscore Lab — Holistic Research Peptides. All rights reserved. For research purposes only.
           </p>
           <div className="flex gap-5 items-center">
-            {/* Same non-interactive treatment as the Information column
-                above -- none of these three have a real destination yet. */}
-            {['Privacy', 'Terms', 'COAs'].map(l => (
-              <span key={l} className="text-[12px] text-white/25 cursor-default" title="Coming soon">
-                {l}
-              </span>
+            {([
+              ['Privacy', '/privacy'],
+              ['Terms', '/terms'],
+              ['COAs', '/lab-results'],
+            ] as const).map(([label, href]) => (
+              <Link key={label} href={href} className="text-[12px] text-white/25 hover:text-white/50 transition-colors">
+                {label}
+              </Link>
             ))}
             {/* Discreet, staff-only entry point -- deliberately understated
                 relative to the customer-facing "Customer Sign In" header

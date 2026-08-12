@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import dynamic from 'next/dynamic'
 import { ShoppingCart, Menu, X, Search } from 'lucide-react'
 import { useCartStore } from '@/lib/cart-store'
@@ -51,12 +52,16 @@ export function Header() {
       }`}
     >
       <nav className="max-w-[1200px] mx-auto px-6 h-[72px] flex items-center justify-between">
-        {/* Logo — text wordmark (the source raster logo.png has an opaque
-            cream background baked in and reads "Pepscore" not "Pepscore
-            Lab"; matches the landing site's own text-only brand mark) */}
-        <Link href="/" className="flex-shrink-0 font-heading text-[19px] font-extrabold tracking-[-0.01em] leading-none">
-          <span className="text-white">Pepscore</span>{' '}
-          <span className="bg-gradient-to-br from-[#D4AF37] via-[#E8C84A] to-[#D4AF37] bg-clip-text text-transparent">Lab</span>
+        {/* Logo — the approved gold "P" mark (email-logo-mark.png, already
+            used across email templates) plus the text wordmark. logo.png
+            itself has an opaque cream background baked in and reads
+            "Pepscore" not "Pepscore Lab", so the wordmark stays text. */}
+        <Link href="/" className="flex-shrink-0 flex items-center gap-2">
+          <Image src="/images/email-logo-mark.png" alt="" width={28} height={28} className="w-7 h-7" priority />
+          <span className="font-heading text-[19px] font-extrabold tracking-[-0.01em] leading-none">
+            <span className="text-white">Pepscore</span>{' '}
+            <span className="bg-gradient-to-br from-[#D4AF37] via-[#E8C84A] to-[#D4AF37] bg-clip-text text-transparent">Lab</span>
+          </span>
         </Link>
 
         {/* Desktop nav links */}

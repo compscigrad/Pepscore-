@@ -8,7 +8,7 @@ import { useCartStore } from '@/lib/cart-store'
 import { SingleVialImage } from './SingleVialImage'
 import { BackorderIndicator } from './BackorderIndicator'
 import { isPurchasable, AVAILABILITY_LABEL, type StorefrontAvailability } from '@/lib/storefront/availability'
-import { categoryToSlug } from '@/lib/storefront/categorySlug'
+import { categoriesForProductName } from '@/lib/storefront/merchandisingTaxonomy'
 
 // Any imageUrl pointing at this path triggers the dynamic SVG vial renderer.
 const GENERIC_PLACEHOLDER = '/images/products/default-single-vial.png'
@@ -120,9 +120,14 @@ export function ProductCard({ name, featured, category, description, imageUrl, b
 
       {/* Card body — flex column so bottom section always aligns */}
       <div className="p-[18px] flex flex-col flex-1">
-        {/* Category label — links to the category page */}
+        {/* Category label — links to this product's primary merchandising
+            category (lib/storefront/merchandisingTaxonomy.ts). A product
+            can belong to more than one; the label itself still shows the
+            authoritative Product.category value, only the link target
+            changed. Falls back to the category index on the rare product
+            with no taxonomy membership yet, rather than a dead link. */}
         <Link
-          href={`/categories/${categoryToSlug(category)}`}
+          href={categoriesForProductName(name)[0] ? `/categories/${categoriesForProductName(name)[0].slug}` : '/categories'}
           className="font-heading text-[10px] font-bold tracking-[0.12em] uppercase text-[#D4AF37] mb-1 hover:underline inline-block w-fit"
         >
           {category}
