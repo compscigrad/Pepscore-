@@ -153,6 +153,7 @@ model Product {
   backorderConditions    BackorderCondition[]
   slugRedirects          ProductSlugRedirect[]
   priceChanges           ProductPriceChange[]
+  inventoryPurchases     InventoryPurchase[]
 
   @@index([slug])
   @@index([inventoryStatus])
@@ -925,6 +926,18 @@ model InvoiceItem {
   // quantity for an individual vial) so a later catalog change to
   // unitsPerCase never rewrites what this specific sale actually consumed.
   inventoryQuantityConsumed Int?
+
+  // 2026-08-12 (Finance & Expense Intelligence sprint) -- COGS for this
+  // specific line, snapshotted at the time it's set so a later catalog
+  // supplierCaseCost change never rewrites a past sale's actual cost basis.
+  // Nullable, never backfilled for historical rows (see the comment above
+  // this block -- the same "don't reconstruct what wasn't recorded"
+  // precedent) -- a null value means "unknown," not "zero," and Finance
+  // reporting must treat it that way (excluded from COGS totals, not
+  // counted as $0 margin). OrderItem already has this exact field; Invoice
+  // never did until now, which is why the real (Invoice-based) sales
+  // history has had zero COGS tracking to date (see docs/PendingOwnerActions.md).
+  costOfGoods Float?
 
   @@index([invoiceId])
 }
@@ -2049,6 +2062,15 @@ model FirstOrderOfferClaim {
 
   claimedAt DateTime @default(now())
 
+  // 2026-08-12 (AOAI lead-capture/conversion sprint) -- supports the
+  // first-purchase reminder cadence, mirroring CustomerPortalInvite's
+  // identically-named/shaped fields. Never written outside
+  // app/api/cron/first-order-offer-reminders/route.ts, which is not
+  // registered in vercel.json's cron schedule -- built and safety-gated,
+  // deliberately not yet live (see docs/PendingOwnerActions.md).
+  remindersSent  Int       @default(0)
+  lastReminderAt DateTime?
+
   @@index([configId])
 }
 
@@ -2589,6 +2611,14 @@ model ComplianceAcknowledgment {
 
 // ─── Accounting ──────────────────────────────────────────────────────────────
 
+// Legacy, storefront-Order-flow-only expense log -- kept exactly as-is
+// (still written by app/api/shipping/labels/route.ts and
+// lib/payments/orderFulfillment.ts's markOrderPaid()). Left untouched
+// rather than migrated into FinanceExpense below: the real sales history
+// today is 100% Invoice-based (Order is pre-launch, all zero per
+// app/admin/page.tsx's own comment), so there's nothing to backfill, and
+// this table becomes populated automatically once real storefront orders
+// start flowing -- see docs/PendingOwnerActions.md.
 model Expense {
   id          String      @id @default(cuid())
   type        ExpenseType
@@ -2609,6 +2639,146 @@ enum ExpenseType {
   REFUND
   OTHER
 }
+
+// ─── Finance & Expense Intelligence (2026-08-12 admin optimization sprint) ──
+// The authoritative internal business-expense/financial-operations ledger --
+// an operational recordkeeping and reporting system to support bookkeeping/
+// tax preparation, not a certified accounting platform (spec explicit on
+// this distinction). Deliberately separate from the legacy Order-only
+// Expense model above (Invoice-capable, richer category taxonomy, receipts,
+// accounting-treatment classification) and from InventoryPurchase below
+// (COGS-feeding stock purchases are tracked there, never duplicated here --
+// see FinanceAccountingTreatment.INVENTORY_COGS's own comment). Discounts,
+// credits, refunds, and inventory loss are deliberately NOT modeled here --
+// they're read directly from the existing InvoiceDiscount/
+// BackorderCompensation/InvoiceRefund/InventoryLedgerEntry(DAMAGE_LOSS)
+// records for reporting (lib/finance/reports.ts), so a discount or refund
+// is never double-recorded as a second, drifting expense-ledger row.
+model FinanceExpense {
+  id String @id @default(cuid())
+
+  date            DateTime
+  vendor          String?
+  description     String
+  amount          Float
+  category        FinanceExpenseCategory
+  subcategory     String?
+  paymentMethod   String?
+  businessPurpose String?
+
+  // Plain string references, matching the legacy Expense.orderId
+  // convention above -- not enforced FKs, so linking an expense to a
+  // record never requires editing that record's own model to add a
+  // back-relation array. Any of these may be set; none are required (a
+  // software subscription has none of them).
+  orderId   String?
+  invoiceId String?
+  shipmentId String?
+  productId String?
+
+  notes        String?
+  taxTreatment FinanceAccountingTreatment @default(NEEDS_ACCOUNTANT_REVIEW)
+
+  // Single receipt/evidence reference (a pasted URL, not an uploaded file --
+  // this repo has no file-storage integration today; see
+  // docs/PendingOwnerActions.md for the real-upload gap). Nullable: most
+  // categories don't require one and shouldn't be blocked by it.
+  receiptUrl      String?
+  receiptFilename String?
+
+  // Idempotency key for provider-automated postings (e.g. a Shippo label
+  // purchase's own transaction id) -- a second webhook/retry for the same
+  // provider transaction can never create a duplicate expense row.
+  providerReference String? @unique
+
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@index([date])
+  @@index([invoiceId])
+  @@index([orderId])
+  @@index([taxTreatment])
+}
+
+enum FinanceExpenseCategory {
+  SHIPPING_POSTAGE
+  PACKAGING_FULFILLMENT
+  INVENTORY_PRODUCT_PURCHASES
+  RESEARCH_FULFILLMENT_SUPPLIES
+  PAYMENT_PROCESSING
+  SOFTWARE_TECHNOLOGY
+  ADMINISTRATIVE_COMPLIANCE
+  PROFESSIONAL_SERVICES
+  ADVERTISING_MARKETING
+  OFFICE_SUPPLIES
+  EQUIPMENT_ASSETS
+  PHILANTHROPY_DONATIONS
+  OTHER_NEEDS_REVIEW
+}
+
+// Suggested internal treatment, never presented as guaranteed tax advice
+// (spec explicit: "Needs Accountant Review" is a legitimate, common value,
+// not a fallback to be avoided). INVENTORY_COGS exists here for
+// classification completeness even though the *tracking* of real inventory
+// purchases lives in InventoryPurchase, not FinanceExpense -- a rare
+// resale-inventory-adjacent expense can still be tagged this way without
+// creating a phantom InventoryPurchase row for it.
+enum FinanceAccountingTreatment {
+  OPERATING_EXPENSE
+  INVENTORY_COGS
+  CONTRA_REVENUE
+  ASSET_CAPITAL_EXPENSE
+  CHARITABLE_SEPARATE_TREATMENT
+  NEEDS_ACCOUNTANT_REVIEW
+}
+
+// Stock purchases intended for resale, tracked separately from
+// FinanceExpense specifically so a supplier case purchase is never
+// double-counted as both "Inventory/COGS" and "Expense Ledger" (spec #27).
+// Deliberately does NOT itself move physical stock -- linking to the
+// InventoryLedgerEntry the admin's own "Add Stock" action already created
+// (ledgerEntryId) keeps this a COGS/cost record layered on top of the
+// existing inventory-adjustment system, not a second competing stock
+// tracker.
+model InventoryPurchase {
+  id String @id @default(cuid())
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  supplier      String?
+  sku           String?
+  quantity      Int
+  caseQuantity  Int?
+  unitCost      Float
+  totalCost     Float
+  receiptUrl    String?
+  invoiceRef    String?
+  receivedAt    DateTime
+
+  // The InventoryLedgerEntry (eventType ADD_STOCK) this purchase's physical
+  // units were recorded against, if the admin created both in the same
+  // action -- optional because a purchase can be logged for COGS purposes
+  // before the physical stock is actually received/counted.
+  ledgerEntryId String?
+
+  notes     String?
+  createdBy String
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+  @@index([receivedAt])
+}
+
+// Inventory loss/shrinkage is deliberately NOT modeled here -- it's already
+// tracked via InventoryLedgerEntry's eventType DAMAGE_LOSS (lib/inventory/
+// actions.ts's recordDamageLoss()), which records product/quantity/reason/
+// date/actor exactly as this sprint's spec asks for. Finance reporting
+// (lib/finance/reports.ts) reads those rows directly at cost basis
+// (quantity x the product's supplierCaseCost-derived per-unit cost),
+// never retail value, per the spec's explicit instruction.
 
 // ─── Admin Audit Log ─────────────────────────────────────────────────────────
 

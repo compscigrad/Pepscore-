@@ -27,7 +27,10 @@ export default async function EditInvoicePage({ params }: PageProps) {
   const { id } = await params
   const [invoice, products, promotions] = await Promise.all([
     getInvoice(id),
-    prisma.product.findMany({ where: { inStock: true }, orderBy: { name: 'asc' } }),
+    // pricingStatus excludes archived products from the "add item" picker --
+    // this only gates newly-added line items; existing InvoiceItem rows on
+    // this invoice are stored independently and stay exactly as they were.
+    prisma.product.findMany({ where: { inStock: true, pricingStatus: { not: 'INACTIVE' } }, orderBy: { name: 'asc' } }),
     listPromotions(true),
   ])
 

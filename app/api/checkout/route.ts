@@ -108,6 +108,16 @@ export async function POST(req: NextRequest) {
     const lineItems = items.map(i => {
       const product = productMap.get(i.productId)
       if (!product) throw new Error(`Product ${i.productId} not found`)
+      // Archived (pricingStatus INACTIVE) products are already excluded
+      // from every browse surface (homepage, category, search, product
+      // detail -- see lib/storefront/pricing.ts's getStorefrontPrice()),
+      // but nothing previously stopped a stale cart, a bookmarked page, or
+      // a direct API call from checking one out by id. Checked here,
+      // authoritatively, independent of stock -- an archived product can
+      // still show AVAILABLE stock and pass isPurchasable() below.
+      if (product.pricingStatus === 'INACTIVE') {
+        throw new Error(`${product.name} (${product.size}) is no longer available for purchase`)
+      }
       if (!isPurchasable(getStorefrontAvailability(product))) {
         throw new Error(`${product.name} (${product.size}) is currently out of stock`)
       }

@@ -104,7 +104,7 @@ export const MERCHANDISING_TAXONOMY: MerchandisingCategory[] = [
     label: 'Advanced / Specialty Compounds',
     description: 'Niche and clinical-research-use compounds for specialized research applications.',
     icon: FlaskConical,
-    productNames: ['VIP5', 'VIP10', '5-Amino-1MQ', 'Botulinum Toxin', 'Survodutide', 'EPO 3000IU', 'Ara-290', 'MOTS-c', 'PNC 27'],
+    productNames: ['VIP5', 'VIP10', '5-Amino-1MQ', 'Botulinum Toxin Type A', 'Survodutide', 'EPO 3000IU', 'Ara-290', 'MOTS-c', 'PNC 27'],
   },
   {
     slug: 'blends-stacks',

@@ -13,7 +13,7 @@ import { getStorefrontPrice } from '@/lib/storefront/pricing'
 import { getStorefrontAvailability } from '@/lib/storefront/availability'
 import { resolveProductImage } from '@/lib/storefront/productImages'
 import { getCurrentCustomerSpaEligible } from '@/lib/storefront/spaEligibility'
-import { productSchema, breadcrumbSchema, faqSchema } from '@/lib/storefront/structuredData'
+import { productSchema, productGroupSchema, breadcrumbSchema, faqSchema } from '@/lib/storefront/structuredData'
 
 export const revalidate = 60
 
@@ -115,6 +115,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
       imageUrl,
       price: getStorefrontPrice(product),
       availability,
+      hasSiblingVariants: siblings.length > 0,
     }),
     breadcrumbSchema([
       { name: 'Home', url: '/' },
@@ -122,6 +123,12 @@ export default async function ProductDetailPage({ params }: PageProps) {
       { name: `${product.name} ${product.size}`, url: `/products/${product.slug}` },
     ]),
     ...(faq.length > 0 ? [faqSchema(faq)] : []),
+    // Links this product's real active sibling strengths together as one
+    // ProductGroup -- omitted for a genuinely single-strength product
+    // rather than emitting a fabricated one-member group.
+    ...(siblings.length > 0
+      ? [productGroupSchema({ name: product.name, variants: [{ slug: product.slug, size: product.size }, ...siblings] })]
+      : []),
   ]
 
   return (

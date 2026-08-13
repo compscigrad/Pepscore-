@@ -55,7 +55,7 @@ export const PRODUCT_IMAGE_MAP: Record<string, string> = {
   'Lemon Bottle':                                  '/images/products/lemon-bottle.png',
   'BAC Water':                                     '/images/products/bac-water.png',
   'GA = AA Water':                                 '/images/products/ga-aa-water.png',
-  'Botulinum Toxin':                               '/images/products/botulinum-toxin.png',
+  'Botulinum Toxin Type A':                        '/images/products/botulinum-toxin.png',
   'VIP5':                                          '/images/products/vip5.png',
   'VIP10':                                         '/images/products/vip10.png',
   'EPO 3000IU':                                    '/images/products/epo3000iu.png',

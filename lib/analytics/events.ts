@@ -21,6 +21,14 @@ export const AnalyticsEvent = {
   ORDER_PAID: 'order_paid',
   PORTAL_ACTIVATION: 'portal_activation',
   BUY_AGAIN: 'buy_again',
+  // Added 2026-08-12 (AOAI flagship lead-capture/conversion sprint) --
+  // funnel-stage events the offer/sign-in flow previously had no
+  // visibility into (only the terminal submit/claim actions were tracked).
+  OFFER_VIEWED: 'offer_viewed',
+  OFFER_RECOVERY_SHOWN: 'offer_recovery_shown',
+  CLIENT_SIGN_IN_CLICK: 'client_sign_in_click',
+  COACH_MARK_IMPRESSION: 'coach_mark_impression',
+  COACH_MARK_CLICK: 'coach_mark_click',
 } as const
 
 export type AnalyticsEventName = (typeof AnalyticsEvent)[keyof typeof AnalyticsEvent]

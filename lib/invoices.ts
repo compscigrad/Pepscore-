@@ -37,6 +37,7 @@ import {
 } from '@/lib/notifications/paymentWorkflow'
 import { syncCustomerFromInvoiceEvent } from '@/lib/customers'
 import { assertDeliveryStatusAllowed } from '@/lib/backorders'
+import { getInvoiceDeletionEligibility, BLOCK_REASON_LABEL } from '@/lib/invoices/deletionEligibility'
 import { syncInvoiceReservationsTx, releaseReservationsForDeletedItemsTx, releaseAllReservationsForInvoiceTx } from '@/lib/inventory/invoiceLifecycle'
 import { isEligibleForAutoArchive } from '@/lib/invoice/autoArchiveEligibility'
 import { parseAmountSearchTerm } from '@/lib/invoice/search'
@@ -777,13 +778,19 @@ export async function listTrashedInvoices() {
 
 // Requires the invoice to already be in the trash — enforces the two-step
 // "trash first, then a separate final delete" flow at the data layer, not
-// just in the UI, so there's no shortcut straight to an unrecoverable delete.
+// just in the UI, so there's no shortcut straight to an unrecoverable
+// delete. (2026-08-12) Also requires deletionEligibility to report no
+// blocked reasons -- a plain prisma.invoice.delete() cascades away
+// payments/refunds/shipments/inventory movement with zero warning, so an
+// invoice carrying any real financial/fulfillment history is refused here
+// regardless of trash status, not just flagged in the UI.
 export async function permanentlyDeleteInvoice(id: string): Promise<{ invoiceNumber: string }> {
-  const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id } })
-  if (!invoice.deletedAt) {
-    throw new Error('Invoice must be moved to Trash before it can be permanently deleted')
+  const eligibility = await getInvoiceDeletionEligibility(id)
+  if (!eligibility.eligible) {
+    const reasons = eligibility.blockedReasons.map((r) => BLOCK_REASON_LABEL[r]).join('; ')
+    throw new Error(`Cannot permanently delete this invoice: ${reasons}`)
   }
-  await prisma.invoice.delete({ where: { id } })
+  const invoice = await prisma.invoice.delete({ where: { id } })
   return { invoiceNumber: invoice.invoiceNumber }
 }
 

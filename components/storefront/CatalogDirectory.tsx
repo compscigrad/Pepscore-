@@ -28,9 +28,9 @@ interface DirectoryEntry {
 // their merchandising-taxonomy category page (so e.g. GLP-1 shows
 // Semaglutide, Tirzepatide, and Retatrutide together, not just one);
 // single-hero-product tiles route to search, which resolves via an exact
-// tier-1 name match. "Botulinum Toxin" from the old catalog reference is
-// intentionally omitted -- currently inactive in the live catalog, not a
-// live product today (see docs/PendingOwnerActions.md).
+// tier-1 name match. "Botulinum Toxin Type A" is intentionally omitted --
+// archived (pricingStatus INACTIVE) since 2026-08-12 pending the supplier
+// lab's availability, not a live product today (see docs/PendingOwnerActions.md).
 const ENTRIES: DirectoryEntry[] = [
   { label: 'GLP-1 Products', href: '/categories/glp-1-weight-management', icon: Scale },
   { label: 'NAD+', href: '/search?q=NAD%2B', icon: Hourglass },

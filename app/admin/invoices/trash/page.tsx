@@ -7,6 +7,7 @@ import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { listTrashedInvoices } from '@/lib/invoices'
+import { getBulkInvoiceDeletionEligibility, BLOCK_REASON_LABEL } from '@/lib/invoices/deletionEligibility'
 import { TrashTable } from '@/components/invoices/TrashTable'
 
 export default async function TrashPage() {
@@ -16,6 +17,8 @@ export default async function TrashPage() {
   }
 
   const invoices = await listTrashedInvoices()
+  const eligibility = await getBulkInvoiceDeletionEligibility(invoices.map((inv) => inv.id))
+  const eligibilityById = new Map(eligibility.map((e) => [e.invoiceId, e]))
 
   return (
     <main className="min-h-screen bg-black p-8">
@@ -34,7 +37,15 @@ export default async function TrashPage() {
         </div>
 
         <TrashTable
-          initialInvoices={invoices.map((inv) => ({ ...inv, deletedAt: inv.deletedAt!.toISOString() }))}
+          initialInvoices={invoices.map((inv) => {
+            const e = eligibilityById.get(inv.id)
+            return {
+              ...inv,
+              deletedAt: inv.deletedAt!.toISOString(),
+              eligible: e?.eligible ?? false,
+              blockedReasons: e ? e.blockedReasons.map((r) => BLOCK_REASON_LABEL[r]) : [],
+            }
+          })}
         />
       </div>
     </main>

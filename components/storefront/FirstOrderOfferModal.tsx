@@ -7,7 +7,7 @@
 // Same self-contained trigger+modal pattern as LeadCaptureTrigger.tsx
 // (renders its own button rather than accepting a render-prop) so it can
 // be dropped into a Server Component (Footer.tsx) as one client island.
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { getAttribution } from '@/lib/storefront/attribution'
 import { formatDiscountLabel } from '@/lib/promotions/format'
@@ -37,6 +37,15 @@ export function FirstOrderOfferModal({ publicTitle, discountType, discountValue,
   const [consent, setConsent] = useState(false)
   const [website, setWebsite] = useState('') // honeypot
 
+  // Fires once per mount -- every render of this component is, by
+  // definition, the offer being shown to a visitor (it's the trigger
+  // button itself, not something inside a click handler). discountType is
+  // a stable server-provided prop, so this still only fires once in
+  // practice even though it's a correct effect dependency.
+  useEffect(() => {
+    trackEvent(AnalyticsEvent.OFFER_VIEWED, { discountType })
+  }, [discountType])
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!consent) {
@@ -65,9 +74,11 @@ export function FirstOrderOfferModal({ publicTitle, discountType, discountValue,
         return
       }
       setClaimed(true)
-      trackEvent(AnalyticsEvent.PROMOTION_CLAIM, { discountType, alreadyClaimed: Boolean(responseData?.alreadyClaimed) })
+      const alreadyClaimed = Boolean(responseData?.alreadyClaimed)
+      trackEvent(AnalyticsEvent.PROMOTION_CLAIM, { discountType, alreadyClaimed })
+      if (alreadyClaimed) trackEvent(AnalyticsEvent.OFFER_RECOVERY_SHOWN, { discountType })
       toast.success(
-        responseData?.alreadyClaimed
+        alreadyClaimed
           ? "You've already claimed this offer — check your email for details."
           : "You're in! We'll follow up with your discount code shortly."
       )

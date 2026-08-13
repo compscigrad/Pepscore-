@@ -49,6 +49,11 @@ export type MessageCategory =
   // Customer-facing: delivers a qualifying lead's unique first-order
   // promotion code (Promotion Campaign system) after a successful claim.
   | 'FIRST_ORDER_OFFER_CODE'
+  // Customer-facing: nudges a claimed-but-not-yet-purchased first-order
+  // offer (2026-08-12 AOAI conversion sprint). Sent by
+  // app/api/cron/first-order-offer-reminders/route.ts, which is not
+  // registered in vercel.json -- built and safety-gated, not yet live.
+  | 'FIRST_ORDER_OFFER_REMINDER'
   // Support — existing-customer problems, access issues
   | 'SUPPORT_REQUEST'
   | 'SUPPORT_REQUEST_RECEIVED' // customer-facing: acknowledges their submission
@@ -103,6 +108,7 @@ const ROUTING: Record<MessageCategory, RoutedSender> = {
   CONTACT_INQUIRY: { fromName: 'Pepscore', replyTo: CONTACT_EMAIL },
   LEAD_CAPTURED: { fromName: 'Pepscore', replyTo: CONTACT_EMAIL },
   FIRST_ORDER_OFFER_CODE: { fromName: 'Pepscore Lab', replyTo: CONTACT_EMAIL },
+  FIRST_ORDER_OFFER_REMINDER: { fromName: 'Pepscore Lab', replyTo: CONTACT_EMAIL },
   SUPPORT_REQUEST: { fromName: 'Pepscore Support', replyTo: SUPPORT_EMAIL },
   SUPPORT_REQUEST_RECEIVED: { fromName: 'Pepscore Support', replyTo: SUPPORT_EMAIL },
 
@@ -158,6 +164,7 @@ const CUSTOMER_VISIBLE_CATEGORIES: ReadonlySet<MessageCategory> = new Set<Messag
   'BALANCE_TRANSFER_NOTICE',
   'SUPPORT_REQUEST_RECEIVED',
   'FIRST_ORDER_OFFER_CODE',
+  'FIRST_ORDER_OFFER_REMINDER',
 ])
 
 export function isCustomerVisibleCategory(category: string): boolean {

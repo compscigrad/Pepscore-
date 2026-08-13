@@ -91,3 +91,68 @@ export function buildExportCSV(rows: ExportRow[]): string {
 function sumCol(rows: ExportRow[], key: keyof ExportRow): number {
   return Math.round(rows.reduce((s, r) => s + Number(r[key] ?? 0), 0) * 100) / 100
 }
+
+// ─── Finance & Expense Intelligence export (2026-08-12) ─────────────────────
+// Extends this same module rather than a second exporter, per this file's
+// existing role as the one place XLSX/CSV generation happens. A generic
+// "table of rows with a header" sheet builder, since the Finance workbook
+// needs eight structurally different sheets rather than one repeated shape
+// like the sales export above.
+export interface FinanceSheet {
+  name: string
+  headers: string[]
+  rows: (string | number)[][]
+  colWidths?: number[]
+}
+
+export interface FinanceExportInput {
+  rangeLabel: string
+  summaryRows: (string | number)[][]
+  expenseSheet: FinanceSheet
+  shippingSheet: FinanceSheet
+  discountsSheet: FinanceSheet
+  inventoryCogsSheet: FinanceSheet
+  refundsSheet: FinanceSheet
+  vendorsSheet: FinanceSheet
+  needsReviewSheet: FinanceSheet
+}
+
+function appendSheet(wb: XLSX.WorkBook, sheet: FinanceSheet) {
+  const wsData = [sheet.headers, ...sheet.rows]
+  const ws = XLSX.utils.aoa_to_sheet(wsData)
+  if (sheet.colWidths) ws['!cols'] = sheet.colWidths.map((wch) => ({ wch }))
+  // Sheet names are capped at 31 chars and can't contain []:*?/\\ in Excel.
+  const safeName = sheet.name.slice(0, 31)
+  XLSX.utils.book_append_sheet(wb, ws, safeName)
+}
+
+export function buildFinanceExportXLSX(input: FinanceExportInput): Buffer {
+  const wb = XLSX.utils.book_new()
+
+  const summaryWs = XLSX.utils.aoa_to_sheet([[`Finance Summary — ${input.rangeLabel}`], [], ...input.summaryRows])
+  summaryWs['!cols'] = [{ wch: 32 }, { wch: 18 }]
+  XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary')
+
+  appendSheet(wb, input.expenseSheet)
+  appendSheet(wb, input.shippingSheet)
+  appendSheet(wb, input.discountsSheet)
+  appendSheet(wb, input.inventoryCogsSheet)
+  appendSheet(wb, input.refundsSheet)
+  appendSheet(wb, input.vendorsSheet)
+  appendSheet(wb, input.needsReviewSheet)
+
+  return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer
+}
+
+// CSV interoperability export (spec #36) -- the Expense Ledger sheet only,
+// since CSV is inherently single-table; the full multi-sheet breakdown is
+// what the Excel export is for.
+export function buildFinanceExportCSV(sheet: FinanceSheet): string {
+  const escape = (v: string | number) => {
+    const s = String(v ?? '')
+    return s.includes(',') || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s
+  }
+  const header = sheet.headers.map(escape).join(',')
+  const body = sheet.rows.map((row) => row.map(escape).join(','))
+  return [header, ...body].join('\n')
+}

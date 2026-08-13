@@ -338,7 +338,22 @@ export function ShipmentsSection({ invoiceId, shipments, onTrackingUpdated }: Pr
     <div className={`${card} p-6 space-y-6`}>
       <div className="flex items-center justify-between">
         <h3 className={sectionHeading}>Shipments</h3>
-        {primary ? <StatusBadge status={primary.normalizedStatus} variant="shipping" /> : null}
+        <div className="flex items-center gap-3">
+          {/* Manual entry point for the real current shipping workflow --
+              Pirate Ship (or any carrier) purchased outside this app, cost
+              logged here so it reaches Finance (2026-08-12 sprint). Shippo
+              label purchases post automatically instead (lib/fulfillment/
+              labels.ts) once purchasing itself is enabled. */}
+          <a
+            href={`/admin/finance?open=1&category=SHIPPING_POSTAGE&invoiceId=${invoiceId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[11px] font-heading font-bold uppercase tracking-wide text-gold hover:text-gold-dark"
+          >
+            Record Shipping Expense →
+          </a>
+          {primary ? <StatusBadge status={primary.normalizedStatus} variant="shipping" /> : null}
+        </div>
       </div>
 
       {/* ── All shipments, newest first ─────────────────────────────────── */}

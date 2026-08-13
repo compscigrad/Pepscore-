@@ -49,7 +49,13 @@ export default async function NewInvoicePage({ searchParams }: PageProps) {
   const reorderRequests = parseReorderRequests(reorderItemsParam)
 
   const [products, promotions, prefillCustomer, reorderProducts] = await Promise.all([
-    prisma.product.findMany({ where: { inStock: true }, orderBy: { name: 'asc' } }),
+    // pricingStatus excludes archived products from the picker -- inStock
+    // alone previously let an admin hand-select a discontinued/archived
+    // product onto a brand-new invoice. Only gates which products can be
+    // newly added here; an existing invoice's already-saved line items are
+    // untouched regardless of the current status of the product they
+    // reference.
+    prisma.product.findMany({ where: { inStock: true, pricingStatus: { not: 'INACTIVE' } }, orderBy: { name: 'asc' } }),
     listPromotions(true),
     customerId ? getCustomer(customerId) : Promise.resolve(null),
     // Deliberately unfiltered by inStock -- a backorderable-but-out-of-stock

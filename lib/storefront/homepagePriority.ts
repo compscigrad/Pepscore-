@@ -24,10 +24,11 @@ const PRIORITY_TIERS: string[][] = [
   ['GLOW70'],
   // 5. Tesamorelin
   ['Tesamorelin'],
-  // 6. Botulinum toxin -- not currently a live catalog product; tier
-  // intentionally left in place (no-op today) rather than removed, so it
-  // takes effect automatically if the product is ever added.
-  ['Botulinum Toxin', 'Botox'],
+  // 6. Botulinum Toxin Type A -- archived 2026-08-12 (pharmaceutical lab
+  // notified the owner availability is uncertain); tier intentionally left
+  // in place (no-op while pricingStatus is INACTIVE) rather than removed,
+  // so it takes effect automatically if the product is ever reactivated.
+  ['Botulinum Toxin Type A', 'Botox'],
 ]
 
 export function applyHomepagePriority(products: ProductCardProps[]): ProductCardProps[] {

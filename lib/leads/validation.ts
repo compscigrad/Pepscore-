@@ -18,7 +18,11 @@ export const LEAD_INTEREST_TYPES = [
 // object schema, since this crosses two optional fields).
 const baseLeadCaptureSchema = z.object({
   name: z.string().trim().min(1, 'Name is required').max(200),
-  email: z.string().trim().email('Enter a valid email address').max(320).optional(),
+  // .toLowerCase() added 2026-08-12 -- previously only trimmed, so
+  // "Foo@X.com" and "foo@x.com" normalized to two different strings and
+  // could each create a separate Customer/Lead record for the same real
+  // person, defeating the first-order-offer dedup this schema feeds into.
+  email: z.string().trim().toLowerCase().email('Enter a valid email address').max(320).optional(),
   phone: z.string().trim().max(40).optional(),
   interestType: z.enum(LEAD_INTEREST_TYPES),
   productSlug: z.string().trim().max(200).optional(),

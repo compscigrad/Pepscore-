@@ -15,6 +15,12 @@ import { AnalyticsEvent } from '@/lib/analytics/events'
 const ClerkAuthButtons = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
   ? dynamic(() => import('./ClerkAuthButtons').then(m => ({ default: m.ClerkAuthButtons })), { ssr: false })
   : null
+const MobileClientSignIn = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+  ? dynamic(() => import('./ClerkAuthButtons').then(m => ({ default: m.MobileClientSignIn })), { ssr: false })
+  : null
+const ClientSignInCoachMark = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+  ? dynamic(() => import('./ClientSignInCoachMark').then(m => ({ default: m.ClientSignInCoachMark })), { ssr: false })
+  : null
 
 export function Header() {
   const router = useRouter()
@@ -47,11 +53,17 @@ export function Header() {
 
   return (
     <header
-      className={`sticky top-0 z-[900] bg-black border-b transition-shadow ${
+      className={`relative sticky top-0 z-[900] bg-black border-b transition-shadow ${
         scrolled ? 'border-[#D4AF37]/25 shadow-[0_4px_16px_rgba(0,0,0,0.4)]' : 'border-[#D4AF37]/15'
       }`}
     >
-      <nav className="max-w-[1200px] mx-auto px-6 h-[72px] flex items-center justify-between">
+      {/* gap-5 below md is a guaranteed minimum between the logo and the
+          right-actions cluster on mobile, where the desktop nav <ul> (which
+          normally fills this space) is hidden -- the gold Cart button was
+          the one crowding the "Lab" wordmark there, not the auth CTA. At
+          md+ the <ul> already provides real spacing, so gap-3 is restored
+          to avoid over-shifting anything on larger viewports. */}
+      <nav className="max-w-[1200px] mx-auto px-6 h-[72px] flex items-center justify-between gap-5 md:gap-3">
         {/* Logo — the approved gold "P" mark (email-logo-mark.png, already
             used across email templates) plus the text wordmark. logo.png
             itself has an opaque cream background baked in and reads
@@ -109,14 +121,16 @@ export function Header() {
             )}
           </div>
 
-          {/* Cart */}
+          {/* Cart -- text label hidden below sm to reclaim horizontal
+              space on narrow viewports (icon + count badge alone is
+              still clearly identifiable and keeps its own aria-label). */}
           <button
             onClick={toggleCart}
-            className="flex items-center gap-2 bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] hover:shadow-[0_4px_16px_rgba(212,175,55,0.4)] text-black px-4 py-2.5 rounded-full font-heading text-[12px] font-bold tracking-[0.05em] transition-all hover:-translate-y-px"
+            className="flex items-center gap-2 bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] hover:shadow-[0_4px_16px_rgba(212,175,55,0.4)] text-black px-3 sm:px-4 py-2.5 rounded-full font-heading text-[12px] font-bold tracking-[0.05em] transition-all hover:-translate-y-px"
             aria-label="Open cart"
           >
             <ShoppingCart size={15} />
-            Cart
+            <span className="hidden sm:inline">Cart</span>
             {cartCount > 0 && (
               <span className="bg-black text-[#D4AF37] rounded-full w-5 h-5 text-[11px] font-extrabold flex items-center justify-center">
                 {cartCount}
@@ -126,6 +140,7 @@ export function Header() {
 
           {/* Auth buttons — client-only to avoid SSR/prerender issues with Clerk */}
           {ClerkAuthButtons && <ClerkAuthButtons />}
+          {ClientSignInCoachMark && <ClientSignInCoachMark />}
 
           {/* Mobile hamburger */}
           <button
@@ -171,6 +186,11 @@ export function Header() {
               {label}
             </Link>
           ))}
+          {MobileClientSignIn && (
+            <div className="pt-2 border-t border-[#D4AF37]/15">
+              <MobileClientSignIn />
+            </div>
+          )}
         </div>
       )}
     </header>

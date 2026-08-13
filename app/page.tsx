@@ -13,9 +13,12 @@ import { LeadCaptureTrigger } from '@/components/storefront/LeadCaptureTrigger'
 import { CatalogDirectory } from '@/components/storefront/CatalogDirectory'
 import { HomeSearchBar } from '@/components/storefront/HomeSearchBar'
 import { ScientificBackground } from '@/components/storefront/ScientificBackground'
+import { FirstOrderOfferModal } from '@/components/storefront/FirstOrderOfferModal'
 import { groupByName } from '@/lib/storefront/groupByName'
 import { applyHomepagePriority } from '@/lib/storefront/homepagePriority'
 import { getCurrentCustomerSpaEligible } from '@/lib/storefront/spaEligibility'
+import { getActiveFirstOrderOffer } from '@/lib/promotions/firstOrderOffer'
+import { formatDiscountLabel } from '@/lib/promotions/format'
 
 // Note: resolving the current visitor's SPA eligibility below calls Clerk's
 // auth(), which makes this route dynamic (per-request) regardless of this
@@ -40,7 +43,11 @@ async function getProducts() {
 
 export default async function HomePage() {
   // Gracefully fall back to empty array if DB isn't configured yet
-  const [rawProducts, spaEligible] = await Promise.all([getProducts().catch(() => []), getCurrentCustomerSpaEligible()])
+  const [rawProducts, spaEligible, offer] = await Promise.all([
+    getProducts().catch(() => []),
+    getCurrentCustomerSpaEligible(),
+    getActiveFirstOrderOffer(),
+  ])
   const products = applyHomepagePriority(groupByName(rawProducts, { spaEligible }))
 
   return (
@@ -124,6 +131,36 @@ export default async function HomePage() {
             </div>
           </div>
         </section>
+
+        {/* ── First-Order Offer (near-hero) ───────────────────────────────────
+            The only other first-order-offer surface is the Footer's, at the
+            very bottom of the page -- most visitors browsing products never
+            scroll that far. This is the one near-hero placement the site was
+            missing entirely. Always sourced from the live PromotionCampaign
+            (lib/promotions/firstOrderOffer.ts) -- copy, discount amount, and
+            even whether this renders at all update automatically if the
+            admin changes or retires the active campaign; nothing here is
+            hardcoded. Compact by design (one line + one button) so it reads
+            as a confident banner, not a popup ambush. */}
+        {offer.live && offer.campaign && (
+          <section className="bg-black py-6 px-6 border-y border-[#D4AF37]/15">
+            <div className="max-w-[1200px] mx-auto flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <p className="font-heading text-[15px] font-bold text-white">{offer.campaign.publicTitle}</p>
+                <p className="text-[12.5px] text-white/55">
+                  {offer.campaign.publicDescription ?? 'Leave your email and phone number to claim your first-order discount.'}
+                </p>
+              </div>
+              <FirstOrderOfferModal
+                publicTitle={offer.campaign.publicTitle}
+                discountType={offer.campaign.discountType}
+                discountValue={offer.campaign.discountValue}
+                triggerLabel={`Claim ${formatDiscountLabel(offer.campaign.discountType, offer.campaign.discountValue)} →`}
+                triggerClassName="shrink-0 bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] hover:shadow-[0_4px_16px_rgba(212,175,55,0.4)] text-black font-heading text-[12px] font-bold tracking-[0.08em] uppercase px-6 py-3 rounded-full transition-all"
+              />
+            </div>
+          </section>
+        )}
 
         {/* ── Catalog Directory ────────────────────────────────────────────── */}
         <CatalogDirectory />

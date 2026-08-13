@@ -8,7 +8,10 @@ import { z } from 'zod'
 
 export const firstOrderOfferClaimSchema = z.object({
   name: z.string().trim().min(1, 'Name is required').max(200),
-  email: z.string().trim().email('Enter a valid email address').max(320),
+  // .toLowerCase() added 2026-08-12 -- see lib/leads/validation.ts's
+  // identical fix for why (case-only email variants previously bypassed
+  // the exact-match dedup lookup in findCustomerByEmailOrPhone()).
+  email: z.string().trim().toLowerCase().email('Enter a valid email address').max(320),
   phone: z.string().trim().min(7, 'Enter a valid phone number').max(40),
   consent: z.boolean().refine((v) => v === true, {
     message: 'You must agree to be contacted to claim this offer.',

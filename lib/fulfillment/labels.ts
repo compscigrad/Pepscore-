@@ -12,6 +12,7 @@ import { getFulfillmentSettings } from './settings'
 import { registerShipmentForMonitoring } from '@/lib/tracking/service'
 import { buildCarrierTrackingUrl } from '@/lib/tracking/carrierUrls'
 import { syncCustomerFromInvoiceEvent } from '@/lib/customers'
+import { createExpenseIdempotent } from '@/lib/finance/expenses'
 
 export interface PackageWeight {
   value: number
@@ -216,6 +217,28 @@ export async function purchaseShippingLabelForInvoice(
       userId: actor.userId,
     },
   })
+
+  // Real shipping-cost automation (2026-08-12 Finance sprint, spec #22) --
+  // fires the moment a label is actually purchased, using Shippo's own
+  // transaction id (purchased.object_id) as the idempotency key so a retry
+  // can never double-post the same postage cost. Dormant in practice today
+  // only because isShippoPurchasingEnabled() gates this whole function off
+  // (see that flag's own comment) -- no separate flag needed here; it goes
+  // live automatically the same moment purchasing itself does.
+  await createExpenseIdempotent(
+    {
+      date: new Date(),
+      vendor: 'Shippo',
+      description: `${input.carrier} ${input.service} label — ${purchased.tracking_number}`,
+      amount: postageAmount,
+      category: 'SHIPPING_POSTAGE',
+      taxTreatment: 'OPERATING_EXPENSE',
+      invoiceId,
+      shipmentId: shipment.id,
+      providerReference: purchased.object_id,
+    },
+    actor.userId
+  )
 
   if (invoice.customerId) {
     await syncCustomerFromInvoiceEvent({

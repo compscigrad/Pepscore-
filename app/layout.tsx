@@ -6,7 +6,7 @@ import { ClerkProvider } from '@clerk/nextjs'
 import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from 'react-hot-toast'
 import { clerkAppearance } from '@/lib/clerkAppearance'
-import { organizationSchema } from '@/lib/storefront/structuredData'
+import { organizationSchema, websiteSchema } from '@/lib/storefront/structuredData'
 import { AttributionCapture } from '@/components/storefront/AttributionCapture'
 import './globals.css'
 
@@ -55,6 +55,7 @@ const toasterProps = {
 }
 
 const organizationJsonLd = JSON.stringify(organizationSchema())
+const websiteJsonLd = JSON.stringify(websiteSchema())
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   // Skip ClerkProvider at build time when credentials aren't set yet.
@@ -67,6 +68,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
           <Toaster {...toasterProps} />
           <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: organizationJsonLd }} />
+          <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: websiteJsonLd }} />
           <Analytics />
         </body>
       </html>
@@ -81,6 +83,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
           <Toaster {...toasterProps} />
           <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: organizationJsonLd }} />
+          <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: websiteJsonLd }} />
           <Analytics />
         </body>
       </html>

@@ -29,7 +29,7 @@ describe('applyHomepagePriority', () => {
     expect(ordered).toEqual(['Semaglutide', 'Tirzepatide', 'NAD+', 'GLOW70', 'Tesamorelin', 'GHK-Cu', 'Epithalon'])
   })
 
-  it('is a no-op skip for a priority tier with zero matching live products (e.g. Botulinum Toxin)', () => {
+  it('is a no-op skip for a priority tier with zero matching live products (e.g. archived Botulinum Toxin Type A)', () => {
     const input = [card('Epithalon'), card('GHK-Cu')]
     expect(applyHomepagePriority(input).map((p) => p.name)).toEqual(['Epithalon', 'GHK-Cu'])
   })
