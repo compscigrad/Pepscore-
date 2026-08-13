@@ -65,14 +65,34 @@ export function Header() {
           to avoid over-shifting anything on larger viewports. */}
       <nav className="max-w-[1200px] mx-auto px-6 h-[72px] flex items-center justify-between gap-5 md:gap-3">
         {/* Logo — the approved gold "P" mark (email-logo-mark.png, already
-            used across email templates) plus the text wordmark. logo.png
-            itself has an opaque cream background baked in and reads
-            "Pepscore" not "Pepscore Lab", so the wordmark stays text. */}
-        <Link href="/" className="flex-shrink-0 flex items-center gap-2">
-          <Image src="/images/email-logo-mark.png" alt="" width={28} height={28} className="w-7 h-7" priority />
-          <span className="font-heading text-[19px] font-extrabold tracking-[-0.01em] leading-none">
-            <span className="text-white">Pepscore</span>{' '}
-            <span className="bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] bg-clip-text text-transparent">Lab</span>
+            used across email templates) plus a two-line PEPSCORE / LAB
+            wordmark lockup (2026-08-13, matched to the owner-supplied
+            reference). logo.png itself has an opaque cream background
+            baked in and reads "Pepscore" not "Pepscore Lab", so the
+            wordmark stays native text, not an image. The LAB row's flex
+            children (rule / LAB / rule) stretch to the column's width,
+            which the browser sizes to PEPSCORE's own text width -- so the
+            rules extend to meet it with no manual width math. */}
+        <Link href="/" className="flex-shrink-0 flex items-center gap-2 sm:gap-2.5">
+          <Image
+            src="/images/email-logo-mark.png"
+            alt=""
+            width={40}
+            height={40}
+            className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10"
+            priority
+          />
+          <span className="flex flex-col">
+            <span className="font-heading text-[13px] sm:text-[15px] md:text-[17px] font-extrabold tracking-[0.08em] leading-none text-white whitespace-nowrap">
+              PEPSCORE
+            </span>
+            <span className="flex items-center gap-1.5 mt-1">
+              <span className="h-px flex-1 bg-[#D4AF37]" />
+              <span className="font-heading text-[8px] sm:text-[9px] md:text-[10px] font-bold tracking-[0.35em] leading-none whitespace-nowrap bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] bg-clip-text text-transparent">
+                LAB
+              </span>
+              <span className="h-px flex-1 bg-[#D4AF37]" />
+            </span>
           </span>
         </Link>
 
