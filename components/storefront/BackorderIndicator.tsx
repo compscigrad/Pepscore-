@@ -8,7 +8,7 @@ export function BackorderIndicator({ className = '' }: { className?: string }) {
   return (
     <span
       className={`inline-flex items-center justify-center w-[7px] h-[7px] rounded-full bg-amber-400 shrink-0 ${className}`}
-      title="Backordered — awaiting restock, may require additional fulfillment time"
+      title="Backordered — estimated shipping time of approximately two weeks while a new batch is produced to fulfill your order"
       role="img"
       aria-label="Backordered item"
     />

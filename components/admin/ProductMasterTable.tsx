@@ -382,7 +382,7 @@ export function ProductMasterTable({ rows }: { rows: ProductMasterRow[] }) {
                     onClick={() => handleToggleBackorder(row)}
                     className={`text-[11px] font-heading font-bold uppercase tracking-wide disabled:opacity-40 ${row.product.backorderEnabled ? 'text-green-300' : 'text-white/50 hover:text-gold'}`}
                   >
-                    {row.product.backorderEnabled ? 'On' : 'Off'}
+                    {row.product.backorderEnabled ? <>On <span aria-hidden="true">⌛</span></> : 'Off'}
                   </button>
                 </td>
                 <td className="px-3 py-3">
@@ -427,6 +427,10 @@ export function ProductMasterTable({ rows }: { rows: ProductMasterRow[] }) {
               <label className="flex items-center gap-1.5 text-white/70">
                 <input type="checkbox" checked={row.individualPublicEnabled} disabled={busyId === row.product.id} onChange={() => handleToggleSingles(row)} className="w-4 h-4 accent-gold disabled:opacity-40" />
                 Singles
+              </label>
+              <label className="flex items-center gap-1.5 text-white/70">
+                <input type="checkbox" checked={row.product.backorderEnabled} disabled={busyId === row.product.id} onChange={() => handleToggleBackorder(row)} className="w-4 h-4 accent-amber-400 disabled:opacity-40" />
+                Backorder {row.product.backorderEnabled && <span aria-hidden="true">⌛</span>}
               </label>
             </div>
 

@@ -88,6 +88,6 @@ describe('isPurchasable', () => {
 
 describe('AVAILABILITY_LABEL', () => {
   it('has a label for every availability state including BACKORDERED', () => {
-    expect(AVAILABILITY_LABEL.BACKORDERED).toBe('Backordered')
+    expect(AVAILABILITY_LABEL.BACKORDERED).toBe('⌛ Backordered')
   })
 })

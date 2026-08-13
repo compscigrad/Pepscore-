@@ -59,7 +59,13 @@ export function isPurchasable(availability: StorefrontAvailability): boolean {
 export const AVAILABILITY_LABEL: Record<StorefrontAvailability, string> = {
   AVAILABLE: 'Available',
   LIMITED: 'Limited Availability',
-  BACKORDERED: 'Backordered',
+  // Hourglass prefix (owner spec, 2026-08-13): the catalog-level "small
+  // hourglass + label" marker. Deliberately just prefixed onto the existing
+  // badge text rather than a new icon component -- reuses the same badge
+  // treatment every other availability state already has, no new icon
+  // package, no redesign of BackorderIndicator's own restrained dot (which
+  // stays as the inline marker next to product names/cart lines).
+  BACKORDERED: '⌛ Backordered',
   OUT_OF_STOCK: 'Out of Stock',
   COMING_SOON: 'Coming Soon',
 }
