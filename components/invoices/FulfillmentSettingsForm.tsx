@@ -11,6 +11,9 @@ interface Props {
   initialDefaultLengthIn: number | null
   initialDefaultWidthIn: number | null
   initialDefaultHeightIn: number | null
+  initialLabelNeededHours: number
+  initialAwaitingScanHours: number
+  initialStalledInTransitHours: number
 }
 
 const EMPTY_ADDRESS: AddressInput = { name: '', street1: '', city: '', state: '', zip: '', country: 'US' }
@@ -21,12 +24,18 @@ export function FulfillmentSettingsForm({
   initialDefaultLengthIn,
   initialDefaultWidthIn,
   initialDefaultHeightIn,
+  initialLabelNeededHours,
+  initialAwaitingScanHours,
+  initialStalledInTransitHours,
 }: Props) {
   const [address, setAddress] = useState<AddressInput>(initialReturnAddress ?? EMPTY_ADDRESS)
   const [weightOz, setWeightOz] = useState(initialDefaultWeightOz ?? 0)
   const [lengthIn, setLengthIn] = useState(initialDefaultLengthIn ?? 0)
   const [widthIn, setWidthIn] = useState(initialDefaultWidthIn ?? 0)
   const [heightIn, setHeightIn] = useState(initialDefaultHeightIn ?? 0)
+  const [labelNeededHours, setLabelNeededHours] = useState(initialLabelNeededHours)
+  const [awaitingScanHours, setAwaitingScanHours] = useState(initialAwaitingScanHours)
+  const [stalledInTransitHours, setStalledInTransitHours] = useState(initialStalledInTransitHours)
   const [saving, setSaving] = useState(false)
 
   async function save() {
@@ -41,6 +50,9 @@ export function FulfillmentSettingsForm({
           defaultLengthIn: lengthIn || null,
           defaultWidthIn: widthIn || null,
           defaultHeightIn: heightIn || null,
+          labelNeededHours: labelNeededHours || undefined,
+          awaitingScanHours: awaitingScanHours || undefined,
+          stalledInTransitHours: stalledInTransitHours || undefined,
         }),
       })
       if (!res.ok) throw new Error('Failed to save settings')
@@ -104,6 +116,23 @@ export function FulfillmentSettingsForm({
         <div>
           <label className={labelClass} htmlFor="fsHeight">Height (in)</label>
           <input id="fsHeight" type="number" min="0" step="0.5" className={`${input} w-24`} value={heightIn} onChange={(e) => setHeightIn(Number(e.target.value))} />
+        </div>
+      </div>
+
+      <p className={`${labelClass} mb-2 mt-4`}>Fulfillment Command Center SLA Thresholds</p>
+      <p className="text-white/40 text-xs mb-2">How long an order can sit in each phase before it&apos;s flagged for attention.</p>
+      <div className="flex flex-wrap gap-3 mb-2">
+        <div>
+          <label className={labelClass} htmlFor="fsLabelNeeded">Label needed after (hrs)</label>
+          <input id="fsLabelNeeded" type="number" min="1" step="1" className={`${input} w-28`} value={labelNeededHours} onChange={(e) => setLabelNeededHours(Number(e.target.value))} />
+        </div>
+        <div>
+          <label className={labelClass} htmlFor="fsAwaitingScan">Awaiting carrier scan after (hrs)</label>
+          <input id="fsAwaitingScan" type="number" min="1" step="1" className={`${input} w-28`} value={awaitingScanHours} onChange={(e) => setAwaitingScanHours(Number(e.target.value))} />
+        </div>
+        <div>
+          <label className={labelClass} htmlFor="fsStalled">Stalled in transit after (hrs)</label>
+          <input id="fsStalled" type="number" min="1" step="1" className={`${input} w-28`} value={stalledInTransitHours} onChange={(e) => setStalledInTransitHours(Number(e.target.value))} />
         </div>
       </div>
 

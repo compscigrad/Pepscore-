@@ -41,6 +41,9 @@ export default async function FulfillmentSettingsPage() {
             initialDefaultLengthIn={settings.defaultLengthIn}
             initialDefaultWidthIn={settings.defaultWidthIn}
             initialDefaultHeightIn={settings.defaultHeightIn}
+            initialLabelNeededHours={settings.labelNeededHours}
+            initialAwaitingScanHours={settings.awaitingScanHours}
+            initialStalledInTransitHours={settings.stalledInTransitHours}
           />
           <PackagePresetsForm initialPresets={presets} />
         </div>

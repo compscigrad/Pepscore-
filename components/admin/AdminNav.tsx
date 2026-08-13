@@ -49,6 +49,10 @@ const NAV: NavGroup[] = [
     ],
   },
   {
+    label: 'Fulfillment',
+    items: [{ label: 'Command Center', href: '/admin/fulfillment' }],
+  },
+  {
     label: 'Finance',
     items: [{ label: 'Finance', href: '/admin/finance' }],
   },

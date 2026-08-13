@@ -1,6 +1,7 @@
-// Fulfillment module settings — return/sender address + package defaults.
-// Single-row table, same reasoning and shape as lib/invoiceSettings.ts:
-// admin-editable via Settings UI rather than an env-var redeploy.
+// Fulfillment module settings — return/sender address + package defaults +
+// (2026-08-13) Fulfillment Command Center SLA thresholds. Single-row table,
+// same reasoning and shape as lib/invoiceSettings.ts: admin-editable via
+// Settings UI rather than an env-var redeploy.
 import { prisma } from '@/lib/prisma'
 import type { ShippingCarrier, Prisma } from '@prisma/client'
 import type { AddressInput } from '@/lib/shippo'
@@ -15,6 +16,9 @@ export interface FulfillmentSettingsData {
   defaultLengthIn: number | null
   defaultWidthIn: number | null
   defaultHeightIn: number | null
+  labelNeededHours: number
+  awaitingScanHours: number
+  stalledInTransitHours: number
 }
 
 function parseAddress(value: Prisma.JsonValue | null): AddressInput | null {
@@ -30,6 +34,9 @@ function toResult(row: {
   defaultLengthIn: number | null
   defaultWidthIn: number | null
   defaultHeightIn: number | null
+  labelNeededHours: number
+  awaitingScanHours: number
+  stalledInTransitHours: number
 }): FulfillmentSettingsData {
   return {
     returnAddress: parseAddress(row.returnAddress),
@@ -39,6 +46,9 @@ function toResult(row: {
     defaultLengthIn: row.defaultLengthIn,
     defaultWidthIn: row.defaultWidthIn,
     defaultHeightIn: row.defaultHeightIn,
+    labelNeededHours: row.labelNeededHours,
+    awaitingScanHours: row.awaitingScanHours,
+    stalledInTransitHours: row.stalledInTransitHours,
   }
 }
 
@@ -61,6 +71,9 @@ export interface UpdateFulfillmentSettingsInput {
   defaultLengthIn?: number | null
   defaultWidthIn?: number | null
   defaultHeightIn?: number | null
+  labelNeededHours?: number
+  awaitingScanHours?: number
+  stalledInTransitHours?: number
 }
 
 export async function updateFulfillmentSettings(input: UpdateFulfillmentSettingsInput): Promise<FulfillmentSettingsData> {
@@ -72,6 +85,9 @@ export async function updateFulfillmentSettings(input: UpdateFulfillmentSettings
     defaultLengthIn: input.defaultLengthIn,
     defaultWidthIn: input.defaultWidthIn,
     defaultHeightIn: input.defaultHeightIn,
+    labelNeededHours: input.labelNeededHours,
+    awaitingScanHours: input.awaitingScanHours,
+    stalledInTransitHours: input.stalledInTransitHours,
   }
   const row = await prisma.fulfillmentSettings.upsert({
     where: { id: SETTINGS_ID },

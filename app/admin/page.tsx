@@ -31,6 +31,7 @@ import { formatCurrency } from '@/lib/orders'
 import { isAdminClerkUser } from '@/lib/isAdmin'
 import { getAdminOperationsSummary, getRecentSalesActivity, type AdminOperationsSummary } from '@/lib/adminDashboard'
 import { getDashboardInventoryAlerts } from '@/lib/adminInventory'
+import { listOpenFulfillmentAlerts } from '@/lib/fulfillment/alerts'
 import { AdminOrdersTable } from '@/components/admin/AdminOrdersTable'
 import { AdminSalesActivityTable } from '@/components/admin/AdminSalesActivityTable'
 import { AdminExportPanel } from '@/components/admin/AdminExportPanel'
@@ -107,11 +108,12 @@ export default async function AdminDashboard() {
     )
   }
 
-  const [operations, salesActivity, storefront, inventoryAlerts, recentOrdersResult] = await Promise.all([
+  const [operations, salesActivity, storefront, inventoryAlerts, fulfillmentAlerts, recentOrdersResult] = await Promise.all([
     loadSection('Operations Summary', getAdminOperationsSummary),
     loadSection('Sales Activity', getRecentSalesActivity),
     loadSection('Storefront Stats', getStorefrontStats),
     loadSection('Inventory Alerts', getDashboardInventoryAlerts),
+    loadSection('Fulfillment Alerts', listOpenFulfillmentAlerts),
     loadSection('Recent Orders', () =>
       prisma.order.findMany({
         include: {
@@ -141,6 +143,39 @@ export default async function AdminDashboard() {
           </h1>
           <p className="text-white/50 text-sm mt-1">Owner dashboard</p>
         </div>
+
+        {/* ── Needs Attention (2026-08-13 Fulfillment Command Center) --
+             concise, cross-cutting operational risk only, not a repeat of
+             the full fulfillment queue (that's /admin/fulfillment) -- shows
+             nothing when there's nothing open. ── */}
+        {fulfillmentAlerts.ok && fulfillmentAlerts.data.length > 0 && (
+          <div className="bg-red-400/[0.06] border border-red-400/20 rounded-[18px] p-6 mb-8">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-heading text-[15px] font-bold text-red-300">
+                Needs Attention · {fulfillmentAlerts.data.length} fulfillment alert{fulfillmentAlerts.data.length === 1 ? '' : 's'}
+              </h2>
+              <Link href="/admin/fulfillment" className="text-[12px] font-heading font-bold text-gold hover:text-gold-dark uppercase tracking-[0.06em]">
+                Fulfillment Command Center →
+              </Link>
+            </div>
+            <div className="space-y-2">
+              {fulfillmentAlerts.data.slice(0, 5).map((alert) => (
+                <Link
+                  key={alert.id}
+                  href={`/admin/invoices/${alert.invoiceId}`}
+                  className="flex items-center justify-between gap-3 bg-white/[0.03] hover:bg-white/[0.06] rounded-lg px-4 py-2.5 text-[13px] transition-colors"
+                >
+                  <span className="text-white/80 truncate">{alert.message}</span>
+                  <span className="text-white/40 text-[11px] font-heading font-bold uppercase tracking-[0.06em] whitespace-nowrap">{alert.bucketLabel}</span>
+                </Link>
+              ))}
+              {fulfillmentAlerts.data.length > 5 && (
+                <p className="text-[12px] text-white/40 pt-1">+{fulfillmentAlerts.data.length - 5} more — see Fulfillment Command Center.</p>
+              )}
+            </div>
+          </div>
+        )}
+        {!fulfillmentAlerts.ok && <ErrorCard label="Fulfillment Alerts" error={fulfillmentAlerts.error} />}
 
         {/* ── Operations Summary (the real, currently-operating business) ──── */}
         <h2 className="font-heading text-[15px] font-bold text-white mb-3">Operations Summary</h2>

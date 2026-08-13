@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { refreshShipmentTracking } from '@/lib/tracking/service'
 import { safeCompare } from '@/lib/security/safeCompare'
+import { reconcileFulfillmentAlerts } from '@/lib/fulfillment/alerts'
 
 function isAuthorizedCronRequest(req: NextRequest): boolean {
   const secret = process.env.CRON_SECRET
@@ -72,5 +73,18 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ checked: shipments.length, succeeded, failed: failures.length, failures })
+  // Scheduled reconciliation backstop for the Fulfillment Command Center —
+  // runs after the shipment refresh sweep above so alert state reflects the
+  // freshest tracking data this run could get. Extends this cron rather
+  // than adding a parallel one, since webhooks already drive most updates
+  // and this only needs to run as often as poll-tracking already does.
+  let alertReconciliation: Awaited<ReturnType<typeof reconcileFulfillmentAlerts>> | { error: string }
+  try {
+    alertReconciliation = await reconcileFulfillmentAlerts()
+  } catch (err) {
+    console.error('[poll-tracking] Fulfillment alert reconciliation failed:', err)
+    alertReconciliation = { error: err instanceof Error ? err.message : 'Unknown error' }
+  }
+
+  return NextResponse.json({ checked: shipments.length, succeeded, failed: failures.length, failures, alertReconciliation })
 }

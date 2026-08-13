@@ -29,54 +29,18 @@ export default async function InvoicesDashboard() {
             <h1 className="font-heading text-3xl font-bold text-white">Invoices</h1>
             <p className="text-white/50 text-sm mt-1">Manual and storefront invoicing · Pepscore Lab</p>
           </div>
+          {/* 2026-08-13 nav cleanup: Intake Queue / Inventory / Identity Review /
+              Portal Rollout / Notifications / Invoice Settings are all reachable
+              from AdminNav above on every admin page now -- repeating them here
+              was a leftover duplicate nav path, not distinct functionality.
+              Trash stays: it's a genuine Invoices-only contextual action with no
+              home in the shared nav. */}
           <div className="flex items-center gap-6 flex-wrap">
-            <Link
-              href="/admin/intake-queue"
-              className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
-            >
-              Intake Queue
-            </Link>
-            <Link
-              href="/admin/inventory"
-              className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
-            >
-              Inventory
-            </Link>
-            <Link
-              href="/admin/identity-review"
-              className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
-            >
-              Identity Review
-            </Link>
-            <Link
-              href="/admin/portal-rollout"
-              className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
-            >
-              Portal Rollout
-            </Link>
-            <Link
-              href="/admin/settings/notifications"
-              className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
-            >
-              Notifications
-            </Link>
-            <Link
-              href="/admin/settings/invoices"
-              className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
-            >
-              Settings
-            </Link>
             <Link
               href="/admin/invoices/trash"
               className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
             >
               Trash
-            </Link>
-            <Link
-              href="/admin"
-              className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
-            >
-              ← Admin Dashboard
             </Link>
           </div>
         </div>

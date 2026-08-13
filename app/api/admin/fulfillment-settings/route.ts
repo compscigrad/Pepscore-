@@ -29,6 +29,10 @@ const patchSchema = z.object({
   defaultLengthIn: z.number().positive().nullable().optional(),
   defaultWidthIn: z.number().positive().nullable().optional(),
   defaultHeightIn: z.number().positive().nullable().optional(),
+  // 2026-08-13 Fulfillment Command Center SLA thresholds.
+  labelNeededHours: z.number().int().positive().optional(),
+  awaitingScanHours: z.number().int().positive().optional(),
+  stalledInTransitHours: z.number().int().positive().optional(),
 })
 
 export async function GET() {

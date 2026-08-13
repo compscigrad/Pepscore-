@@ -655,6 +655,7 @@ model Invoice {
   shipments          Shipment[]
   notifications      ShipmentNotification[]
   activityLog        InvoiceActivityLog[]
+  fulfillmentAlerts  FulfillmentAlert[]
 
   // CRM/intake back-relations — see Customer/IntakeLink/Notification models below.
   customerActivityLog CustomerActivityLog[]
@@ -2845,7 +2846,74 @@ model FulfillmentSettings {
   defaultWidthIn  Float?
   defaultHeightIn Float?
 
+  // 2026-08-13 (Fulfillment Command Center) -- configurable SLA thresholds,
+  // admin-editable rather than hardcoded, per that sprint's explicit
+  // instruction. All in hours. Defaults reflect current real business
+  // behavior, not an arbitrary guess:
+  //   labelNeededHours: a paid order with no shipping label/tracking yet
+  //     escalates from "Needs Fulfillment" to the "Label Needed" alert.
+  //   awaitingScanHours: a label exists but no carrier acceptance/scan has
+  //     been detected yet -- escalates to "Stalled" past this.
+  //   stalledInTransitHours: a shipment has real carrier movement but no
+  //     NEW event since this long -- escalates to "Stalled."
+  labelNeededHours      Int @default(24)
+  awaitingScanHours     Int @default(24)
+  stalledInTransitHours Int @default(72)
+
   updatedAt DateTime @updatedAt
+}
+
+// ─── Fulfillment Command Center (2026-08-13) ─────────────────────────────────
+// Deduplicated, resolvable operational alerts for paid orders whose
+// fulfillment is at risk -- modeled directly on LowStockAlert's own
+// "OPEN/RESOLVED, service-layer-enforced no-duplicate-unresolved-alert"
+// idiom (see that model's comment) rather than the customer-intake-shaped
+// Notification model, which doesn't fit (required isNewCustomer field, no
+// resolve state). lib/fulfillment/alerts.ts is the only writer.
+model FulfillmentAlert {
+  id String @id @default(cuid())
+
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  // Set for shipment-scoped alert types (AWAITING_CARRIER_SCAN,
+  // STALLED_NO_MOVEMENT, CARRIER_EXCEPTION) -- null for invoice-scoped ones
+  // (NO_LABEL, INVENTORY_CONFLICT, REFUNDED_AFTER_SHIPMENT), which have no
+  // single shipment to point at (or predate one existing at all). Plain id,
+  // no FK relation -- same informational-only precedent as
+  // InvoiceActivityLog.shipmentId.
+  shipmentId String?
+
+  alertType FulfillmentAlertType
+  status    FulfillmentAlertStatus @default(OPEN)
+  message   String
+
+  createdAt     DateTime  @default(now())
+  lastCheckedAt DateTime  @default(now())
+  resolvedAt    DateTime?
+  resolvedBy    String?
+  resolutionNote String?
+
+  // One open alert per (invoice, type) at a time -- reconcileFulfillmentAlerts()
+  // enforces this at the service layer (find-open-before-create), same
+  // precedent as BackorderCondition/LowStockAlert; not a DB unique index
+  // since RESOLVED history for the same (invoice, type) must be allowed to
+  // accumulate across separate incidents.
+  @@index([invoiceId, status])
+  @@index([status, alertType])
+}
+
+enum FulfillmentAlertType {
+  NO_LABEL
+  AWAITING_CARRIER_SCAN
+  STALLED_NO_MOVEMENT
+  CARRIER_EXCEPTION
+  INVENTORY_CONFLICT
+  REFUNDED_AFTER_SHIPMENT
+}
+
+enum FulfillmentAlertStatus {
+  OPEN
+  RESOLVED
 }
 
 // Reusable named package templates (e.g. "Small Box", "Padded Envelope") —

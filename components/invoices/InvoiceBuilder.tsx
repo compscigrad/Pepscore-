@@ -16,6 +16,7 @@ import { InvoiceItemsTable } from './InvoiceItemsTable'
 import { DiscountsSection } from './DiscountsSection'
 import { PaymentSection } from './PaymentSection'
 import { ShipmentsSection } from './ShipmentsSection'
+import { FulfillmentTimeline } from './FulfillmentTimeline'
 import { BackordersSection } from './BackordersSection'
 import { RefundsSection } from './RefundsSection'
 import { BalanceTransferSection } from './BalanceTransferSection'
@@ -462,6 +463,8 @@ export function InvoiceBuilder({
         {mode === 'edit' && invoice ? (
           <ShipmentsSection invoiceId={invoice.id} shipments={invoice.shipments} onTrackingUpdated={refreshInvoice} />
         ) : null}
+
+        {mode === 'edit' && invoice ? <FulfillmentTimeline entries={invoice.activityLog} /> : null}
 
         {mode === 'edit' && invoice ? (
           <BackordersSection
