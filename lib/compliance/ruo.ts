@@ -55,12 +55,21 @@ export async function hasAcceptedCurrentRuo(userId: string): Promise<boolean> {
 }
 
 interface RecordAcceptanceParams {
+  // The internal User.id (a separate cuid) -- NEVER a raw Clerk user id.
+  // Every call site must resolve Clerk's auth().userId to this via
+  // upsertUserByClerkId()/findUserIdByClerkId() (lib/user.ts) first;
+  // ComplianceAcknowledgment.userId is a real foreign key to User.id and
+  // Postgres will reject a write with a Clerk-shaped id (caught 2026-08-12
+  // while auditing this module for the pre-signup RUO gate -- every
+  // existing write path had this exact bug, so a signed-in customer's
+  // checkout previously threw a foreign-key violation the first time this
+  // ran; no real customer had hit it yet, pre-launch).
   userId?: string
   orderId?: string
   sessionId?: string
   ipAddress?: string | null
   userAgent?: string | null
-  source: 'checkout' | 'standalone'
+  source: 'checkout' | 'standalone' | 'pre_signup'
 }
 
 export async function recordRuoAcceptance(params: RecordAcceptanceParams) {
@@ -76,4 +85,54 @@ export async function recordRuoAcceptance(params: RecordAcceptanceParams) {
       source: params.source,
     },
   })
+}
+
+// ─── Pre-signup RUO/21+ gate (2026-08-12) ────────────────────────────────────
+// A brand-new visitor accepting the gate at /sign-up has no Clerk session
+// yet, so there is no userId to attribute the acceptance to. This records
+// it against an opaque, short-lived token instead (carried in an HttpOnly
+// cookie -- see components/storefront/RuoSignupGate.tsx and
+// app/api/compliance/ruo/pending-accept/route.ts), then links that same
+// row to the real User once Clerk signup actually completes
+// (app/account/page.tsx's tryResolveNotLinked(), the same place every
+// other post-signup identity resolution already happens).
+//
+// TTL bounds how long a leaked/replayed token could be linked to an
+// unrelated account -- signup normally completes in well under this window.
+const PENDING_RUO_TTL_MS = 30 * 60 * 1000
+export const PENDING_RUO_TTL_SECONDS = PENDING_RUO_TTL_MS / 1000
+
+// Shared between the pending-accept route (sets it), the sign-up page
+// (reads it to decide whether to show the gate or <SignUp/>), and the
+// account page (reads it to link the acceptance to the new User). A
+// route.ts file may only export its HTTP handlers, so this constant lives
+// here rather than in the API route itself.
+export const RUO_PENDING_COOKIE = 'ruo_pending_token'
+
+function pendingRuoCutoff(): Date {
+  return new Date(Date.now() - PENDING_RUO_TTL_MS)
+}
+
+/** Has this pending-signup token already recorded a valid, unexpired, unlinked gate acceptance? */
+export async function hasValidPendingRuoAcceptance(pendingToken: string): Promise<boolean> {
+  const existing = await prisma.complianceAcknowledgment.findFirst({
+    where: { sessionId: pendingToken, version: RUO_VERSION, source: 'pre_signup', userId: null, agreedAt: { gte: pendingRuoCutoff() } },
+    select: { id: true },
+  })
+  return existing != null
+}
+
+/**
+ * Links a pending (pre-account) acceptance to the real, now-created User.
+ * Idempotent by construction: the `userId: null` guard in the where clause
+ * means a second call for the same token (already linked, expired, or
+ * never existed) updates zero rows rather than creating a duplicate or
+ * re-linking to a different account. Returns whether a row was actually linked.
+ */
+export async function linkPendingRuoAcceptanceToUser(pendingToken: string, internalUserId: string): Promise<boolean> {
+  const result = await prisma.complianceAcknowledgment.updateMany({
+    where: { sessionId: pendingToken, version: RUO_VERSION, source: 'pre_signup', userId: null, agreedAt: { gte: pendingRuoCutoff() } },
+    data: { userId: internalUserId },
+  })
+  return result.count > 0
 }

@@ -35,3 +35,13 @@ export async function upsertUserByClerkId(clerkUserId: string, email: string): P
     return prisma.user.findUniqueOrThrow({ where: { clerkId: clerkUserId } })
   }
 }
+
+// Read-only counterpart to upsertUserByClerkId -- for callers that only
+// need to know whether a User row already exists for this Clerk identity
+// (e.g. a status check) and must never create one as a side effect of a
+// GET request. Returns the internal User.id (a separate cuid, NOT the
+// Clerk id) or null if this Clerk identity has never resolved to a User row.
+export async function findUserIdByClerkId(clerkUserId: string): Promise<string | null> {
+  const user = await prisma.user.findUnique({ where: { clerkId: clerkUserId }, select: { id: true } })
+  return user?.id ?? null
+}

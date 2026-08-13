@@ -5,11 +5,14 @@
 export const dynamic = 'force-dynamic'
 
 import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { getPortalAuthState, isSelfRegistrationEnabled } from '@/lib/portalAuth'
 import { isAdminClerkUser } from '@/lib/isAdmin'
 import { checkRateLimit } from '@/lib/rateLimit'
 import { resolveSelfServiceIdentity } from '@/lib/portal/selfServiceResolve'
+import { upsertUserByClerkId } from '@/lib/user'
+import { linkPendingRuoAcceptanceToUser, RUO_PENDING_COOKIE } from '@/lib/compliance/ruo'
 import { getPortalDashboardData } from '@/lib/portal/dashboard'
 import { shouldRedirectAdminToAdminDashboard, isAdminViewingCustomerPortal } from '@/lib/portal/accountRouting'
 import { formatMoney, formatDate } from '@/lib/invoice/format'
@@ -249,6 +252,19 @@ async function tryResolveNotLinked(): Promise<ResolveOutcome> {
   const clerkUser = await currentUser()
   const primaryEmail = clerkUser?.primaryEmailAddress
   if (!primaryEmail || primaryEmail.verification?.status !== 'verified') return 'SKIPPED'
+
+  // Pre-signup RUO/21+ gate linking (2026-08-12) -- if this browser holds a
+  // still-valid pending acceptance from app/sign-up's gate, link it to the
+  // User row this Clerk identity resolves to. upsertUserByClerkId is the
+  // same idempotent call resolveSelfServiceIdentity() makes internally
+  // (harmless to call twice); linkPendingRuoAcceptanceToUser is itself
+  // idempotent (see its own comment), so a page refresh or a visitor with
+  // no pending cookie at all is always a safe no-op here.
+  const pendingToken = (await cookies()).get(RUO_PENDING_COOKIE)?.value
+  if (pendingToken) {
+    const user = await upsertUserByClerkId(clerkUserId, primaryEmail.emailAddress)
+    await linkPendingRuoAcceptanceToUser(pendingToken, user.id)
+  }
 
   const result = await resolveSelfServiceIdentity({
     clerkUserId,

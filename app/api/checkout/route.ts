@@ -3,7 +3,7 @@
 // stores the RUO acknowledgment, and returns the Stripe session URL.
 
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { auth, currentUser } from '@clerk/nextjs/server'
 import { stripe } from '@/lib/stripe'
 import { prisma } from '@/lib/prisma'
 import { generateOrderNumber, generateInvoiceNumber } from '@/lib/orders'
@@ -18,6 +18,7 @@ import { resolveCustomerIdForCheckout, resolvePromotionCode, PROMOTION_CODE_INVA
 import { getInvoiceLinePriceTier } from '@/lib/pricing/lineOverride'
 import { applyBackorder } from '@/lib/backorders'
 import { recordRuoAcceptance } from '@/lib/compliance/ruo'
+import { upsertUserByClerkId } from '@/lib/user'
 import type { CheckoutLineItem, ShippingAddress } from '@/types'
 import type Stripe from 'stripe'
 
@@ -301,9 +302,31 @@ export async function POST(req: NextRequest) {
     // customer accepted this version previously -- either way ruoAgreed
     // must be true (checked above) before a checkout session is ever
     // created.
+    //
+    // ComplianceAcknowledgment.userId is a foreign key to the internal
+    // User.id, never the raw Clerk id -- resolve it first (2026-08-12 fix;
+    // this call previously passed the Clerk id directly and threw an
+    // unhandled foreign-key violation the first time any signed-in
+    // customer checked out, see lib/compliance/ruo.ts). Uses Clerk's own
+    // verified email (not the checkout form's customerEmail, which a
+    // signed-in customer could type differently) to stay consistent with
+    // every other User-row-creation call site in this codebase. Falls back
+    // to an unattributed (guest-equivalent) acceptance record rather than
+    // failing checkout if Clerk has no verified email on file yet -- a
+    // missing account link is a lesser harm than blocking a paying order.
+    let internalUserId: string | undefined
+    if (userId) {
+      const clerkUser = await currentUser()
+      const primaryEmail = clerkUser?.primaryEmailAddress
+      if (primaryEmail?.verification?.status === 'verified') {
+        const user = await upsertUserByClerkId(userId, primaryEmail.emailAddress)
+        internalUserId = user.id
+      }
+    }
+
     await recordRuoAcceptance({
       orderId: order.id,
-      userId: userId ?? undefined,
+      userId: internalUserId,
       ipAddress: req.headers.get('x-forwarded-for') ?? req.headers.get('x-real-ip'),
       userAgent: req.headers.get('user-agent'),
       source: 'checkout',

@@ -8,9 +8,9 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import Link from 'next/link'
 import { AlertTriangle } from 'lucide-react'
-import { RUO_TEXT, RUO_INTRO_TEXT, RUO_AGE_TEXT } from '@/lib/compliance/ruo'
+import { RUO_TEXT } from '@/lib/compliance/ruo'
+import { RuoAcceptanceFields } from './RuoAcceptanceFields'
 
 interface RuoModalProps {
   onConfirm: () => void
@@ -56,46 +56,14 @@ export function RuoModal({ onConfirm, onCancel, isLoading }: RuoModalProps) {
 
         {/* Body */}
         <div className="relative px-6 py-5">
-          <p className="text-[13px] text-white/70 leading-relaxed mb-5">{RUO_INTRO_TEXT}</p>
-
-          <div className="space-y-3.5">
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={ageConfirmed}
-                onChange={(e) => setAgeConfirmed(e.target.checked)}
-                className="mt-0.5 w-4 h-4 accent-[#D4AF37] cursor-pointer flex-shrink-0"
-              />
-              <span className="text-[13px] text-white/85 leading-relaxed select-none">{RUO_AGE_TEXT}</span>
-            </label>
-
-            {/* Same wording as RUO_AGREEMENT_TEXT (lib/compliance/ruo.ts) --
-                duplicated here rather than rendered from the constant
-                because this version embeds real Terms/Privacy links
-                mid-sentence. Keep both in sync if the copy changes. */}
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={agreementConfirmed}
-                onChange={(e) => setAgreementConfirmed(e.target.checked)}
-                className="mt-0.5 w-4 h-4 accent-[#D4AF37] cursor-pointer flex-shrink-0"
-              />
-              <span className="text-[13px] text-white/85 leading-relaxed select-none">
-                I agree that products and information on this website are provided for laboratory research use only
-                and are not intended for use in or on humans or animals. I will not use any products or information
-                from this website for diagnosis, treatment, cure, or prevention of any condition. I agree to follow
-                applicable laws and regulations, and I agree to the{' '}
-                <Link href="/terms" target="_blank" rel="noopener noreferrer" className="text-[#D4AF37] hover:underline">
-                  Terms of Service
-                </Link>{' '}
-                and{' '}
-                <Link href="/privacy" target="_blank" rel="noopener noreferrer" className="text-[#D4AF37] hover:underline">
-                  Privacy Policy
-                </Link>
-                .
-              </span>
-            </label>
-          </div>
+          <RuoAcceptanceFields
+            ageConfirmed={ageConfirmed}
+            onAgeChange={setAgeConfirmed}
+            agreementConfirmed={agreementConfirmed}
+            onAgreementChange={setAgreementConfirmed}
+            ageInputId="ruo-modal-age"
+            agreementInputId="ruo-modal-agreement"
+          />
         </div>
 
         {/* Actions */}

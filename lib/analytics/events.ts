@@ -29,6 +29,13 @@ export const AnalyticsEvent = {
   CLIENT_SIGN_IN_CLICK: 'client_sign_in_click',
   COACH_MARK_IMPRESSION: 'coach_mark_impression',
   COACH_MARK_CLICK: 'coach_mark_click',
+  // Added 2026-08-12 (pre-signup RUO/21+ gate) -- ACCOUNT_CREATED above
+  // already covers "Clerk signup completed / customer account created"
+  // (fired server-side from the Clerk webhook, lib/portal/accessEvents.ts),
+  // so only the gate's own steps needed new events.
+  SIGNUP_GATE_SHOWN: 'signup_gate_shown',
+  SIGNUP_GATE_ACCEPTED: 'signup_gate_accepted',
+  SIGNUP_GATE_ABANDONED: 'signup_gate_abandoned',
 } as const
 
 export type AnalyticsEventName = (typeof AnalyticsEvent)[keyof typeof AnalyticsEvent]
