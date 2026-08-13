@@ -97,8 +97,6 @@ export function InventoryDetailPanel({ product, availableUnits, completeCasesAva
 
   const [unitsPerCase, setUnitsPerCase] = useState(product.unitsPerCase?.toString() ?? '')
   const [lowStockThreshold, setLowStockThreshold] = useState(product.lowStockThreshold?.toString() ?? '')
-  const [backorderEnabled, setBackorderEnabled] = useState(product.backorderEnabled)
-  const [backorderBusy, setBackorderBusy] = useState(false)
 
   const [supplierCost, setSupplierCost] = useState(product.supplierCaseCost?.toString() ?? '')
   const [activeStandard, setActiveStandard] = useState(product.activeStandardCasePrice?.toString() ?? '')
@@ -182,20 +180,6 @@ export function InventoryDetailPanel({ product, availableUnits, completeCasesAva
     }
   }
 
-  async function toggleBackorderEnabled(next: boolean) {
-    setBackorderEnabled(next)
-    setBackorderBusy(true)
-    setError(null)
-    try {
-      await postAction(product.id, { action: 'SET_BACKORDER_ENABLED', backorderEnabled: next })
-      router.refresh()
-    } catch (e) {
-      setBackorderEnabled(!next)
-      setError(e instanceof Error ? e.message : 'Failed to update backorder setting')
-    } finally {
-      setBackorderBusy(false)
-    }
-  }
 
   async function recalculateSuggested() {
     if (supplierCost === '') return
@@ -336,26 +320,26 @@ export function InventoryDetailPanel({ product, availableUnits, completeCasesAva
         <h2 className={`${sectionHeading} mb-4`}>Inventory</h2>
 
         {/* Catalog-level backorder configuration -- distinct from any
-            specific invoice's BackorderCondition. Explicit per
-            product/strength, admin-editable with no code deployment.
-            See lib/storefront/availability.ts. */}
+            specific invoice's BackorderCondition. Read-only here by owner
+            instruction (2026-08-13): Product Master's alphabetical list is
+            the single admin surface allowed to change backorderEnabled, so
+            this panel only displays the current value rather than posting
+            SET_BACKORDER_ENABLED itself. See lib/storefront/availability.ts. */}
         <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 mb-4">
-          <label className="flex items-center justify-between gap-3">
+          <div className="flex items-center justify-between gap-3">
             <span>
               <span className="block text-[13px] font-heading font-bold text-white">Allow Backorders</span>
               <span className={`block text-[11px] ${mutedText} mt-0.5`}>
                 When available inventory reaches zero, this product/strength stays orderable via the backorder workflow instead of showing Out of Stock.
+                Edit this from Product Master.
               </span>
             </span>
-            <input
-              type="checkbox"
-              checked={backorderEnabled}
-              disabled={backorderBusy}
-              onChange={(e) => toggleBackorderEnabled(e.target.checked)}
-              className="w-5 h-5 shrink-0 accent-gold"
-              aria-label="Allow backorders for this product"
-            />
-          </label>
+            <span
+              className={`shrink-0 text-[11px] font-heading font-bold uppercase tracking-wide ${product.backorderEnabled ? 'text-green-300' : 'text-white/50'}`}
+            >
+              {product.backorderEnabled ? <>Backorder: On <span aria-hidden="true">⌛</span></> : 'Backorder: Off'}
+            </span>
+          </div>
         </div>
 
         {!product.inventoryTrackingEnabled ? (
