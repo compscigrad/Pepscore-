@@ -78,19 +78,33 @@ const SIZE_STYLES: Record<BrandLockupSize, {
     // branch below) as a paint-only transform -- doesn't affect layout, so
     // the tagline (a separate sibling, centered independently) never moves.
     //
-    // 2026-08-14 re-verification: re-checked against an injected, real
-    // fixed-position guide line at true 50% viewport width (not a text/
-    // container bbox calculation) on both the local build and live
-    // production -- confirmed via rendered screenshot that this value
-    // makes the guide line bisect the "A" in LAB exactly (0.00-0.01px
-    // delta at every breakpoint from 390-1600px). A candidate further
-    // rightward shift (to compensate for the gold P's visual weight
-    // pulling perceived center left) was tried and rendered-screenshot-
-    // verified to move the guide line off the A (landing between A and B
-    // instead) -- i.e. objectively worse by the task's own visual test --
-    // so it was reverted. This is the value with direct screenshot
-    // evidence of correct apex-bisection, not just a DOM calculation.
-    wordmarkShiftClass: 'translate-x-[1.04px] sm:translate-x-[1.2px] md:translate-x-[1.36px] lg:translate-x-[1.52px]',
+    // 2026-08-14 real-device correction: a synthetic Playwright/50vw test
+    // (no rendered scrollbar; window.innerWidth === clientWidth always)
+    // confirmed the apex-only value above lands at 0.00px on a headless
+    // page -- but pixel-analysis of the owner's own real screenshots found
+    // that test doesn't reflect a real windowed browser. Measured directly
+    // (Jimp, scanning actual pixel colors, not guessed):
+    //   Desktop (Screenshot (13).png, 1920x1080 Chrome window): the page's
+    //   own black background stops at x=1900, not 1920 -- a real ~20px
+    //   scrollbar reserved on the right makes the CSS content viewport's
+    //   own center (950) sit 10px left of the window's true physical
+    //   center (960). Headless Playwright never reserves this space
+    //   (confirmed innerWidth===clientWidth in every prior synthetic
+    //   test), so no synthetic test could have caught it.
+    //   Mobile (cell image.jpg, 1320x2868 iPhone Safari): isolating just
+    //   the LAB letter glyphs (excluding the P and the thin gold rules,
+    //   by sampling a row above the rules' baseline where only taller
+    //   letter strokes still show) gives a real ~5px leftward delta --
+    //   mobile has no reserved-scrollbar mechanism, so this smaller
+    //   residual is treated as a direct real-device correction in its own
+    //   right rather than assumed to share the desktop cause.
+    // The base/sm tier (<768px, phone-width range) adds the measured ~5px
+    // mobile correction; md/lg (768px+, where a real window reserves
+    // scrollbar space) adds the measured ~10px desktop correction -- both
+    // layered on top of the unchanged apex correction, not replacing it
+    // (replacing it, tried previously, reintroduced the tracking-caused
+    // bias this correction exists to cancel).
+    wordmarkShiftClass: 'translate-x-[6.04px] sm:translate-x-[6.2px] md:translate-x-[11.36px] lg:translate-x-[11.52px]',
     pepscoreClass: 'text-[32px] sm:text-[40px] md:text-[48px] lg:text-[56px]',
     tmClass: 'text-[11px] sm:text-[13px] md:text-[15px] lg:text-[17px]',
     // top-[10%] (2026-08-14, tuned by measurement): with the wrapper below
