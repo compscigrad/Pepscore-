@@ -4,7 +4,7 @@
 // an explicit admin action (setActivePricing / setManualOverride below).
 import { Prisma, type PriceChangeSource, type Product } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
-import { calculateSuggestedPricing, SPA_TO_STANDARD_RATIO } from './engine'
+import { calculateSuggestedPricing, SPA_TO_STANDARD_RATIO, getEffectivePrice } from './engine'
 import { recordPriceChanges } from './history'
 
 // Pricing invariant (2026-08-12 revision pass #4, owner-directed): SPA is a
@@ -21,6 +21,18 @@ export class SpaPricingInvariantError extends Error {
       `SPA pricing is now higher than or equal to Standard Case pricing ($${currentSpaCasePrice} >= $${standardCasePrice}). Proposed SPA: $${proposedSpaCasePrice}.`
     )
     this.name = 'SpaPricingInvariantError'
+  }
+}
+
+// Singles-requires-price invariant (2026-08-13 admin Product Master
+// addendum): public single-vial sales can never be turned on for a product
+// with no valid stored/effective single-vial price -- that would publish a
+// purchasable option with nothing to charge. Thrown -- never silently
+// written -- the same fail-closed pattern as SpaPricingInvariantError below.
+export class SinglesRequiresPriceError extends Error {
+  constructor(public productName: string, public productSize: string) {
+    super(`Cannot enable public Single Vial sales for ${productName} (${productSize}) -- no valid Single Vial price is set yet. Set a price first, then enable Singles.`)
+    this.name = 'SinglesRequiresPriceError'
   }
 }
 
@@ -83,6 +95,16 @@ export async function setActivePricing(productId: string, input: SetActivePricin
     if (after.activeStandardCasePrice != null && after.activeSpaCasePrice != null && after.activeSpaCasePrice >= after.activeStandardCasePrice) {
       const proposedSpaCasePrice = Math.min(after.activeSpaCasePrice, Math.round((after.activeStandardCasePrice * SPA_TO_STANDARD_RATIO) / 10) * 10)
       throw new SpaPricingInvariantError(after.activeStandardCasePrice, after.activeSpaCasePrice, proposedSpaCasePrice)
+    }
+
+    // Singles-requires-price invariant -- checked against the final
+    // resulting state, so it catches both "just turned Singles on with no
+    // price" and "turned Singles on in the same request that cleared the
+    // price." getEffectivePrice() already knows the manualPricingOverride
+    // "reviewed but unpublished" distinction, so this never blocks a
+    // formula-suggested price from counting as valid.
+    if (after.individualSalesEnabled && getEffectivePrice(after, 'INDIVIDUAL') === null) {
+      throw new SinglesRequiresPriceError(after.name, after.size)
     }
 
     await recordPriceChanges(tx, { before, after, actorId: context.actorId, source: context.source, reason: context.reason })

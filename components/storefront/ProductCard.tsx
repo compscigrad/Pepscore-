@@ -99,7 +99,7 @@ export function ProductCard({ name, featured, category, description, imageUrl, b
       sellUnit: effectiveSellUnit,
       unitsPerSellUnit: effectiveSellUnit === 'INDIVIDUAL_VIAL' ? 1 : v.unitsPerCase,
     })
-    toast.success(`${name} ${v.size} (${effectiveSellUnit === 'INDIVIDUAL_VIAL' ? 'Individual Vial' : 'Standard Case'}) added to cart`)
+    toast.success(`${name} ${v.size} (${effectiveSellUnit === 'INDIVIDUAL_VIAL' ? 'Single Vial' : 'Standard Case'}) added to cart`)
     openCart()
   }
 
@@ -227,7 +227,7 @@ export function ProductCard({ name, featured, category, description, imageUrl, b
                           : 'border border-[#D4AF37]/25 text-white/60 hover:border-[#D4AF37] hover:text-[#D4AF37]'
                       }`}
                     >
-                      {unit === 'CASE_STANDARD' ? 'Standard Case' : 'Individual Vial'}
+                      {unit === 'CASE_STANDARD' ? 'Standard Case' : 'Single Vial'}
                     </button>
                   ))}
                 </div>
@@ -237,7 +237,7 @@ export function ProductCard({ name, featured, category, description, imageUrl, b
               <div className="bg-white/[0.03] border border-[#D4AF37]/15 rounded-lg p-3 flex items-center justify-between">
                 <div>
                   <p className="text-[9px] font-bold text-white/40 uppercase tracking-[0.07em] mb-0.5">
-                    {effectiveSellUnit === 'INDIVIDUAL_VIAL' ? 'Individual Vial' : v.unitsPerCase ? `Case of ${v.unitsPerCase}` : 'Standard Case'}
+                    {effectiveSellUnit === 'INDIVIDUAL_VIAL' ? 'Single Vial' : v.unitsPerCase ? `Case of ${v.unitsPerCase}` : 'Standard Case'}
                   </p>
                   <p className="font-heading text-[18px] font-extrabold text-white">${activePrice}</p>
                 </div>

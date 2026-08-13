@@ -7,7 +7,11 @@ export const SELL_UNIT_LABEL: Record<string, string> = {
   STANDARD_CASE: 'Standard Case',
   SPA_CASE: 'SPA Case',
   BULK: 'Bulk',
-  INDIVIDUAL_VIAL: 'Individual Vial',
+  // Value is the customer/admin-facing label (2026-08-13 terminology
+  // update: "Individual Vial" -> "Single Vial"); the key stays
+  // INDIVIDUAL_VIAL (the stable PriceChangeSellUnit enum value) since
+  // internal field/enum names are never renamed just for UI copy.
+  INDIVIDUAL_VIAL: 'Single Vial',
 }
 
 export const PRICE_SOURCE_LABEL: Record<string, string> = {

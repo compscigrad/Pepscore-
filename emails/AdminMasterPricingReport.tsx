@@ -74,7 +74,7 @@ export function buildAdminMasterPricingReportHtml({
       <tbody>${rowsHtml}</tbody>
     </table>
     <p style="color:${EMAIL_COLORS.textMuted};font-size:12px;line-height:1.6;text-align:center;margin-top:20px">
-      This is an internal pricing record, not for public distribution. See the attached CSV for every active SKU, including hidden Individual Vial rates for products where public sales are currently disabled.
+      This is an internal pricing record, not for public distribution. See the attached CSV for every active SKU, including hidden Single Vial rates for products where public sales are currently disabled.
     </p>
   `
 

@@ -79,6 +79,39 @@ export interface ProductPricingSnapshot {
 
 export type SellUnitTier = 'STANDARD' | 'SPA' | 'INDIVIDUAL'
 
+// Public Standard-pricing bulk tiers (2026-08-13, admin Product Master
+// addendum) -- always derived fresh from the current Storefront Case
+// price, never SPA (SPA clients are excluded from bulk discounts, and
+// stacking the two was explicitly ruled out) and never independently
+// stored, so a case-price edit can never leave a stale bulk column behind.
+// The four percentages are the same tiers already shown as marketing copy
+// on the homepage (docs/PendingOwnerActions.md #16 -- not yet enforced at
+// checkout, this is display/admin-visibility only).
+export const BULK_TIER_DISCOUNT: Record<'FIVE' | 'EIGHT' | 'TEN' | 'FIFTEEN', number> = {
+  FIVE: 0.05,
+  EIGHT: 0.08,
+  TEN: 0.1,
+  FIFTEEN: 0.15,
+}
+
+export interface BulkTierPrices {
+  five: number | null
+  eight: number | null
+  ten: number | null
+  fifteen: number | null
+}
+
+export function calculateBulkTierPrices(storefrontCasePrice: number | null): BulkTierPrices {
+  if (storefrontCasePrice === null) return { five: null, eight: null, ten: null, fifteen: null }
+  const roundToCent = (n: number) => Math.round(n * 100) / 100
+  return {
+    five: roundToCent(storefrontCasePrice * (1 - BULK_TIER_DISCOUNT.FIVE)),
+    eight: roundToCent(storefrontCasePrice * (1 - BULK_TIER_DISCOUNT.EIGHT)),
+    ten: roundToCent(storefrontCasePrice * (1 - BULK_TIER_DISCOUNT.TEN)),
+    fifteen: roundToCent(storefrontCasePrice * (1 - BULK_TIER_DISCOUNT.FIFTEEN)),
+  }
+}
+
 export function getEffectivePrice(product: ProductPricingSnapshot, tier: SellUnitTier): number | null {
   const fields: Record<SellUnitTier, { active: number | null; suggested: number | null }> = {
     STANDARD: { active: product.activeStandardCasePrice, suggested: product.suggestedStandardCasePrice },

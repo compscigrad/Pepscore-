@@ -238,7 +238,7 @@ export async function correctInvoiceItemSellUnit(invoiceItemId: string, input: C
     const product = await tx.product.findUniqueOrThrow({ where: { id: item.productId } })
 
     if (input.sellUnit === 'INDIVIDUAL_VIAL' && !product.individualSalesEnabled && !input.individualSalesOverride) {
-      throw new Error(`Individual vial sales are disabled for ${product.name} ${product.size} -- an explicit override is required to record a historical line at this sell unit`)
+      throw new Error(`Single vial sales are disabled for ${product.name} ${product.size} -- an explicit override is required to record a historical line at this sell unit`)
     }
     // Every other sell unit must actually be configured (an active price
     // must exist) -- never lets an admin record a line against a tier the

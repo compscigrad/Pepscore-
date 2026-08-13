@@ -25,7 +25,9 @@ export const SELL_UNIT_DISPLAY_LABEL: Record<SellUnit, string> = {
   CASE_STANDARD: 'Standard Case',
   CASE_SPA: 'SPA Case',
   CASE_BULK: 'Bulk',
-  INDIVIDUAL_VIAL: 'Individual Vial',
+  // Customer/admin-facing label (2026-08-13: "Individual Vial" -> "Single
+  // Vial") -- the SellUnit enum value itself (INDIVIDUAL_VIAL) is unchanged.
+  INDIVIDUAL_VIAL: 'Single Vial',
 }
 
 export interface SellUnitAvailabilityInput {
@@ -73,7 +75,7 @@ export function getAvailableSellUnits(product: SellUnitAvailabilityInput, option
   if (individualOffered && product.activeIndividualVialPrice !== null) {
     result.push({
       sellUnit: 'INDIVIDUAL_VIAL',
-      label: 'Individual Vial',
+      label: 'Single Vial',
       price: product.activeIndividualVialPrice,
       unitsPerSellUnit: 1,
       visibleToCustomers: product.individualSalesEnabled,

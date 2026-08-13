@@ -285,7 +285,7 @@ export function InventoryDetailPanel({ product, availableUnits, completeCasesAva
           </button>
         </div>
         <p className={`text-[11px] ${mutedText} -mt-2 mb-4`}>
-          Suggested: Standard {product.suggestedStandardCasePrice ?? '—'} · SPA {product.suggestedSpaCasePrice ?? '—'} · Individual {product.suggestedIndividualVialPrice ?? '—'}
+          Suggested: Standard {product.suggestedStandardCasePrice ?? '—'} · SPA {product.suggestedSpaCasePrice ?? '—'} · Single Vial {product.suggestedIndividualVialPrice ?? '—'}
         </p>
 
         <div className="grid grid-cols-2 gap-3 mb-3">
@@ -298,18 +298,18 @@ export function InventoryDetailPanel({ product, availableUnits, completeCasesAva
           <Field label="Active Bulk">
             <input className={inputCls} type="number" value={activeBulk} onChange={(e) => setActiveBulk(e.target.value)} />
           </Field>
-          <Field label="Active Individual Vial">
+          <Field label="Active Single Vial">
             <input className={inputCls} type="number" value={activeIndividual} onChange={(e) => setActiveIndividual(e.target.value)} />
           </Field>
         </div>
 
         {activeIndividual !== '' && !individualSalesEnabled && (
-          <p className="text-[11px] font-bold text-amber-300 bg-amber-400/10 border border-amber-400/25 rounded-lg px-3 py-2 mb-3">Individual price stored — sales currently disabled</p>
+          <p className="text-[11px] font-bold text-amber-300 bg-amber-400/10 border border-amber-400/25 rounded-lg px-3 py-2 mb-3">Single Vial price stored — sales currently disabled</p>
         )}
 
         <label className="flex items-center gap-2 text-[13px] text-white mb-2">
           <input type="checkbox" checked={individualSalesEnabled} onChange={(e) => setIndividualSalesEnabled(e.target.checked)} />
-          Individual sales enabled
+          Singles enabled (public single-vial sales)
         </label>
         <label className="flex items-center gap-2 text-[13px] text-white mb-3">
           <input type="checkbox" checked={manualOverride} onChange={(e) => setManualOverride(e.target.checked)} />

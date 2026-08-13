@@ -49,7 +49,7 @@ const SELL_UNIT_LABEL: Record<string, string> = {
   CASE_STANDARD: 'Standard Case',
   CASE_SPA: 'SPA Case',
   CASE_BULK: 'Bulk',
-  INDIVIDUAL_VIAL: 'Individual Vial',
+  INDIVIDUAL_VIAL: 'Single Vial',
 }
 
 function priceForSellUnit(product: CorrectionData['product'], sellUnit: string): number | null {
@@ -206,7 +206,7 @@ export function SellUnitCorrectionDialog({ invoiceId, itemId, onClose }: Props) 
           {!data.product.individualSalesEnabled && !individualAlreadyListed && (
             <label className="flex items-center gap-2 text-[12px] text-white/70 mt-2">
               <input type="checkbox" checked={individualOverride} onChange={(e) => setIndividualOverride(e.target.checked)} />
-              Override: allow Individual Vial for this historical line (individual sales are otherwise disabled for this product)
+              Override: allow Single Vial for this historical line (single vial sales are otherwise disabled for this product)
             </label>
           )}
           <p className="text-white mt-2">Units per sell unit: {proposedUnitsPerSellUnit}</p>

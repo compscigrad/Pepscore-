@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { calculateSuggestedPricing, getEffectivePrice } from './engine'
+import { calculateSuggestedPricing, getEffectivePrice, calculateBulkTierPrices } from './engine'
 
 describe('calculateSuggestedPricing', () => {
   // 2026-08-12 pricing revision pass #4: Standard/SPA now use the new
@@ -110,5 +110,38 @@ describe('getEffectivePrice', () => {
     const afterCostChange = { ...beforeCostChange, ...calculateSuggestedPricing(200) }
     expect(afterCostChange.suggestedStandardCasePrice).not.toBe(beforeCostChange.suggestedStandardCasePrice)
     expect(getEffectivePrice(afterCostChange, 'STANDARD')).toBe(775)
+  })
+})
+
+describe('calculateBulkTierPrices', () => {
+  // 2026-08-13 admin Product Master addendum -- the public Standard-pricing
+  // bulk tiers (5/8/10/15% off Storefront Case), always derived from
+  // Storefront Case, never SPA.
+  it('computes all four tiers as simple percent-off Storefront Case', () => {
+    const result = calculateBulkTierPrices(1000)
+    expect(result.five).toBe(950)
+    expect(result.eight).toBe(920)
+    expect(result.ten).toBe(900)
+    expect(result.fifteen).toBe(850)
+  })
+
+  it('rounds to the nearest cent for a non-round Storefront Case price', () => {
+    const result = calculateBulkTierPrices(399)
+    expect(result.five).toBe(379.05)
+    expect(result.eight).toBe(367.08)
+    expect(result.ten).toBe(359.1)
+    expect(result.fifteen).toBe(339.15)
+  })
+
+  it('returns all-null when there is no Storefront Case price to discount from -- never fabricates a value', () => {
+    const result = calculateBulkTierPrices(null)
+    expect(result).toEqual({ five: null, eight: null, ten: null, fifteen: null })
+  })
+
+  it('each tier is strictly cheaper than the one before it (5% > 8% > 10% > 15% off)', () => {
+    const result = calculateBulkTierPrices(500)
+    expect(result.five!).toBeGreaterThan(result.eight!)
+    expect(result.eight!).toBeGreaterThan(result.ten!)
+    expect(result.ten!).toBeGreaterThan(result.fifteen!)
   })
 })

@@ -10,6 +10,7 @@
 import { prisma } from '@/lib/prisma'
 import { listInventoryOverview, type InventoryOverviewRow } from '@/lib/adminInventory'
 import { resolveProductImage, PRODUCT_FALLBACK_IMAGE } from '@/lib/storefront/productImages'
+import { getEffectivePrice, calculateBulkTierPrices, type BulkTierPrices } from '@/lib/pricing/engine'
 
 export type PricingSourceStatus = 'NEEDS_REVIEW' | 'MANUAL_OVERRIDE' | 'FORMULA_DERIVED'
 
@@ -33,6 +34,19 @@ export interface ProductMasterRow extends InventoryOverviewRow {
   pricingSourceStatus: PricingSourceStatus
   lastPriceUpdateAt: Date | null
   lastInventoryUpdateAt: Date | null
+  // 2026-08-13 (admin master price table addendum) -- the authoritative
+  // Single Vial price shown to admin REGARDLESS of whether public Singles
+  // sales are enabled, unlike InventoryOverviewRow.effectiveIndividualPrice
+  // (which the plain Inventory page deliberately gates on
+  // individualSalesEnabled for its own "Stored — disabled" display
+  // convention). Null means no valid price has ever been set -- never
+  // fabricated.
+  singleVialPrice: number | null
+  // Public Standard-pricing bulk tiers (5/8/10/15% off Storefront Case),
+  // always computed fresh -- never derived from SPA, never independently
+  // stored. Null across the board when there's no Storefront Case price to
+  // discount from.
+  bulkTiers: BulkTierPrices
 }
 
 // Pure derivations, exported for unit testing without a database (mirrors
@@ -77,6 +91,8 @@ export async function listProductMasterRows(): Promise<ProductMasterRow[]> {
       pricingSourceStatus: derivePricingSourceStatus({ needsPricingReview: row.needsPricingReview, manualPricingOverride: product.manualPricingOverride }),
       lastPriceUpdateAt: lastPriceUpdateByProduct.get(product.id) ?? product.lastPricingReviewAt,
       lastInventoryUpdateAt: lastInventoryUpdateByProduct.get(product.id) ?? null,
+      singleVialPrice: getEffectivePrice(product, 'INDIVIDUAL'),
+      bulkTiers: calculateBulkTierPrices(row.effectiveStandardPrice),
     }
   })
 }

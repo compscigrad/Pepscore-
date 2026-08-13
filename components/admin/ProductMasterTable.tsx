@@ -2,24 +2,26 @@
 
 // Admin -> Catalog -> Product Master: the one "see every product and every
 // pricing/status field in one place" view (2026-08-12 admin optimization
-// sprint). Reads from lib/adminProductMaster.ts (itself built on the same
-// listInventoryOverview() the existing Inventory page uses -- no second
-// catalog query). Every write here goes through the same two routes the
-// existing Inventory detail page already uses (/pricing for pricingStatus
-// and individualSalesEnabled, /actions for backorderEnabled), then
-// router.refresh() -- no new API surface, per the "don't duplicate
-// existing systems" instruction. Full field-by-field editing stays on the
-// existing /admin/inventory/[id] detail page; this view links there rather
-// than re-implementing that editor.
+// sprint; master price-table columns + Single Vial terminology added
+// 2026-08-13). Reads from lib/adminProductMaster.ts (itself built on the
+// same listInventoryOverview() the existing Inventory page uses -- no
+// second catalog query, no second pricing screen). Every write here goes
+// through the same two routes the existing Inventory detail page already
+// uses (/pricing for pricingStatus/individualSalesEnabled, /actions for
+// backorderEnabled), then router.refresh() -- no new API surface. Full
+// field-by-field editing stays on the existing /admin/inventory/[id]
+// detail page; this view links there rather than re-implementing that editor.
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { ProductMasterRow, PricingSourceStatus } from '@/lib/adminProductMaster'
 import { PRICING_SOURCE_LABEL } from '@/lib/adminProductMaster'
 
-function formatCurrency(n: number | null): string {
+// Compact whole-dollar display when the authoritative price has no cents,
+// full cents when it does (spec #9) -- applied to every price column here.
+function money(n: number | null): string {
   if (n === null) return '—'
-  return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  return Number.isInteger(n) ? `$${n.toLocaleString('en-US')}` : `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 function formatDate(d: Date | string | null): string {
@@ -37,6 +39,10 @@ const PRICING_SOURCE_STYLE: Record<PricingSourceStatus, string> = {
   FORMULA_DERIVED: 'bg-white/5 text-white/50',
 }
 
+// Sticky identity-column background -- solid (not translucent) so scrolled
+// content never bleeds through underneath the frozen columns.
+const STICKY_CELL = 'sticky z-10 bg-[#121212]'
+
 type FilterKey =
   | 'ALL'
   | 'LIVE'
@@ -51,13 +57,15 @@ type FilterKey =
   | 'OUT_OF_STOCK'
   | 'LOW_STOCK'
 
+// Labels use the current "Single Vial"/"Singles" terminology (2026-08-13);
+// the FilterKey identifiers themselves are internal and unchanged.
 const FILTER_LABEL: Record<FilterKey, string> = {
   ALL: 'All',
   LIVE: 'Live',
   ARCHIVED: 'Archived',
   CASE_ENABLED: 'Case Enabled',
-  INDIVIDUAL_ENABLED: 'Individual Enabled',
-  INDIVIDUAL_HIDDEN: 'Individual Hidden',
+  INDIVIDUAL_ENABLED: 'Singles Enabled',
+  INDIVIDUAL_HIDDEN: 'Singles Hidden',
   BACKORDER_ENABLED: 'Backorder Enabled',
   MISSING_IMAGE: 'Missing Image',
   MISSING_PRICE: 'Missing Price',
@@ -83,16 +91,17 @@ function matchesFilter(row: ProductMasterRow, filter: FilterKey): boolean {
   }
 }
 
-type SortKey = 'NAME' | 'CATEGORY' | 'STATUS' | 'WHOLESALE' | 'STANDARD' | 'SPA' | 'INDIVIDUAL' | 'INVENTORY' | 'UPDATED'
+type SortKey = 'NAME' | 'CATEGORY' | 'STATUS' | 'COST' | 'STANDARD' | 'SPA' | 'SINGLE_VIAL' | 'INVENTORY' | 'UPDATED'
 
+// NAME first and default (spec #1: alphabetical Product Name A-Z by default).
 const SORT_LABEL: Record<SortKey, string> = {
   NAME: 'Name',
   CATEGORY: 'Category',
   STATUS: 'Active / Archived',
-  WHOLESALE: 'Wholesale Cost',
-  STANDARD: 'Standard Price',
+  COST: 'Cost',
+  STANDARD: 'Storefront Case',
   SPA: 'SPA Price',
-  INDIVIDUAL: 'Individual Price',
+  SINGLE_VIAL: 'Single Vial Price',
   INVENTORY: 'Inventory',
   UPDATED: 'Last Updated',
 }
@@ -102,10 +111,10 @@ function sortValue(row: ProductMasterRow, key: SortKey): string | number {
     case 'NAME': return row.product.name.toLowerCase()
     case 'CATEGORY': return row.product.category.toLowerCase()
     case 'STATUS': return row.archived ? 1 : 0
-    case 'WHOLESALE': return row.product.supplierCaseCost ?? -1
+    case 'COST': return row.product.supplierCaseCost ?? -1
     case 'STANDARD': return row.effectiveStandardPrice ?? -1
     case 'SPA': return row.effectiveSpaPrice ?? -1
-    case 'INDIVIDUAL': return row.effectiveIndividualPrice ?? -1
+    case 'SINGLE_VIAL': return row.singleVialPrice ?? -1
     case 'INVENTORY': return row.availableUnits ?? -1
     case 'UPDATED': {
       const latest = [row.lastPriceUpdateAt, row.lastInventoryUpdateAt, row.product.updatedAt].filter(Boolean) as (Date | string)[]
@@ -159,6 +168,11 @@ export function ProductMasterTable({ rows }: { rows: ProductMasterRow[] }) {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
+    // Default sort stays alphabetical by Product Name (spec #1) unless the
+    // admin explicitly picks something else -- archived rows are never
+    // excluded here, only by the ARCHIVED/LIVE filter (spec: "Archived
+    // products should remain visible in the full master list unless
+    // filtered out").
     const base = rows.filter((row) => {
       if (q && !`${row.product.name} ${row.product.size} ${row.product.sku ?? ''} ${row.product.category}`.toLowerCase().includes(q)) return false
       return matchesFilter(row, filter)
@@ -200,16 +214,26 @@ export function ProductMasterTable({ rows }: { rows: ProductMasterRow[] }) {
     }
   }
 
-  async function handleToggleIndividualPublic(row: ProductMasterRow) {
+  async function handleToggleSingles(row: ProductMasterRow) {
     const willEnable = !row.individualPublicEnabled
     if (willEnable) {
-      const message = `Make Individual Vial sales PUBLIC for "${row.product.name}" (${row.product.size})? It will immediately become purchasable by the vial on the storefront at the currently stored individual price.`
+      // Client-side pre-check for instant feedback (spec #12: "block public
+      // activation and explain why") -- the server enforces the same
+      // invariant authoritatively (SinglesRequiresPriceError in
+      // lib/pricing/service.ts), so this is a UX nicety, not the real
+      // boundary; a stale client state still gets the same rejection back
+      // from the API if this check were somehow bypassed.
+      if (row.singleVialPrice === null) {
+        setRowError({ id: row.product.id, message: `Cannot enable public Single Vial sales -- no valid Single Vial price is set for "${row.product.name}" (${row.product.size}) yet. Set a price first.` })
+        return
+      }
+      const message = `Make Single Vial sales PUBLIC for "${row.product.name}" (${row.product.size})? It will immediately become purchasable by the vial on the storefront at the currently stored price of ${money(row.singleVialPrice)}.`
       if (!window.confirm(message)) return
     }
     setBusyId(row.product.id)
     setRowError(null)
     try {
-      await patchPricing(row.product.id, { individualSalesEnabled: willEnable, reason: `Toggled from Product Master (individual vial ${willEnable ? 'enabled' : 'hidden'})` })
+      await patchPricing(row.product.id, { individualSalesEnabled: willEnable, reason: `Toggled from Product Master (single vial ${willEnable ? 'enabled' : 'hidden'})` })
       router.refresh()
     } catch (err) {
       setRowError({ id: row.product.id, message: err instanceof Error ? err.message : 'Update failed' })
@@ -237,7 +261,7 @@ export function ProductMasterTable({ rows }: { rows: ProductMasterRow[] }) {
       <div className="p-6 border-b border-white/10 flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="font-heading text-[17px] font-bold text-white">Product Master</h2>
-          <p className="text-[12px] text-white/50 mt-0.5">{filtered.length} of {rows.length} shown</p>
+          <p className="text-[12px] text-white/50 mt-0.5">{filtered.length} of {rows.length} shown · Cost &amp; SPA visible to admin only</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <input
@@ -271,12 +295,20 @@ export function ProductMasterTable({ rows }: { rows: ProductMasterRow[] }) {
         </div>
       </div>
 
-      {/* Desktop dense table */}
+      {/* Desktop master price table -- required column order (spec #4):
+          Archive | Singles | Product | Cost | Storefront Case | SPA |
+          Single Vial | 5% | 8% | 10% | 15%, then secondary operational
+          columns. Archive/Singles/Product are sticky so they stay visible
+          while scrolling through the pricing columns on a narrower desktop
+          window (spec #22). */}
       <div className="hidden lg:block overflow-x-auto">
-        <table className="w-full text-[13px]">
+        <table className="w-full text-[13px] border-separate border-spacing-0">
           <thead>
             <tr className="border-b border-white/10">
-              {['Product', 'Category', 'Status', 'Wholesale', 'SPA', 'Standard', 'Individual', 'Source', 'Case', 'Vial', 'Backorder', 'Image', 'Inventory', 'Updated', ''].map((h) => (
+              <th className={`${STICKY_CELL} left-0 text-left font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 px-3 py-3 whitespace-nowrap border-b border-white/10`}>Archive</th>
+              <th className={`${STICKY_CELL} left-[76px] text-left font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 px-3 py-3 whitespace-nowrap border-b border-white/10`}>Singles</th>
+              <th className={`${STICKY_CELL} left-[152px] text-left font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 px-3 py-3 whitespace-nowrap border-b border-white/10 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.4)]`}>Product</th>
+              {['Cost', 'Storefront Case', 'SPA', 'Single Vial', '5%', '8%', '10%', '15%', 'Category', 'Source', 'Backorder', 'Image', 'Inventory', 'Updated', ''].map((h) => (
                 <th key={h} className="text-left font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 px-3 py-3 whitespace-nowrap">
                   {h}
                 </th>
@@ -285,49 +317,64 @@ export function ProductMasterTable({ rows }: { rows: ProductMasterRow[] }) {
           </thead>
           <tbody>
             {filtered.map((row) => (
-              <tr key={row.product.id} className="border-b border-white/10 hover:bg-white/[0.02] align-top">
-                <td className="px-3 py-3">
-                  <Link href={`/admin/inventory/${row.product.id}`} className="font-semibold text-white hover:text-gold-dark hover:underline">
-                    {row.product.name}
+              <tr key={row.product.id} className="border-b border-white/10 hover:bg-white/[0.02] align-top group">
+                {/* Archive */}
+                <td className={`${STICKY_CELL} left-0 px-3 py-3 border-b border-white/10 group-hover:bg-[#161616]`}>
+                  <input
+                    type="checkbox"
+                    checked={row.archived}
+                    disabled={busyId === row.product.id}
+                    onChange={() => handleToggleArchive(row)}
+                    aria-label={row.archived ? `Reactivate ${row.product.name}` : `Archive ${row.product.name}`}
+                    className="w-4 h-4 accent-red-400 cursor-pointer disabled:opacity-40"
+                  />
+                </td>
+                {/* Singles */}
+                <td className={`${STICKY_CELL} left-[76px] px-3 py-3 border-b border-white/10 group-hover:bg-[#161616]`}>
+                  <input
+                    type="checkbox"
+                    checked={row.individualPublicEnabled}
+                    disabled={busyId === row.product.id}
+                    onChange={() => handleToggleSingles(row)}
+                    aria-label={row.individualPublicEnabled ? `Disable public Single Vial sales for ${row.product.name}` : `Enable public Single Vial sales for ${row.product.name}`}
+                    className="w-4 h-4 accent-gold cursor-pointer disabled:opacity-40"
+                    title={row.individualStoredInternal ? 'Single Vial price stored, not currently public' : undefined}
+                  />
+                </td>
+                {/* Product */}
+                <td className={`${STICKY_CELL} left-[152px] px-3 py-3 border-b border-white/10 group-hover:bg-[#161616] shadow-[4px_0_8px_-4px_rgba(0,0,0,0.4)]`}>
+                  <Link href={`/admin/inventory/${row.product.id}`} className="font-semibold text-white hover:text-gold-dark hover:underline whitespace-nowrap">
+                    {row.product.name} — {row.product.size}
                   </Link>
-                  <div className="text-white/50 text-[12px]">{row.product.size} · {row.product.sku ?? 'no SKU'}</div>
-                  {rowError?.id === row.product.id && <div className="text-[11px] text-red-400 mt-1">{rowError.message}</div>}
+                  <div className="text-white/50 text-[12px] whitespace-nowrap">{row.product.sku ?? 'no SKU'}</div>
+                  {rowError?.id === row.product.id && <div className="text-[11px] text-red-400 mt-1 max-w-[220px] whitespace-normal">{rowError.message}</div>}
                 </td>
-                <td className="px-3 py-3 text-white/60 whitespace-nowrap">{row.product.category}</td>
-                <td className="px-3 py-3">
-                  {row.archived ? <Pill label="Archived" className="bg-red-400/10 text-red-300" /> : <Pill label="Live" className="bg-green-400/10 text-green-300" />}
-                </td>
-                <td className="px-3 py-3 whitespace-nowrap text-white/70">{formatCurrency(row.product.supplierCaseCost)}</td>
+                {/* Cost -- admin-only, never exposed publicly */}
+                <td className="px-3 py-3 whitespace-nowrap text-white/70">{money(row.product.supplierCaseCost)}</td>
+                {/* Storefront Case -- with actual units-per-case, never assumed */}
                 <td className="px-3 py-3 whitespace-nowrap">
-                  <span className={row.spaInvariantViolated ? 'text-red-400 font-bold' : ''}>{formatCurrency(row.effectiveSpaPrice)}</span>
+                  {money(row.effectiveStandardPrice)}
+                  {row.product.unitsPerCase !== null && <div className="text-[10px] text-white/40">{row.product.unitsPerCase}/case</div>}
+                </td>
+                {/* SPA -- admin-only */}
+                <td className="px-3 py-3 whitespace-nowrap">
+                  <span className={row.spaInvariantViolated ? 'text-red-400 font-bold' : ''}>{money(row.effectiveSpaPrice)}</span>
                   {row.spaInvariantViolated && <div className="text-[10px] font-bold text-red-400 uppercase tracking-wide">SPA ≥ Standard</div>}
                 </td>
-                <td className="px-3 py-3 whitespace-nowrap">{formatCurrency(row.effectiveStandardPrice)}</td>
+                {/* Single Vial -- shown regardless of Singles state */}
                 <td className="px-3 py-3 whitespace-nowrap">
-                  {row.individualPublicEnabled ? formatCurrency(row.effectiveIndividualPrice)
-                    : row.individualStoredInternal ? <span className="text-[11px] text-white/50 italic">Stored — hidden</span>
-                    : '—'}
+                  {row.singleVialPrice !== null ? money(row.singleVialPrice) : <span className="text-[11px] text-amber-300/80 italic">Needs Price</span>}
+                  {row.singleVialPrice !== null && !row.individualPublicEnabled && <div className="text-[10px] text-white/40">hidden</div>}
                 </td>
+                {/* Bulk tiers -- always derived from Storefront Case, never SPA, never independently editable */}
+                <td className="px-3 py-3 whitespace-nowrap text-white/70">{money(row.bulkTiers.five)}</td>
+                <td className="px-3 py-3 whitespace-nowrap text-white/70">{money(row.bulkTiers.eight)}</td>
+                <td className="px-3 py-3 whitespace-nowrap text-white/70">{money(row.bulkTiers.ten)}</td>
+                <td className="px-3 py-3 whitespace-nowrap text-white/70">{money(row.bulkTiers.fifteen)}</td>
+                {/* Secondary operational columns */}
+                <td className="px-3 py-3 text-white/60 whitespace-nowrap">{row.product.category}</td>
                 <td className="px-3 py-3">
                   <Pill label={PRICING_SOURCE_LABEL[row.pricingSourceStatus]} className={PRICING_SOURCE_STYLE[row.pricingSourceStatus]} />
-                </td>
-                <td className="px-3 py-3">
-                  {/* Case enablement is derived from whether an active
-                      Standard Case price is set, not a standalone boolean --
-                      setting/clearing that price requires the full pricing
-                      editor (a $0 case price is meaningfully different from
-                      "no case price"), so this is a status indicator, not a
-                      quick toggle. */}
-                  {row.caseEnabled ? <Pill label="On" className="bg-green-400/10 text-green-300" /> : <Pill label="Off" className="bg-white/5 text-white/40" />}
-                </td>
-                <td className="px-3 py-3">
-                  <button
-                    disabled={busyId === row.product.id}
-                    onClick={() => handleToggleIndividualPublic(row)}
-                    className={`text-[11px] font-heading font-bold uppercase tracking-wide disabled:opacity-40 ${row.individualPublicEnabled ? 'text-green-300' : 'text-white/50 hover:text-gold'}`}
-                  >
-                    {row.individualPublicEnabled ? 'Public' : row.individualStoredInternal ? 'Hidden' : 'Off'}
-                  </button>
                 </td>
                 <td className="px-3 py-3">
                   <button
@@ -344,13 +391,6 @@ export function ProductMasterTable({ rows }: { rows: ProductMasterRow[] }) {
                 <td className="px-3 py-3 whitespace-nowrap text-white/60">{row.availableUnits ?? '—'}</td>
                 <td className="px-3 py-3 whitespace-nowrap text-white/40 text-[12px]">{formatDate(row.lastPriceUpdateAt)}</td>
                 <td className="px-3 py-3 text-right whitespace-nowrap">
-                  <button
-                    disabled={busyId === row.product.id}
-                    onClick={() => handleToggleArchive(row)}
-                    className="text-[11px] font-heading font-bold uppercase tracking-wide text-white/70 hover:text-red-300 disabled:opacity-40 mr-3"
-                  >
-                    {row.archived ? 'Reactivate' : 'Archive'}
-                  </button>
                   <Link href={`/admin/inventory/${row.product.id}`} className="text-gold font-heading font-bold text-[12px] hover:text-gold-dark">
                     Edit →
                   </Link>
@@ -362,32 +402,46 @@ export function ProductMasterTable({ rows }: { rows: ProductMasterRow[] }) {
         {filtered.length === 0 && <div className="text-center py-16 text-white/50">No products match this filter.</div>}
       </div>
 
-      {/* Compact card layout below lg -- Product Master's column count doesn't
-          fit a legible table on tablet/phone; horizontal scroll is reserved
-          for the desktop table above, not forced here. */}
+      {/* Compact card layout below lg -- expandable-row equivalent for
+          tablet/phone (spec #23): identity + Archive/Singles controls up
+          top (safe from accidental taps, each still confirm-gated), full
+          pricing including bulk tiers below. */}
       <div className="lg:hidden divide-y divide-white/10">
         {filtered.map((row) => (
           <div key={row.product.id} className="p-4">
             <div className="flex items-start justify-between gap-2">
               <div>
                 <Link href={`/admin/inventory/${row.product.id}`} className="font-semibold text-white hover:text-gold-dark hover:underline">
-                  {row.product.name}
+                  {row.product.name} — {row.product.size}
                 </Link>
-                <div className="text-white/50 text-[12px]">{row.product.size} · {row.product.category}</div>
+                <div className="text-white/50 text-[12px]">{row.product.category}</div>
               </div>
               {row.archived ? <Pill label="Archived" className="bg-red-400/10 text-red-300" /> : <Pill label="Live" className="bg-green-400/10 text-green-300" />}
             </div>
-            <div className="grid grid-cols-2 gap-2 mt-3 text-[12px]">
-              <div><span className="text-white/40">Wholesale</span> <span className="text-white/80">{formatCurrency(row.product.supplierCaseCost)}</span></div>
-              <div><span className="text-white/40">SPA</span> <span className={row.spaInvariantViolated ? 'text-red-400 font-bold' : 'text-white/80'}>{formatCurrency(row.effectiveSpaPrice)}</span></div>
-              <div><span className="text-white/40">Standard</span> <span className="text-white/80">{formatCurrency(row.effectiveStandardPrice)}</span></div>
-              <div><span className="text-white/40">Individual</span> <span className="text-white/80">{row.individualPublicEnabled ? formatCurrency(row.effectiveIndividualPrice) : row.individualStoredInternal ? 'Hidden' : '—'}</span></div>
+
+            <div className="flex items-center gap-5 mt-3 text-[12px]">
+              <label className="flex items-center gap-1.5 text-white/70">
+                <input type="checkbox" checked={row.archived} disabled={busyId === row.product.id} onChange={() => handleToggleArchive(row)} className="w-4 h-4 accent-red-400 disabled:opacity-40" />
+                Archive
+              </label>
+              <label className="flex items-center gap-1.5 text-white/70">
+                <input type="checkbox" checked={row.individualPublicEnabled} disabled={busyId === row.product.id} onChange={() => handleToggleSingles(row)} className="w-4 h-4 accent-gold disabled:opacity-40" />
+                Singles
+              </label>
             </div>
+
+            <div className="grid grid-cols-2 gap-2 mt-3 text-[12px]">
+              <div><span className="text-white/40">Cost</span> <span className="text-white/80">{money(row.product.supplierCaseCost)}</span></div>
+              <div><span className="text-white/40">Storefront Case</span> <span className="text-white/80">{money(row.effectiveStandardPrice)}</span></div>
+              <div><span className="text-white/40">SPA</span> <span className={row.spaInvariantViolated ? 'text-red-400 font-bold' : 'text-white/80'}>{money(row.effectiveSpaPrice)}</span></div>
+              <div><span className="text-white/40">Single Vial</span> <span className="text-white/80">{row.singleVialPrice !== null ? money(row.singleVialPrice) : 'Needs Price'}</span></div>
+            </div>
+            <p className="text-[11px] text-white/40 mt-2">
+              Bulk: 5% {money(row.bulkTiers.five)} · 8% {money(row.bulkTiers.eight)} · 10% {money(row.bulkTiers.ten)} · 15% {money(row.bulkTiers.fifteen)}
+            </p>
+
             {rowError?.id === row.product.id && <div className="text-[11px] text-red-400 mt-2">{rowError.message}</div>}
             <div className="flex items-center gap-4 mt-3">
-              <button disabled={busyId === row.product.id} onClick={() => handleToggleArchive(row)} className="text-[11px] font-heading font-bold uppercase tracking-wide text-white/70 hover:text-red-300 disabled:opacity-40">
-                {row.archived ? 'Reactivate' : 'Archive'}
-              </button>
               <Link href={`/admin/inventory/${row.product.id}`} className="text-gold font-heading font-bold text-[12px] hover:text-gold-dark">
                 Edit →
               </Link>
