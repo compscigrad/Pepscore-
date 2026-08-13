@@ -94,7 +94,7 @@ export async function Footer() {
           <div>
             <h4 className="font-heading text-[11px] font-bold tracking-[0.1em] uppercase text-[#D4AF37] mb-3">Products</h4>
             <ul className="space-y-2">
-              {['Semaglutide','Tirzepatide','Retatrutide','NAD+','Epithalon','CJC-1295 / Ipamorelin','Kisspeptin-10','GHK-Cu','PT-141'].map(p => (
+              {['Semaglutide','Tirzepatide','Retatrutide','NAD+','Epithalon','CJC-1295 / Ipamorelin','Glutathione','GHK-Cu','PT-141'].map(p => (
                 <li key={p}>
                   <Link href="/#products" className="text-[13px] text-white/60 hover:text-[#D4AF37] transition-colors">
                     {p}
