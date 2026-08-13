@@ -15,30 +15,13 @@ import Link from 'next/link'
 import type { LucideIcon } from 'lucide-react'
 import { Scale, Hourglass, Dumbbell, Layers, Flame, Bandage, Brain, HeartHandshake, Sparkles } from 'lucide-react'
 import { ScientificBackground } from './ScientificBackground'
+import { getCategoryAccent } from '@/lib/storefront/categoryAccents'
 
 interface DirectoryEntry {
   label: string
   href: string
   icon: LucideIcon
 }
-
-// Controlled jewel-tone accent rotation (2026-08-13) -- the tray/border/
-// label treatment stays entirely gold (untouched below); only the icon
-// glyph itself picks up color, cycling through 6 tones so no two adjacent
-// tiles share one. Chosen deliberately desaturated/dimensional rather than
-// neon so they read as premium accents inside a black/white/gold system,
-// not a rainbow. `glow` backs a very faint, restrained radial tint behind
-// each icon (barely visible at rest, a touch brighter on hover) -- never a
-// background-color change on the tile itself, which stays the same dark
-// engraved panel for every entry.
-const ICON_ACCENTS = [
-  { base: '#3FB6A8', hover: '#5ED4C6', glow: 'rgba(63,182,168,0.9)' }, // teal
-  { base: '#8B7FE0', hover: '#A79BF5', glow: 'rgba(139,127,224,0.9)' }, // violet
-  { base: '#4B9FDE', hover: '#6DB8ED', glow: 'rgba(75,159,222,0.9)' }, // electric blue
-  { base: '#45B37E', hover: '#5FCB96', glow: 'rgba(69,179,126,0.9)' }, // emerald
-  { base: '#BC6FBA', hover: '#D68AD3', glow: 'rgba(188,111,186,0.9)' }, // plum/magenta
-  { base: '#3FB8C9', hover: '#5ED2E2', glow: 'rgba(63,184,201,0.9)' }, // cyan
-] as const
 
 // Owner-directed merchandising priority first (docs/ProductRoadmap.md /
 // 2026-08-12 homepage sprint + revision pass #2), then the taxonomy's
@@ -107,7 +90,7 @@ export function CatalogDirectory() {
             <div className="relative flex gap-3 overflow-x-auto pb-1 [scrollbar-width:thin] snap-x snap-mandatory sm:flex-wrap sm:overflow-visible">
               {ENTRIES.map((entry, i) => {
                 const Icon = entry.icon
-                const accent = ICON_ACCENTS[i % ICON_ACCENTS.length]
+                const accent = getCategoryAccent(i)
                 return (
                   <Link
                     key={entry.label}

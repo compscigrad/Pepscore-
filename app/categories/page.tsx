@@ -12,6 +12,7 @@ import { Footer } from '@/components/storefront/Footer'
 import { CartSidebar } from '@/components/storefront/CartSidebar'
 import { MERCHANDISING_TAXONOMY } from '@/lib/storefront/merchandisingTaxonomy'
 import { breadcrumbSchema } from '@/lib/storefront/structuredData'
+import { getCategoryAccent } from '@/lib/storefront/categoryAccents'
 
 export const revalidate = 60
 
@@ -66,8 +67,14 @@ export default async function CategoriesIndexPage() {
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {categories.map((c) => {
+              {categories.map((c, i) => {
                 const Icon = c.icon
+                // Same shared palette/rotation as the homepage Catalog
+                // Directory (lib/storefront/categoryAccents.ts) -- only the
+                // icon glyph's color changes below; the icon's own box
+                // (bg/border), the card border, heading, and count label
+                // all stay exactly as gold as before.
+                const accent = getCategoryAccent(i)
                 return (
                   <Link
                     key={c.slug}
@@ -79,8 +86,16 @@ export default async function CategoriesIndexPage() {
                       style={{ background: 'radial-gradient(circle at 20% 0%, rgba(212,175,55,0.10) 0%, transparent 60%)' }}
                     />
                     <div className="relative">
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#D4AF37]/15 to-[#D4AF37]/5 border border-[#D4AF37]/25 flex items-center justify-center mb-4 text-[#D4AF37] group-hover:scale-105 transition-transform">
-                        <Icon size={22} strokeWidth={1.75} />
+                      <div
+                        className="relative w-12 h-12 rounded-xl bg-gradient-to-br from-[#D4AF37]/15 to-[#D4AF37]/5 border border-[#D4AF37]/25 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform"
+                        style={{ '--icon-accent': accent.base, '--icon-accent-hover': accent.hover } as React.CSSProperties}
+                      >
+                        <span
+                          className="absolute inset-1.5 rounded-full blur-[7px] opacity-20 group-hover:opacity-40 transition-opacity"
+                          style={{ backgroundColor: accent.glow }}
+                          aria-hidden="true"
+                        />
+                        <Icon size={22} strokeWidth={1.75} className="relative text-[var(--icon-accent)] group-hover:text-[var(--icon-accent-hover)] transition-colors" />
                       </div>
                       <h2 className="font-heading text-[17px] font-bold text-white mb-1.5 group-hover:text-[#E8C84A] transition-colors">{c.label}</h2>
                       <p className="text-[12.5px] text-white/50 leading-relaxed mb-3">{c.description}</p>

@@ -21,6 +21,7 @@ const SIZE_STYLES: Record<BrandLockupSize, {
   iconClass: string
   gapClass: string
   pepscoreClass: string
+  tmClass: string
   labClass: string
   labRowGapClass: string
   labRowMarginClass: string
@@ -30,6 +31,7 @@ const SIZE_STYLES: Record<BrandLockupSize, {
     iconClass: 'w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10',
     gapClass: 'gap-2 sm:gap-2.5',
     pepscoreClass: 'text-[13px] sm:text-[15px] md:text-[17px]',
+    tmClass: 'text-[6px] sm:text-[7px] md:text-[8px]',
     labClass: 'text-[8px] sm:text-[9px] md:text-[10px]',
     labRowGapClass: 'gap-1.5',
     labRowMarginClass: 'mt-1',
@@ -39,6 +41,7 @@ const SIZE_STYLES: Record<BrandLockupSize, {
     iconClass: 'w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-28 lg:h-28',
     gapClass: 'gap-4 sm:gap-5 lg:gap-6',
     pepscoreClass: 'text-[32px] sm:text-[40px] md:text-[48px] lg:text-[56px]',
+    tmClass: 'text-[11px] sm:text-[13px] md:text-[15px] lg:text-[17px]',
     labClass: 'text-[13px] sm:text-[15px] md:text-[17px] lg:text-[19px]',
     labRowGapClass: 'gap-3 sm:gap-4',
     labRowMarginClass: 'mt-2 sm:mt-2.5',
@@ -60,6 +63,12 @@ export function BrandLockup({ size = 'navbar', className = '' }: BrandLockupProp
       <span className="flex flex-col">
         <span className={`font-heading ${s.pepscoreClass} font-extrabold tracking-[0.08em] leading-none text-white whitespace-nowrap`}>
           PEPSCORE
+          {/* Tailwind's preflight already resets sup to a raised, reduced-
+              size inline element (75% size, top:-0.5em) -- the explicit
+              tmClass below overrides that relative sizing with fixed steps
+              per breakpoint so the mark stays a deliberately tiny, subtle
+              accent rather than scaling 1:1 with PEPSCORE's own clamp. */}
+          <sup className={`${s.tmClass} ml-0.5 font-bold text-white/70`}>™</sup>
         </span>
         <span className={`flex items-center ${s.labRowGapClass} ${s.labRowMarginClass}`}>
           <span className="h-px flex-1 bg-[#D4AF37]" />
