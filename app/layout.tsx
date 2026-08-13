@@ -76,7 +76,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   }
 
   return (
-    <ClerkProvider appearance={clerkAppearance}>
+    // signInUrl/signUpUrl are REQUIRED (2026-08-13 RUO-gate-bypass fix) --
+    // explicit, not relying on Clerk's Next.js route auto-detection, which
+    // a prior comment in app/sign-up/[[...sign-up]]/page.tsx incorrectly
+    // assumed was already working. Confirmed live via Playwright against a
+    // real Clerk instance, not assumed from reading the code: without
+    // signUpUrl here, the dedicated /sign-in page's own <SignIn>
+    // component's "Don't have an account? Sign up" link resolved to
+    // Clerk's externally-hosted Account Portal
+    // (https://<instance>.accounts.dev/sign-up) instead of this app's own
+    // protected /sign-up route. Note this does NOT cover
+    // <SignInButton mode="modal">'s own internal "Sign up" transition --
+    // see components/storefront/ClerkAuthButtons.tsx for why that needed a
+    // separate fix (mode="redirect" instead of "modal").
+    <ClerkProvider appearance={clerkAppearance} signInUrl="/sign-in" signUpUrl="/sign-up">
       <html lang="en">
         <body>
           <AttributionCapture />

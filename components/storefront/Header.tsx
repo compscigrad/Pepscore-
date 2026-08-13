@@ -18,9 +18,6 @@ const ClerkAuthButtons = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 const MobileClientSignIn = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
   ? dynamic(() => import('./ClerkAuthButtons').then(m => ({ default: m.MobileClientSignIn })), { ssr: false })
   : null
-const ClientSignInCoachMark = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
-  ? dynamic(() => import('./ClientSignInCoachMark').then(m => ({ default: m.ClientSignInCoachMark })), { ssr: false })
-  : null
 
 export function Header() {
   const router = useRouter()
@@ -156,7 +153,6 @@ export function Header() {
 
             {/* Auth buttons — client-only to avoid SSR/prerender issues with Clerk */}
             {ClerkAuthButtons && <ClerkAuthButtons />}
-            {ClientSignInCoachMark && <ClientSignInCoachMark />}
 
             {/* Mobile hamburger */}
             <button
