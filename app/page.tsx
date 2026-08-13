@@ -71,10 +71,10 @@ export default async function HomePage() {
           />
           <div className="max-w-[1200px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-14 items-center relative">
             <div>
-              <p className="font-heading text-[28px] font-extrabold tracking-[-0.01em] leading-none mb-6">
-                <span className="text-white">Pepscore</span>{' '}
-                <span className="bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] bg-clip-text text-transparent">Lab</span>
-              </p>
+              {/* The "Pepscore Lab" eyebrow that used to sit here was
+                  removed 2026-08-12 -- redundant with the wordmark already
+                  in the header immediately above. The hero now opens
+                  directly on the Holistic Research Peptides badge. */}
               <div className="inline-block bg-[#D4AF37]/10 border border-[#D4AF37]/35 rounded-full px-4 py-1.5 font-heading text-[11px] font-bold tracking-[0.12em] uppercase mb-5 text-[#D4AF37]">
                 Holistic Research Peptides
               </div>
@@ -84,7 +84,7 @@ export default async function HomePage() {
                 Serious Research
               </h1>
               <p className="text-[17px] font-light text-white/60 leading-[1.7] mb-9 max-w-[480px]">
-                Pepscore Lab supplies research-grade peptides produced through a certified pharmaceutical laboratory under GMP-compliant manufacturing standards and verified to ≥98% purity by independent third-party labs. Our catalog covers the compound classes serious research programs rely on — from metabolic regulators to longevity and cognitive research peptides — backed by consistent lot-to-lot quality and responsive researcher support.
+                Pepscore Lab supplies pharmaceutical-grade research peptides produced through a certified pharmaceutical laboratory under rigorous manufacturing and quality-control standards for research use only, independently verified to ≥98% purity by third-party labs. Our catalog covers the compound classes serious research programs rely on — from metabolic regulators to longevity and cognitive research peptides — backed by consistent lot-to-lot quality and responsive researcher support.
               </p>
               <div className="flex gap-4 flex-wrap">
                 <Link
@@ -112,16 +112,18 @@ export default async function HomePage() {
               </div>
             </div>
 
-            {/* Hero image -- asset swapped 2026-08-12 (newPShero.png,
-                1672x941, a wider composition than the previous square
-                crop); real width/height passed through so next/image
-                sizes it at its true 16:9-ish ratio instead of distorting
-                it into the old square box. Float animation (animate-
-                float, app/globals.css) preserved unchanged -- this is an
-                asset swap, not a motion change. */}
+            {/* Hero image -- re-swapped 2026-08-12 (owner-corrected
+                newPShero.png, same 1672x941 dimensions as the prior pass so
+                no aspect-ratio change is needed). Saved under a new
+                versioned filename (pepscore-hero-v2.png, not the previous
+                hero-vials-new.png) specifically so this deploy can never be
+                served from a stale CDN/browser cache still holding the old
+                file's bytes under that same old name. Float animation
+                (animate-float, app/globals.css) preserved unchanged --
+                this is an asset swap, not a motion change. */}
             <div className="flex justify-center items-center">
               <Image
-                src="/images/hero-vials-new.png"
+                src="/images/pepscore-hero-v2.png"
                 alt="Pepscore Lab Research Peptide Collection"
                 width={1672}
                 height={941}
@@ -317,11 +319,18 @@ export default async function HomePage() {
           />
           <div className="max-w-[1200px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-[72px] items-center relative">
             <div className="relative">
-              {/* Asset swapped 2026-08-12 (newPShero2.png / mission-vials.png)
-                  -- deliberately stationary, no animate-float, distinct from
-                  the hero's motion treatment per the owner's explicit
-                  direction that these two placements should feel different. */}
-              <Image src="/images/mission-vials.png" alt="Pepscore Lab Peptide Collection" width={1672} height={941} className="w-full h-auto rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.5)]" />
+              {/* Re-swapped 2026-08-12 (owner-corrected newPShero2.png,
+                  saved under a new versioned filename -- pepscore-mission-
+                  v2.png -- for the same cache-busting reason as the hero
+                  image above). This corrected file's real dimensions
+                  (1536x1024) differ from the previous mission-vials.png's
+                  1672x941, so width/height were updated to match -- getting
+                  this wrong would have next/image silently stretching the
+                  new artwork into the old ratio. Deliberately stationary,
+                  no animate-float, distinct from the hero's motion
+                  treatment per the owner's explicit direction that these
+                  two placements should feel different. */}
+              <Image src="/images/pepscore-mission-v2.png" alt="Pepscore Lab Peptide Collection" width={1536} height={1024} className="w-full h-auto rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.5)]" />
               <div className="absolute inset-[-14px_-14px_14px_14px] border border-[#D4AF37]/30 rounded-2xl -z-10 hidden md:block" />
             </div>
             <div>
@@ -329,14 +338,14 @@ export default async function HomePage() {
               <h2 className="font-heading text-[clamp(26px,4vw,38px)] font-bold text-white mb-2">Holistic Peptides Rooted in Science</h2>
               <div className="w-11 h-[3px] bg-gradient-to-r from-[#F6D365] via-[#D4AF37] to-[#C99A20] mb-6 rounded-full" />
               <p className="text-[15px] text-white/65 leading-[1.8] mb-4">
-                Pepscore Lab provides pharmaceutical-grade research compounds produced through a certified pharmaceutical laboratory and supported by GMP-compliant manufacturing standards and third-party testing. We focus on delivering reliable, consistently produced lyophilized compounds for research use only.
+                Our mission is to make high-quality research compounds more accessible by pairing pharmaceutical-grade quality with highly competitive pricing. We are committed to offering exceptional value without compromising the standards of the products we supply, supported by a price-matching guarantee designed to help researchers obtain the compounds they need at a fair market price. Our products are produced through a certified pharmaceutical laboratory under rigorous manufacturing and quality-control standards. We focus on delivering reliable, consistently produced lyophilized compounds for research use only.
               </p>
               <p className="text-[15px] text-white/65 leading-[1.8] mb-6">
-                Our catalog spans the most studied peptide classes — from metabolic regulators like Semaglutide and Tirzepatide, to longevity compounds like Epithalon and NAD+. Each product is produced under GMP-compliant manufacturing standards and independently verified before it reaches you.
+                Our catalog spans the most studied peptide classes — from metabolic regulators like Semaglutide and Tirzepatide to longevity compounds like Epithalon and NAD+. Each product is produced through a certified pharmaceutical laboratory under rigorous manufacturing and quality-control standards and independently verified before it reaches you.
               </p>
               <div className="space-y-3.5">
                 {[
-                  { icon:'🏅', title:'Research-Grade Quality', body:'All compounds synthesized to ≥98% purity, verified by HPLC and mass spectrometry.' },
+                  { icon:'🏅', title:'Pharmaceutical-Grade Quality', body:'All RUO compounds synthesized to ≥98% purity, verified by HPLC and mass spectrometry.' },
                   { icon:'🤝', title:'Researcher-First Service', body:'Dedicated support for inquiries, custom quantities, and bulk procurement needs.' },
                   { icon:'🔒', title:'Discreet & Compliant', body:'Shipped in professional packaging with full compliance documentation included.' },
                 ].map(v => (
