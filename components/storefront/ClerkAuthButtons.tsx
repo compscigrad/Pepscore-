@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import Link from 'next/link'
-import { SignedIn, SignedOut, UserButton, SignInButton, useAuth } from '@clerk/nextjs'
+import { User } from 'lucide-react'
+import { SignedIn, SignedOut, UserButton, SignInButton } from '@clerk/nextjs'
 import { trackEvent } from '@/lib/analytics/track'
 import { AnalyticsEvent } from '@/lib/analytics/events'
 
@@ -27,35 +27,6 @@ import { AnalyticsEvent } from '@/lib/analytics/events'
 // else never flashes it, short enough that someone actually pausing on
 // the control sees it without feeling like it's late.
 const HOVER_INTENT_DELAY_MS = 350
-
-// Shows an "Admin" link in the header for the signed-in admin only. The
-// admin check happens server-side via /api/admin/whoami — this component
-// never sees ADMIN_CLERK_USER_ID itself, just the resulting boolean.
-function AdminLink() {
-  const { isSignedIn } = useAuth()
-  const [isAdmin, setIsAdmin] = useState(false)
-
-  useEffect(() => {
-    // isAdmin already defaults to false, so signed-out just skips the fetch
-    // rather than setting state synchronously in the effect body.
-    if (!isSignedIn) return
-    fetch('/api/admin/whoami')
-      .then((res) => res.json())
-      .then((data) => setIsAdmin(!!data.isAdmin))
-      .catch(() => setIsAdmin(false))
-  }, [isSignedIn])
-
-  if (!isAdmin) return null
-
-  return (
-    <Link
-      href="/admin/invoices"
-      className="font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-[#D4AF37] hover:text-[#E8C84A] transition-colors"
-    >
-      Admin
-    </Link>
-  )
-}
 
 // Desktop-only hover/focus prompt (2026-08-13) -- replaces the previous
 // one-time, localStorage-dismissed-forever ClientSignInCoachMark with a
@@ -106,8 +77,9 @@ function ClientSignInWithPrompt() {
           id="client-sign-in-cta"
           onClick={() => trackEvent(AnalyticsEvent.CLIENT_SIGN_IN_CLICK)}
           aria-describedby="client-sign-in-tip"
-          className="font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/80 hover:text-[#D4AF37] transition-colors"
+          className="flex items-center gap-1.5 font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/80 hover:text-[#D4AF37] transition-colors"
         >
+          <User size={15} aria-hidden="true" />
           Client Sign In
         </button>
       </SignInButton>
@@ -126,11 +98,17 @@ function ClientSignInWithPrompt() {
   )
 }
 
+// Admin access is deliberately absent from this public storefront navbar
+// (owner spec, 2026-08-13) -- the desktop CTA here is client-facing only;
+// the sole admin entry point is the footer's own "Admin Sign In" link
+// (components/storefront/Footer.tsx), which is independent of this
+// component and untouched by this change. A signed-in admin browsing the
+// storefront in their own account sees the same UserButton as any other
+// signed-in client -- no separate admin affordance in this navbar.
 export function ClerkAuthButtons() {
   return (
     <>
       <SignedIn>
-        <AdminLink />
         <UserButton afterSignOutUrl="/" />
       </SignedIn>
       <SignedOut>
