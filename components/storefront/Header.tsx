@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { ShoppingCart, Menu, X, Search } from 'lucide-react'
@@ -21,6 +21,7 @@ const MobileClientSignIn = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 
 export function Header() {
   const router = useRouter()
+  const pathname = usePathname()
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
@@ -47,6 +48,21 @@ export function Header() {
     window.addEventListener('scroll', handler)
     return () => window.removeEventListener('scroll', handler)
   }, [])
+
+  // Next.js <Link> only scrolls to top on an actual route change -- clicking
+  // href="/" while already on "/" is a no-op for the router (same pathname,
+  // no navigation fires), so nothing scrolls. Identical on every breakpoint;
+  // it just reads as "desktop-only" because a short mobile viewport rarely
+  // scrolls far enough for the missing reset to be visible. Explicit scroll
+  // covers the already-home case; navigating in from another route still
+  // goes through Link's normal routing, which Next.js already scrolls to
+  // the top of by default.
+  function handleLogoClick(e: React.MouseEvent) {
+    if (pathname === '/') {
+      e.preventDefault()
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }
 
   return (
     <header
@@ -76,7 +92,7 @@ export function Header() {
               BrandLockup.tsx) so the footer's large closing brand mark
               reuses this exact same implementation instead of a second,
               drifting copy. */}
-          <Link href="/" className="flex-shrink-0">
+          <Link href="/" onClick={handleLogoClick} aria-label="Pepscore Lab — Back to top" className="flex-shrink-0">
             <BrandLockup size="navbar" />
           </Link>
 
