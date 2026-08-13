@@ -30,6 +30,7 @@ const SIZE_STYLES: Record<BrandLockupSize, {
   iconClass: string
   gapClass: string
   iconOffsetClass: string
+  wordmarkShiftClass: string
   pepscoreClass: string
   tmClass: string
   tmPositionClass: string
@@ -44,6 +45,11 @@ const SIZE_STYLES: Record<BrandLockupSize, {
     // Unused in navbar mode (P stays in normal flex flow) -- kept so both
     // variants share one config shape.
     iconOffsetClass: '',
+    // Navbar isn't independently centered (it sits left-aligned in normal
+    // flex flow next to the nav links), so there's no "true center" for
+    // the optical apex-alignment fix below to correct against -- only
+    // footerLarge needs this.
+    wordmarkShiftClass: '',
     pepscoreClass: 'text-[13px] sm:text-[15px] md:text-[17px]',
     tmClass: 'text-[6px] sm:text-[7px] md:text-[8px]',
     // top-[10%] (a percentage, not em/px) -- see footerLarge's own comment
@@ -59,6 +65,19 @@ const SIZE_STYLES: Record<BrandLockupSize, {
     iconClass: 'w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-28 lg:h-28',
     gapClass: 'gap-4 sm:gap-5 lg:gap-6',
     iconOffsetClass: 'mr-4 sm:mr-5 lg:mr-6',
+    // Optical apex-centering correction (2026-08-14): the footer centers
+    // the wordmark's own bounding box against the tagline's true center,
+    // but "LAB"'s tracking (letter-spacing: 0.35em, applied per-character)
+    // shifts the STRING's mathematical box center right of where the "A"
+    // glyph's own apex actually sits -- measured via the DOM Range API
+    // (real per-character bbox, not guessed) at a consistent -7.98% of
+    // LAB's own font-size across every breakpoint (13/15/17/19px), so
+    // fixed px per breakpoint tier (matching labClass's own steps) rather
+    // than a single em/% value tied to an unrelated ancestor's font-size.
+    // Applied to the whole P+wordmark wrapper (see the footerLarge return
+    // branch below) as a paint-only transform -- doesn't affect layout, so
+    // the tagline (a separate sibling, centered independently) never moves.
+    wordmarkShiftClass: 'translate-x-[1.04px] sm:translate-x-[1.2px] md:translate-x-[1.36px] lg:translate-x-[1.52px]',
     pepscoreClass: 'text-[32px] sm:text-[40px] md:text-[48px] lg:text-[56px]',
     tmClass: 'text-[11px] sm:text-[13px] md:text-[15px] lg:text-[17px]',
     // top-[10%] (2026-08-14, tuned by measurement): with the wrapper below
@@ -143,7 +162,7 @@ export function BrandLockup({ size = 'navbar', className = '' }: BrandLockupProp
   // left edge, i.e. immediately outside/left of it), so it's excluded from
   // this element's in-flow box and never pulls the measured center right.
   return (
-    <span className={`relative inline-block ${className}`}>
+    <span className={`relative inline-block ${s.wordmarkShiftClass} ${className}`}>
       {/* s.iconClass repeated here (not just on the <Image> inside) --
           without an explicit size, this absolutely-positioned wrapper's
           own default-inline box computed to zero width in testing (a
