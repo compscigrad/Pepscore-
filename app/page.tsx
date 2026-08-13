@@ -84,7 +84,7 @@ export default async function HomePage() {
                 Serious Research
               </h1>
               <p className="text-[17px] font-light text-white/60 leading-[1.7] mb-9 max-w-[480px]">
-                Pepscore Lab supplies pharmaceutical-grade research peptides produced through a certified pharmaceutical laboratory under rigorous manufacturing and quality-control standards for research use only, independently verified to ≥98% purity by third-party labs. Our catalog covers the compound classes serious research programs rely on — from metabolic regulators to longevity and cognitive research peptides — backed by consistent lot-to-lot quality and responsive researcher support.
+                Pepscore Lab supplies pharmaceutical-grade research peptides manufactured to exacting quality standards for research use only and independently verified by third-party laboratories to ≥98% purity. Our catalog spans the compound classes serious research programs rely on — from metabolic regulators to longevity and cognitive research peptides — with an emphasis on lot-to-lot consistency and responsive researcher support.
               </p>
               <div className="flex gap-4 flex-wrap">
                 <Link
@@ -346,7 +346,7 @@ export default async function HomePage() {
                 Our mission is to make high-quality research compounds more accessible by pairing pharmaceutical-grade quality with highly competitive pricing. We are committed to offering exceptional value without compromising the standards of the products we supply, supported by a price-matching guarantee designed to help researchers obtain the compounds they need at a fair market price. Our products are produced through a certified pharmaceutical laboratory under rigorous manufacturing and quality-control standards. We focus on delivering reliable, consistently produced lyophilized compounds for research use only.
               </p>
               <p className="text-[15px] text-white/65 leading-[1.8] mb-6">
-                Our catalog spans the most studied peptide classes — from metabolic regulators like Semaglutide, Tirzepatide, and Retatrutide to longevity compounds like Epithalon and NAD+. Each product is produced through a certified pharmaceutical laboratory under rigorous manufacturing and quality-control standards and independently verified before it reaches you.
+                Our catalog spans the most studied peptide classes — from metabolic regulators like Semaglutide, Tirzepatide, and Retatrutide to longevity compounds like Epithalon and NAD+. Each product is manufactured under stringent quality-control standards and independently verified before it reaches you.
               </p>
               <div className="space-y-3.5">
                 {[
