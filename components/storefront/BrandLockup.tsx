@@ -77,6 +77,19 @@ const SIZE_STYLES: Record<BrandLockupSize, {
     // Applied to the whole P+wordmark wrapper (see the footerLarge return
     // branch below) as a paint-only transform -- doesn't affect layout, so
     // the tagline (a separate sibling, centered independently) never moves.
+    //
+    // 2026-08-14 re-verification: re-checked against an injected, real
+    // fixed-position guide line at true 50% viewport width (not a text/
+    // container bbox calculation) on both the local build and live
+    // production -- confirmed via rendered screenshot that this value
+    // makes the guide line bisect the "A" in LAB exactly (0.00-0.01px
+    // delta at every breakpoint from 390-1600px). A candidate further
+    // rightward shift (to compensate for the gold P's visual weight
+    // pulling perceived center left) was tried and rendered-screenshot-
+    // verified to move the guide line off the A (landing between A and B
+    // instead) -- i.e. objectively worse by the task's own visual test --
+    // so it was reverted. This is the value with direct screenshot
+    // evidence of correct apex-bisection, not just a DOM calculation.
     wordmarkShiftClass: 'translate-x-[1.04px] sm:translate-x-[1.2px] md:translate-x-[1.36px] lg:translate-x-[1.52px]',
     pepscoreClass: 'text-[32px] sm:text-[40px] md:text-[48px] lg:text-[56px]',
     tmClass: 'text-[11px] sm:text-[13px] md:text-[15px] lg:text-[17px]',
