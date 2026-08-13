@@ -3,12 +3,12 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
 import dynamic from 'next/dynamic'
 import { ShoppingCart, Menu, X, Search } from 'lucide-react'
 import { useCartStore } from '@/lib/cart-store'
 import { trackEvent } from '@/lib/analytics/track'
 import { AnalyticsEvent } from '@/lib/analytics/events'
+import { BrandLockup } from './BrandLockup'
 
 // Loaded client-only (ssr: false) so Clerk components never run during
 // server-side prerendering, where ClerkProvider context isn't available.
@@ -57,125 +57,122 @@ export function Header() {
         scrolled ? 'border-[#D4AF37]/25 shadow-[0_4px_16px_rgba(0,0,0,0.4)]' : 'border-[#D4AF37]/15'
       }`}
     >
-      {/* gap-5 below md is a guaranteed minimum between the logo and the
-          right-actions cluster on mobile, where the desktop nav <ul> (which
-          normally fills this space) is hidden -- the gold Cart button was
-          the one crowding the "Lab" wordmark there, not the auth CTA. At
-          md+ the <ul> already provides real spacing, so gap-3 is restored
-          to avoid over-shifting anything on larger viewports. */}
-      <nav className="max-w-[1200px] mx-auto px-6 h-[72px] flex items-center justify-between gap-5 md:gap-3">
-        {/* Logo — the approved gold "P" mark (email-logo-mark.png, already
-            used across email templates) plus a two-line PEPSCORE / LAB
-            wordmark lockup (2026-08-13, matched to the owner-supplied
-            reference). logo.png itself has an opaque cream background
-            baked in and reads "Pepscore" not "Pepscore Lab", so the
-            wordmark stays native text, not an image. The LAB row's flex
-            children (rule / LAB / rule) stretch to the column's width,
-            which the browser sizes to PEPSCORE's own text width -- so the
-            rules extend to meet it with no manual width math. */}
-        <Link href="/" className="flex-shrink-0 flex items-center gap-2 sm:gap-2.5">
-          <Image
-            src="/images/email-logo-mark.png"
-            alt=""
-            width={40}
-            height={40}
-            className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10"
-            priority
-          />
-          <span className="flex flex-col">
-            <span className="font-heading text-[13px] sm:text-[15px] md:text-[17px] font-extrabold tracking-[0.08em] leading-none text-white whitespace-nowrap">
-              PEPSCORE
-            </span>
-            <span className="flex items-center gap-1.5 mt-1">
-              <span className="h-px flex-1 bg-[#D4AF37]" />
-              <span className="font-heading text-[8px] sm:text-[9px] md:text-[10px] font-bold tracking-[0.35em] leading-none whitespace-nowrap bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] bg-clip-text text-transparent">
-                LAB
-              </span>
-              <span className="h-px flex-1 bg-[#D4AF37]" />
-            </span>
-          </span>
-        </Link>
+      {/* nav owns the horizontal page padding (px-6) as its own full-width
+          box; the inner div below is the max-w-[1200px] mx-auto content
+          box with NO padding of its own -- the same two-level pattern every
+          other homepage section uses (outer full-width px-6, inner
+          max-w-1200 mx-auto). Previously nav combined max-w+mx-auto+px-6 on
+          a single element, which added an extra ~24px inset on top of the
+          centering gap and made the logo sit further right than the hero/
+          body content below it (2026-08-13 grid-alignment fix). */}
+      <nav className="px-6">
+        {/* gap-5 below xl is a guaranteed minimum between the logo and the
+            right-actions cluster on mobile/tablet, where the desktop nav
+            <ul> (which normally fills this space) is hidden -- the gold
+            Cart button was the one crowding the wordmark there, not the
+            auth CTA. At xl+ the <ul> already provides real spacing, so
+            gap-3 is restored to avoid over-shifting anything on larger
+            viewports. */}
+        <div className="max-w-[1200px] mx-auto h-[72px] flex items-center justify-between gap-5 xl:gap-3">
+          {/* Logo — the approved gold "P" mark plus the PEPSCORE / LAB
+              wordmark lockup, now a shared component (components/storefront/
+              BrandLockup.tsx) so the footer's large closing brand mark
+              reuses this exact same implementation instead of a second,
+              drifting copy. */}
+          <Link href="/" className="flex-shrink-0">
+            <BrandLockup size="navbar" />
+          </Link>
 
-        {/* Desktop nav links */}
-        <ul className="hidden md:flex gap-7 items-center list-none">
-          {[
-            ['Products', '/#products'],
-            ['Categories', '/categories'],
-            ['Bulk Orders', '/#bulk'],
-            ['Why Us', '/#features'],
-            ['About', '/#about'],
-            ['Contact', '/#contact'],
-          ].map(([label, href]) => (
-            <li key={label}>
-              <Link
-                href={href}
-                className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/75 hover:text-[#D4AF37] transition-colors"
-              >
-                {label}
-              </Link>
-            </li>
-          ))}
-        </ul>
+          {/* Desktop nav links -- shown from xl (1280px) rather than md
+              (768px): at md this row plus search/cart/auth didn't fit
+              (measured overflow around 834px, wrapping nav labels and
+              clipping the cart button). lg (1024px) still wasn't enough --
+              measured wrapping ("Bulk Orders"/"Why Us" breaking to two
+              lines) up through ~1050px. xl (1280px) is the first standard
+              breakpoint confirmed clean with real margin to spare across
+              1100-1440px+ in testing, so the existing mobile hamburger
+              pattern now covers the whole tablet/laptop range below it
+              instead of a cramped or wrapping desktop row (2026-08-13). */}
+          <ul className="hidden xl:flex gap-7 items-center list-none">
+            {[
+              ['Products', '/#products'],
+              ['Categories', '/categories'],
+              ['Bulk Orders', '/#bulk'],
+              ['Why Us', '/#features'],
+              ['Mission', '/#about'],
+              ['Contact', '/#contact'],
+            ].map(([label, href]) => (
+              <li key={label}>
+                <Link
+                  href={href}
+                  className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/75 hover:text-[#D4AF37] transition-colors"
+                >
+                  {label}
+                </Link>
+              </li>
+            ))}
+          </ul>
 
-        {/* Right actions */}
-        <div className="flex items-center gap-3">
-          {/* Search — icon toggles an inline field on desktop */}
-          <div className="hidden md:flex items-center">
-            {searchOpen ? (
-              <form onSubmit={submitSearch} className="flex items-center">
-                <input
-                  type="search"
-                  autoFocus
-                  value={searchValue}
-                  onChange={(e) => setSearchValue(e.target.value)}
-                  onBlur={() => !searchValue && setSearchOpen(false)}
-                  placeholder="Search products…"
-                  aria-label="Search products"
-                  className="w-[180px] border border-white/15 bg-white/[0.04] rounded-full px-4 py-2 text-[13px] text-white placeholder:text-white/35 focus:outline-none focus:border-[#D4AF37]/50 transition-colors"
-                />
-              </form>
-            ) : (
-              <button onClick={() => setSearchOpen(true)} aria-label="Open search" className="p-1.5 text-white/75 hover:text-[#D4AF37] transition-colors">
-                <Search size={19} />
-              </button>
-            )}
+          {/* Right actions */}
+          <div className="flex items-center gap-3">
+            {/* Search — icon toggles an inline field on desktop */}
+            <div className="hidden xl:flex items-center">
+              {searchOpen ? (
+                <form onSubmit={submitSearch} className="flex items-center">
+                  <input
+                    type="search"
+                    autoFocus
+                    value={searchValue}
+                    onChange={(e) => setSearchValue(e.target.value)}
+                    onBlur={() => !searchValue && setSearchOpen(false)}
+                    placeholder="Search products…"
+                    aria-label="Search products"
+                    className="w-[180px] border border-white/15 bg-white/[0.04] rounded-full px-4 py-2 text-[13px] text-white placeholder:text-white/35 focus:outline-none focus:border-[#D4AF37]/50 transition-colors"
+                  />
+                </form>
+              ) : (
+                <button onClick={() => setSearchOpen(true)} aria-label="Open search" className="p-1.5 text-white/75 hover:text-[#D4AF37] transition-colors">
+                  <Search size={19} />
+                </button>
+              )}
+            </div>
+
+            {/* Cart -- text label hidden below sm to reclaim horizontal
+                space on narrow viewports (icon + count badge alone is
+                still clearly identifiable and keeps its own aria-label). */}
+            <button
+              onClick={toggleCart}
+              className="flex items-center gap-2 bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] hover:shadow-[0_4px_16px_rgba(212,175,55,0.4)] text-black px-3 sm:px-4 py-2.5 rounded-full font-heading text-[12px] font-bold tracking-[0.05em] transition-all hover:-translate-y-px"
+              aria-label="Open cart"
+            >
+              <ShoppingCart size={15} />
+              <span className="hidden sm:inline">Cart</span>
+              {cartCount > 0 && (
+                <span className="bg-black text-[#D4AF37] rounded-full w-5 h-5 text-[11px] font-extrabold flex items-center justify-center">
+                  {cartCount}
+                </span>
+              )}
+            </button>
+
+            {/* Auth buttons — client-only to avoid SSR/prerender issues with Clerk */}
+            {ClerkAuthButtons && <ClerkAuthButtons />}
+            {ClientSignInCoachMark && <ClientSignInCoachMark />}
+
+            {/* Mobile hamburger */}
+            <button
+              className="xl:hidden p-1 text-white"
+              onClick={() => setMenuOpen(!menuOpen)}
+              aria-label="Toggle menu"
+            >
+              {menuOpen ? <X size={22} /> : <Menu size={22} />}
+            </button>
           </div>
-
-          {/* Cart -- text label hidden below sm to reclaim horizontal
-              space on narrow viewports (icon + count badge alone is
-              still clearly identifiable and keeps its own aria-label). */}
-          <button
-            onClick={toggleCart}
-            className="flex items-center gap-2 bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] hover:shadow-[0_4px_16px_rgba(212,175,55,0.4)] text-black px-3 sm:px-4 py-2.5 rounded-full font-heading text-[12px] font-bold tracking-[0.05em] transition-all hover:-translate-y-px"
-            aria-label="Open cart"
-          >
-            <ShoppingCart size={15} />
-            <span className="hidden sm:inline">Cart</span>
-            {cartCount > 0 && (
-              <span className="bg-black text-[#D4AF37] rounded-full w-5 h-5 text-[11px] font-extrabold flex items-center justify-center">
-                {cartCount}
-              </span>
-            )}
-          </button>
-
-          {/* Auth buttons — client-only to avoid SSR/prerender issues with Clerk */}
-          {ClerkAuthButtons && <ClerkAuthButtons />}
-          {ClientSignInCoachMark && <ClientSignInCoachMark />}
-
-          {/* Mobile hamburger */}
-          <button
-            className="md:hidden p-1 text-white"
-            onClick={() => setMenuOpen(!menuOpen)}
-            aria-label="Toggle menu"
-          >
-            {menuOpen ? <X size={22} /> : <Menu size={22} />}
-          </button>
         </div>
       </nav>
 
       {/* Mobile menu */}
       {menuOpen && (
-        <div className="md:hidden bg-black border-t border-[#D4AF37]/15 px-6 py-4 flex flex-col gap-4">
+        <div className="xl:hidden bg-black border-t border-[#D4AF37]/15 px-6 py-4 flex flex-col gap-4">
           <form onSubmit={submitSearch} className="flex items-center gap-2">
             <input
               type="search"
@@ -194,7 +191,7 @@ export function Header() {
             ['Categories', '/categories'],
             ['Bulk Orders', '/#bulk'],
             ['Why Us', '/#features'],
-            ['About', '/#about'],
+            ['Mission', '/#about'],
             ['Contact', '/#contact'],
           ].map(([label, href]) => (
             <Link

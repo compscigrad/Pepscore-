@@ -171,7 +171,12 @@ export default async function HomePage() {
         <HomeSearchBar />
 
         {/* ── Products ─────────────────────────────────────────────────────── */}
-        <section id="products" className="relative py-24 px-6 bg-black">
+        {/* scroll-mt-[88px] on this and the other anchor-target sections
+            below (bulk/features/about/contact) accounts for the sticky
+            72px header -- without it, following a nav link like Mission
+            scrolled the section's own top edge to y=0, landing its heading
+            directly underneath the fixed header (2026-08-13). */}
+        <section id="products" className="relative py-24 px-6 bg-black scroll-mt-[88px]">
           {/* Confined to the section's top band (heading area only) --
               molecular-network texture, zoomed and flipped for variety
               against the hero's DNA helix, fading out well before the
@@ -207,7 +212,7 @@ export default async function HomePage() {
         </section>
 
         {/* ── Bulk Section ─────────────────────────────────────────────────── */}
-        <section id="bulk" className="relative overflow-hidden py-20 px-6 bg-gradient-to-br from-[#0d0d0d] to-black text-white">
+        <section id="bulk" className="relative overflow-hidden py-20 px-6 bg-gradient-to-br from-[#0d0d0d] to-black text-white scroll-mt-[88px]">
           {/* Particle-field motif (the source asset's lower-left wave/dot
               texture, sampled via object-position rather than the DNA
               helix) -- a softer transition beat between the busier
@@ -256,7 +261,7 @@ export default async function HomePage() {
         </section>
 
         {/* ── Features ─────────────────────────────────────────────────────── */}
-        <section id="features" className="relative overflow-hidden py-24 px-6 bg-gradient-to-b from-black via-[#0a0906] to-black">
+        <section id="features" className="relative overflow-hidden py-24 px-6 bg-gradient-to-b from-black via-[#0a0906] to-black scroll-mt-[88px]">
           {/* Bolder amino-chain/molecular-bond moment -- one of the
               "sometimes stronger" beats in the page's overall rhythm,
               deliberately on the opposite side from the Bulk section's
@@ -306,7 +311,7 @@ export default async function HomePage() {
         </section>
 
         {/* ── About ────────────────────────────────────────────────────────── */}
-        <section id="about" className="relative overflow-hidden py-24 px-6 bg-black">
+        <section id="about" className="relative overflow-hidden py-24 px-6 bg-black scroll-mt-[88px]">
           {/* Full, unzoomed DNA helix mirrored onto the left edge (object-
               position samples the source's right-side helix, then flip
               mirrors the whole rendered box so it lands on the left) --
@@ -341,7 +346,7 @@ export default async function HomePage() {
                 Our mission is to make high-quality research compounds more accessible by pairing pharmaceutical-grade quality with highly competitive pricing. We are committed to offering exceptional value without compromising the standards of the products we supply, supported by a price-matching guarantee designed to help researchers obtain the compounds they need at a fair market price. Our products are produced through a certified pharmaceutical laboratory under rigorous manufacturing and quality-control standards. We focus on delivering reliable, consistently produced lyophilized compounds for research use only.
               </p>
               <p className="text-[15px] text-white/65 leading-[1.8] mb-6">
-                Our catalog spans the most studied peptide classes — from metabolic regulators like Semaglutide and Tirzepatide to longevity compounds like Epithalon and NAD+. Each product is produced through a certified pharmaceutical laboratory under rigorous manufacturing and quality-control standards and independently verified before it reaches you.
+                Our catalog spans the most studied peptide classes — from metabolic regulators like Semaglutide, Tirzepatide, and Retatrutide to longevity compounds like Epithalon and NAD+. Each product is produced through a certified pharmaceutical laboratory under rigorous manufacturing and quality-control standards and independently verified before it reaches you.
               </p>
               <div className="space-y-3.5">
                 {[

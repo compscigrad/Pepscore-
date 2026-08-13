@@ -51,7 +51,7 @@ export function ContactSection() {
   }
 
   return (
-    <section id="contact" className="relative overflow-hidden py-24 px-6 bg-black">
+    <section id="contact" className="relative overflow-hidden py-24 px-6 bg-black scroll-mt-[88px]">
       {/* Fills the gap between the gold CTA banner and the Footer's own
           watermark, so the scientific-art system stays continuous rather
           than having a plain-black dead zone right before the page ends. */}

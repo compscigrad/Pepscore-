@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { LeadCaptureTrigger } from './LeadCaptureTrigger'
 import { FirstOrderOfferModal } from './FirstOrderOfferModal'
 import { ScientificBackground } from './ScientificBackground'
+import { BrandLockup } from './BrandLockup'
 import { getActiveFirstOrderOffer } from '@/lib/promotions/firstOrderOffer'
 import { formatDiscountLabel } from '@/lib/promotions/format'
 
@@ -43,18 +44,27 @@ export async function Footer() {
           </div>
         )}
 
-        {/* Top grid */}
-        <div className="grid grid-cols-1 md:grid-cols-[1.6fr_1fr_1fr_1fr] gap-11 pb-11 border-b border-[#D4AF37]/15">
+        {/* ── Closing brand signature (2026-08-13) ────────────────────────────
+            A hero-scale reprise of the navbar's PEPSCORE/LAB lockup (same
+            BrandLockup component, size="footerLarge") directly above the
+            tagline -- the page's final, dominant brand moment, distinct
+            from the small inline wordmark the brand column used to carry
+            (removed below so this doesn't read as two competing logos). */}
+        <div className="flex flex-col items-center text-center pb-11 border-b border-[#D4AF37]/15">
+          <BrandLockup size="footerLarge" />
+          <p className="text-[14px] sm:text-[15px] text-white/55 leading-relaxed max-w-[560px] mt-6">
+            Precision-grade research peptides for laboratories that refuse to compromise on quality or consistency.
+          </p>
+        </div>
 
-          {/* Brand column */}
+        {/* Top grid */}
+        <div className="grid grid-cols-1 md:grid-cols-[1.6fr_1fr_1fr_1fr] gap-11 py-11 border-b border-[#D4AF37]/15">
+
+          {/* Brand column -- the logo itself now lives in the large closing
+              signature above; this column carries the compliance/CTA
+              content that belongs at the same level as Products/
+              Information/Contact. */}
           <div>
-            <p className="font-heading text-[19px] font-extrabold tracking-[-0.01em] leading-none mb-3">
-              <span className="text-white">Pepscore</span>{' '}
-              <span className="bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] bg-clip-text text-transparent">Lab</span>
-            </p>
-            <p className="text-[13px] text-white/55 leading-relaxed mb-4">
-              Precision-grade research peptides for laboratories that refuse to compromise on quality or consistency.
-            </p>
             {/* RUO disclaimer box */}
             <div className="text-[11px] text-white/35 leading-relaxed border border-white/10 p-3 rounded-md mb-4">
               ⚠️ All Pepscore Lab products are for research purposes only. Not intended for human use, consumption, diagnostic use, therapeutic use, or veterinary use. Must be handled by qualified researchers in appropriate laboratory environments.

@@ -22,6 +22,24 @@ interface DirectoryEntry {
   icon: LucideIcon
 }
 
+// Controlled jewel-tone accent rotation (2026-08-13) -- the tray/border/
+// label treatment stays entirely gold (untouched below); only the icon
+// glyph itself picks up color, cycling through 6 tones so no two adjacent
+// tiles share one. Chosen deliberately desaturated/dimensional rather than
+// neon so they read as premium accents inside a black/white/gold system,
+// not a rainbow. `glow` backs a very faint, restrained radial tint behind
+// each icon (barely visible at rest, a touch brighter on hover) -- never a
+// background-color change on the tile itself, which stays the same dark
+// engraved panel for every entry.
+const ICON_ACCENTS = [
+  { base: '#3FB6A8', hover: '#5ED4C6', glow: 'rgba(63,182,168,0.9)' }, // teal
+  { base: '#8B7FE0', hover: '#A79BF5', glow: 'rgba(139,127,224,0.9)' }, // violet
+  { base: '#4B9FDE', hover: '#6DB8ED', glow: 'rgba(75,159,222,0.9)' }, // electric blue
+  { base: '#45B37E', hover: '#5FCB96', glow: 'rgba(69,179,126,0.9)' }, // emerald
+  { base: '#BC6FBA', hover: '#D68AD3', glow: 'rgba(188,111,186,0.9)' }, // plum/magenta
+  { base: '#3FB8C9', hover: '#5ED2E2', glow: 'rgba(63,184,201,0.9)' }, // cyan
+] as const
+
 // Owner-directed merchandising priority first (docs/ProductRoadmap.md /
 // 2026-08-12 homepage sprint + revision pass #2), then the taxonomy's
 // remaining research-domain categories. Multi-product families route to
@@ -87,15 +105,34 @@ export function CatalogDirectory() {
               style={{ background: 'radial-gradient(ellipse 500px 200px at 30% 0%, rgba(255,255,255,0.35) 0%, transparent 60%)' }}
             />
             <div className="relative flex gap-3 overflow-x-auto pb-1 [scrollbar-width:thin] snap-x snap-mandatory sm:flex-wrap sm:overflow-visible">
-              {ENTRIES.map((entry) => {
+              {ENTRIES.map((entry, i) => {
                 const Icon = entry.icon
+                const accent = ICON_ACCENTS[i % ICON_ACCENTS.length]
                 return (
                   <Link
                     key={entry.label}
                     href={entry.href}
                     className="group snap-start flex-shrink-0 flex items-center gap-2.5 whitespace-nowrap rounded-xl border border-black/20 bg-gradient-to-b from-[#1c1c1c] to-[#0a0a0a] px-4 py-3 shadow-[0_4px_12px_rgba(0,0,0,0.35)] transition-all hover:border-[#F0D375]/60 hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-black focus-visible:outline-offset-2"
                   >
-                    <Icon size={16} strokeWidth={1.75} className="text-[#D4AF37] group-hover:text-[#F0D375] transition-colors flex-shrink-0" />
+                    {/* Restrained per-icon accent: a faint blurred tint sits
+                        behind the glyph (barely visible at rest, a touch
+                        brighter on hover) while the tile itself, its gold
+                        border, and the label all stay exactly as before. */}
+                    <span
+                      className="relative flex-shrink-0 flex items-center justify-center w-6 h-6"
+                      style={{ '--icon-accent': accent.base, '--icon-accent-hover': accent.hover } as React.CSSProperties}
+                    >
+                      <span
+                        className="absolute inset-0 rounded-full blur-[6px] opacity-25 group-hover:opacity-50 transition-opacity"
+                        style={{ backgroundColor: accent.glow }}
+                        aria-hidden="true"
+                      />
+                      <Icon
+                        size={16}
+                        strokeWidth={1.75}
+                        className="relative transition-colors text-[var(--icon-accent)] group-hover:text-[var(--icon-accent-hover)]"
+                      />
+                    </span>
                     <span className="font-heading text-[12px] font-semibold tracking-[0.03em] text-white/90 group-hover:text-[#F0D375] transition-colors">
                       {entry.label}
                     </span>
