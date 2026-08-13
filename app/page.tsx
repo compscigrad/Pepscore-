@@ -105,14 +105,20 @@ export default async function HomePage() {
               </div>
             </div>
 
-            {/* Hero image */}
+            {/* Hero image -- asset swapped 2026-08-12 (newPShero.png,
+                1672x941, a wider composition than the previous square
+                crop); real width/height passed through so next/image
+                sizes it at its true 16:9-ish ratio instead of distorting
+                it into the old square box. Float animation (animate-
+                float, app/globals.css) preserved unchanged -- this is an
+                asset swap, not a motion change. */}
             <div className="flex justify-center items-center">
               <Image
-                src="/images/hero-vials.jpeg"
+                src="/images/hero-vials-new.png"
                 alt="Pepscore Lab Research Peptide Collection"
-                width={540}
-                height={540}
-                className="w-full max-w-[540px] rounded-2xl drop-shadow-[0_20px_60px_rgba(0,0,0,0.6)] animate-float"
+                width={1672}
+                height={941}
+                className="w-full max-w-[620px] h-auto rounded-2xl drop-shadow-[0_20px_60px_rgba(0,0,0,0.6)] animate-float"
                 priority
               />
             </div>
@@ -274,7 +280,11 @@ export default async function HomePage() {
           />
           <div className="max-w-[1200px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-[72px] items-center relative">
             <div className="relative">
-              <Image src="/images/hero-vials.jpeg" alt="Pepscore Lab Peptide Collection" width={600} height={500} className="w-full rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.5)]" />
+              {/* Asset swapped 2026-08-12 (newPShero2.png / mission-vials.png)
+                  -- deliberately stationary, no animate-float, distinct from
+                  the hero's motion treatment per the owner's explicit
+                  direction that these two placements should feel different. */}
+              <Image src="/images/mission-vials.png" alt="Pepscore Lab Peptide Collection" width={1672} height={941} className="w-full h-auto rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.5)]" />
               <div className="absolute inset-[-14px_-14px_14px_14px] border border-[#D4AF37]/30 rounded-2xl -z-10 hidden md:block" />
             </div>
             <div>

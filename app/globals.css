@@ -33,6 +33,17 @@
     transform: translateY(0);
   }
 
+  /* Respect the OS/browser-level reduced-motion preference for the hero's
+     decorative float animation (2026-08-12) -- was previously always-on
+     regardless of this setting. A user who has asked their system to
+     minimize motion gets a still image; everyone else's animation is
+     completely unaffected. */
+  @media (prefers-reduced-motion: reduce) {
+    .animate-float {
+      animation: none;
+    }
+  }
+
   /* Gold text gradient */
   .text-gold-gradient {
     background: linear-gradient(135deg, #C49A1A, #E8C84A);
