@@ -347,7 +347,7 @@ export default async function HomePage() {
                 {[
                   { icon:'🏅', title:'Pharmaceutical-Grade Quality', body:'All RUO compounds synthesized to ≥98% purity, verified by HPLC and mass spectrometry.' },
                   { icon:'🤝', title:'Researcher-First Service', body:'Dedicated support for inquiries, custom quantities, and bulk procurement needs.' },
-                  { icon:'🔒', title:'Discreet & Compliant', body:'Shipped in professional packaging with full compliance documentation included.' },
+                  { icon:'🔒', title:'Discreet & Compliant', body:'Shipped in professional packaging with full compliance.' },
                 ].map(v => (
                   <div key={v.title} className="flex gap-3 items-start">
                     <div className="w-[34px] h-[34px] bg-[#D4AF37]/10 rounded-lg flex items-center justify-center text-[15px] flex-shrink-0">{v.icon}</div>
