@@ -52,7 +52,19 @@ export async function Footer() {
             (removed below so this doesn't read as two competing logos). */}
         <div className="flex flex-col items-center text-center pb-11 border-b border-[#D4AF37]/15">
           <BrandLockup size="footerLarge" />
-          <p className="text-[14px] sm:text-[15px] text-white/55 leading-relaxed max-w-[560px] mt-6">
+          {/* max-w widens at lg+ (2026-08-14) -- below lg this is
+              unchanged from before (560px, which doesn't even bind until
+              the viewport itself exceeds it) so mobile/tablet composition
+              is untouched. At desktop, the wordmark's own centered box is
+              only as wide as PEPSCORE's text (~357px), narrower than the
+              P's reach further left -- capping the tagline at that same
+              560px kept its left edge short of the P instead of the
+              "recreate the mobile balance" feel of visibly outspanning the
+              whole lockup. 680px was measured (not guessed) as the
+              narrowest width whose centered left edge reaches the P's own
+              left edge across 1024-1600px, since the P-to-wordmark-center
+              distance is constant regardless of viewport. */}
+          <p className="text-[14px] sm:text-[15px] text-white/55 leading-relaxed max-w-[560px] lg:max-w-[680px] mt-6">
             Precision-grade research peptides for laboratories that refuse to compromise on quality or consistency.
           </p>
         </div>

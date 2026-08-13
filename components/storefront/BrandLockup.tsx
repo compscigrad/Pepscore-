@@ -46,10 +46,10 @@ const SIZE_STYLES: Record<BrandLockupSize, {
     iconOffsetClass: '',
     pepscoreClass: 'text-[13px] sm:text-[15px] md:text-[17px]',
     tmClass: 'text-[6px] sm:text-[7px] md:text-[8px]',
-    // top-[0.05em] nudges the mark down from the PEPSCORE span's own box
-    // top (the font's ascent line, above cap-height) to sit level with the
-    // top of the capital letters instead of floating above them.
-    tmPositionClass: 'top-[0.05em] -right-1.5',
+    // top-[10%] (a percentage, not em/px) -- see footerLarge's own comment
+    // below for why this specific value and why it's shared unchanged
+    // across both variants.
+    tmPositionClass: 'top-[10%] -right-1.5',
     labClass: 'text-[8px] sm:text-[9px] md:text-[10px]',
     labRowGapClass: 'gap-1.5',
     labRowMarginClass: 'mt-1',
@@ -61,7 +61,15 @@ const SIZE_STYLES: Record<BrandLockupSize, {
     iconOffsetClass: 'mr-4 sm:mr-5 lg:mr-6',
     pepscoreClass: 'text-[32px] sm:text-[40px] md:text-[48px] lg:text-[56px]',
     tmClass: 'text-[11px] sm:text-[13px] md:text-[15px] lg:text-[17px]',
-    tmPositionClass: 'top-[0.05em] -right-3 sm:-right-3.5 lg:-right-4',
+    // top-[10%] (2026-08-14, tuned by measurement): with the wrapper below
+    // now sized exactly to PEPSCORE's own box (no strut ambiguity), `top`
+    // is a clean percentage of that real box height, so 10% lands the
+    // mark at the same cap-height-relative position regardless of scale --
+    // derived directly from this variant's own previously-approved
+    // placement (measured at ~10% of PEPSCORE's box height before this
+    // fix touched the wrapper's box model), then applied identically to
+    // navbar above so the two now match by construction, not coincidence.
+    tmPositionClass: 'top-[10%] -right-3 sm:-right-3.5 lg:-right-4',
     labClass: 'text-[13px] sm:text-[15px] md:text-[17px] lg:text-[19px]',
     labRowGapClass: 'gap-3 sm:gap-4',
     labRowMarginClass: 'mt-2 sm:mt-2.5',
@@ -84,13 +92,22 @@ export function BrandLockup({ size = 'navbar', className = '' }: BrandLockupProp
 
   // The wordmark's own box is what gets centered (footerLarge) or laid out
   // in-flow next to the P (navbar) -- either way its internal structure is
-  // identical. relative + inline-block on the PEPSCORE line so the TM mark
+  // identical. relative + inline-flex on the PEPSCORE line so the TM mark
   // can be position:absolute against it without adding to PEPSCORE's own
   // measured width (never shifts LAB's rule-stretch or the column's
   // centering) and without inheriting the line's baseline/ascent quirks.
   const wordmark = (
     <span className="flex flex-col">
-      <span className="relative inline-block">
+      {/* inline-flex, not inline-block (2026-08-14 fix, found by measuring
+          the real DOM, not assumed): an inline-block wrapper generates its
+          own "strut" line-box sized by ITS OWN inherited font-size/
+          line-height, independent of its PEPSCORE child's actual size --
+          that phantom box, not PEPSCORE's real box, is what `top` on the
+          sup was actually offset from, so the same top value produced a
+          different visual result depending on ambient font-size context.
+          inline-flex sizes strictly to its one in-flow child (the sup is
+          absolute, excluded from flex layout either way) with no strut. */}
+      <span className="relative inline-flex">
         <span className={`font-heading ${s.pepscoreClass} font-extrabold tracking-[0.08em] leading-none text-white whitespace-nowrap`}>
           PEPSCORE
         </span>
