@@ -1,14 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { ShoppingCart, Menu, X, Search } from 'lucide-react'
 import { useCartStore } from '@/lib/cart-store'
-import { trackEvent } from '@/lib/analytics/track'
-import { AnalyticsEvent } from '@/lib/analytics/events'
 import { BrandLockup } from './BrandLockup'
+import { PredictiveSearch } from './PredictiveSearch'
 
 // Loaded client-only (ssr: false) so Clerk components never run during
 // server-side prerendering, where ClerkProvider context isn't available.
@@ -20,28 +19,12 @@ const MobileClientSignIn = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
   : null
 
 export function Header() {
-  const router = useRouter()
   const pathname = usePathname()
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
-  const [searchValue, setSearchValue] = useState('')
   const { toggleCart, count } = useCartStore()
   const cartCount = count()
-
-  function submitSearch(e: React.FormEvent) {
-    e.preventDefault()
-    const q = searchValue.trim()
-    if (!q) return
-    // Query length only, never the raw query text -- a search term could
-    // incidentally contain something the visitor typed that identifies
-    // them (an email, a name), so this event tracks that a search
-    // happened without recording what was searched for.
-    trackEvent(AnalyticsEvent.SEARCH, { queryLength: q.length })
-    router.push(`/search?q=${encodeURIComponent(q)}`)
-    setSearchOpen(false)
-    setMenuOpen(false)
-  }
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 20)
@@ -128,21 +111,14 @@ export function Header() {
 
           {/* Right actions */}
           <div className="flex items-center gap-3">
-            {/* Search — icon toggles an inline field on desktop */}
+            {/* Search — icon toggles an inline predictive field on desktop */}
             <div className="hidden xl:flex items-center">
               {searchOpen ? (
-                <form onSubmit={submitSearch} className="flex items-center">
-                  <input
-                    type="search"
-                    autoFocus
-                    value={searchValue}
-                    onChange={(e) => setSearchValue(e.target.value)}
-                    onBlur={() => !searchValue && setSearchOpen(false)}
-                    placeholder="Search products…"
-                    aria-label="Search products"
-                    className="w-[180px] border border-white/15 bg-white/[0.04] rounded-full px-4 py-2 text-[13px] text-white placeholder:text-white/35 focus:outline-none focus:border-[#D4AF37]/50 transition-colors"
-                  />
-                </form>
+                <PredictiveSearch
+                  autoFocus
+                  onClose={() => setSearchOpen(false)}
+                  inputClassName="w-[220px] border border-white/15 bg-white/[0.04] rounded-full px-4 py-2 text-[13px] text-white placeholder:text-white/35 focus:outline-none focus:border-[#D4AF37]/50 transition-colors"
+                />
               ) : (
                 <button onClick={() => setSearchOpen(true)} aria-label="Open search" className="p-1.5 text-white/75 hover:text-[#D4AF37] transition-colors">
                   <Search size={19} />
@@ -185,19 +161,11 @@ export function Header() {
       {/* Mobile menu */}
       {menuOpen && (
         <div className="xl:hidden bg-black border-t border-[#D4AF37]/15 px-6 py-4 flex flex-col gap-4">
-          <form onSubmit={submitSearch} className="flex items-center gap-2">
-            <input
-              type="search"
-              value={searchValue}
-              onChange={(e) => setSearchValue(e.target.value)}
-              placeholder="Search products…"
-              aria-label="Search products"
-              className="flex-1 border border-white/15 bg-white/[0.04] rounded-full px-4 py-2.5 text-[14px] text-white placeholder:text-white/35 focus:outline-none focus:border-[#D4AF37]/50 transition-colors"
-            />
-            <button type="submit" aria-label="Search" className="p-2.5 bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] text-black rounded-full">
-              <Search size={18} />
-            </button>
-          </form>
+          <PredictiveSearch
+            className="w-full"
+            onClose={() => setMenuOpen(false)}
+            inputClassName="w-full border border-white/15 bg-white/[0.04] rounded-full px-4 py-2.5 text-[14px] text-white placeholder:text-white/35 focus:outline-none focus:border-[#D4AF37]/50 transition-colors"
+          />
           {[
             ['Products', '/#products'],
             ['Categories', '/categories'],
