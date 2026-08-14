@@ -57,7 +57,7 @@ export default async function CategoriesIndexPage() {
             style={{ background: 'radial-gradient(ellipse 900px 500px at 50% 0%, rgba(212,175,55,0.10) 0%, transparent 70%)' }}
           />
           <div className="max-w-[1200px] mx-auto relative">
-            <span className="font-heading text-[11px] font-bold tracking-[0.15em] uppercase text-[#D4AF37] mb-3 block">Explore the Catalog</span>
+            <span className="font-heading text-[11px] font-bold tracking-[0.15em] uppercase bg-gradient-to-r from-[#F0D375] via-[#D4AF37] to-[#8A6B1A] bg-clip-text text-transparent mb-3 block">Explore the Catalog</span>
             <h1 className="font-heading text-[clamp(28px,4.5vw,44px)] font-extrabold mb-3">
               <span className="bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#8A6B1A] bg-clip-text text-transparent">Research Peptide</span>{' '}
               <span className="text-white">Categories</span>
@@ -76,32 +76,49 @@ export default async function CategoriesIndexPage() {
                 // all stay exactly as gold as before.
                 const accent = getCategoryAccent(i)
                 return (
+                  // Gold gradient frame (2026-08-14, homepage-consistency pass) --
+                  // same bullion-gold gradient token CatalogDirectory's tray uses
+                  // (lib/storefront/categoryAccents.ts's icon colors are untouched;
+                  // only the card's own border/trim carries the gold treatment).
+                  // The 1px gradient "border" is the same padding trick as the
+                  // homepage tray: outer div paints the gradient, inner div is the
+                  // actual dark card inset by the padding amount.
                   <Link
                     key={c.slug}
                     href={`/categories/${c.slug}`}
-                    className="group relative overflow-hidden rounded-2xl p-7 border border-[#D4AF37]/15 bg-gradient-to-br from-[#141414] to-[#0a0a0a] transition-all hover:-translate-y-1 hover:border-[#D4AF37]/50 hover:shadow-[0_16px_40px_rgba(212,175,55,0.12)]"
+                    className="group relative block rounded-2xl p-px transition-all hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(212,175,55,0.18)]"
+                    style={{ background: 'linear-gradient(155deg, #C99A20 0%, #F6D365 22%, #8A6B1A 55%, #D4AF37 78%, #C99A20 100%)' }}
                   >
-                    <div
-                      className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
-                      style={{ background: 'radial-gradient(circle at 20% 0%, rgba(212,175,55,0.10) 0%, transparent 60%)' }}
-                    />
-                    <div className="relative">
+                    <div className="relative overflow-hidden rounded-[15px] p-7 h-full bg-gradient-to-br from-[#141414] to-[#0a0a0a]">
+                      {/* Specular highlight sweeping the card's top edge --
+                          same technique as the homepage tray's gold bar. */}
                       <div
-                        className="relative w-12 h-12 rounded-xl bg-gradient-to-br from-[#D4AF37]/15 to-[#D4AF37]/5 border border-[#D4AF37]/25 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform"
-                        style={{ '--icon-accent': accent.base, '--icon-accent-hover': accent.hover } as React.CSSProperties}
-                      >
-                        <span
-                          className="absolute inset-1.5 rounded-full blur-[7px] opacity-20 group-hover:opacity-40 transition-opacity"
-                          style={{ backgroundColor: accent.glow }}
-                          aria-hidden="true"
-                        />
-                        <Icon size={22} strokeWidth={1.75} className="relative text-[var(--icon-accent)] group-hover:text-[var(--icon-accent-hover)] transition-colors" />
+                        className="absolute inset-x-4 top-0 h-px pointer-events-none opacity-70"
+                        style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.7), transparent)' }}
+                      />
+                      <div
+                        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+                        style={{ background: 'radial-gradient(circle at 20% 0%, rgba(212,175,55,0.10) 0%, transparent 60%)' }}
+                      />
+                      <div className="relative">
+                        <div
+                          className="relative w-12 h-12 rounded-xl bg-gradient-to-br from-[#D4AF37]/15 to-[#D4AF37]/5 border border-[#D4AF37]/25 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform"
+                          style={{ '--icon-accent': accent.base, '--icon-accent-hover': accent.hover } as React.CSSProperties}
+                        >
+                          <span
+                            className="absolute inset-1.5 rounded-full blur-[7px] opacity-20 group-hover:opacity-40 transition-opacity"
+                            style={{ backgroundColor: accent.glow }}
+                            aria-hidden="true"
+                          />
+                          <Icon size={22} strokeWidth={1.75} className="relative text-[var(--icon-accent)] group-hover:text-[var(--icon-accent-hover)] transition-colors" />
+                        </div>
+                        <h2 className="font-heading text-[17px] font-bold text-white mb-1.5 group-hover:text-[#E8C84A] transition-colors">{c.label}</h2>
+                        <p className="text-[12.5px] text-white/50 leading-relaxed mb-3">{c.description}</p>
+                        <div className="h-px w-full bg-gradient-to-r from-[#D4AF37]/40 to-transparent mb-3" />
+                        <p className="text-[11px] font-heading font-bold tracking-[0.08em] uppercase text-[#D4AF37]/70">
+                          {c.count} product{c.count === 1 ? '' : 's'} →
+                        </p>
                       </div>
-                      <h2 className="font-heading text-[17px] font-bold text-white mb-1.5 group-hover:text-[#E8C84A] transition-colors">{c.label}</h2>
-                      <p className="text-[12.5px] text-white/50 leading-relaxed mb-3">{c.description}</p>
-                      <p className="text-[11px] font-heading font-bold tracking-[0.08em] uppercase text-[#D4AF37]/70">
-                        {c.count} product{c.count === 1 ? '' : 's'} →
-                      </p>
                     </div>
                   </Link>
                 )
