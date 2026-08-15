@@ -66,6 +66,29 @@ catalog's product imagery is next updated — capture the outgoing set
 the same way this sprint captured the outgoing hero/Mission images,
 *before* the replacement deploys, not after.
 
+## Explore the Catalog card redesign (2026-08-14, same-day correction)
+
+The gold-frame pass documented earlier in this manifest turned out to
+be visually insufficient once actually viewed in a browser rather than
+just read from source: `getComputedStyle()` on the live page confirmed
+the outer wrapper carried the gold gradient, but the inner `<div>` --
+the entire visible card surface, inset by only 1px -- had
+`background-image: linear-gradient(to right bottom, rgb(20,20,20),
+rgb(10,10,10))`, i.e. still black. Corrected the same day: the inner
+div now carries the rich gold gradient itself (reusing
+`linear-gradient(160deg, #F7DF72 0%, #F6D365 18%, #E8C24A 40%, #D4AF37
+62%, #C99A20 85%, #E8C24A 100%)`, the homepage Catalog Directory tray's
+own token), title/description/count text switched to black/charcoal
+for contrast, and the icon's own chip inverted to a dark tile (matching
+the homepage's dark-tiles-on-gold-tray pattern) so the alternating
+jewel-tone icon colors keep real contrast instead of washing out.
+
+| File | Represents | Classification |
+|---|---|---|
+| `pepscore-explore-catalog-black-cards-before-2026-08-14.jpg` | Production page before the fix — gold border only, black card body | BEFORE |
+| `pepscore-explore-catalog-gold-cards-after-2026-08-14.jpg` | First 3 cards, gold-filled, local pre-deploy verification | AFTER |
+| `pepscore-explore-catalog-gold-cards-full-list-after-2026-08-14.jpg` | Final two cards (Advanced/Specialty Compounds, Blends/Stacks), confirming the fix applies to the entire list, not just the first row | AFTER |
+
 ## screenshots/ — live application captures
 
 | File | Represents | Viewport |
