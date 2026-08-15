@@ -940,6 +940,12 @@ model InvoiceItem {
   // history has had zero COGS tracking to date (see docs/PendingOwnerActions.md).
   costOfGoods Float?
 
+  // Refunds issued specifically against this line (2026-08-14, item-level
+  // refund sprint) -- a refund with invoiceItemId null on InvoiceRefund is
+  // still a whole-invoice refund, exactly as before this field existed;
+  // this back-relation only surfaces the item-scoped ones.
+  refunds InvoiceRefund[]
+
   @@index([invoiceId])
 }
 
@@ -1238,6 +1244,24 @@ model InvoiceRefund {
   relatedPaymentId      String?
   relatedPayment        InvoicePayment? @relation(fields: [relatedPaymentId], references: [id])
 
+  // ─── Item-level refunds (2026-08-14) ──────────────────────────────────
+  // null invoiceItemId = whole-invoice refund, the only kind this model
+  // supported before this field existed; every prior row and every
+  // backorder-compensation refund stays exactly as it was. A non-null
+  // invoiceItemId scopes this refund to one InvoiceItem. The four value
+  // fields below are a frozen snapshot computed once at request time
+  // (lib/invoice/refundAllocation.ts) from that item's own historical
+  // InvoiceItem.total and the invoice's InvoiceDiscount.appliedAmount
+  // rows at that moment -- never recomputed later, so a subsequent
+  // discount reversal or catalog price change can never rewrite what an
+  // already-issued refund's numbers actually were.
+  invoiceItemId      String?
+  invoiceItem        InvoiceItem? @relation(fields: [invoiceItemId], references: [id])
+  refundedQuantity   Int? // only meaningful when invoiceItemId is set and the line's quantity > 1
+  grossItemValue     Float? // InvoiceItem.total at request time (already nets lineDiscount)
+  allocatedDiscount  Float? // this item's proportional share of invoice-level InvoiceDiscount.appliedAmount
+  effectivePaidValue Float? // grossItemValue - allocatedDiscount -- the true refund ceiling for this item
+
   requestedAt   DateTime  @default(now())
   requestedBy   String
   completedAt   DateTime?
@@ -1250,6 +1274,7 @@ model InvoiceRefund {
 
   @@index([invoiceId])
   @@index([status])
+  @@index([invoiceItemId])
 }
 
 enum RefundStatus {

@@ -15,12 +15,19 @@
 // status — it only ever creates a PENDING obligation (or, for account
 // credit, a real credit issued immediately since that's Pepscore's own
 // store credit, not money moving through an external provider).
-import type { InvoiceRefund, CustomerAccountCredit, PaymentMethod } from '@prisma/client'
+import type { InvoiceRefund, CustomerAccountCredit, PaymentMethod, RefundStatus } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { recordCustomerActivity } from '@/lib/customers'
 import { sendCategorizedEmail } from '@/lib/notifications/log'
 import { refundRequestedSubject, buildRefundRequestedHtml, accountCreditIssuedSubject, buildAccountCreditIssuedHtml } from '@/emails/RefundNotice'
 import { refundActionRequiredSubject, buildRefundActionRequiredHtml } from '@/emails/AdminBackorderAlerts'
+import { allocateInvoiceDiscount, remainingRefundableForItem, remainingRefundableForInvoice, quantityRefundAmount } from '@/lib/invoice/refundAllocation'
+
+// Non-terminal statuses still "claim" money against an invoice's paid
+// total even before they complete -- a second refund request must not be
+// able to over-commit against money a first, still-pending request has
+// already spoken for. Only FAILED/CANCELLED release their claim.
+const NON_TERMINAL_REFUND_STATUSES: RefundStatus[] = ['PENDING', 'AWAITING_MANUAL_PROCESSING', 'PROCESSING', 'COMPLETED']
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? ''
 
@@ -91,6 +98,22 @@ export async function requestRefund(invoiceId: string, input: RequestRefundInput
     let createdCredit: CustomerAccountCredit | null = null
 
     if (refundAmount > 0) {
+      // Over-refund guard (2026-08-14) -- previously absent entirely: this
+      // was the one refund-creation path with no cap at all against what
+      // was actually collected. Read fresh inside the transaction so two
+      // concurrent requests can't both pass the check against the same
+      // stale "already refunded" figure.
+      const priorClaims = await tx.invoiceRefund.findMany({
+        where: { invoiceId, status: { in: NON_TERMINAL_REFUND_STATUSES } },
+      })
+      const pendingAmount = priorClaims
+        .filter((r) => r.status !== 'COMPLETED')
+        .reduce((s, r) => s + r.requestedAmount, 0)
+      const invoiceBudget = remainingRefundableForInvoice(invoice.amountPaid, invoice.amountRefunded, [pendingAmount])
+      if (refundAmount > invoiceBudget + 0.001) {
+        throw new Error(`Refund amount ${formatMoney(refundAmount)} exceeds this invoice's remaining refundable balance of ${formatMoney(invoiceBudget)}`)
+      }
+
       // Always created PENDING, same as the backorder path — nothing here
       // ever marks a refund COMPLETED; only completeRefund() (lib/backorders.ts,
       // an explicit, separate admin action) does that.
@@ -137,6 +160,127 @@ export async function requestRefund(invoiceId: string, input: RequestRefundInput
   }
 
   return { refund, accountCredit }
+}
+
+export interface LineItemRefundSelection {
+  invoiceItemId: string
+  // Omit to refund this line's full remaining refundable balance. Only
+  // meaningful when the line's own quantity > 1 -- a partial-quantity
+  // refund on a single-quantity line is just "refund the whole line."
+  quantity?: number
+}
+
+export interface RequestLineItemRefundsInput {
+  selections: LineItemRefundSelection[]
+  reason: string
+  method?: PaymentMethod
+  requestedBy: string
+}
+
+// The item-level counterpart to requestRefund() above -- same lifecycle,
+// same PENDING-only creation semantics, same completeRefund()/failRefund()/
+// cancelRefund() for advancing status. One InvoiceRefund row is created
+// per selected line (not one row covering all of them) so refund history
+// shows a clean per-item breakdown, per the audit requirement that refund
+// history make clear exactly which line(s) and how much of each. All
+// rows for one admin action share one transaction, so either every
+// selected line's refund is created or none are.
+export async function requestLineItemRefunds(invoiceId: string, input: RequestLineItemRefundsInput): Promise<{ refunds: InvoiceRefund[] }> {
+  if (input.selections.length === 0) throw new Error('Select at least one line item to refund')
+
+  const invoice = await prisma.invoice.findUniqueOrThrow({
+    where: { id: invoiceId },
+    include: { items: true, discounts: true },
+  })
+  if (invoice.deletedAt) throw new Error('This invoice is in the trash.')
+
+  // Allocation uses this invoice's own historical InvoiceItem.total and
+  // InvoiceDiscount.appliedAmount snapshots -- never current catalog
+  // pricing (lib/invoice/refundAllocation.ts).
+  const invoiceDiscountTotal = invoice.discounts.reduce((s, d) => s + d.appliedAmount, 0)
+  const allocations = allocateInvoiceDiscount(
+    invoice.items.map((i) => ({ id: i.id, total: i.total, quantity: i.quantity })),
+    invoiceDiscountTotal
+  )
+  const allocationByItemId = new Map(allocations.map((a) => [a.itemId, a]))
+
+  const refunds = await prisma.$transaction(async (tx) => {
+    const priorRefunds = await tx.invoiceRefund.findMany({
+      where: { invoiceId, status: { in: NON_TERMINAL_REFUND_STATUSES } },
+    })
+    const priorAmountFor = (r: InvoiceRefund) => (r.status === 'COMPLETED' ? r.completedAmount ?? r.requestedAmount : r.requestedAmount)
+    const priorByItemId = new Map<string, number[]>()
+    let pendingInvoiceWide = 0
+    for (const r of priorRefunds) {
+      if (r.invoiceItemId) {
+        priorByItemId.set(r.invoiceItemId, [...(priorByItemId.get(r.invoiceItemId) ?? []), priorAmountFor(r)])
+      }
+      if (r.status !== 'COMPLETED') pendingInvoiceWide += r.requestedAmount
+    }
+
+    let invoiceBudgetRemaining = remainingRefundableForInvoice(invoice.amountPaid, invoice.amountRefunded, [pendingInvoiceWide])
+    const created: InvoiceRefund[] = []
+
+    for (const selection of input.selections) {
+      const item = invoice.items.find((i) => i.id === selection.invoiceItemId)
+      if (!item) throw new Error(`Line item ${selection.invoiceItemId} does not belong to this invoice`)
+      const allocation = allocationByItemId.get(item.id)
+      if (!allocation) throw new Error(`Could not compute a discount allocation for ${item.name}`)
+
+      const remainingForItem = remainingRefundableForItem(allocation.effectivePaidValue, priorByItemId.get(item.id) ?? [])
+
+      let requestedAmount: number
+      let refundedQuantity: number | undefined
+      if (selection.quantity != null) {
+        if (!Number.isInteger(selection.quantity) || selection.quantity <= 0 || selection.quantity > item.quantity) {
+          throw new Error(`Invalid refund quantity for ${item.name} — must be between 1 and ${item.quantity}`)
+        }
+        requestedAmount = quantityRefundAmount(allocation.effectivePaidValue, item.quantity, selection.quantity)
+        refundedQuantity = selection.quantity
+      } else {
+        requestedAmount = remainingForItem
+      }
+
+      if (requestedAmount <= 0) {
+        throw new Error(`${item.name} has no remaining refundable balance`)
+      }
+      if (requestedAmount > remainingForItem + 0.001) {
+        throw new Error(`Refund amount for ${item.name} exceeds its remaining refundable balance of ${formatMoney(remainingForItem)}`)
+      }
+      if (requestedAmount > invoiceBudgetRemaining + 0.001) {
+        throw new Error(`Refunding ${item.name} would exceed this invoice's remaining refundable balance of ${formatMoney(invoiceBudgetRemaining)}`)
+      }
+
+      const refund = await tx.invoiceRefund.create({
+        data: {
+          invoiceId,
+          invoiceItemId: item.id,
+          requestedAmount,
+          refundedQuantity,
+          grossItemValue: allocation.grossValue,
+          allocatedDiscount: allocation.allocatedDiscount,
+          effectivePaidValue: allocation.effectivePaidValue,
+          status: 'PENDING',
+          reason: input.reason,
+          method: input.method ?? undefined,
+          requestedAt: new Date(),
+          requestedBy: input.requestedBy,
+        },
+      })
+      created.push(refund)
+      invoiceBudgetRemaining = invoiceBudgetRemaining - requestedAmount
+    }
+
+    return created
+  })
+
+  for (const refund of refunds) {
+    await logInvoiceAndCustomerEvent(invoice, 'REFUND_REQUESTED', `${formatMoney(refund.requestedAmount)} (line item) — ${input.reason}`, input.requestedBy)
+    await sendRefundRequestedEmail(invoice, refund)
+    await notifyAdminRefundActionRequired(invoice, refund)
+  }
+
+  return { refunds }
 }
 
 async function sendRefundRequestedEmail(

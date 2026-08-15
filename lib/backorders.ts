@@ -930,13 +930,29 @@ export async function completeRefund(refundId: string, input: CompleteRefundInpu
   const { refund, invoice, isBackorderOriginated } = await prisma.$transaction(async (tx) => {
     const existing = await tx.invoiceRefund.findUniqueOrThrow({
       where: { id: refundId },
-      include: { backorderCompensation: true },
+      include: { backorderCompensation: true, invoice: true },
     })
     if (!canTransitionRefundStatus(existing.status)) {
       throw new Error(`This refund is already ${existing.status.toLowerCase().replace('_', ' ')} and cannot be completed`)
     }
 
     const completedAmount = input.completedAmount ?? existing.requestedAmount
+    // Over-completion guards (2026-08-14): neither bound existed before --
+    // an admin could complete a $10 requested refund for $10,000 and it
+    // would silently increment Invoice.amountRefunded by the full amount.
+    // Two independent caps: never more than what was actually requested
+    // for this specific refund, and never more than the invoice still has
+    // left to give back (read fresh here, inside the transaction, so a
+    // race between two refunds completing near-simultaneously can't both
+    // pass against the same stale amountRefunded).
+    if (completedAmount > existing.requestedAmount + 0.001) {
+      throw new Error(`Completed amount ${formatMoney(completedAmount)} cannot exceed the requested amount ${formatMoney(existing.requestedAmount)}`)
+    }
+    const invoiceRemaining = existing.invoice.amountPaid - existing.invoice.amountRefunded
+    if (completedAmount > invoiceRemaining + 0.001) {
+      throw new Error(`Completed amount ${formatMoney(completedAmount)} exceeds this invoice's remaining refundable balance of ${formatMoney(invoiceRemaining)}`)
+    }
+
     const updatedRefund = await tx.invoiceRefund.update({
       where: { id: refundId },
       data: {

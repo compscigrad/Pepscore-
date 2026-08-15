@@ -476,7 +476,12 @@ export function InvoiceBuilder({
         ) : null}
 
         {mode === 'edit' && invoice ? (
-          <RefundsSection invoiceId={invoice.id} hasCustomer={Boolean(invoice.customerId)} />
+          <RefundsSection
+            invoiceId={invoice.id}
+            hasCustomer={Boolean(invoice.customerId)}
+            items={invoice.items.map((item) => ({ id: item.id, name: item.name, quantity: item.quantity, total: item.total }))}
+            invoiceDiscountTotal={invoice.discounts.reduce((sum, d) => sum + d.appliedAmount, 0)}
+          />
         ) : null}
 
         {mode === 'edit' && invoice ? (
