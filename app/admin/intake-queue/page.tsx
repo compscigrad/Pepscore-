@@ -3,15 +3,14 @@
 // A row drops off the moment its status moves off DRAFT; no dismiss action.
 export const dynamic = 'force-dynamic'
 
-import { auth } from '@clerk/nextjs/server'
+import { isCurrentUserAdmin } from '@/lib/auth/rbac'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getFulfillmentQueue } from '@/lib/customers'
 import { IntakeQueueTable } from '@/components/invoices/IntakeQueueTable'
 
 export default async function IntakeQueuePage() {
-  const { userId } = await auth()
-  if (!userId || userId !== process.env.ADMIN_CLERK_USER_ID) {
+  if (!(await isCurrentUserAdmin())) {
     redirect('/')
   }
 

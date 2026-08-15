@@ -5,13 +5,9 @@
 // compensation, resolution state, or any other field. See
 // lib/inventory/corrections.ts's correctBackorderedQuantity.
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { requireAdmin } from '@/lib/auth/rbac'
 import { z } from 'zod'
 import { correctBackorderedQuantity } from '@/lib/inventory/corrections'
-
-function isAdmin(userId: string | null) {
-  return userId === process.env.ADMIN_CLERK_USER_ID
-}
 
 const schema = z.object({
   correctedVials: z.number().int().min(0),
@@ -23,8 +19,8 @@ interface RouteParams {
 }
 
 export async function PATCH(req: NextRequest, { params }: RouteParams) {
-  const { userId } = await auth()
-  if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const userId = await requireAdmin()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   const { backorderId } = await params
 

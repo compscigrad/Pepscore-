@@ -5,21 +5,17 @@
 // function permanentlyDeleteInvoice() itself enforces, so a stale UI state
 // can never delete something protected.
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { requireAdmin } from '@/lib/auth/rbac'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { permanentlyDeleteInvoice } from '@/lib/invoices'
 import { getBulkInvoiceDeletionEligibility, BLOCK_REASON_LABEL } from '@/lib/invoices/deletionEligibility'
 
-function isAdmin(userId: string | null) {
-  return userId === process.env.ADMIN_CLERK_USER_ID
-}
-
 const bodySchema = z.object({ ids: z.array(z.string().min(1)).min(1).max(200) })
 
 export async function POST(req: NextRequest) {
-  const { userId } = await auth()
-  if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const userId = await requireAdmin()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   try {
     const { ids } = bodySchema.parse(await req.json())

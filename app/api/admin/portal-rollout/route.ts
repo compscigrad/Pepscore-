@@ -7,14 +7,10 @@
 // softer, reversible stop that doesn't touch the activation record or its
 // approved audience snapshot. See lib/portal/rollout.ts.
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { requireAdmin } from '@/lib/auth/rbac'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { activatePortalRollout, pauseRollout, resumeRollout, PortalRolloutError } from '@/lib/portal/rollout'
-
-function isAdmin(userId: string | null) {
-  return userId === process.env.ADMIN_CLERK_USER_ID
-}
 
 const patchSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('activate') }),
@@ -23,8 +19,8 @@ const patchSchema = z.discriminatedUnion('action', [
 ])
 
 export async function POST(req: NextRequest) {
-  const { userId } = await auth()
-  if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const userId = await requireAdmin()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   try {
     const payload = patchSchema.parse(await req.json())

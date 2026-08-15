@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
-import { isAdminClerkUser } from '@/lib/isAdmin'
+import { isCurrentUserAdmin } from '@/lib/auth/rbac'
 import { resolveFinanceRange } from '@/lib/finance/dateRanges'
 import {
   getFinanceDashboardMetrics,
@@ -27,7 +27,7 @@ interface PageProps {
 export default async function FinancePage({ searchParams }: PageProps) {
   const { userId } = await auth()
   if (!userId) redirect('/sign-in?redirect_url=/admin/finance')
-  if (!isAdminClerkUser(userId)) {
+  if (!(await isCurrentUserAdmin())) {
     return (
       <main className="min-h-screen bg-black flex items-center justify-center p-8">
         <div className="bg-white/[0.03] border border-gold/10 rounded-[18px] p-8 max-w-md text-center">

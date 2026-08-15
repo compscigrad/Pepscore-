@@ -3,7 +3,7 @@
 // screens read as one product.
 export const dynamic = 'force-dynamic'
 
-import { auth } from '@clerk/nextjs/server'
+import { isCurrentUserAdmin } from '@/lib/auth/rbac'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { listInvoices, getInvoiceDashboardStats } from '@/lib/invoices'
@@ -11,8 +11,7 @@ import { InvoiceDashboardStats } from '@/components/invoices/InvoiceDashboardSta
 import { InvoiceTable } from '@/components/invoices/InvoiceTable'
 
 export default async function InvoicesDashboard() {
-  const { userId } = await auth()
-  if (!userId || userId !== process.env.ADMIN_CLERK_USER_ID) {
+  if (!(await isCurrentUserAdmin())) {
     redirect('/')
   }
 

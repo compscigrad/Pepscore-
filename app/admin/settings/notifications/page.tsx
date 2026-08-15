@@ -3,7 +3,7 @@
 // milestone until at least one recipient exists.
 export const dynamic = 'force-dynamic'
 
-import { auth } from '@clerk/nextjs/server'
+import { isCurrentUserAdmin } from '@/lib/auth/rbac'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { listAdminNotificationRecipients } from '@/lib/adminNotificationRecipients'
@@ -11,8 +11,7 @@ import { ADMIN_EMAIL } from '@/lib/resend'
 import { NotificationRecipientsForm } from '@/components/invoices/NotificationRecipientsForm'
 
 export default async function NotificationSettingsPage() {
-  const { userId } = await auth()
-  if (!userId || userId !== process.env.ADMIN_CLERK_USER_ID) {
+  if (!(await isCurrentUserAdmin())) {
     redirect('/')
   }
 

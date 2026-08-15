@@ -8,7 +8,7 @@ import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { getPortalAuthState, isSelfRegistrationEnabled } from '@/lib/portalAuth'
-import { isAdminClerkUser } from '@/lib/isAdmin'
+import { isCurrentUserAdmin } from '@/lib/auth/rbac'
 import { checkRateLimit } from '@/lib/rateLimit'
 import { resolveSelfServiceIdentity } from '@/lib/portal/selfServiceResolve'
 import { upsertUserByClerkId } from '@/lib/user'
@@ -25,8 +25,7 @@ interface Props {
 }
 
 export default async function AccountPage({ searchParams }: Props) {
-  const { userId } = await auth()
-  const isAdmin = isAdminClerkUser(userId)
+  const isAdmin = await isCurrentUserAdmin()
   // Set only by the landing page's "Customer Portal" button
   // (redirect_url=/account?portal=customer) -- the explicit signal that
   // this visit is a deliberate customer-intent click-through, never
@@ -237,7 +236,7 @@ async function tryResolveNotLinked(): Promise<ResolveOutcome> {
 
   const { userId: clerkUserId } = await auth()
   if (!clerkUserId) return 'SKIPPED'
-  if (clerkUserId === process.env.ADMIN_CLERK_USER_ID) return 'SKIPPED'
+  if (await isCurrentUserAdmin()) return 'SKIPPED'
 
   // Every /account visit for a not-yet-linked user re-runs matching against
   // the Customer table -- a legitimate visitor rarely reloads more than a

@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { requireAdmin } from '@/lib/auth/rbac'
 import { z } from 'zod'
 import { createExpense, listExpenses } from '@/lib/finance/expenses'
-
-function isAdmin(userId: string | null) {
-  return userId === process.env.ADMIN_CLERK_USER_ID
-}
 
 const financeExpenseCategory = z.enum([
   'SHIPPING_POSTAGE', 'PACKAGING_FULFILLMENT', 'INVENTORY_PRODUCT_PURCHASES', 'RESEARCH_FULFILLMENT_SUPPLIES',
@@ -36,8 +32,8 @@ const createSchema = z.object({
 })
 
 export async function GET(req: NextRequest) {
-  const { userId } = await auth()
-  if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const userId = await requireAdmin()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   const { searchParams } = new URL(req.url)
   const from = searchParams.get('from')
@@ -60,8 +56,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { userId } = await auth()
-  if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const userId = await requireAdmin()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   try {
     const payload = createSchema.parse(await req.json())

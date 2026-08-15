@@ -4,14 +4,10 @@
 // returned it (manually, or via a future payment-provider webhook using
 // this same route's underlying service function). See lib/backorders.ts.
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { requireAdmin } from '@/lib/auth/rbac'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { completeRefund, failRefund, cancelRefund } from '@/lib/backorders'
-
-function isAdmin(userId: string | null) {
-  return userId === process.env.ADMIN_CLERK_USER_ID
-}
 
 const patchSchema = z.discriminatedUnion('action', [
   z.object({
@@ -33,8 +29,8 @@ interface RouteParams {
 }
 
 export async function PATCH(req: NextRequest, { params }: RouteParams) {
-  const { userId } = await auth()
-  if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const userId = await requireAdmin()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   const { id, refundId } = await params
 

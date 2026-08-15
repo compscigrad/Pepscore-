@@ -2,7 +2,7 @@
 // reusable package presets used by the "Create Shipping Label" panel.
 export const dynamic = 'force-dynamic'
 
-import { auth } from '@clerk/nextjs/server'
+import { isCurrentUserAdmin } from '@/lib/auth/rbac'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getFulfillmentSettings } from '@/lib/fulfillment/settings'
@@ -11,8 +11,7 @@ import { FulfillmentSettingsForm } from '@/components/invoices/FulfillmentSettin
 import { PackagePresetsForm } from '@/components/invoices/PackagePresetsForm'
 
 export default async function FulfillmentSettingsPage() {
-  const { userId } = await auth()
-  if (!userId || userId !== process.env.ADMIN_CLERK_USER_ID) {
+  if (!(await isCurrentUserAdmin())) {
     redirect('/')
   }
 

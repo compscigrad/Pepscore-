@@ -5,7 +5,7 @@
 // request (surfaced in the customer's activity timeline + an email alert)
 // and applies it here once verified.
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { requireAdmin } from '@/lib/auth/rbac'
 import { z } from 'zod'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
@@ -13,10 +13,6 @@ import { recordCustomerActivity } from '@/lib/customers'
 import { addressSchema } from '@/lib/invoice/validation'
 
 const LEAD_STATUSES = ['NEW', 'CONTACTED', 'QUALIFIED', 'CONVERTED', 'CLOSED'] as const
-
-function isAdmin(userId: string | null) {
-  return userId === process.env.ADMIN_CLERK_USER_ID
-}
 
 // Every field here is .optional() and the update below always spreads the
 // parsed payload directly into Prisma's `data` -- a field the admin didn't
@@ -45,8 +41,8 @@ interface RouteParams {
 }
 
 export async function PATCH(req: NextRequest, { params }: RouteParams) {
-  const { userId } = await auth()
-  if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const userId = await requireAdmin()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   const { id } = await params
 

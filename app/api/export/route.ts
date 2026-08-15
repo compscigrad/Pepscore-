@@ -2,13 +2,13 @@
 // Admin-only: generates annual CPA export of all orders, expenses, and profit metrics
 
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { requireAdmin } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/prisma'
 import { buildExportXLSX, buildExportCSV, type ExportRow } from '@/lib/export'
 
 export async function GET(req: NextRequest) {
-  const { userId } = await auth()
-  if (!userId || userId !== process.env.ADMIN_CLERK_USER_ID) {
+  const userId = await requireAdmin()
+  if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
   }
 

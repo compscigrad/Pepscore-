@@ -6,7 +6,7 @@
 // separate "edit customer" form to keep in sync with those paths.
 export const dynamic = 'force-dynamic'
 
-import { auth } from '@clerk/nextjs/server'
+import { isCurrentUserAdmin } from '@/lib/auth/rbac'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getCustomerProfileData, getCustomerInvoiceHistory, findPossibleDuplicateCustomers } from '@/lib/customers'
@@ -69,8 +69,7 @@ function zipFromAddress(address: unknown): string | null {
 }
 
 export default async function CustomerProfilePage({ params, searchParams }: PageProps) {
-  const { userId } = await auth()
-  if (!userId || userId !== process.env.ADMIN_CLERK_USER_ID) {
+  if (!(await isCurrentUserAdmin())) {
     redirect('/')
   }
 

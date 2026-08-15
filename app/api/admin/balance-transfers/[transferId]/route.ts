@@ -2,14 +2,10 @@
 // balance transfer (lib/balanceTransfers.ts). Never deletes the row; fills
 // in reversedAt/reversedBy/reversalReason on the same ledger entry.
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { requireAdmin } from '@/lib/auth/rbac'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { reverseBalanceTransfer, BalanceTransferError } from '@/lib/balanceTransfers'
-
-function isAdmin(userId: string | null) {
-  return userId === process.env.ADMIN_CLERK_USER_ID
-}
 
 const reverseSchema = z.object({
   action: z.literal('reverse'),
@@ -21,8 +17,8 @@ interface RouteParams {
 }
 
 export async function PATCH(req: NextRequest, { params }: RouteParams) {
-  const { userId } = await auth()
-  if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const userId = await requireAdmin()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   const { transferId } = await params
 

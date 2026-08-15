@@ -1,13 +1,9 @@
 // GET  /api/admin/package-presets — list reusable package templates
 // POST /api/admin/package-presets — create one
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { requireAdmin } from '@/lib/auth/rbac'
 import { z } from 'zod'
 import { listPackagePresets, createPackagePreset } from '@/lib/fulfillment/presets'
-
-function isAdmin(userId: string | null) {
-  return userId === process.env.ADMIN_CLERK_USER_ID
-}
 
 const presetSchema = z.object({
   name: z.string().min(1, 'Preset name is required'),
@@ -18,8 +14,8 @@ const presetSchema = z.object({
 })
 
 export async function GET(req: NextRequest) {
-  const { userId } = await auth()
-  if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const userId = await requireAdmin()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   const activeOnly = req.nextUrl.searchParams.get('activeOnly') !== 'false'
   const presets = await listPackagePresets(activeOnly)
@@ -27,8 +23,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { userId } = await auth()
-  if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const userId = await requireAdmin()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   try {
     const body = await req.json()

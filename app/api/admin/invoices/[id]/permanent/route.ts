@@ -4,21 +4,17 @@
 // "trash first, then a separate final action" flow is enforced here, not
 // just in the UI.
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { requireAdmin } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/prisma'
 import { permanentlyDeleteInvoice } from '@/lib/invoices'
-
-function isAdmin(userId: string | null) {
-  return userId === process.env.ADMIN_CLERK_USER_ID
-}
 
 interface RouteParams {
   params: Promise<{ id: string }>
 }
 
 export async function DELETE(req: NextRequest, { params }: RouteParams) {
-  const { userId } = await auth()
-  if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const userId = await requireAdmin()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   const { id } = await params
 

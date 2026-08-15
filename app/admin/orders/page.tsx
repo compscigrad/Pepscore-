@@ -3,15 +3,14 @@
 // Phase 4Z sales-origin clarity.
 export const dynamic = 'force-dynamic'
 
-import { auth } from '@clerk/nextjs/server'
+import { isCurrentUserAdmin } from '@/lib/auth/rbac'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { listOrders } from '@/lib/orders/admin'
 import { OrderTable } from '@/components/admin/OrderTable'
 
 export default async function OrdersPage() {
-  const { userId } = await auth()
-  if (!userId || userId !== process.env.ADMIN_CLERK_USER_ID) {
+  if (!(await isCurrentUserAdmin())) {
     redirect('/')
   }
 

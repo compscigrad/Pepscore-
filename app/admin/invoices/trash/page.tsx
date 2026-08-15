@@ -3,7 +3,7 @@
 // active list never pays a cost for trash bookkeeping.
 export const dynamic = 'force-dynamic'
 
-import { auth } from '@clerk/nextjs/server'
+import { isCurrentUserAdmin } from '@/lib/auth/rbac'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { listTrashedInvoices } from '@/lib/invoices'
@@ -11,8 +11,7 @@ import { getBulkInvoiceDeletionEligibility, BLOCK_REASON_LABEL } from '@/lib/inv
 import { TrashTable } from '@/components/invoices/TrashTable'
 
 export default async function TrashPage() {
-  const { userId } = await auth()
-  if (!userId || userId !== process.env.ADMIN_CLERK_USER_ID) {
+  if (!(await isCurrentUserAdmin())) {
     redirect('/')
   }
 

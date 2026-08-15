@@ -1,13 +1,9 @@
 // PATCH  /api/admin/promotions/[id] — edit fields and/or toggle active
 // DELETE /api/admin/promotions/[id] — permanent delete, only when unused
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { requireAdmin } from '@/lib/auth/rbac'
 import { z } from 'zod'
 import { updatePromotion, deletePromotion, PromotionInUseError, DuplicatePromotionNameError } from '@/lib/promotions'
-
-function isAdmin(userId: string | null) {
-  return userId === process.env.ADMIN_CLERK_USER_ID
-}
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -22,8 +18,8 @@ const updatePromotionSchema = z.object({
 })
 
 export async function PATCH(req: NextRequest, { params }: RouteParams) {
-  const { userId } = await auth()
-  if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const userId = await requireAdmin()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   const { id } = await params
   try {
@@ -45,8 +41,8 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
 }
 
 export async function DELETE(req: NextRequest, { params }: RouteParams) {
-  const { userId } = await auth()
-  if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const userId = await requireAdmin()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   const { id } = await params
   try {

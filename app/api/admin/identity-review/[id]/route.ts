@@ -3,14 +3,10 @@
 //       { action: 'dismiss', notes? } — closes any case without linking.
 // See lib/portal/reviewCases.ts for exactly what each action can and can't do.
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { requireAdmin } from '@/lib/auth/rbac'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { approveIdentityReviewCase, dismissIdentityReviewCase, ReviewCaseError } from '@/lib/portal/reviewCases'
-
-function isAdmin(userId: string | null) {
-  return userId === process.env.ADMIN_CLERK_USER_ID
-}
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -22,8 +18,8 @@ const patchSchema = z.discriminatedUnion('action', [
 ])
 
 export async function PATCH(req: NextRequest, { params }: RouteParams) {
-  const { userId } = await auth()
-  if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const userId = await requireAdmin()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   const { id } = await params
 

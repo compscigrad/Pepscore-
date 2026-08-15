@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic'
 import { auth } from '@clerk/nextjs/server'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
-import { isAdminClerkUser } from '@/lib/isAdmin'
+import { isCurrentUserAdmin } from '@/lib/auth/rbac'
 import { getInventoryDetail } from '@/lib/adminInventory'
 import { SELL_UNIT_LABEL, PRICE_SOURCE_LABEL } from '@/lib/pricing/labels'
 import { InventoryDetailPanel } from '@/components/admin/InventoryDetailPanel'
@@ -34,7 +34,7 @@ function formatPrice(value: number | null): string {
 export default async function AdminInventoryDetailPage({ params }: Props) {
   const { userId } = await auth()
   if (!userId) redirect('/sign-in?redirect_url=/admin/inventory')
-  if (!isAdminClerkUser(userId)) {
+  if (!(await isCurrentUserAdmin())) {
     return (
       <main className="min-h-screen bg-black flex items-center justify-center p-8">
         <div className="bg-white/[0.03] border border-gold/10 rounded-[18px] p-8 max-w-md text-center">

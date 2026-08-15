@@ -5,19 +5,15 @@
 // (the historical sale snapshot is otherwise untouched). See
 // lib/inventory/corrections.ts's correctInvoiceItemSellUnit.
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { requireAdmin } from '@/lib/auth/rbac'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { correctInvoiceItemSellUnit } from '@/lib/inventory/corrections'
 import { getAvailableSellUnits } from '@/lib/pricing/sellUnits'
 
-function isAdmin(userId: string | null) {
-  return userId === process.env.ADMIN_CLERK_USER_ID
-}
-
 export async function GET(_req: NextRequest, { params }: RouteParams) {
-  const { userId } = await auth()
-  if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const userId = await requireAdmin()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   const { itemId } = await params
   const item = await prisma.invoiceItem.findUnique({ where: { id: itemId }, include: { invoice: { select: { id: true, invoiceNumber: true, status: true } } } })
@@ -53,8 +49,8 @@ interface RouteParams {
 }
 
 export async function PATCH(req: NextRequest, { params }: RouteParams) {
-  const { userId } = await auth()
-  if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const userId = await requireAdmin()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   const { itemId } = await params
 

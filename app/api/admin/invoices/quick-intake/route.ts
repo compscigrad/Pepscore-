@@ -9,15 +9,11 @@
 // lib/customers.ts's createOrUpdateDraftInvoiceFromIntake: this draft is
 // meant to start empty, the customer (or the admin later) fills in the rest.
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { requireAdmin } from '@/lib/auth/rbac'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { findCustomerByEmailOrPhone, createCustomer } from '@/lib/customers'
 import { generateSequentialInvoiceNumber } from '@/lib/invoice/numbering'
-
-function isAdmin(userId: string | null) {
-  return userId === process.env.ADMIN_CLERK_USER_ID
-}
 
 const quickIntakeSchema = z
   .object({
@@ -31,8 +27,8 @@ const quickIntakeSchema = z
   })
 
 export async function POST(req: NextRequest) {
-  const { userId } = await auth()
-  if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const userId = await requireAdmin()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   try {
     const body = await req.json()

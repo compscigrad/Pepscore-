@@ -4,15 +4,14 @@
 // standalone management surface for everything after creation.
 export const dynamic = 'force-dynamic'
 
-import { auth } from '@clerk/nextjs/server'
+import { isCurrentUserAdmin } from '@/lib/auth/rbac'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { listPromotions } from '@/lib/promotions'
 import { DiscountPresetsManager } from '@/components/invoices/DiscountPresetsManager'
 
 export default async function DiscountPresetsPage() {
-  const { userId } = await auth()
-  if (!userId || userId !== process.env.ADMIN_CLERK_USER_ID) {
+  if (!(await isCurrentUserAdmin())) {
     redirect('/')
   }
 

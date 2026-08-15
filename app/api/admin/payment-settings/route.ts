@@ -3,16 +3,12 @@
 // displays. See PaymentSettings' schema comment for which fields are real
 // Stripe gates vs. readiness-only display flags.
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { requireAdmin } from '@/lib/auth/rbac'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { getPaymentSettings, updatePaymentSettings, PaymentSettingsError } from '@/lib/payments/settings'
 import { getPaymentCostAnalytics } from '@/lib/payments/analytics'
 import { isStorefrontCheckoutEnabled } from '@/lib/storefront/checkoutGate'
-
-function isAdmin(userId: string | null) {
-  return userId === process.env.ADMIN_CLERK_USER_ID
-}
 
 const patchSchema = z.object({
   cardEnabled: z.boolean().optional(),
@@ -36,16 +32,16 @@ function getProviderStatus() {
 }
 
 export async function GET() {
-  const { userId } = await auth()
-  if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const userId = await requireAdmin()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   const [settings, analytics] = await Promise.all([getPaymentSettings(), getPaymentCostAnalytics()])
   return NextResponse.json({ settings, providerStatus: getProviderStatus(), analytics })
 }
 
 export async function PATCH(req: NextRequest) {
-  const { userId } = await auth()
-  if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const userId = await requireAdmin()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   try {
     const body = await req.json()

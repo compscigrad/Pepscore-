@@ -1,7 +1,7 @@
 // GET/PATCH /api/admin/invoice-settings — the invoice module's settings:
 // auto-archive delay and per-status tracking notification toggles.
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { requireAdmin } from '@/lib/auth/rbac'
 import { z } from 'zod'
 import {
   getInvoiceSettings,
@@ -11,10 +11,6 @@ import {
   updateDefaultIntakeLinkExpiryHours,
   updateAutoEmailPaymentReceived,
 } from '@/lib/invoiceSettings'
-
-function isAdmin(userId: string | null) {
-  return userId === process.env.ADMIN_CLERK_USER_ID
-}
 
 // null means "Never auto-archive" — the spec's fourth radio option.
 const patchSchema = z.object({
@@ -26,16 +22,16 @@ const patchSchema = z.object({
 })
 
 export async function GET() {
-  const { userId } = await auth()
-  if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const userId = await requireAdmin()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   const settings = await getInvoiceSettings()
   return NextResponse.json(settings)
 }
 
 export async function PATCH(req: NextRequest) {
-  const { userId } = await auth()
-  if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const userId = await requireAdmin()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   try {
     const body = await req.json()

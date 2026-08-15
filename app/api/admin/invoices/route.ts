@@ -1,19 +1,15 @@
 // GET  /api/admin/invoices — searchable/sortable/filterable invoice list (dashboard)
 // POST /api/admin/invoices — create a new invoice (Stripe-linked via orderId, or fully manual)
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { requireAdmin } from '@/lib/auth/rbac'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { listInvoices, createInvoice, getInvoiceDashboardStats, type ListInvoicesParams } from '@/lib/invoices'
 import { invoicePayloadSchema } from '@/lib/invoice/validation'
 
-function isAdmin(userId: string | null) {
-  return userId === process.env.ADMIN_CLERK_USER_ID
-}
-
 export async function GET(req: NextRequest) {
-  const { userId } = await auth()
-  if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const userId = await requireAdmin()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   const params = req.nextUrl.searchParams
   const page = parseInt(params.get('page') ?? '1')
@@ -33,8 +29,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { userId } = await auth()
-  if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const userId = await requireAdmin()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   try {
     const body = await req.json()

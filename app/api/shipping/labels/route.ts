@@ -3,7 +3,7 @@
 // logs shipping expense, and emails the customer their tracking info.
 
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { requireAdmin } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/prisma'
 import { purchaseLabel, getRates } from '@/lib/shippo'
 import { getFulfillmentSettings } from '@/lib/fulfillment/settings'
@@ -21,8 +21,8 @@ function getCarrierTrackingUrl(carrier: string, trackingNumber: string): string 
 }
 
 export async function POST(req: NextRequest) {
-  const { userId } = await auth()
-  if (!userId || userId !== process.env.ADMIN_CLERK_USER_ID) {
+  const userId = await requireAdmin()
+  if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
   }
 
@@ -106,8 +106,8 @@ export async function POST(req: NextRequest) {
 // GET /api/shipping/labels/rates?orderId=xxx
 // Returns Shippo rates for an order's destination address
 export async function GET(req: NextRequest) {
-  const { userId } = await auth()
-  if (!userId || userId !== process.env.ADMIN_CLERK_USER_ID) {
+  const userId = await requireAdmin()
+  if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
   }
 

@@ -4,7 +4,7 @@
 // admin userId (never a system actor) and, for anything that changes state
 // rather than just querying it, an explicit `reason`.
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { requireAdmin } from '@/lib/auth/rbac'
 import { z } from 'zod'
 import {
   correctReservation,
@@ -15,10 +15,6 @@ import {
   reverseFulfillmentDeduction,
   reapplyFulfillmentDeduction,
 } from '@/lib/inventory/corrections'
-
-function isAdmin(userId: string | null) {
-  return userId === process.env.ADMIN_CLERK_USER_ID
-}
 
 const actionSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('CORRECT_QUANTITY'), quantity: z.number().int().min(0), reason: z.string().min(1) }),
@@ -35,8 +31,8 @@ interface RouteParams {
 }
 
 export async function POST(req: NextRequest, { params }: RouteParams) {
-  const { userId } = await auth()
-  if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const userId = await requireAdmin()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   const { id } = await params
 

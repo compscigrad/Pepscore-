@@ -1,15 +1,14 @@
 // Settings > FIRST10 — admin config for the storefront first-order offer.
 export const dynamic = 'force-dynamic'
 
-import { auth } from '@clerk/nextjs/server'
+import { isCurrentUserAdmin } from '@/lib/auth/rbac'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getFirstOrderOfferConfig } from '@/lib/promotions/firstOrderOffer'
 import { FirstOrderOfferConfigForm } from '@/components/admin/FirstOrderOfferConfigForm'
 
 export default async function FirstOrderOfferSettingsPage() {
-  const { userId } = await auth()
-  if (!userId || userId !== process.env.ADMIN_CLERK_USER_ID) {
+  if (!(await isCurrentUserAdmin())) {
     redirect('/')
   }
 

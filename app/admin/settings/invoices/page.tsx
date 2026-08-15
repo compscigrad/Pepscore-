@@ -2,7 +2,7 @@
 // automatic invoice-issued emails.
 export const dynamic = 'force-dynamic'
 
-import { auth } from '@clerk/nextjs/server'
+import { isCurrentUserAdmin } from '@/lib/auth/rbac'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getInvoiceSettings } from '@/lib/invoiceSettings'
@@ -12,8 +12,7 @@ import { InvoiceEmailSettingsForm } from '@/components/invoices/InvoiceEmailSett
 import { PaymentReceivedEmailSettingsForm } from '@/components/invoices/PaymentReceivedEmailSettingsForm'
 
 export default async function InvoiceSettingsPage() {
-  const { userId } = await auth()
-  if (!userId || userId !== process.env.ADMIN_CLERK_USER_ID) {
+  if (!(await isCurrentUserAdmin())) {
     redirect('/')
   }
 

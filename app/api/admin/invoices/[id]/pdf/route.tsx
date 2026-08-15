@@ -2,23 +2,19 @@
 // freshly generated PDF. Not cached/stored (see docs/Decisions.md #4) so the
 // PDF always reflects the invoice's current state.
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { requireAdmin } from '@/lib/auth/rbac'
 import { renderToBuffer } from '@react-pdf/renderer'
 import { getInvoice } from '@/lib/invoices'
 import { MasterInvoiceDocument } from '@/lib/invoice/pdf/MasterInvoiceDocument'
 import { RecipientReceiptDocument } from '@/lib/invoice/pdf/RecipientReceiptDocument'
-
-function isAdmin(userId: string | null) {
-  return userId === process.env.ADMIN_CLERK_USER_ID
-}
 
 interface RouteParams {
   params: Promise<{ id: string }>
 }
 
 export async function GET(req: NextRequest, { params }: RouteParams) {
-  const { userId } = await auth()
-  if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const userId = await requireAdmin()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   const { id } = await params
   const variant = req.nextUrl.searchParams.get('variant') === 'recipient' ? 'recipient' : 'master'

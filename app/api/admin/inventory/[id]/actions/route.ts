@@ -3,7 +3,7 @@
 // named operation (matching the six buttons the UI shows) rather than a
 // generic "adjust quantity" call that hides what actually happened.
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { requireAdmin } from '@/lib/auth/rbac'
 import { z } from 'zod'
 import {
   enableInventoryTracking,
@@ -16,10 +16,6 @@ import {
 } from '@/lib/inventory/actions'
 import { reconcileInventory, correctUnitsPerCase } from '@/lib/inventory/corrections'
 import { prisma } from '@/lib/prisma'
-
-function isAdmin(userId: string | null) {
-  return userId === process.env.ADMIN_CLERK_USER_ID
-}
 
 const actionSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('ENABLE_TRACKING') }),
@@ -56,8 +52,8 @@ interface RouteParams {
 }
 
 export async function POST(req: NextRequest, { params }: RouteParams) {
-  const { userId } = await auth()
-  if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const userId = await requireAdmin()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   const { id } = await params
 

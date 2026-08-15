@@ -4,18 +4,14 @@
 // through the dedicated cancel endpoint, not a bare status PATCH, so a
 // cancellation always runs the real reservation-release lifecycle).
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { requireAdmin } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/prisma'
 import { listOrders, type ListOrdersParams } from '@/lib/orders/admin'
 import type { OrderStatus, StorefrontPaymentMethodType } from '@prisma/client'
 
-function isAdmin(userId: string | null) {
-  return userId === process.env.ADMIN_CLERK_USER_ID
-}
-
 export async function GET(req: NextRequest) {
-  const { userId } = await auth()
-  if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const userId = await requireAdmin()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   const sp = req.nextUrl.searchParams
   const params: ListOrdersParams = {
@@ -46,8 +42,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const { userId } = await auth()
-  if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const userId = await requireAdmin()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   const { orderId, status, notes } = await req.json()
   if (!orderId) return NextResponse.json({ error: 'orderId required' }, { status: 400 })

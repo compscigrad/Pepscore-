@@ -2,10 +2,8 @@
 // admin, without ever exposing ADMIN_CLERK_USER_ID itself to the browser.
 // Used by ClerkAuthButtons to decide whether to show the "Admin" nav link.
 import { NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { isCurrentUserAdmin } from '@/lib/auth/rbac'
 
 export async function GET() {
-  const { userId } = await auth()
-  const isAdmin = !!userId && userId === process.env.ADMIN_CLERK_USER_ID
-  return NextResponse.json({ isAdmin })
+  return NextResponse.json({ isAdmin: await isCurrentUserAdmin() })
 }

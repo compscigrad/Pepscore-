@@ -9,17 +9,13 @@
 // Shares its implementation with the public intake-form equivalent
 // (app/api/intake/[token]/zip-lookup/route.ts) via lib/zipLookup.ts.
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { requireAdmin } from '@/lib/auth/rbac'
 import { lookupZip, ZipLookupError } from '@/lib/zipLookup'
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
 
-function isAdmin(userId: string | null) {
-  return userId === process.env.ADMIN_CLERK_USER_ID
-}
-
 export async function GET(req: NextRequest) {
-  const { userId } = await auth()
-  if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const userId = await requireAdmin()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   // Already behind admin auth — this just caps a runaway client-side loop
   // from hammering the third-party lookup service, not malicious abuse.

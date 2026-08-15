@@ -1,14 +1,10 @@
 // GET  /api/admin/promotion-campaigns — list campaigns (optionally filtered by status)
 // POST /api/admin/promotion-campaigns — create a new campaign (always starts DRAFT/SCHEDULED)
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { requireAdmin } from '@/lib/auth/rbac'
 import { z } from 'zod'
 import { listPromotionCampaigns, createPromotionCampaign, PromotionCampaignError } from '@/lib/promotions/campaigns'
 import type { PromotionCampaignStatus } from '@prisma/client'
-
-function isAdmin(userId: string | null) {
-  return userId === process.env.ADMIN_CLERK_USER_ID
-}
 
 const STATUS_VALUES = ['DRAFT', 'SCHEDULED', 'ACTIVE', 'RETIRED', 'ARCHIVED'] as const
 
@@ -30,8 +26,8 @@ const createCampaignSchema = z.object({
 })
 
 export async function GET(req: NextRequest) {
-  const { userId } = await auth()
-  if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const userId = await requireAdmin()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   const statusParam = req.nextUrl.searchParams.get('status')
   const status = statusParam
@@ -42,8 +38,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { userId } = await auth()
-  if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const userId = await requireAdmin()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   try {
     const body = await req.json()

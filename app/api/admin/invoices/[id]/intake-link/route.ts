@@ -5,24 +5,20 @@
 // PATCH { action: 'send', channel: 'email' | 'sms' } — deliver the current
 //        active link directly to the customer's email/phone on file.
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { requireAdmin } from '@/lib/auth/rbac'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { generateIntakeLink, findActiveIntakeLinkFor, regenerateIntakeLink, invalidateIntakeLink } from '@/lib/intakeLinks'
 import { sendIntakeLinkEmail, sendIntakeLinkSms } from '@/lib/intake/delivery'
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
 
-function isAdmin(userId: string | null) {
-  return userId === process.env.ADMIN_CLERK_USER_ID
-}
-
 interface RouteParams {
   params: Promise<{ id: string }>
 }
 
 export async function POST(req: NextRequest, { params }: RouteParams) {
-  const { userId } = await auth()
-  if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const userId = await requireAdmin()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   const { id } = await params
   const invoice = await prisma.invoice.findUnique({ where: { id } })
@@ -46,8 +42,8 @@ const patchSchema = z.discriminatedUnion('action', [
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? ''
 
 export async function PATCH(req: NextRequest, { params }: RouteParams) {
-  const { userId } = await auth()
-  if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const userId = await requireAdmin()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   const { id } = await params
 

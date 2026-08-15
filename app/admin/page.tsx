@@ -19,7 +19,7 @@
 //     not-yet-populated data source, kept visually and semantically
 //     separate from Sales Activity above so the two "orders"-ish tables are
 //     never confused for each other.
-// Access is restricted to the ADMIN_CLERK_USER_ID in .env
+// Access is restricted to the database-backed ADMIN role (lib/auth/rbac.ts)
 
 export const dynamic = 'force-dynamic'
 
@@ -28,7 +28,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
 import { formatCurrency } from '@/lib/orders'
-import { isAdminClerkUser } from '@/lib/isAdmin'
+import { isCurrentUserAdmin } from '@/lib/auth/rbac'
 import { getAdminOperationsSummary, getRecentSalesActivity, type AdminOperationsSummary } from '@/lib/adminDashboard'
 import { getDashboardInventoryAlerts } from '@/lib/adminInventory'
 import { listOpenFulfillmentAlerts } from '@/lib/fulfillment/alerts'
@@ -97,7 +97,7 @@ export default async function AdminDashboard() {
   // Signed in, but not the admin -- a clear, explicit access-denied
   // response, never a silent bounce to the storefront that leaves someone
   // wondering what just happened.
-  if (!isAdminClerkUser(userId)) {
+  if (!(await isCurrentUserAdmin())) {
     return (
       <main className="min-h-screen bg-black flex items-center justify-center p-8">
         <div className="bg-white/[0.03] border border-gold/10 rounded-[18px] p-8 max-w-md text-center">

@@ -6,13 +6,10 @@
 // already on the audit rows themselves — no raw IP is added here that
 // wasn't already stored there.
 import { NextRequest, NextResponse } from 'next/server'
-import { auth, clerkClient } from '@clerk/nextjs/server'
+import { clerkClient } from '@clerk/nextjs/server'
+import { requireAdmin } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/prisma'
 import { getCustomerAccessSummary } from '@/lib/admin/accessHistory'
-
-function isAdmin(userId: string | null) {
-  return userId === process.env.ADMIN_CLERK_USER_ID
-}
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -26,8 +23,8 @@ interface LiveClerkState {
 }
 
 export async function GET(_req: NextRequest, { params }: RouteParams) {
-  const { userId } = await auth()
-  if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const userId = await requireAdmin()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   const { id } = await params
   const customer = await prisma.customer.findUniqueOrThrow({ where: { id }, include: { user: true } })

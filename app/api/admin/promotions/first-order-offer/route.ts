@@ -4,30 +4,26 @@
 // Admin -> Promotions (/admin/promotions) instead of here -- see
 // docs/Decisions.md for the migration reasoning.
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { requireAdmin } from '@/lib/auth/rbac'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { getFirstOrderOfferConfig, updateFirstOrderOfferConfig } from '@/lib/promotions/firstOrderOffer'
-
-function isAdmin(userId: string | null) {
-  return userId === process.env.ADMIN_CLERK_USER_ID
-}
 
 const patchSchema = z.object({
   enabled: z.boolean(),
 })
 
 export async function GET() {
-  const { userId } = await auth()
-  if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const userId = await requireAdmin()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   const config = await getFirstOrderOfferConfig()
   return NextResponse.json(config)
 }
 
 export async function PATCH(req: NextRequest) {
-  const { userId } = await auth()
-  if (!isAdmin(userId)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const userId = await requireAdmin()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   try {
     const body = await req.json()
