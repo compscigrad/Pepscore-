@@ -116,6 +116,32 @@ export const AVAILABILITY_LABEL: Record<StorefrontAvailability, string> = {
   COMING_SOON: 'Coming Soon',
 }
 
+// Single shared badge-pill token (2026-08-15 contrast fix) -- previously
+// duplicated verbatim in ProductCard.tsx and ProductDetail.tsx, which is
+// exactly how BACKORDERED silently ended up too transparent to read on the
+// Light Champagne card surface (a 10%-opacity amber fill/text combination
+// that depended on a dark page background to read at all, and never had
+// one on the champagne card). Both components now import from here so
+// there's one place to fix contrast issues, not two to keep in sync.
+//
+// BACKORDERED intentionally does NOT reuse Tailwind's `amber` scale --
+// amber trends toward bright/orange at the weights with enough contrast,
+// which reads as a warning banner rather than a premium metallic pill.
+// Instead it's built from Pepscore's own established bronze-gold palette
+// (the exact `#6B4526` mid-stop already used and owner-approved as the
+// "Dark Bronze" card surface in app/page.tsx, paired with the existing
+// `#F6D365` bright-gold and `#D4AF37` mid-gold brand tokens) -- a solid,
+// opaque fill rather than a translucent tint, so it reads consistently
+// regardless of what's behind it (dark ProductDetail page or light
+// ProductCard surface alike), at ~7:1 text contrast.
+export const AVAILABILITY_BADGE_CLASS: Record<StorefrontAvailability, string> = {
+  AVAILABLE: 'bg-emerald-900/15 text-emerald-300 border border-emerald-700/25',
+  LIMITED: 'bg-amber-400/10 text-amber-300 border border-amber-400/30',
+  BACKORDERED: 'bg-[#6B4526] text-[#F6D365] border-2 border-[#D4AF37]',
+  OUT_OF_STOCK: 'bg-white/5 text-white/50 border border-white/15',
+  COMING_SOON: 'bg-white/5 text-white/50 border border-white/15',
+}
+
 // Exported for completeness/tests -- not currently rendered publicly, since
 // the spec is explicit that exact internal counts must never be exposed.
 export function getAvailableUnits(product: Pick<Product, 'physicalStockOnHand' | 'reservedUnits'>): number | null {

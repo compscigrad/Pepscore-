@@ -8,7 +8,7 @@ import { useCartStore } from '@/lib/cart-store'
 import { SingleVialImage } from './SingleVialImage'
 import { BackorderIndicator } from './BackorderIndicator'
 import { LeadCaptureTrigger } from './LeadCaptureTrigger'
-import { isPurchasable, AVAILABILITY_LABEL, type StorefrontAvailability } from '@/lib/storefront/availability'
+import { isPurchasable, AVAILABILITY_LABEL, AVAILABILITY_BADGE_CLASS, type StorefrontAvailability } from '@/lib/storefront/availability'
 import { categoriesForProductName } from '@/lib/storefront/merchandisingTaxonomy'
 import type { SellUnit } from '@/lib/pricing/sellUnits'
 import { trackEvent } from '@/lib/analytics/track'
@@ -16,25 +16,6 @@ import { AnalyticsEvent } from '@/lib/analytics/events'
 
 // Any imageUrl pointing at this path triggers the dynamic SVG vial renderer.
 const GENERIC_PLACEHOLDER = '/images/products/default-single-vial.png'
-
-const AVAILABILITY_BADGE_CLASS: Record<StorefrontAvailability, string> = {
-  // Ready to Ship (2026-08-15 fulfillment/availability sprint) -- restrained
-  // muted-emerald pill, deliberately not bright retail green, so it reads
-  // as premium/confident rather than a generic e-commerce in-stock badge.
-  // Same translucent-tint-over-card-surface treatment every other state
-  // here already uses, so it holds up across Light Champagne, Dark Bronze,
-  // and Titanium alike without a per-background variant.
-  AVAILABLE: 'bg-emerald-900/15 text-emerald-300 border border-emerald-700/25',
-  LIMITED: 'bg-amber-400/10 text-amber-300 border border-amber-400/30',
-  // Purchasable (unlike OUT_OF_STOCK below) -- a distinct amber/gold tint
-  // signals "still orderable, just delayed" rather than "unavailable."
-  // The BackorderIndicator dot next to the product name is the primary
-  // marker per the design spec; this badge is the existing
-  // text-label mechanism every other non-AVAILABLE state already uses.
-  BACKORDERED: 'bg-amber-400/10 text-amber-300 border border-amber-400/30',
-  OUT_OF_STOCK: 'bg-white/5 text-white/50 border border-white/15',
-  COMING_SOON: 'bg-white/5 text-white/50 border border-white/15',
-}
 
 export interface ProductVariant {
   id: string

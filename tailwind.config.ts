@@ -6,6 +6,14 @@ const config: Config = {
     './app/**/*.{ts,tsx}',
     './components/**/*.{ts,tsx}',
     './emails/**/*.{ts,tsx}',
+    // lib/ added (2026-08-15 badge contrast fix) -- shared Tailwind class
+    // tokens now live in lib/storefront/availability.ts
+    // (AVAILABILITY_BADGE_CLASS); without this glob, Tailwind's JIT scanner
+    // never sees those class-name strings, so the classes render in the DOM
+    // with zero backing CSS (transparent background, inherited text color,
+    // no border) -- the exact bug this fix was chasing before finding the
+    // real cause.
+    './lib/**/*.{ts,tsx}',
   ],
   theme: {
     extend: {

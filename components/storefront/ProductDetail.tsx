@@ -14,7 +14,7 @@ import { SingleVialImage } from './SingleVialImage'
 import { LeadCaptureTrigger } from './LeadCaptureTrigger'
 import { BackorderIndicator } from './BackorderIndicator'
 import { BackorderLegend } from './BackorderLegend'
-import { AVAILABILITY_LABEL, isPurchasable, type StorefrontAvailability } from '@/lib/storefront/availability'
+import { AVAILABILITY_LABEL, AVAILABILITY_BADGE_CLASS, isPurchasable, type StorefrontAvailability } from '@/lib/storefront/availability'
 import type { StorefrontPrice } from '@/lib/storefront/pricing'
 import type { SellUnit } from '@/lib/pricing/sellUnits'
 import { trackEvent } from '@/lib/analytics/track'
@@ -22,17 +22,6 @@ import { AnalyticsEvent } from '@/lib/analytics/events'
 import { ScientificBackground } from './ScientificBackground'
 
 const GENERIC_PLACEHOLDER = '/images/products/default-single-vial.png'
-
-const AVAILABILITY_BADGE_CLASS: Record<StorefrontAvailability, string> = {
-  // Ready to Ship (2026-08-15 fulfillment/availability sprint) -- restrained
-  // muted emerald, not bright retail green; matches ProductCard's identical
-  // treatment so the two surfaces read as one system.
-  AVAILABLE: 'bg-emerald-900/15 text-emerald-300 border border-emerald-700/25',
-  LIMITED: 'bg-amber-400/10 text-amber-300 border border-amber-400/30',
-  BACKORDERED: 'bg-amber-400/10 text-amber-300 border border-amber-400/30',
-  OUT_OF_STOCK: 'bg-white/5 text-white/50 border border-white/15',
-  COMING_SOON: 'bg-white/5 text-white/50 border border-white/15',
-}
 
 export interface RelatedStrength {
   slug: string
