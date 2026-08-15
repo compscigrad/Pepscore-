@@ -7,6 +7,47 @@ import { BrandLockup } from './BrandLockup'
 import { getActiveFirstOrderOffer } from '@/lib/promotions/firstOrderOffer'
 import { formatDiscountLabel } from '@/lib/promotions/format'
 
+import { prisma } from '@/lib/prisma'
+import { groupByName } from '@/lib/storefront/groupByName'
+
+// Footer "Products" list -- display label plus the canonical Product.name
+// each resolves against (2026-08-15 deep-link fix). Labels stay exactly as
+// previously shown; "CJC-1295 / Ipamorelin" is the existing category
+// shorthand for the specific combo product "CJC-1295 without DAC 5mg +
+// Ipamorelin 5mg" (lib/storefront/merchandisingTaxonomy.ts lists it as the
+// first CJC-family entry after plain Ipamorelin), not the whole CJC-1295
+// family -- flagged here since it's the one non-exact name match.
+const FOOTER_PRODUCTS = [
+  { label: 'Semaglutide', name: 'Semaglutide' },
+  { label: 'Tirzepatide', name: 'Tirzepatide' },
+  { label: 'Retatrutide', name: 'Retatrutide' },
+  { label: 'NAD+', name: 'NAD+' },
+  { label: 'Epithalon', name: 'Epithalon' },
+  { label: 'CJC-1295 / Ipamorelin', name: 'CJC-1295 without DAC 5mg + Ipamorelin 5mg' },
+  { label: 'Glutathione', name: 'Glutathione' },
+  { label: 'GHK-Cu', name: 'GHK-Cu' },
+  { label: 'PT-141', name: 'PT-141' },
+] as const
+
+// Resolves each footer product to the same canonical slug its own
+// homepage/search/category card would land on by default (variants[0] of
+// groupByName's grouping, same query shape as the homepage's getProducts())
+// -- one source of truth, not a second hard-coded routing map. Falls back
+// to the generic catalog anchor only if a name is ever renamed/removed, so
+// a stale footer entry degrades instead of 404ing.
+async function getFooterProductSlugs(): Promise<Map<string, string>> {
+  const rows = await prisma.product.findMany({
+    where: { name: { in: FOOTER_PRODUCTS.map((p) => p.name) }, pricingStatus: { not: 'INACTIVE' } },
+    orderBy: { createdAt: 'asc' },
+  })
+  const grouped = groupByName(rows)
+  const map = new Map<string, string>()
+  for (const p of grouped) {
+    if (p.variants[0]) map.set(p.name, p.variants[0].slug)
+  }
+  return map
+}
+
 // Server Component -- reads the active first-order offer directly (no
 // client fetch) so the banner renders or doesn't with zero flash, and
 // stays entirely absent from the DOM while the offer is off (the
@@ -15,7 +56,7 @@ import { formatDiscountLabel } from '@/lib/promotions/format'
 // campaign (or any future copy an admin writes) renders correctly without
 // a code change.
 export async function Footer() {
-  const offer = await getActiveFirstOrderOffer()
+  const [offer, footerSlugs] = await Promise.all([getActiveFirstOrderOffer(), getFooterProductSlugs()])
 
   return (
     <footer className="relative overflow-hidden bg-black text-white pt-14 pb-7 px-6">
@@ -94,13 +135,17 @@ export async function Footer() {
           <div>
             <h4 className="font-heading text-[11px] font-bold tracking-[0.1em] uppercase text-[#D4AF37] mb-3">Products</h4>
             <ul className="space-y-2">
-              {['Semaglutide','Tirzepatide','Retatrutide','NAD+','Epithalon','CJC-1295 / Ipamorelin','Glutathione','GHK-Cu','PT-141'].map(p => (
-                <li key={p}>
-                  <Link href="/#products" className="text-[13px] text-white/60 hover:text-[#D4AF37] transition-colors">
-                    {p}
-                  </Link>
-                </li>
-              ))}
+              {FOOTER_PRODUCTS.map(({ label, name }) => {
+                const slug = footerSlugs.get(name)
+                const href = slug ? `/products/${slug}` : '/#products'
+                return (
+                  <li key={label}>
+                    <Link href={href} className="text-[13px] text-white/60 hover:text-[#D4AF37] transition-colors">
+                      {label}
+                    </Link>
+                  </li>
+                )
+              })}
             </ul>
           </div>
 
