@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Pepscore Lab — Holistic Research Peptides',
     description: 'Pharmaceutical-quality research peptides. ≥98% purity. For Research Use Only.',
-    images: [{ url: '/images/hero-vials.jpeg' }],
+    images: [{ url: '/images/pepscore-hero-v2.png' }],
     type: 'website',
   },
   // Belt-and-suspenders alongside app/robots.ts's env-based rules -- this
