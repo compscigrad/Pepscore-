@@ -5,7 +5,7 @@
 // "Related Strengths" below.
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
@@ -16,6 +16,7 @@ import { BackorderIndicator } from './BackorderIndicator'
 import { BackorderLegend } from './BackorderLegend'
 import { AVAILABILITY_LABEL, isPurchasable, type StorefrontAvailability } from '@/lib/storefront/availability'
 import type { StorefrontPrice } from '@/lib/storefront/pricing'
+import type { SellUnit } from '@/lib/pricing/sellUnits'
 import { trackEvent } from '@/lib/analytics/track'
 import { AnalyticsEvent } from '@/lib/analytics/events'
 import { ScientificBackground } from './ScientificBackground'
@@ -82,7 +83,25 @@ export function ProductDetail({
   sku,
 }: ProductDetailProps) {
   const { addItem, openCart } = useCartStore()
-  const canPurchase = price != null && isPurchasable(availability)
+
+  // Sell-unit toggle (2026-08-15 parity fix) -- this page previously only
+  // ever offered Standard Case, even for a variant whose ProductCard
+  // exposed a working Standard Case / Single Vial toggle (same
+  // canSelectIndividualVial / effectiveSellUnit pattern as
+  // components/storefront/ProductCard.tsx, so the two surfaces can never
+  // disagree about what's purchasable). This page has no in-place variant
+  // switcher (sibling strengths are separate routes via "Other Strengths"
+  // below) -- app/products/[slug]/page.tsx keys this component by
+  // product.id, so React fully remounts it (fresh useState) on navigation
+  // between two /products/[slug] routes, rather than reusing state across
+  // products. A Single-Vial selection on one strength can never carry over
+  // as a stale selection on a case-only sibling.
+  const [sellUnit, setSellUnit] = useState<SellUnit>('CASE_STANDARD')
+
+  const canSelectIndividualVial = price?.individualVialPrice != null
+  const effectiveSellUnit: SellUnit = canSelectIndividualVial ? sellUnit : 'CASE_STANDARD'
+  const activePrice = price == null ? null : effectiveSellUnit === 'INDIVIDUAL_VIAL' ? price.individualVialPrice : price.standardCasePrice
+  const canPurchase = activePrice != null && isPurchasable(availability)
 
   // Fired once per page load, not per render -- deliberately excludes
   // `category`/`availability` etc. from the dependency array since this
@@ -94,24 +113,19 @@ export function ProductDetail({
   }, [slug])
 
   function handleAdd() {
-    if (!canPurchase || price == null) return
-    // Standard Case is the only tier this page's own "Add to Cart" button
-    // has ever offered -- explicitly tagging the line as such (rather than
-    // leaving sellUnit unset) means it correctly gets its own cart line
-    // even if a future page/flow (e.g. Buy Again resolving an Individual
-    // Vial purchase) adds a differently-tiered line for the same product.
+    if (!canPurchase || activePrice == null || price == null) return
     addItem({
       id,
       slug,
       name,
       size,
-      price: price.standardCasePrice,
+      price: activePrice,
       imageUrl,
       backordered: availability === 'BACKORDERED',
-      sellUnit: 'CASE_STANDARD',
-      unitsPerSellUnit: price.unitsPerCase ?? 10,
+      sellUnit: effectiveSellUnit,
+      unitsPerSellUnit: effectiveSellUnit === 'INDIVIDUAL_VIAL' ? 1 : price.unitsPerCase ?? 10,
     })
-    toast.success(`${name} ${size} added to cart`)
+    toast.success(`${name} ${size} (${effectiveSellUnit === 'INDIVIDUAL_VIAL' ? 'Single Vial' : 'Standard Case'}) added to cart`)
     openCart()
   }
 
@@ -168,14 +182,36 @@ export function ProductDetail({
           <div className="bg-white/[0.03] border border-[#D4AF37]/15 rounded-2xl p-6 mb-6">
             {price ? (
               <>
+                {/* Sell-unit selector -- only rendered when this exact
+                    variant's individual-vial price is publicly enabled
+                    (lib/storefront/pricing.ts withholds it entirely for a
+                    stored-but-disabled price), same gate ProductCard uses. */}
+                {canSelectIndividualVial && (
+                  <div className="flex gap-2 mb-4">
+                    {(['CASE_STANDARD', 'INDIVIDUAL_VIAL'] as const).map((unit) => (
+                      <button
+                        key={unit}
+                        onClick={() => setSellUnit(unit)}
+                        className={`flex-1 px-3 py-2 rounded-lg text-[11px] font-heading font-bold tracking-[0.04em] uppercase transition-all ${
+                          effectiveSellUnit === unit
+                            ? 'bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] text-black'
+                            : 'border border-[#D4AF37]/25 text-white/60 hover:border-[#D4AF37] hover:text-[#D4AF37]'
+                        }`}
+                      >
+                        {unit === 'CASE_STANDARD' ? 'Standard Case' : 'Single Vial'}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <p className="text-[10px] font-bold text-white/40 uppercase tracking-[0.07em] mb-1">
-                      {price.unitsPerCase ? `Standard Case — Case of ${price.unitsPerCase}` : 'Standard Case'}
+                      {effectiveSellUnit === 'INDIVIDUAL_VIAL' ? 'Single Vial' : price.unitsPerCase ? `Standard Case — Case of ${price.unitsPerCase}` : 'Standard Case'}
                     </p>
-                    <p className="font-heading text-[28px] font-extrabold text-white">${price.standardCasePrice}</p>
+                    <p className="font-heading text-[28px] font-extrabold text-white">${activePrice}</p>
                   </div>
-                  {price.individualVialPrice != null && (
+                  {canSelectIndividualVial && effectiveSellUnit === 'CASE_STANDARD' && (
                     <div className="text-right">
                       <p className="text-[10px] font-bold text-white/40 uppercase tracking-[0.07em] mb-1">Per Vial</p>
                       <p className="font-heading text-[20px] font-bold text-[#D4AF37]">${price.individualVialPrice}</p>
@@ -184,8 +220,10 @@ export function ProductDetail({
                 </div>
 
                 {/* SPA case price — only ever populated for an admin-granted
-                    eligible signed-in customer, see lib/storefront/pricing.ts */}
-                {price.spaCasePrice != null && (
+                    eligible signed-in customer, see lib/storefront/pricing.ts.
+                    Standard Case pricing only; not offered for Individual
+                    Vial, same as ProductCard. */}
+                {price.spaCasePrice != null && effectiveSellUnit === 'CASE_STANDARD' && (
                   <div className="bg-[#D4AF37]/8 border border-[#D4AF37]/25 rounded-lg p-3 flex items-center justify-between mb-4">
                     <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#D4AF37]">SPA Price</p>
                     <p className="font-heading text-[18px] font-bold text-[#D4AF37]">${price.spaCasePrice}</p>

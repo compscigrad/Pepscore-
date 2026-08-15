@@ -139,6 +139,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
       <CartSidebar />
       <Header />
       <ProductDetail
+        key={product.id}
         id={product.id}
         slug={product.slug}
         name={product.name}
