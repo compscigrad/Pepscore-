@@ -52,6 +52,13 @@ export interface ProductVariant {
   availabilityMessageOverride: string | null
 }
 
+// Light Champagne (2026-08-15, final selection) -- picked over the
+// original Champagne Bronze and the Cool/Pearl candidates from the
+// comparison preview specifically for the extra luminance gap it gives the
+// deep-gold (#C99A20) small text below; still warm/metallic/dimensional,
+// not washed toward silver or gold itself.
+const CHAMPAGNE_BRONZE = 'linear-gradient(155deg, #7A6850 0%, #B5A17E 22%, #D8C7A3 45%, #F2E8D3 62%, #B5A17E 85%, #7A6850 100%)'
+
 export interface ProductCardProps {
   name: string
   featured?: boolean
@@ -104,7 +111,20 @@ export function ProductCard({ name, featured, category, description, imageUrl, b
   }
 
   return (
-    <article className="bg-[#0d0d0d] border border-[#D4AF37]/15 rounded-card overflow-hidden relative flex flex-col transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:border-[#D4AF37]/40 group">
+    // Champagne Bronze card surface (2026-08-15 metallic-card selection,
+    // owner-approved preview) -- replaces the prior flat bg-[#0d0d0d].
+    // Deliberately lighter/more muted than the existing Pepscore gold
+    // (#F6D365/#D4AF37/#C99A20) so it reads as its own metal, not a
+    // desaturated gold card. Border stays gold-tinted and brightens
+    // further on hover -- gold remains the connective accent, not the
+    // card surface itself. Every button/badge/CTA inside this card keeps
+    // its existing colors untouched; only the outer surface and the two
+    // plain (non-interactive) text/display elements below were adjusted
+    // for contrast against the new lighter, warmer background.
+    <article
+      className="border border-[#D4AF37]/25 rounded-card overflow-hidden relative flex flex-col transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_12px_36px_rgba(212,175,55,0.25)] hover:border-[#D4AF37]/75 group"
+      style={{ background: CHAMPAGNE_BRONZE }}
+    >
       {/* Badges — marketing badge (e.g. "Best Seller") takes the left corner;
           Featured (admin-set, Phase 2B item 6) takes the right so both can
           show at once without overlapping. */}
@@ -152,10 +172,22 @@ export function ProductCard({ name, featured, category, description, imageUrl, b
             can belong to more than one; the label itself still shows the
             authoritative Product.category value, only the link target
             changed. Falls back to the category index on the rare product
-            with no taxonomy membership yet, rather than a dead link. */}
+            with no taxonomy membership yet, rather than a dead link.
+            Deep-gold refinement (2026-08-14): this label and the size span
+            below were #D4AF37 (category label) / #D4AF37 at 80% opacity
+            (size span), which read too pale against the lighter bands of
+            the Champagne Bronze card surface. Both now use solid #C99A20 —
+            same gold family, deeper existing token, no opacity reduction.
+            Same value used for the "Save X%" text in app/page.tsx's
+            Titanium tier cards for a consistent small-text gold weight
+            across the storefront (not a literal shared constant — this
+            component also renders on /search and /categories, which don't
+            share a metallic background, so a cross-file JS import wasn't
+            warranted for a single color decision). Product name, Add to
+            Cart, and every other ProductCard element are untouched. */}
         <Link
           href={categoriesForProductName(name)[0] ? `/categories/${categoriesForProductName(name)[0].slug}` : '/categories'}
-          className="font-heading text-[10px] font-bold tracking-[0.12em] uppercase text-[#D4AF37] mb-1 hover:underline inline-block w-fit"
+          className="font-heading text-[10px] font-bold tracking-[0.12em] uppercase text-[#C99A20] mb-1 hover:underline hover:text-[#D4AF37] inline-block w-fit transition-colors"
         >
           {category}
         </Link>
@@ -167,13 +199,13 @@ export function ProductCard({ name, featured, category, description, imageUrl, b
             never rendered its size anywhere on the card, because the size
             pills below only render when variants.length > 1. */}
         <Link href={`/products/${v.slug}`} className="flex items-center gap-2 mb-2 w-fit flex-wrap">
-          <h3 className="font-heading text-[17px] font-bold text-white leading-tight hover:text-[#D4AF37] transition-colors">{name}</h3>
-          <span className="font-heading text-[11px] font-bold text-[#D4AF37]/80 tracking-[0.02em]">{v.size}</span>
+          <h3 className="font-heading text-[17px] font-bold text-[#241C10] leading-tight hover:text-[#D4AF37] transition-colors">{name}</h3>
+          <span className="font-heading text-[11px] font-bold text-[#C99A20] tracking-[0.02em]">{v.size}</span>
           {v.availability === 'BACKORDERED' && <BackorderIndicator />}
         </Link>
 
         {/* Description — flex-1 so it absorbs variable space, keeping bottom section aligned */}
-        <p className="text-[12px] text-white/55 leading-relaxed flex-1 mb-3">{description}</p>
+        <p className="text-[12px] text-[#241C10]/70 leading-relaxed flex-1 mb-3">{description}</p>
 
         {/* ── Bottom section — always pinned via flex-1 on description above ── */}
         <div className="flex flex-col gap-2.5">
@@ -181,16 +213,25 @@ export function ProductCard({ name, featured, category, description, imageUrl, b
           {/* Size selector pills */}
           {variants.length > 1 && (
             <div>
-              <p className="text-[10px] font-bold tracking-[0.08em] uppercase text-white/40 mb-1.5">Select size</p>
+              <p className="text-[10px] font-bold tracking-[0.08em] uppercase text-[#241C10]/55 mb-1.5">Select size</p>
               <div className="flex flex-wrap gap-1.5">
                 {variants.map((variant, i) => (
                   <button
                     key={variant.slug}
                     onClick={() => selectSize(i)}
+                    // Unselected pill contrast fix (2026-08-15 refinement) --
+                    // the prior border-only/text-white-60 treatment nearly
+                    // disappeared against the lighter parts of the Champagne
+                    // Bronze surface. A dark neutral chip (matching the same
+                    // bg-black/15-20 convention already used for this card's
+                    // price-display boxes) keeps unselected sizes clearly
+                    // legible while staying visually secondary to the solid-
+                    // gold selected pill -- selected state, dimensions, and
+                    // layout are all unchanged.
                     className={`px-2.5 py-1 rounded-full text-[11px] font-heading font-bold tracking-[0.04em] transition-all ${
                       i === selectedIdx
                         ? 'bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] text-black'
-                        : 'border border-[#D4AF37]/25 text-white/60 hover:border-[#D4AF37] hover:text-[#D4AF37]'
+                        : 'bg-black/20 border border-black/25 text-white/80 hover:bg-black/10 hover:border-[#D4AF37] hover:text-[#D4AF37]'
                     }`}
                   >
                     {variant.size}
@@ -234,17 +275,21 @@ export function ProductCard({ name, featured, category, description, imageUrl, b
               )}
 
               {/* Selected-unit price */}
-              <div className="bg-white/[0.03] border border-[#D4AF37]/15 rounded-lg p-3 flex items-center justify-between">
+              {/* Non-interactive price display -- background/text darkened
+                  for contrast against the now-light champagne-bronze card;
+                  not a button, so this is a contrast adjustment, not a
+                  button-color change. */}
+              <div className="bg-black/15 border border-black/20 rounded-lg p-3 flex items-center justify-between">
                 <div>
-                  <p className="text-[9px] font-bold text-white/40 uppercase tracking-[0.07em] mb-0.5">
+                  <p className="text-[9px] font-bold text-[#241C10]/55 uppercase tracking-[0.07em] mb-0.5">
                     {effectiveSellUnit === 'INDIVIDUAL_VIAL' ? 'Single Vial' : v.unitsPerCase ? `Case of ${v.unitsPerCase}` : 'Standard Case'}
                   </p>
-                  <p className="font-heading text-[18px] font-extrabold text-white">${activePrice}</p>
+                  <p className="font-heading text-[18px] font-extrabold text-[#241C10]">${activePrice}</p>
                 </div>
                 {canSelectIndividualVial && effectiveSellUnit === 'CASE_STANDARD' && (
                   <div className="text-right">
-                    <p className="text-[9px] font-bold text-white/40 uppercase tracking-[0.07em] mb-0.5">Per Vial</p>
-                    <p className="font-heading text-[14px] font-bold text-[#D4AF37]">${v.individualVialPrice}</p>
+                    <p className="text-[9px] font-bold text-[#241C10]/55 uppercase tracking-[0.07em] mb-0.5">Per Vial</p>
+                    <p className="font-heading text-[14px] font-bold text-[#7A2E17]">${v.individualVialPrice}</p>
                   </div>
                 )}
               </div>
@@ -273,8 +318,8 @@ export function ProductCard({ name, featured, category, description, imageUrl, b
           ) : (
             <>
               {/* No approved public price yet — never invent one */}
-              <div className="bg-white/[0.03] border border-[#D4AF37]/15 rounded-lg p-3 text-center">
-                <p className="text-[12px] font-heading font-semibold text-white/60">Pricing available on request</p>
+              <div className="bg-black/15 border border-black/20 rounded-lg p-3 text-center">
+                <p className="text-[12px] font-heading font-semibold text-[#241C10]/75">Pricing available on request</p>
               </div>
               <Link
                 href="/#contact"

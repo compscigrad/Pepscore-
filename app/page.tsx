@@ -237,12 +237,56 @@ export default async function HomePage() {
                 { range: '10–14 cases', save: 'Save 10%', featured: false },
                 { range: '15+ cases', save: 'Save 15%', featured: true },
               ].map(c => (
-                <div key={c.range} className={`relative overflow-hidden rounded-2xl p-6 text-center border transition-all hover:-translate-y-1 ${c.featured ? 'border-[#D4AF37]/50 bg-[#D4AF37]/10' : 'border-[#D4AF37]/20 bg-white/[0.03]'}`}>
+                // Dog Tag Titanium card surface (2026-08-15, FINAL
+                // selection out of the 4-candidate material comparison --
+                // Option C). One flat base, no multi-stop color gradient.
+                // Base is a slightly deeper/stronger silver than the two
+                // earlier flat attempts (#DADDE0 read as white/pearl,
+                // #A8AFB6 alone read as a plain gray card) specifically so
+                // the surface registers as metal immediately, per the
+                // "dog tag / stamped metal edge" brief. Character comes
+                // from a crisp bright top-edge highlight, a tight
+                // higher-contrast specular glint near one corner, and a
+                // heavier elevation shadow than the earlier candidates --
+                // monochrome only, no second hue anywhere.
+                <div
+                  key={c.range}
+                  className={`relative overflow-hidden rounded-2xl p-6 text-center border transition-all hover:-translate-y-1 hover:border-[#D4AF37]/75 ${c.featured ? 'border-[#D4AF37]/60' : 'border-[#D4AF37]/20'}`}
+                  style={{
+                    background: '#9AA1A8',
+                    boxShadow: 'inset 0 1.5px 0 rgba(255,255,255,0.7), inset 0 -1px 0 rgba(0,0,0,0.22), 0 12px 30px rgba(15,14,12,0.24)',
+                  }}
+                >
+                  {/* Crisp specular glint -- tight, brighter than the
+                      earlier candidates, near the top-left corner only, so
+                      it reads as light catching a stamped metal edge rather
+                      than a soft ambient wash. */}
+                  <div
+                    className="absolute inset-0 pointer-events-none"
+                    style={{ background: 'radial-gradient(ellipse 130px 55px at 15% -10%, rgba(255,255,255,0.65) 0%, transparent 55%)' }}
+                  />
                   {c.featured && (
                     <div className="absolute top-3.5 right-[-22px] bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] text-black text-[9px] font-bold tracking-[0.1em] px-8 py-1 rotate-45">BEST VALUE</div>
                   )}
-                  <h3 className="font-heading text-[15px] font-bold text-white mb-1.5">{c.range}</h3>
-                  <div className="font-heading text-[26px] font-extrabold bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] bg-clip-text text-transparent">{c.save}</div>
+                  <h3 className="relative font-heading text-[15px] font-bold text-[#1A1A1A] mb-1.5">{c.range}</h3>
+                  {/* Gold color itself unchanged throughout every Titanium
+                      iteration (still exactly #D4AF37 -> #C99A20, per "keep
+                      the stronger/deeper Pepscore gold, do not change the
+                      percentages"). Flat metallic silvers in this luminance
+                      range sit close to this gold's own luminance regardless
+                      of exact hex, so a drop-shadow filter (not a background
+                      halo/backdrop -- that was tried and rejected earlier)
+                      on the text itself restores edge definition; it
+                      follows the glyph shapes exactly since drop-shadow
+                      operates on alpha, unlike text-shadow on bg-clip-text
+                      which some browsers render inconsistently on clipped/
+                      transparent fills. */}
+                  <div
+                    className="relative font-heading text-[26px] font-extrabold bg-gradient-to-br from-[#D4AF37] to-[#C99A20] bg-clip-text text-transparent"
+                    style={{ filter: 'drop-shadow(0 1px 1.5px rgba(20,16,8,0.45))' }}
+                  >
+                    {c.save}
+                  </div>
                 </div>
               ))}
             </div>
@@ -299,11 +343,22 @@ export default async function HomePage() {
                 // wholesale-inquiry CTA; this card stays informational.
                 { icon:'🤝', title:'Wholesale Partnerships', body:'Tiered wholesale pricing, dedicated account management, and priority fulfillment for volume buyers.' },
               ].map(f => (
-                <div key={f.title} className="relative overflow-hidden bg-gradient-to-b from-[#141414] to-[#0a0a0a] border border-[#D4AF37]/15 rounded-2xl p-8 text-center transition-all hover:-translate-y-1 hover:border-[#D4AF37]/45 hover:shadow-[0_16px_40px_rgba(212,175,55,0.10)]">
-                  <div className="absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-[#D4AF37]/40 to-transparent" />
-                  <div className="w-[62px] h-[62px] bg-gradient-to-br from-[#D4AF37]/15 to-[#D4AF37]/5 border border-[#D4AF37]/20 rounded-full flex items-center justify-center mx-auto mb-4 text-[26px]">{f.icon}</div>
-                  <h3 className="font-heading text-[16px] font-bold text-white mb-2.5">{f.title}</h3>
-                  <p className="text-[13px] text-white/55 leading-[1.7] mb-0">{f.body}</p>
+                // Dark Bronze card surface (2026-08-15 metallic-card
+                // selection, owner-approved preview) -- replaces the prior
+                // bg-gradient-to-b from-[#141414] to-[#0a0a0a]. Deeper/more
+                // substantial than Section 1's Champagne Bronze by design;
+                // the #6B4526/#8B5F35 mid-stops keep it visibly bronze
+                // rather than collapsing into black. Text stays light/cream
+                // since this surface is darker overall than Section 1's.
+                <div
+                  key={f.title}
+                  className="relative overflow-hidden border border-[#D4AF37]/20 rounded-2xl p-8 text-center transition-all hover:-translate-y-1 hover:border-[#D4AF37]/70 hover:shadow-[0_16px_40px_rgba(212,175,55,0.25)]"
+                  style={{ background: 'linear-gradient(155deg, #1F130D 0%, #3D2818 22%, #6B4526 48%, #8B5F35 62%, #3D2818 82%, #1F130D 100%)' }}
+                >
+                  <div className="absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent" />
+                  <div className="w-[62px] h-[62px] bg-gradient-to-br from-[#1c1c1c] to-[#0a0a0a] border border-black/30 rounded-full flex items-center justify-center mx-auto mb-4 text-[26px]">{f.icon}</div>
+                  <h3 className="font-heading text-[16px] font-bold text-[#EBDCC8] mb-2.5">{f.title}</h3>
+                  <p className="text-[13px] text-[#EBDCC8]/70 leading-[1.7] mb-0">{f.body}</p>
                 </div>
               ))}
             </div>
