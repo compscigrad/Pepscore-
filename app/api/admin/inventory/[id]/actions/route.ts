@@ -39,6 +39,10 @@ const actionSchema = z.discriminatedUnion('action', [
   // fulfillment-shortage record). Changes storefront-facing availability
   // (lib/storefront/availability.ts) without a code deployment.
   z.object({ action: z.literal('SET_BACKORDER_ENABLED'), backorderEnabled: z.boolean() }),
+  // Owner-controlled merchandising label (2026-08-15) -- product-family
+  // level, not per-strength: the handler below writes this to every
+  // Product row sharing the edited row's name, not just `id`.
+  z.object({ action: z.literal('SET_MERCHANDISING_STATUS'), merchandisingStatus: z.enum(['NONE', 'POPULAR', 'BEST_SELLER']) }),
   // Discrepancy-correction actions -- distinct from the routine actions
   // above in that they always require a reason, and RECONCILE fixes the
   // reservedUnits cache against the actual sum of ACTIVE reservations
@@ -102,6 +106,23 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
           },
         })
         break
+      case 'SET_MERCHANDISING_STATUS': {
+        // Product-family-wide write (not just this row) -- Semaglutide
+        // 30mg and Semaglutide 5mg must never disagree on this, and the
+        // owner explicitly does not want to tag every strength by hand.
+        const target = await prisma.product.findUniqueOrThrow({ where: { id }, select: { name: true } })
+        result = await prisma.product.updateMany({ where: { name: target.name }, data: { merchandisingStatus: payload.merchandisingStatus } })
+        await prisma.adminAuditLog.create({
+          data: {
+            action: 'SET_PRODUCT_MERCHANDISING_STATUS',
+            entity: 'Product',
+            entityId: id,
+            adminId: actor,
+            details: { name: target.name, merchandisingStatus: payload.merchandisingStatus },
+          },
+        })
+        break
+      }
       case 'RECONCILE':
         result = await reconcileInventory(id, actor, payload.reason)
         break

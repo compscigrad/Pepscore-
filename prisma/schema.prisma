@@ -39,6 +39,17 @@ enum Role {
 
 // ─── Products ────────────────────────────────────────────────────────────────
 
+// Owner-controlled merchandising label (2026-08-15), mutually exclusive by
+// design -- a product shows at most one of these on the storefront, never
+// both. Deliberately NOT computed from sales/order volume this sprint --
+// admin picks it manually via Product Master and it stays picked until
+// changed.
+enum MerchandisingStatus {
+  NONE
+  POPULAR
+  BEST_SELLER
+}
+
 model Product {
   id          String   @id @default(cuid())
   slug        String   @unique
@@ -135,6 +146,15 @@ model Product {
   // distinct from the automatic same-name sibling-strength list.
   relatedProductSlugs         String[] @default([])
   featured                    Boolean  @default(false)
+  // Product-family-level, not per-strength (2026-08-15) -- when the admin
+  // sets this from Product Master it's written to every Product row sharing
+  // this name in one call (see SET_MERCHANDISING_STATUS in
+  // app/api/admin/inventory/[id]/actions/route.ts), so a single mg
+  // strength never drifts out of sync with its siblings. Distinct from
+  // `featured` above (Phase 2B homepage-sort flag, its own separate
+  // concept/badge) and from the legacy free-text `badge` column (no longer
+  // read for storefront display -- see lib/storefront/groupByName.ts).
+  merchandisingStatus         MerchandisingStatus @default(NONE)
   // Manual override, independent of the automatic completeness guard in
   // generateMetadata (a too-short/placeholder description forces noindex
   // regardless of this flag -- see app/products/[slug]/page.tsx).

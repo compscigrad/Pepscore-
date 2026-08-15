@@ -315,9 +315,33 @@ const productsWithDescriptions = products.map(p => ({
     `${p.name} ${p.size} — For Research Use Only. Independently verified purity ≥98%. Not for human use, consumption, or therapeutic application.`,
 }))
 
+// Owner-controlled merchandising labels (2026-08-15 initial assignment) --
+// applied by product name so every strength of a family agrees, matching
+// how the admin action (SET_MERCHANDISING_STATUS) writes it in production.
+// A reseed without this would silently wipe the live Product Master
+// assignments back to NONE.
+const MERCHANDISING_BY_NAME: Record<string, 'POPULAR' | 'BEST_SELLER'> = {
+  'Semaglutide': 'POPULAR',
+  'Tirzepatide': 'POPULAR',
+  'GLOW70': 'POPULAR',
+  'GHK-Cu': 'POPULAR',
+  'PT-141': 'POPULAR',
+  'MOTS-c': 'POPULAR',
+  'Glutathione': 'POPULAR',
+  'Retatrutide': 'BEST_SELLER',
+  'CJC-1295 without DAC 5mg + Ipamorelin 5mg': 'BEST_SELLER',
+  'Tesamorelin': 'BEST_SELLER',
+  'NAD+': 'BEST_SELLER',
+}
+
+const productsWithMerchandising = productsWithDescriptions.map(p => ({
+  ...p,
+  merchandisingStatus: MERCHANDISING_BY_NAME[p.name] ?? 'NONE',
+}))
+
 async function main() {
-  console.log(`Seeding ${productsWithDescriptions.length} products...`)
-  for (const p of productsWithDescriptions) {
+  console.log(`Seeding ${productsWithMerchandising.length} products...`)
+  for (const p of productsWithMerchandising) {
     await prisma.product.upsert({
       where: { slug: p.slug },
       update: p,

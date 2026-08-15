@@ -16,6 +16,14 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { ProductMasterRow, PricingSourceStatus } from '@/lib/adminProductMaster'
 import { PRICING_SOURCE_LABEL } from '@/lib/adminProductMaster'
+import { MERCHANDISING_LABEL } from '@/lib/storefront/groupByName'
+import type { MerchandisingStatus } from '@prisma/client'
+
+// Same three values the schema allows (prisma/schema.prisma) -- keeping an
+// explicit array (rather than Object.keys on the label map) means the
+// select's option order is deliberate, not whatever object-key order
+// happens to fall out.
+const MERCHANDISING_OPTIONS: MerchandisingStatus[] = ['NONE', 'POPULAR', 'BEST_SELLER']
 
 // Compact whole-dollar display when the authoritative price has no cents,
 // full cents when it does (spec #9) -- applied to every price column here.
@@ -242,6 +250,23 @@ export function ProductMasterTable({ rows }: { rows: ProductMasterRow[] }) {
     }
   }
 
+  async function handleSetMerchandisingStatus(row: ProductMasterRow, status: MerchandisingStatus) {
+    if (status === row.product.merchandisingStatus) return
+    setBusyId(row.product.id)
+    setRowError(null)
+    try {
+      // Applies to every strength of this product name (server-side), not
+      // just this row -- see SET_MERCHANDISING_STATUS in
+      // app/api/admin/inventory/[id]/actions/route.ts.
+      await postAction(row.product.id, { action: 'SET_MERCHANDISING_STATUS', merchandisingStatus: status })
+      router.refresh()
+    } catch (err) {
+      setRowError({ id: row.product.id, message: err instanceof Error ? err.message : 'Update failed' })
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   async function handleToggleBackorder(row: ProductMasterRow) {
     const willEnable = !row.product.backorderEnabled
     setBusyId(row.product.id)
@@ -308,7 +333,7 @@ export function ProductMasterTable({ rows }: { rows: ProductMasterRow[] }) {
               <th className={`${STICKY_CELL} left-0 text-left font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 px-3 py-3 whitespace-nowrap border-b border-white/10`}>Archive</th>
               <th className={`${STICKY_CELL} left-[76px] text-left font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 px-3 py-3 whitespace-nowrap border-b border-white/10`}>Singles</th>
               <th className={`${STICKY_CELL} left-[152px] text-left font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 px-3 py-3 whitespace-nowrap border-b border-white/10 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.4)]`}>Product</th>
-              {['Cost', 'Storefront Case', 'SPA', 'Single Vial', '5%', '8%', '10%', '15%', 'Category', 'Source', 'Backorder', 'Image', 'Inventory', 'Updated', ''].map((h) => (
+              {['Cost', 'Storefront Case', 'SPA', 'Single Vial', '5%', '8%', '10%', '15%', 'Category', 'Merchandising', 'Source', 'Backorder', 'Image', 'Inventory', 'Updated', ''].map((h) => (
                 <th key={h} className="text-left font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 px-3 py-3 whitespace-nowrap">
                   {h}
                 </th>
@@ -373,6 +398,25 @@ export function ProductMasterTable({ rows }: { rows: ProductMasterRow[] }) {
                 <td className="px-3 py-3 whitespace-nowrap text-white/70">{money(row.bulkTiers.fifteen)}</td>
                 {/* Secondary operational columns */}
                 <td className="px-3 py-3 text-white/60 whitespace-nowrap">{row.product.category}</td>
+                {/* Merchandising -- Popular/Best Seller/None (2026-08-15).
+                    Select rather than two toggles since the values are
+                    mutually exclusive; writes to every strength sharing
+                    this product name, not just this row. */}
+                <td className="px-3 py-3">
+                  <select
+                    value={row.product.merchandisingStatus}
+                    disabled={busyId === row.product.id}
+                    onChange={(e) => handleSetMerchandisingStatus(row, e.target.value as MerchandisingStatus)}
+                    aria-label={`Merchandising tag for ${row.product.name}`}
+                    className="rounded-md border border-white/10 bg-white/5 px-2 py-1.5 text-[12px] text-white focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold/30 disabled:opacity-40"
+                  >
+                    {MERCHANDISING_OPTIONS.map((status) => (
+                      <option key={status} value={status} className="bg-white text-dark">
+                        {MERCHANDISING_LABEL[status] ?? 'None'}
+                      </option>
+                    ))}
+                  </select>
+                </td>
                 <td className="px-3 py-3">
                   <Pill label={PRICING_SOURCE_LABEL[row.pricingSourceStatus]} className={PRICING_SOURCE_STYLE[row.pricingSourceStatus]} />
                 </td>
@@ -432,6 +476,26 @@ export function ProductMasterTable({ rows }: { rows: ProductMasterRow[] }) {
                 <input type="checkbox" checked={row.product.backorderEnabled} disabled={busyId === row.product.id} onChange={() => handleToggleBackorder(row)} className="w-4 h-4 accent-amber-400 disabled:opacity-40" />
                 Backorder {row.product.backorderEnabled && <span aria-hidden="true">⌛</span>}
               </label>
+            </div>
+
+            {/* Merchandising -- same field, same handler, same options as
+                the desktop table (2026-08-15): mobile/tablet must control
+                the identical DB column, not a parallel/missing control. */}
+            <div className="flex items-center gap-2 mt-3 text-[12px]">
+              <span className="text-white/40">Merchandising</span>
+              <select
+                value={row.product.merchandisingStatus}
+                disabled={busyId === row.product.id}
+                onChange={(e) => handleSetMerchandisingStatus(row, e.target.value as MerchandisingStatus)}
+                aria-label={`Merchandising tag for ${row.product.name}`}
+                className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[12px] text-white focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold/30 disabled:opacity-40"
+              >
+                {MERCHANDISING_OPTIONS.map((status) => (
+                  <option key={status} value={status} className="bg-white text-dark">
+                    {MERCHANDISING_LABEL[status] ?? 'None'}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="grid grid-cols-2 gap-2 mt-3 text-[12px]">

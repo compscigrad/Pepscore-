@@ -13,6 +13,17 @@ import { getStorefrontPrice } from './pricing'
 import { getStorefrontAvailability } from './availability'
 import { resolveProductImage } from './productImages'
 
+// Customer-facing copy for the admin-controlled merchandising status
+// (2026-08-15) -- the ONLY place this enum's display text is defined, so
+// Product Master's dropdown (components/admin/ProductMasterTable.tsx, which
+// imports this same map) and this storefront label can never drift apart
+// in wording. NONE renders no badge.
+export const MERCHANDISING_LABEL: Record<Product['merchandisingStatus'], string | null> = {
+  NONE: null,
+  POPULAR: 'Popular',
+  BEST_SELLER: 'Best Seller',
+}
+
 export function groupByName(rows: Product[], options: { spaEligible?: boolean } = {}): ProductCardProps[] {
   const map = new Map<string, ProductCardProps>()
   for (const p of rows) {
@@ -35,6 +46,12 @@ export function groupByName(rows: Product[], options: { spaEligible?: boolean } 
       // featured is set per Product row, but ProductCard shows one card per
       // product name.
       if (p.featured) existing.featured = true
+      // merchandisingStatus is written to every row sharing this name in one
+      // admin action (SET_MERCHANDISING_STATUS), so rows should already
+      // agree -- this OR-across-variants mirrors `featured` above as a
+      // defensive fallback if a family is ever mid-transition, rather than
+      // requiring every single strength to be checked before one shows.
+      if (!existing.badge && MERCHANDISING_LABEL[p.merchandisingStatus]) existing.badge = MERCHANDISING_LABEL[p.merchandisingStatus]
     } else {
       map.set(p.name, {
         name: p.name,
@@ -42,7 +59,7 @@ export function groupByName(rows: Product[], options: { spaEligible?: boolean } 
         category: p.category,
         description: p.description ?? '',
         imageUrl: resolveProductImage(p.name, p.imageUrl),
-        badge: p.badge ?? null,
+        badge: MERCHANDISING_LABEL[p.merchandisingStatus],
         variants: [variant],
       })
     }
