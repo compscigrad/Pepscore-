@@ -17,11 +17,41 @@ export const metadata: Metadata = {
     'Precision-grade research peptides with independently verified purity above 98%. For Research Use Only.',
   keywords: ['research peptides', 'semaglutide', 'tirzepatide', 'NAD+', 'epithalon', 'RUO'],
   alternates: { canonical: '/' },
+  // Social/link-preview image (2026-08-14) -- pepscore-social-preview-v2.jpg
+  // is the owner-supplied banner asset, installed unaltered (no crop/
+  // resize/re-encode) under a new versioned filename rather than
+  // overwriting pepscore-hero-v2.png in place, so no CDN/social-platform
+  // cache of the old filename can serve stale bytes under this one.
+  // width/height are the asset's real pixel dimensions (1652x490) --
+  // Open Graph consumers use these to lay out the card before the image
+  // itself loads, and an inaccurate value is worse than none. The 3.37:1
+  // aspect ratio is wider than the ~1.91:1 most platforms optimize for
+  // (it's a deliberately wide banner design, not a redesign candidate);
+  // some services may crop or letterbox it differently as a result --
+  // a genuine platform-rendering tradeoff, not a bug in this metadata.
   openGraph: {
     title: 'Pepscore Lab — Holistic Research Peptides',
     description: 'Pharmaceutical-quality research peptides. ≥98% purity. For Research Use Only.',
-    images: [{ url: '/images/pepscore-hero-v2.png' }],
+    url: '/',
+    images: [
+      {
+        url: '/images/pepscore-social-preview-v2.jpg',
+        width: 1652,
+        height: 490,
+        alt: 'Pepscore Lab — branded research peptide vial lineup',
+      },
+    ],
     type: 'website',
+  },
+  // Explicit Twitter/X card -- previously left to Next.js's own openGraph
+  // fallback (which does already mirror title/description/image), spelled
+  // out explicitly here per the same asset so the two can never reference
+  // different images if one block is edited without the other later.
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Pepscore Lab — Holistic Research Peptides',
+    description: 'Pharmaceutical-quality research peptides. ≥98% purity. For Research Use Only.',
+    images: ['/images/pepscore-social-preview-v2.jpg'],
   },
   // Belt-and-suspenders alongside app/robots.ts's env-based rules -- this
   // covers the meta-tag-level signal too, in case a crawler ignores

@@ -20,12 +20,26 @@ storefront/marketing imagery.
 | `pepscore-hero-before-v2-2026-08-12.png` | Second-generation hero photo (`hero-vials-new.png`), superseded same day | 2026-08-12 | "Preview #7: hero/Mission image swap" |
 | `pepscore-mission-before-2026-08-12.png` | Second-generation Mission-section photo (`mission-vials.png`), superseded same day | 2026-08-12 | "Preview #7: hero/Mission image swap" |
 
-**Note:** `hero-vials.jpeg` is copied here as a historical snapshot, but is
-**not actually retired** — a live-code check found `app/layout.tsx` still
-references it directly as the Open Graph (social-share) image, unchanged
-since the hero photo itself moved on to `pepscore-hero-v2.png`. This is a
-real, separate gap outside this sprint's scope; flagged in the completion
-report rather than fixed here.
+**Note (resolved 2026-08-14):** `hero-vials.jpeg` was flagged above as
+still live as the Open Graph image despite being superseded in the UI —
+that gap was closed the same day, first by pointing `og:image` at
+`pepscore-hero-v2.png` (matching the live hero), then later the same day
+superseded again by a purpose-built social-preview asset (see the `og/`
+entries below). `hero-vials.jpeg` is now genuinely retired everywhere,
+including social metadata.
+
+## og/ — Open Graph / social-link-preview image evolution (2026-08-14)
+
+| File | Represents | Classification | Reason retired / notes |
+|---|---|---|---|
+| `pepscore-og-social-preview-before-2026-08-14.png` | `pepscore-hero-v2.png`, the `og:image`/`twitter:image` value immediately before this change (itself already a same-session fix from the original stale `hero-vials.jpeg`) | BEFORE | Superseded by a purpose-built social-preview asset rather than reusing the on-page hero photo |
+| `pepscore-og-image-live-render-before-2026-08-14.jpg` | Browser screenshot of the live, rendered old `og:image` (fetched directly from production at its resolved URL) | BEFORE (visual evidence) | Direct visual proof of what a link preview would have shown before this change |
+| `pepscore-og-social-preview-after-2026-08-14.jpg` | `pepscore-social-preview-v2.jpg` — the owner-supplied banner (PEPSCORE LAB wordmark + tagline + vial trio), installed unaltered | AFTER | New `og:image`/`twitter:image` value; 1652×490px, deliberately wide banner aspect ratio (not cropped to fit the 1.91:1 platform convention, per explicit instruction not to creatively alter the supplied asset) |
+
+Source of the AFTER asset: owner-supplied file at
+`C:\Users\micha\Downloads\Pepscore Main Hero clean.jpg`, installed
+unmodified (no crop/resize/re-encode) at
+`public/images/pepscore-social-preview-v2.jpg`.
 
 ## after/ — current production imagery (as of this sprint)
 
@@ -52,25 +66,43 @@ catalog's product imagery is next updated — capture the outgoing set
 the same way this sprint captured the outgoing hero/Mission images,
 *before* the replacement deploys, not after.
 
-## screenshots/ — PENDING (blocked, not skipped)
+## screenshots/ — live application captures
 
-**Empty as of 2026-08-14.** The Chrome browser extension was not
-connected this session (`tabs_context_mcp` failed both at the start
-and end of this sprint), so the current public landing page
-(`pepscore-landing` / `pepscorelab.com`) and the current `pepscore`
-application's live rendered UI could not be captured. This is the
-same limitation recorded earlier in `docs/CaseStudy.md` (PR "Pre-signup
-RUO/21+ gate," 2026-08-12: "the Chrome browser extension was not
-connected this session ... recommended as a follow-up").
+| File | Represents | Viewport |
+|---|---|---|
+| `pepscore-app-homepage-desktop-2026-08-14.jpg` | Current `pepscore` application homepage (hero, nav, client sign-in CTA) | Desktop (~1568px) |
+| `pepscore-app-categories-desktop-2026-08-14.jpg` | Current Explore the Catalog page, gold card treatment + alternating jewel-tone icons | Desktop (~1568px) |
 
-**Follow-up required**: once the extension is reconnected, capture:
-- Current `pepscore-landing` (pepscorelab.com): full desktop homepage,
-  hero, key sections, and a mobile viewport pass — this is the
-  legitimate BEFORE state for the eventual landing-page retirement,
-  and must be captured before that retirement happens, not after.
-- Current `pepscore` application: homepage, a product detail page,
-  the admin Product Master table, and mobile views of each — a CURRENT
-  baseline milestone shot, independent of the landing-page retirement.
+Captured 2026-08-14 once the Chrome browser extension reconnected mid-
+session (was disconnected for the several sprints immediately prior —
+see `docs/CaseStudy.md`'s "Pre-signup RUO/21+ gate" entry for the same
+recorded limitation).
+
+**Still pending — not fabricated:**
+- **Current public landing page** (`pepscore-landing` / pepscorelab.com)
+  desktop + mobile — this is the legitimate BEFORE state for the
+  eventual landing-page retirement and must be captured before that
+  retirement happens, not after. Not yet captured; no `pepscore-landing`
+  URL was visited this session (out of this sprint's scope — Part
+  E explicitly excludes touching the public landing project, and
+  capturing it wasn't reached before this sprint's time was spent on
+  the app-side verification pass).
+- **True mobile-width (390–430px) captures of the `pepscore` app.** The
+  browser automation tool's screenshot viewport was observed to stay
+  fixed at ~933px through most of this session regardless of
+  `resize_window` calls, only actually widening to a true desktop
+  viewport (~1568px) later in the same session after repeated resize
+  attempts — a tool-timing quirk, not a site issue. A dedicated
+  narrow-viewport pass was not completed before this sprint's time ran
+  out. Functional mobile behavior (hamburger menu, mobile predictive
+  search, mobile Client Sign In link) WAS interactively verified at the
+  ~933px tablet-equivalent width reached earlier in the session — see
+  the sprint's completion report for exactly what was and wasn't
+  confirmed.
+- Admin Product Master table (deferred — lower priority than the
+  public-facing captures above, and admin screenshots need care to
+  exclude any real customer/order data before being added to a public
+  case-study folder).
 
 Naming convention to follow when these are captured:
 `pepscore-landing-before-desktop-YYYY-MM.png`,
