@@ -12,7 +12,7 @@ import './globals.css'
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'https://pepscorelab.com'),
-  title: 'Pepscore Lab — Holistic Research Peptides',
+  title: 'Pepscore Lab — Research Peptides',
   description:
     'Precision-grade research peptides with independently verified purity above 98%. For Research Use Only.',
   keywords: ['research peptides', 'semaglutide', 'tirzepatide', 'NAD+', 'epithalon', 'RUO'],
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
   // some services may crop or letterbox it differently as a result --
   // a genuine platform-rendering tradeoff, not a bug in this metadata.
   openGraph: {
-    title: 'Pepscore Lab — Holistic Research Peptides',
+    title: 'Pepscore Lab — Research Peptides',
     description: 'Pharmaceutical-quality research peptides. ≥98% purity. For Research Use Only.',
     url: '/',
     images: [
@@ -49,7 +49,7 @@ export const metadata: Metadata = {
   // different images if one block is edited without the other later.
   twitter: {
     card: 'summary_large_image',
-    title: 'Pepscore Lab — Holistic Research Peptides',
+    title: 'Pepscore Lab — Research Peptides',
     description: 'Pharmaceutical-quality research peptides. ≥98% purity. For Research Use Only.',
     images: ['/images/pepscore-social-preview-v2.jpg'],
   },

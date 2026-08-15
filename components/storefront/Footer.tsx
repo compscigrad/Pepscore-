@@ -211,7 +211,7 @@ export async function Footer() {
         {/* Bottom bar */}
         <div className="pt-6 flex flex-wrap justify-between items-center gap-3">
           <p className="text-[12px] text-white/40">
-            © {new Date().getFullYear()} Pepscore Lab — Holistic Research Peptides. All rights reserved. For research purposes only.
+            © {new Date().getFullYear()} Pepscore Lab — Research Peptides. All rights reserved. For research purposes only.
           </p>
           <div className="flex gap-5 items-center">
             {([

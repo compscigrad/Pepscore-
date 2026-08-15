@@ -119,8 +119,24 @@ model Product {
   // deployment required. See lib/storefront/availability.ts's
   // getStorefrontAvailability(), which reads this alongside inventory
   // status rather than ever inferring it from another customer's
-  // in-flight order.
+  // in-flight order. Represents STANDARD CASE fulfillment specifically as
+  // of 2026-08-15 (see individualVialBackorderEnabled below) -- kept under
+  // its original name/column rather than renamed to caseBackorderEnabled,
+  // since a Prisma-schema rename would require recreating the data
+  // (db push has no "rename" -- only drop+add) for no real benefit; "case"
+  // fulfillment is also this field's original, only meaning before
+  // single-vial purchasing existed as a separate concept.
   backorderEnabled         Boolean                @default(false)
+  // Same concept as backorderEnabled above, but for the SINGLE VIAL sell
+  // unit specifically (2026-08-15 sell-unit-level fulfillment). A single
+  // Product row can now represent, e.g., "Single Vial ready to ship,
+  // Standard Case produced to order" -- the two sell units of the same
+  // strength are no longer forced to share one fulfillment state. Only
+  // customer-visible when individualSalesEnabled is also true (see
+  // lib/storefront/pricing.ts); independent of it otherwise -- direct
+  // single-vial eligibility and single-vial fulfillment status are two
+  // separate admin decisions, never derived from each other.
+  individualVialBackorderEnabled Boolean          @default(false)
 
   // ─── SEO / Content Management (Phase 2B item 6) ─────────────────────────
   // All admin-editable via the storefront content editor
@@ -2015,6 +2031,12 @@ enum LeadInterestType {
   OUT_OF_STOCK_INTEREST
   PRICING_REVIEW_INTEREST
   SPA_WHOLESALE_INQUIRY
+  // Sell-unit-availability inquiry (2026-08-15 fulfillment/availability
+  // sprint) -- a variant with Standard Case available but individual-vial
+  // sales not directly enabled shows "Single Vial — Special Request"
+  // instead of nothing; this is the interest type that inquiry submits.
+  // Never auto-enables individualSalesEnabled -- purely an inbound inquiry.
+  SINGLE_VIAL_SPECIAL_REQUEST
   // First-order 10% offer claim (see FirstOrderOfferClaim) -- every claim
   // also creates a LeadCapture row with this interest type so it shows up
   // in the same admin Leads/CRM list/filters as every other submission,

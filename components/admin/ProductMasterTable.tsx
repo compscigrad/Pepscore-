@@ -8,7 +8,8 @@
 // second catalog query, no second pricing screen). Every write here goes
 // through the same two routes the existing Inventory detail page already
 // uses (/pricing for pricingStatus/individualSalesEnabled, /actions for
-// backorderEnabled), then router.refresh() -- no new API surface. Full
+// backorderEnabled/individualVialBackorderEnabled), then router.refresh() --
+// no new API surface. Full
 // field-by-field editing stays on the existing /admin/inventory/[id]
 // detail page; this view links there rather than re-implementing that editor.
 import { useMemo, useState } from 'react'
@@ -59,6 +60,7 @@ type FilterKey =
   | 'INDIVIDUAL_ENABLED'
   | 'INDIVIDUAL_HIDDEN'
   | 'BACKORDER_ENABLED'
+  | 'INDIVIDUAL_VIAL_BACKORDER_ENABLED'
   | 'MISSING_IMAGE'
   | 'MISSING_PRICE'
   | 'NEEDS_PRICING_REVIEW'
@@ -74,7 +76,10 @@ const FILTER_LABEL: Record<FilterKey, string> = {
   CASE_ENABLED: 'Case Enabled',
   INDIVIDUAL_ENABLED: 'Singles Enabled',
   INDIVIDUAL_HIDDEN: 'Singles Hidden',
-  BACKORDER_ENABLED: 'Backorder Enabled',
+  // Disambiguated (2026-08-15 sell-unit-level fulfillment) now that Standard
+  // Case and Single Vial fulfillment are independently controllable.
+  BACKORDER_ENABLED: 'Case: Produced to Order',
+  INDIVIDUAL_VIAL_BACKORDER_ENABLED: 'Vial: Produced to Order',
   MISSING_IMAGE: 'Missing Image',
   MISSING_PRICE: 'Missing Price',
   NEEDS_PRICING_REVIEW: 'Needs Pricing Review',
@@ -91,6 +96,7 @@ function matchesFilter(row: ProductMasterRow, filter: FilterKey): boolean {
     case 'INDIVIDUAL_ENABLED': return row.individualPublicEnabled
     case 'INDIVIDUAL_HIDDEN': return row.individualStoredInternal
     case 'BACKORDER_ENABLED': return row.product.backorderEnabled
+    case 'INDIVIDUAL_VIAL_BACKORDER_ENABLED': return row.product.individualVialBackorderEnabled
     case 'MISSING_IMAGE': return !row.imageIsReal
     case 'MISSING_PRICE': return row.missingPrice
     case 'NEEDS_PRICING_REVIEW': return row.needsPricingReview
@@ -281,6 +287,24 @@ export function ProductMasterTable({ rows }: { rows: ProductMasterRow[] }) {
     }
   }
 
+  // Single Vial fulfillment (2026-08-15 sell-unit-level fulfillment) --
+  // independent of handleToggleBackorder above, which now controls the
+  // Standard Case pool specifically. Same action-route pattern
+  // (SET_INDIVIDUAL_VIAL_BACKORDER_ENABLED mirrors SET_BACKORDER_ENABLED).
+  async function handleToggleIndividualVialBackorder(row: ProductMasterRow) {
+    const willEnable = !row.product.individualVialBackorderEnabled
+    setBusyId(row.product.id)
+    setRowError(null)
+    try {
+      await postAction(row.product.id, { action: 'SET_INDIVIDUAL_VIAL_BACKORDER_ENABLED', individualVialBackorderEnabled: willEnable })
+      router.refresh()
+    } catch (err) {
+      setRowError({ id: row.product.id, message: err instanceof Error ? err.message : 'Update failed' })
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   return (
     <div className="bg-white/[0.03] border border-gold/10 rounded-[18px] overflow-hidden">
       <div className="p-6 border-b border-white/10 flex items-center justify-between flex-wrap gap-3">
@@ -333,7 +357,7 @@ export function ProductMasterTable({ rows }: { rows: ProductMasterRow[] }) {
               <th className={`${STICKY_CELL} left-0 text-left font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 px-3 py-3 whitespace-nowrap border-b border-white/10`}>Archive</th>
               <th className={`${STICKY_CELL} left-[76px] text-left font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 px-3 py-3 whitespace-nowrap border-b border-white/10`}>Singles</th>
               <th className={`${STICKY_CELL} left-[152px] text-left font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 px-3 py-3 whitespace-nowrap border-b border-white/10 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.4)]`}>Product</th>
-              {['Cost', 'Storefront Case', 'SPA', 'Single Vial', '5%', '8%', '10%', '15%', 'Category', 'Merchandising', 'Source', 'Backorder', 'Image', 'Inventory', 'Updated', ''].map((h) => (
+              {['Cost', 'Storefront Case', 'SPA', 'Single Vial', '5%', '8%', '10%', '15%', 'Category', 'Merchandising', 'Source', 'Case Fulfillment', 'Vial Fulfillment', 'Image', 'Inventory', 'Updated', ''].map((h) => (
                 <th key={h} className="text-left font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 px-3 py-3 whitespace-nowrap">
                   {h}
                 </th>
@@ -420,13 +444,31 @@ export function ProductMasterTable({ rows }: { rows: ProductMasterRow[] }) {
                 <td className="px-3 py-3">
                   <Pill label={PRICING_SOURCE_LABEL[row.pricingSourceStatus]} className={PRICING_SOURCE_STYLE[row.pricingSourceStatus]} />
                 </td>
+                {/* Case Fulfillment (2026-08-15 sell-unit-level fulfillment)
+                    -- same backorderEnabled field/handler/action used since
+                    the original fulfillment/availability sprint, now
+                    explicitly labeled "Case" since Single Vial fulfillment
+                    is a separate, independent control (next column). */}
                 <td className="px-3 py-3">
                   <button
                     disabled={busyId === row.product.id}
                     onClick={() => handleToggleBackorder(row)}
-                    className={`text-[11px] font-heading font-bold uppercase tracking-wide disabled:opacity-40 ${row.product.backorderEnabled ? 'text-green-300' : 'text-white/50 hover:text-gold'}`}
+                    className={`text-[11px] font-heading font-bold uppercase tracking-wide disabled:opacity-40 ${row.product.backorderEnabled ? 'text-amber-300' : 'text-white/50 hover:text-gold'}`}
                   >
-                    {row.product.backorderEnabled ? <>On <span aria-hidden="true">⌛</span></> : 'Off'}
+                    {row.product.backorderEnabled ? <>⌛ On</> : 'Off'}
+                  </button>
+                </td>
+                {/* Vial Fulfillment (2026-08-15 sell-unit-level fulfillment)
+                    -- independent physical-stock pool from Case Fulfillment
+                    above; controls Product.individualVialBackorderEnabled
+                    via SET_INDIVIDUAL_VIAL_BACKORDER_ENABLED. */}
+                <td className="px-3 py-3">
+                  <button
+                    disabled={busyId === row.product.id}
+                    onClick={() => handleToggleIndividualVialBackorder(row)}
+                    className={`text-[11px] font-heading font-bold uppercase tracking-wide disabled:opacity-40 ${row.product.individualVialBackorderEnabled ? 'text-amber-300' : 'text-white/50 hover:text-gold'}`}
+                  >
+                    {row.product.individualVialBackorderEnabled ? <>⌛ On</> : 'Off'}
                   </button>
                 </td>
                 <td className="px-3 py-3">
@@ -463,7 +505,7 @@ export function ProductMasterTable({ rows }: { rows: ProductMasterRow[] }) {
               {row.archived ? <Pill label="Archived" className="bg-red-400/10 text-red-300" /> : <Pill label="Live" className="bg-green-400/10 text-green-300" />}
             </div>
 
-            <div className="flex items-center gap-5 mt-3 text-[12px]">
+            <div className="flex items-center flex-wrap gap-x-5 gap-y-2 mt-3 text-[12px]">
               <label className="flex items-center gap-1.5 text-white/70">
                 <input type="checkbox" checked={row.archived} disabled={busyId === row.product.id} onChange={() => handleToggleArchive(row)} className="w-4 h-4 accent-red-400 disabled:opacity-40" />
                 Archive
@@ -474,7 +516,17 @@ export function ProductMasterTable({ rows }: { rows: ProductMasterRow[] }) {
               </label>
               <label className="flex items-center gap-1.5 text-white/70">
                 <input type="checkbox" checked={row.product.backorderEnabled} disabled={busyId === row.product.id} onChange={() => handleToggleBackorder(row)} className="w-4 h-4 accent-amber-400 disabled:opacity-40" />
-                Backorder {row.product.backorderEnabled && <span aria-hidden="true">⌛</span>}
+                Case: Produced to Order {row.product.backorderEnabled && <span aria-hidden="true">⌛</span>}
+              </label>
+              <label className="flex items-center gap-1.5 text-white/70">
+                <input
+                  type="checkbox"
+                  checked={row.product.individualVialBackorderEnabled}
+                  disabled={busyId === row.product.id}
+                  onChange={() => handleToggleIndividualVialBackorder(row)}
+                  className="w-4 h-4 accent-amber-400 disabled:opacity-40"
+                />
+                Vial: Produced to Order {row.product.individualVialBackorderEnabled && <span aria-hidden="true">⌛</span>}
               </label>
             </div>
 

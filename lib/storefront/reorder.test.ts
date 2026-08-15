@@ -42,6 +42,7 @@ function product(overrides: Partial<Product> = {}): Product {
     lowStockThreshold: null,
     inventoryStatus: 'TRACKING_DISABLED',
     backorderEnabled: false,
+    individualVialBackorderEnabled: false,
     seoTitle: null,
     metaDescription: null,
     fullDescription: null,

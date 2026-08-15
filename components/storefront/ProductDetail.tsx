@@ -24,7 +24,10 @@ import { ScientificBackground } from './ScientificBackground'
 const GENERIC_PLACEHOLDER = '/images/products/default-single-vial.png'
 
 const AVAILABILITY_BADGE_CLASS: Record<StorefrontAvailability, string> = {
-  AVAILABLE: 'bg-green-400/10 text-green-300 border border-green-400/25',
+  // Ready to Ship (2026-08-15 fulfillment/availability sprint) -- restrained
+  // muted emerald, not bright retail green; matches ProductCard's identical
+  // treatment so the two surfaces read as one system.
+  AVAILABLE: 'bg-emerald-900/15 text-emerald-300 border border-emerald-700/25',
   LIMITED: 'bg-amber-400/10 text-amber-300 border border-amber-400/30',
   BACKORDERED: 'bg-amber-400/10 text-amber-300 border border-amber-400/30',
   OUT_OF_STOCK: 'bg-white/5 text-white/50 border border-white/15',
@@ -57,7 +60,10 @@ export interface ProductDetailProps {
   imageAlt: string
   description: string
   price: StorefrontPrice | null
-  availability: StorefrontAvailability
+  // Split by sell unit (2026-08-15) -- same reasoning as
+  // ProductCard.ProductVariant, see that interface's comment.
+  caseAvailability: StorefrontAvailability
+  individualVialAvailability: StorefrontAvailability
   availabilityMessageOverride: string | null
   relatedStrengths: RelatedStrength[]
   relatedProducts: RelatedProduct[]
@@ -75,7 +81,8 @@ export function ProductDetail({
   imageAlt,
   description,
   price,
-  availability,
+  caseAvailability,
+  individualVialAvailability,
   availabilityMessageOverride,
   relatedStrengths,
   relatedProducts,
@@ -100,6 +107,11 @@ export function ProductDetail({
 
   const canSelectIndividualVial = price?.individualVialPrice != null
   const effectiveSellUnit: SellUnit = canSelectIndividualVial ? sellUnit : 'CASE_STANDARD'
+  // Fulfillment state for the sell unit actually selected right now
+  // (2026-08-15) -- must stay reactive as the customer toggles Standard
+  // Case / Single Vial, never a single value fixed to the variant. Same
+  // pattern as ProductCard.
+  const availability = effectiveSellUnit === 'INDIVIDUAL_VIAL' ? individualVialAvailability : caseAvailability
   const activePrice = price == null ? null : effectiveSellUnit === 'INDIVIDUAL_VIAL' ? price.individualVialPrice : price.standardCasePrice
   const canPurchase = activePrice != null && isPurchasable(availability)
 
@@ -109,6 +121,13 @@ export function ProductDetail({
   // re-fire if the same page's derived props happen to change identity.
   useEffect(() => {
     trackEvent(AnalyticsEvent.PRODUCT_VIEW, { slug, category, availability })
+    // Distinct named event (2026-08-15) alongside PRODUCT_VIEW's own
+    // `availability` property -- a purpose-built event a future admin
+    // demand-insight query can read directly, rather than requiring every
+    // consumer to know to filter PRODUCT_VIEW by availability itself.
+    if (availability === 'BACKORDERED') {
+      trackEvent(AnalyticsEvent.PRODUCED_TO_ORDER_VIEWED, { slug, category })
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug])
 
@@ -170,11 +189,12 @@ export function ProductDetail({
           </h1>
           <p className="text-[16px] text-white/50 font-light mb-4">{size}</p>
 
-          {availability !== 'AVAILABLE' && (
-            <div className={`inline-flex w-fit items-center rounded-full px-3 py-1 mb-4 text-[10px] font-bold uppercase tracking-[0.07em] ${AVAILABILITY_BADGE_CLASS[availability]}`}>
-              {availabilityMessageOverride || AVAILABILITY_LABEL[availability]}
-            </div>
-          )}
+          {/* Always shown (2026-08-15 fulfillment/availability sprint) --
+              same parity change as ProductCard: a customer sees either
+              "Ready to Ship" or the exception label, never silence. */}
+          <div className={`inline-flex w-fit items-center rounded-full px-3 py-1 mb-4 text-[10px] font-bold uppercase tracking-[0.07em] ${AVAILABILITY_BADGE_CLASS[availability]}`}>
+            {availabilityMessageOverride || AVAILABILITY_LABEL[availability]}
+          </div>
 
           <p className="text-[15px] text-white/65 leading-[1.8] mb-6 whitespace-pre-line">{description}</p>
 
@@ -185,8 +205,12 @@ export function ProductDetail({
                 {/* Sell-unit selector -- only rendered when this exact
                     variant's individual-vial price is publicly enabled
                     (lib/storefront/pricing.ts withholds it entirely for a
-                    stored-but-disabled price), same gate ProductCard uses. */}
-                {canSelectIndividualVial && (
+                    stored-but-disabled price), same gate ProductCard uses.
+                    When it isn't enabled but Standard Case is available, a
+                    compact Special Request inquiry replaces the toggle
+                    instead of showing nothing (2026-08-15 fulfillment/
+                    availability sprint) -- same parity as ProductCard. */}
+                {canSelectIndividualVial ? (
                   <div className="flex gap-2 mb-4">
                     {(['CASE_STANDARD', 'INDIVIDUAL_VIAL'] as const).map((unit) => (
                       <button
@@ -201,6 +225,20 @@ export function ProductDetail({
                         {unit === 'CASE_STANDARD' ? 'Standard Case' : 'Single Vial'}
                       </button>
                     ))}
+                  </div>
+                ) : (
+                  <div className="mb-4">
+                    <LeadCaptureTrigger
+                      interestType="SINGLE_VIAL_SPECIAL_REQUEST"
+                      productSlug={slug}
+                      productName={name}
+                      productSize={size}
+                      modalTitle={`Single Vial — Special Request: ${name} ${size}`}
+                      modalDescription="Single-vial purchasing isn't directly enabled for this strength yet. Leave your info and our team will follow up about availability -- this is an inquiry, not a confirmed purchase."
+                      triggerLabel="Single Vial — Special Request"
+                      triggerClassName="text-left text-[11px] font-heading font-bold uppercase tracking-[0.04em] text-white/45 hover:text-[#D4AF37] underline decoration-dotted underline-offset-2 transition-colors w-fit"
+                      onOpen={() => trackEvent(AnalyticsEvent.SINGLE_VIAL_SPECIAL_REQUEST_CLICKED, { slug, size })}
+                    />
                   </div>
                 )}
 

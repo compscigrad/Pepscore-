@@ -8,9 +8,9 @@ export function BackorderIndicator({ className = '' }: { className?: string }) {
   return (
     <span
       className={`inline-flex items-center justify-center w-[7px] h-[7px] rounded-full bg-amber-400 shrink-0 ${className}`}
-      title="Backordered — estimated shipping time of approximately two weeks while a new batch is produced to fulfill your order"
+      title="Produced to Order — estimated fulfillment is approximately two weeks while a new batch is produced to fulfill your order"
       role="img"
-      aria-label="Backordered item"
+      aria-label="Produced to Order item"
     />
   )
 }

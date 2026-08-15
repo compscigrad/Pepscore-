@@ -14,6 +14,7 @@ export type LeadInterestType =
   | 'OUT_OF_STOCK_INTEREST'
   | 'PRICING_REVIEW_INTEREST'
   | 'SPA_WHOLESALE_INQUIRY'
+  | 'SINGLE_VIAL_SPECIAL_REQUEST'
 
 export interface LeadCaptureTriggerProps {
   interestType: LeadInterestType
@@ -29,6 +30,14 @@ export interface LeadCaptureTriggerProps {
   // (Footer.tsx, app/page.tsx) across the client-component boundary.
   triggerLabel: string
   triggerClassName: string
+  // Optional (2026-08-15 fulfillment/availability sprint) -- fired when the
+  // trigger opens the modal, before any submission. A plain callback (not a
+  // render-prop) is safe to pass here since it's a simple void function,
+  // unlike triggerLabel/triggerClassName's cross-boundary restriction
+  // above. Used for click-intent analytics (e.g. Single Vial Special
+  // Request) distinct from LEAD_CAPTURE_SUBMIT, which only fires on a
+  // completed submission.
+  onOpen?: () => void
 }
 
 const inputCls =
@@ -48,6 +57,7 @@ export function LeadCaptureTrigger({
   showMessageField,
   triggerLabel,
   triggerClassName,
+  onOpen,
 }: LeadCaptureTriggerProps) {
   const [open, setOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -112,7 +122,13 @@ export function LeadCaptureTrigger({
 
   return (
     <>
-      <button onClick={() => setOpen(true)} className={triggerClassName}>
+      <button
+        onClick={() => {
+          setOpen(true)
+          onOpen?.()
+        }}
+        className={triggerClassName}
+      >
         {triggerLabel}
       </button>
 

@@ -98,7 +98,12 @@ export default async function ProductDetailPage({ params }: PageProps) {
 
   const imageUrl = resolveProductImage(product.name, product.imageUrl)
   const imageAlt = product.imageAltText || `${product.name} ${product.size}`
-  const availability = getStorefrontAvailability(product)
+  // Sell-unit-level fulfillment (2026-08-15) -- Standard Case and Single
+  // Vial are independent physical-stock pools; `availability` here stays
+  // case-level since it also feeds the JSON-LD Offer schema below, which
+  // represents the general product offer, not any one sell unit.
+  const availability = getStorefrontAvailability(product, 'CASE')
+  const individualVialAvailability = getStorefrontAvailability(product, 'INDIVIDUAL_VIAL')
   const displayDescription = product.fullDescription || product.description || ''
   const faq = (product.faq as unknown as FaqEntry[] | null) ?? []
 
@@ -149,7 +154,8 @@ export default async function ProductDetailPage({ params }: PageProps) {
         imageAlt={imageAlt}
         description={displayDescription}
         price={getStorefrontPrice(product, { spaEligible })}
-        availability={availability}
+        caseAvailability={availability}
+        individualVialAvailability={individualVialAvailability}
         availabilityMessageOverride={product.availabilityMessageOverride}
         relatedStrengths={siblings}
         relatedProducts={relatedProductRows}

@@ -36,7 +36,12 @@ export function groupByName(rows: Product[], options: { spaEligible?: boolean } 
       unitsPerCase: price?.unitsPerCase ?? null,
       individualVialPrice: price?.individualVialPrice ?? null,
       spaCasePrice: price?.spaCasePrice ?? null,
-      availability: getStorefrontAvailability(p),
+      // Sell-unit-level fulfillment (2026-08-15) -- Standard Case and
+      // Single Vial are independent physical-stock pools (e.g. Semaglutide
+      // 30mg: vial Ready to Ship, case Produced to Order), so this is no
+      // longer a single availability value per variant.
+      caseAvailability: getStorefrontAvailability(p, 'CASE'),
+      individualVialAvailability: getStorefrontAvailability(p, 'INDIVIDUAL_VIAL'),
       availabilityMessageOverride: p.availabilityMessageOverride,
     }
     const existing = map.get(p.name)

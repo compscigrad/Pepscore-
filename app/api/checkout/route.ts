@@ -119,7 +119,14 @@ export async function POST(req: NextRequest) {
       if (product.pricingStatus === 'INACTIVE') {
         throw new Error(`${product.name} (${product.size}) is no longer available for purchase`)
       }
-      if (!isPurchasable(getStorefrontAvailability(product))) {
+      // Sell-unit-level fulfillment (2026-08-15) -- Standard Case and Single
+      // Vial are independent physical-stock pools, so purchasability must be
+      // checked against the sell unit actually being bought, not a single
+      // case-level default. Without this, a Single Vial that's genuinely
+      // Ready to Ship could be wrongly rejected while its Standard Case is
+      // Out of Stock, or the reverse could wrongly let an unavailable single
+      // vial through while the case is fine.
+      if (!isPurchasable(getStorefrontAvailability(product, i.sellUnit === 'INDIVIDUAL_VIAL' ? 'INDIVIDUAL_VIAL' : 'CASE'))) {
         throw new Error(`${product.name} (${product.size}) is currently out of stock`)
       }
       const resolved = resolveCheckoutLine(product, i.sellUnit)

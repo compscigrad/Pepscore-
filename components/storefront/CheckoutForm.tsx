@@ -432,8 +432,8 @@ export function CheckoutForm() {
                     <BackorderLegend />
                     <p className="text-[11px] text-white/45">
                       {qualifiesForBackorderCredit
-                        ? `This order qualifies for a one-time $${STOREFRONT_BACKORDER_CREDIT_AMOUNT} backorder credit. Our team applies it to your invoice once your order is reviewed.`
-                        : `Orders over $${STOREFRONT_BACKORDER_MINIMUM_ORDER_TOTAL} with a backordered item receive a one-time $${STOREFRONT_BACKORDER_CREDIT_AMOUNT} backorder credit, applied to your invoice once reviewed.`}
+                        ? `This order qualifies for a one-time $${STOREFRONT_BACKORDER_CREDIT_AMOUNT} service credit. Our team applies it to your invoice once your order is reviewed.`
+                        : `Orders over $${STOREFRONT_BACKORDER_MINIMUM_ORDER_TOTAL} with a Produced-to-Order item receive a one-time $${STOREFRONT_BACKORDER_CREDIT_AMOUNT} service credit, applied to your invoice once reviewed.`}
                     </p>
                   </div>
                 )}

@@ -70,7 +70,7 @@ export function buildOrderConfirmationHtml(props: OrderConfirmationProps): strin
   `
 
   return buildEmailShell({
-    eyebrow: 'Holistic Research Peptides',
+    eyebrow: 'Research Peptides',
     bodyHtml,
     footerNote: `⚠️ <strong>Research Use Only.</strong> All Pepscore Lab products are for research purposes only. Not intended for human use, consumption, diagnostic use, therapeutic use, or veterinary use. Products must be handled by qualified researchers in appropriate laboratory environments. Contact ${ORDERS_EMAIL} with questions.`,
   })

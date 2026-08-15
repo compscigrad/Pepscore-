@@ -72,11 +72,6 @@ export function resolveReorderLine(
     return { status: 'UNAVAILABLE', productId: request.productId, requestedSellUnit: request.sellUnit, reason: 'discontinued' }
   }
 
-  const availability = getStorefrontAvailability(product)
-  if (!isPurchasable(availability)) {
-    return { status: 'UNAVAILABLE', productId: request.productId, requestedSellUnit: request.sellUnit, reason: 'out_of_stock' }
-  }
-
   // Customer-facing by default (options.adminContext undefined/false). A
   // historical Individual Vial purchase resolves to UNAVAILABLE (not
   // silently substituted to Standard Case) if individualSalesEnabled has
@@ -84,6 +79,16 @@ export function resolveReorderLine(
   // fact the customer should see, not paper over. Admin-assisted reorder
   // opts into the same bypass the invoice builder already has.
   const sellUnit = request.sellUnit ?? 'CASE_STANDARD'
+
+  // Sell-unit-level fulfillment (2026-08-15) -- Standard Case and Single
+  // Vial are independent physical-stock pools, so a reorder must check
+  // purchasability against the sell unit actually being reordered, not a
+  // single case-level default.
+  const availability = getStorefrontAvailability(product, sellUnit === 'INDIVIDUAL_VIAL' ? 'INDIVIDUAL_VIAL' : 'CASE')
+  if (!isPurchasable(availability)) {
+    return { status: 'UNAVAILABLE', productId: request.productId, requestedSellUnit: request.sellUnit, reason: 'out_of_stock' }
+  }
+
   const sellUnitOptions = getAvailableSellUnits(product, { adminContext: options.adminContext })
   const option = sellUnitOptions.find((o) => o.sellUnit === sellUnit)
   if (!option) {

@@ -11,6 +11,7 @@ export const LEAD_INTEREST_TYPES = [
   'OUT_OF_STOCK_INTEREST',
   'PRICING_REVIEW_INTEREST',
   'SPA_WHOLESALE_INQUIRY',
+  'SINGLE_VIAL_SPECIAL_REQUEST',
 ] as const
 
 // At least one of email/phone must be present -- a lead with neither is

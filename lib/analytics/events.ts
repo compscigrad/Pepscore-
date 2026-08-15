@@ -36,6 +36,13 @@ export const AnalyticsEvent = {
   SIGNUP_GATE_SHOWN: 'signup_gate_shown',
   SIGNUP_GATE_ACCEPTED: 'signup_gate_accepted',
   SIGNUP_GATE_ABANDONED: 'signup_gate_abandoned',
+  // Added 2026-08-15 (fulfillment/availability sprint) -- visibility into
+  // Produced-to-Order demand and Special Request interest, so a future
+  // admin insight ("this variant was produced to order N times in the last
+  // 30 days") has real signal to work from rather than being designed
+  // against data that doesn't exist yet.
+  PRODUCED_TO_ORDER_VIEWED: 'produced_to_order_viewed',
+  SINGLE_VIAL_SPECIAL_REQUEST_CLICKED: 'single_vial_special_request_clicked',
 } as const
 
 export type AnalyticsEventName = (typeof AnalyticsEvent)[keyof typeof AnalyticsEvent]

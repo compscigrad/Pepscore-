@@ -124,8 +124,8 @@ export function CartSidebar() {
                 <BackorderLegend />
                 <p className="text-[11px] text-white/45">
                   {qualifiesForBackorderCredit
-                    ? `This order qualifies for a one-time $${STOREFRONT_BACKORDER_CREDIT_AMOUNT} backorder credit, applied automatically.`
-                    : `Orders over $${STOREFRONT_BACKORDER_MINIMUM_ORDER_TOTAL} with a backordered item receive a one-time $${STOREFRONT_BACKORDER_CREDIT_AMOUNT} backorder credit.`}
+                    ? `This order qualifies for a one-time $${STOREFRONT_BACKORDER_CREDIT_AMOUNT} service credit, applied automatically.`
+                    : `Orders over $${STOREFRONT_BACKORDER_MINIMUM_ORDER_TOTAL} with a Produced-to-Order item receive a one-time $${STOREFRONT_BACKORDER_CREDIT_AMOUNT} service credit.`}
                 </p>
               </div>
             )}

@@ -35,6 +35,13 @@ const actionSchema = z.discriminatedUnion('action', [
   // fulfillment-shortage record). Changes storefront-facing availability
   // (lib/storefront/availability.ts) without a code deployment.
   z.object({ action: z.literal('SET_BACKORDER_ENABLED'), backorderEnabled: z.boolean() }),
+  // Single Vial fulfillment (2026-08-15 sell-unit-level fulfillment) --
+  // same concept as SET_BACKORDER_ENABLED above, but for the SINGLE VIAL
+  // sell unit specifically, independent of the Standard Case flag. Per-row
+  // (per strength), not product-family-wide -- fulfillment for a given mg
+  // strength's single vial is a fact about that exact strength's physical
+  // stock, not the whole product name.
+  z.object({ action: z.literal('SET_INDIVIDUAL_VIAL_BACKORDER_ENABLED'), individualVialBackorderEnabled: z.boolean() }),
   // Owner-controlled merchandising label (2026-08-15) -- product-family
   // level, not per-strength: the handler below writes this to every
   // Product row sharing the edited row's name, not just `id`.
@@ -99,6 +106,18 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
             entityId: id,
             adminId: actor,
             details: { backorderEnabled: payload.backorderEnabled },
+          },
+        })
+        break
+      case 'SET_INDIVIDUAL_VIAL_BACKORDER_ENABLED':
+        result = await prisma.product.update({ where: { id }, data: { individualVialBackorderEnabled: payload.individualVialBackorderEnabled } })
+        await prisma.adminAuditLog.create({
+          data: {
+            action: 'SET_PRODUCT_INDIVIDUAL_VIAL_BACKORDER_ENABLED',
+            entity: 'Product',
+            entityId: id,
+            adminId: actor,
+            details: { individualVialBackorderEnabled: payload.individualVialBackorderEnabled },
           },
         })
         break

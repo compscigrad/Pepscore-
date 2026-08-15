@@ -7,15 +7,24 @@ import toast from 'react-hot-toast'
 import { useCartStore } from '@/lib/cart-store'
 import { SingleVialImage } from './SingleVialImage'
 import { BackorderIndicator } from './BackorderIndicator'
+import { LeadCaptureTrigger } from './LeadCaptureTrigger'
 import { isPurchasable, AVAILABILITY_LABEL, type StorefrontAvailability } from '@/lib/storefront/availability'
 import { categoriesForProductName } from '@/lib/storefront/merchandisingTaxonomy'
 import type { SellUnit } from '@/lib/pricing/sellUnits'
+import { trackEvent } from '@/lib/analytics/track'
+import { AnalyticsEvent } from '@/lib/analytics/events'
 
 // Any imageUrl pointing at this path triggers the dynamic SVG vial renderer.
 const GENERIC_PLACEHOLDER = '/images/products/default-single-vial.png'
 
 const AVAILABILITY_BADGE_CLASS: Record<StorefrontAvailability, string> = {
-  AVAILABLE: '', // default state -- no badge needed, keeps the common case uncluttered
+  // Ready to Ship (2026-08-15 fulfillment/availability sprint) -- restrained
+  // muted-emerald pill, deliberately not bright retail green, so it reads
+  // as premium/confident rather than a generic e-commerce in-stock badge.
+  // Same translucent-tint-over-card-surface treatment every other state
+  // here already uses, so it holds up across Light Champagne, Dark Bronze,
+  // and Titanium alike without a per-background variant.
+  AVAILABLE: 'bg-emerald-900/15 text-emerald-300 border border-emerald-700/25',
   LIMITED: 'bg-amber-400/10 text-amber-300 border border-amber-400/30',
   // Purchasable (unlike OUT_OF_STOCK below) -- a distinct amber/gold tint
   // signals "still orderable, just delayed" rather than "unavailable."
@@ -43,9 +52,13 @@ export interface ProductVariant {
   // customer (lib/storefront/spaEligibility.ts) -- never shown to a public
   // or standard-eligibility visitor regardless of what's stored.
   spaCasePrice: number | null
-  // Real inventory-derived state, never the exact physical count. See
-  // lib/storefront/availability.ts.
-  availability: StorefrontAvailability
+  // Real inventory-derived state, never the exact physical count. Split by
+  // sell unit (2026-08-15) -- Standard Case and Single Vial are independent
+  // physical-stock pools (e.g. Semaglutide 30mg: vial Ready to Ship, case
+  // Produced to Order), so there is no longer one availability value per
+  // variant. See lib/storefront/availability.ts.
+  caseAvailability: StorefrontAvailability
+  individualVialAvailability: StorefrontAvailability
   // Admin-editable text (Phase 2B item 6) shown instead of the generic
   // AVAILABILITY_LABEL when set -- never changes the underlying
   // availability/purchasability itself.
@@ -84,9 +97,13 @@ export function ProductCard({ name, featured, category, description, imageUrl, b
   const v = variants[selectedIdx]
   const canSelectIndividualVial = v.individualVialPrice != null
   const effectiveSellUnit: SellUnit = canSelectIndividualVial ? sellUnit : 'CASE_STANDARD'
+  // Fulfillment state for the sell unit actually selected right now
+  // (2026-08-15) -- must stay reactive as the customer toggles Standard
+  // Case / Single Vial, never a single value fixed to the variant.
+  const availability = effectiveSellUnit === 'INDIVIDUAL_VIAL' ? v.individualVialAvailability : v.caseAvailability
   const activePrice = effectiveSellUnit === 'INDIVIDUAL_VIAL' ? v.individualVialPrice : v.standardCasePrice
   const hasPrice = activePrice != null
-  const canPurchase = hasPrice && isPurchasable(v.availability)
+  const canPurchase = hasPrice && isPurchasable(availability)
 
   function selectSize(i: number) {
     setSelectedIdx(i)
@@ -102,7 +119,7 @@ export function ProductCard({ name, featured, category, description, imageUrl, b
       size: v.size,
       price: activePrice,
       imageUrl,
-      backordered: v.availability === 'BACKORDERED',
+      backordered: availability === 'BACKORDERED',
       sellUnit: effectiveSellUnit,
       unitsPerSellUnit: effectiveSellUnit === 'INDIVIDUAL_VIAL' ? 1 : v.unitsPerCase,
     })
@@ -201,7 +218,7 @@ export function ProductCard({ name, featured, category, description, imageUrl, b
         <Link href={`/products/${v.slug}`} className="flex items-center gap-2 mb-2 w-fit flex-wrap">
           <h3 className="font-heading text-[17px] font-bold text-[#241C10] leading-tight hover:text-[#D4AF37] transition-colors">{name}</h3>
           <span className="font-heading text-[11px] font-bold text-[#C99A20] tracking-[0.02em]">{v.size}</span>
-          {v.availability === 'BACKORDERED' && <BackorderIndicator />}
+          {availability === 'BACKORDERED' && <BackorderIndicator />}
         </Link>
 
         {/* Description — flex-1 so it absorbs variable space, keeping bottom section aligned */}
@@ -241,13 +258,15 @@ export function ProductCard({ name, featured, category, description, imageUrl, b
             </div>
           )}
 
-          {/* Availability badge — omitted for the default AVAILABLE state to
-              keep the common case uncluttered; only shown for the exceptions. */}
-          {v.availability !== 'AVAILABLE' && (
-            <div className={`inline-flex w-fit items-center rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.07em] ${AVAILABILITY_BADGE_CLASS[v.availability]}`}>
-              {v.availabilityMessageOverride || AVAILABILITY_LABEL[v.availability]}
-            </div>
-          )}
+          {/* Availability badge (2026-08-15 fulfillment/availability sprint)
+              -- now always shown, never omitted for the default state: a
+              customer sees either "Ready to Ship" or the exception label
+              (Produced to Order / Limited / Out of Stock / Coming Soon),
+              never silence. AVAILABILITY_BADGE_CLASS/AVAILABILITY_LABEL
+              both carry an AVAILABLE entry now (lib/storefront/availability.ts). */}
+          <div className={`inline-flex w-fit items-center rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.07em] ${AVAILABILITY_BADGE_CLASS[availability]}`}>
+            {v.availabilityMessageOverride || AVAILABILITY_LABEL[availability]}
+          </div>
 
           {hasPrice ? (
             <>
@@ -255,8 +274,13 @@ export function ProductCard({ name, featured, category, description, imageUrl, b
                   reference number. Only rendered when this variant's
                   individual-vial price is publicly enabled
                   (lib/storefront/pricing.ts already withholds it entirely
-                  for a stored-but-disabled price). */}
-              {canSelectIndividualVial && (
+                  for a stored-but-disabled price). When it isn't enabled but
+                  Standard Case is available, a compact Special Request
+                  inquiry replaces the toggle instead of showing nothing
+                  (2026-08-15 fulfillment/availability sprint) -- sell-unit
+                  availability is a purchasing-format decision independent
+                  of Ready to Ship / Produced to Order above. */}
+              {canSelectIndividualVial ? (
                 <div className="flex gap-1.5">
                   {(['CASE_STANDARD', 'INDIVIDUAL_VIAL'] as const).map((unit) => (
                     <button
@@ -272,6 +296,18 @@ export function ProductCard({ name, featured, category, description, imageUrl, b
                     </button>
                   ))}
                 </div>
+              ) : (
+                <LeadCaptureTrigger
+                  interestType="SINGLE_VIAL_SPECIAL_REQUEST"
+                  productSlug={v.slug}
+                  productName={name}
+                  productSize={v.size}
+                  modalTitle={`Single Vial — Special Request: ${name} ${v.size}`}
+                  modalDescription="Single-vial purchasing isn't directly enabled for this strength yet. Leave your info and our team will follow up about availability -- this is an inquiry, not a confirmed purchase."
+                  triggerLabel="Single Vial — Special Request"
+                  triggerClassName="text-left text-[10px] font-heading font-bold uppercase tracking-[0.04em] text-[#241C10]/55 hover:text-[#7A2E17] underline decoration-dotted underline-offset-2 transition-colors w-fit"
+                  onOpen={() => trackEvent(AnalyticsEvent.SINGLE_VIAL_SPECIAL_REQUEST_CLICKED, { slug: v.slug, size: v.size })}
+                />
               )}
 
               {/* Selected-unit price */}
@@ -312,7 +348,7 @@ export function ProductCard({ name, featured, category, description, imageUrl, b
                 disabled={!canPurchase}
                 className="bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] hover:shadow-[0_4px_16px_rgba(212,175,55,0.4)] text-black font-heading text-[11px] font-bold tracking-[0.05em] uppercase w-full py-2.5 rounded-full transition-all hover:scale-[1.02] disabled:bg-white/10 disabled:bg-none disabled:text-white/40 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:shadow-none"
               >
-                {canPurchase ? `Add to Cart${variants.length > 1 ? ` · ${v.size}` : ''}` : v.availabilityMessageOverride || AVAILABILITY_LABEL[v.availability]}
+                {canPurchase ? `Add to Cart${variants.length > 1 ? ` · ${v.size}` : ''}` : v.availabilityMessageOverride || AVAILABILITY_LABEL[availability]}
               </button>
             </>
           ) : (
