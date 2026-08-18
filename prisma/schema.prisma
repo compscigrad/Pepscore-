@@ -3171,3 +3171,38 @@ model SearchEvent {
   @@index([createdAt])
   @@index([resultCount, createdAt])
 }
+
+// ─── First-Party Product Engagement (AI-1.2, 2026-08-18) ────────────────────
+// PRODUCT_VIEW/ADD_TO_CART (lib/analytics/events.ts) fire only from client
+// components (components/storefront/ProductDetail.tsx, lib/cart-store.ts)
+// into @vercel/analytics -- same third-party-only gap SearchEvent closed
+// for search. productId is a bare string, not a Prisma relation to
+// Product (same reasoning as AiComplianceEvent/AiUsageEvent's userId in
+// AI-0B: this stays fully additive, Product itself needs zero changes).
+// productName/category are denormalized snapshots at event time (matches
+// OrderItem.name/size's existing convention), so reads never need a join
+// back to a product that may since have changed name or been archived.
+model ProductEngagementEvent {
+  id          String                     @id @default(cuid())
+  productId   String
+  productName String
+  // Nullable -- ADD_TO_CART fires from lib/cart-store.ts's addItem(),
+  // whose CartItem type has no category field (the existing third-party
+  // ADD_TO_CART trackEvent() call doesn't include it either). Left null
+  // rather than threading a broader CartItem/addItem type change through
+  // every caller (ProductCard, Buy Again/reorder) just for this. VIEW
+  // events (fired from ProductDetail, which does have category in scope)
+  // always populate it.
+  category    String?
+  eventType   ProductEngagementEventType
+  createdAt   DateTime                   @default(now())
+
+  @@index([createdAt])
+  @@index([productId, createdAt])
+  @@index([eventType, createdAt])
+}
+
+enum ProductEngagementEventType {
+  VIEW
+  ADD_TO_CART
+}

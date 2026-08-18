@@ -19,6 +19,7 @@ import type { StorefrontPrice } from '@/lib/storefront/pricing'
 import type { SellUnit } from '@/lib/pricing/sellUnits'
 import { trackEvent } from '@/lib/analytics/track'
 import { AnalyticsEvent } from '@/lib/analytics/events'
+import { trackProductEngagement } from '@/lib/analytics/productEngagementClient'
 import { ScientificBackground } from './ScientificBackground'
 
 const GENERIC_PLACEHOLDER = '/images/products/default-single-vial.png'
@@ -128,6 +129,10 @@ export function ProductDetail({
     if (availability === 'BACKORDERED') {
       trackEvent(AnalyticsEvent.PRODUCED_TO_ORDER_VIEWED, { slug, category })
     }
+    // First-party record (AI-1.2) alongside the third-party trackEvent()
+    // calls above, not instead of them -- see lib/analytics/
+    // productEngagementClient.ts.
+    trackProductEngagement({ productId: id, productName: name, category, eventType: 'VIEW' })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug])
 

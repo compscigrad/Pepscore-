@@ -9,6 +9,7 @@ import type { CartItem } from '@/types'
 import type { SellUnit } from '@/lib/pricing/sellUnits'
 import { trackEvent } from '@/lib/analytics/track'
 import { AnalyticsEvent } from '@/lib/analytics/events'
+import { trackProductEngagement } from '@/lib/analytics/productEngagementClient'
 
 // A product can now have more than one cart line (e.g. a Standard Case AND
 // an Individual Vial of the same product) -- every line-targeting operation
@@ -55,6 +56,11 @@ export const useCartStore = create<CartStore>()(
           sellUnit: newItem.sellUnit ?? null,
           quantity: addQty,
         })
+        // First-party record (AI-1.2) alongside the third-party trackEvent()
+        // call above. No category here -- CartItem carries no category
+        // field, same gap the existing trackEvent() call already has; see
+        // ProductEngagementEvent.category's schema comment.
+        trackProductEngagement({ productId: newItem.id, productName: newItem.name, eventType: 'ADD_TO_CART' })
         set((state) => {
           const existing = state.items.find((i) => sameLine(i, newItem.id, newItem.sellUnit))
           if (existing) {
