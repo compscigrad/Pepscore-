@@ -116,7 +116,14 @@ export const MERCHANDISING_TAXONOMY: MerchandisingCategory[] = [
     label: 'Advanced / Specialty Compounds',
     description: 'Niche and clinical-research-use compounds for specialized research applications.',
     icon: FlaskConical,
-    productNames: ['VIP5', 'VIP10', '5-Amino-1MQ', 'Botulinum Toxin Type A', 'Survodutide', 'EPO 3000IU', 'Ara-290', 'MOTS-c', 'PNC 27'],
+    // Glutathione, Dermorphin, B12 1mg/ml, G610 added 2026-08-18 (launch-
+    // readiness data-integrity audit) -- all four were live, ACTIVE
+    // catalog products with no membership in ANY category here, meaning
+    // they were findable via search but invisible when browsing by
+    // category. Placed here (the designated catch-all for compounds
+    // without a specific mechanism-based group) rather than force-fit into
+    // a more specific category without strong justification for the fit.
+    productNames: ['VIP5', 'VIP10', '5-Amino-1MQ', 'Botulinum Toxin Type A', 'Survodutide', 'EPO 3000IU', 'Ara-290', 'MOTS-c', 'PNC 27', 'Glutathione', 'Dermorphin', 'B12 1mg/ml', 'G610'],
   },
   {
     slug: 'blends-stacks',
