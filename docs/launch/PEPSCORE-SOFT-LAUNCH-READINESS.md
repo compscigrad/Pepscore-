@@ -73,7 +73,7 @@
 | Y6 | **Enable phone/SMS as a Clerk sign-in/MFA factor** | Nothing — email/password auth already works and is Clerk-secured | `docs/PendingOwnerActions.md` #11 |
 | Y7 | **Confirm Neon DB backup/PITR retention window** in the Neon dashboard | Nothing — automatic PITR exists by default on paid tiers, this only confirms the exact window | `docs/PendingOwnerActions.md` #10 |
 | Y8 | **Review and clear 5 paid orders awaiting shipping labels** (oldest is 25 days old: PS-2026-000016, Chris Daly) — real, live operational data seen in the Fulfillment Command Center today | Nothing blocking launch, but genuinely actionable now | New finding, 2026-08-18 |
-| Y9 | **Decide what to do with leftover "Rehearsal"/test invoices and a test customer record already sitting in production** (11 draft, unpaid invoices named "Rehearsal ..."/"[REHEARSAL] Customer A/B", plus one customer record with a synthetic `@delivered.resend.dev` email) — these were not created this session; origin unknown to this environment. They don't affect real revenue (all Draft/Unpaid) but clutter the real Invoices/Customers lists. Recommend trashing (the existing soft-delete flow) once confirmed safe to remove — **not done autonomously**, since this is production data this environment didn't create | New finding, 2026-08-18 |
+| Y9 | ~~Leftover "Rehearsal"/test invoices in production~~ — **done.** Found 11 draft/unpaid invoices named "Rehearsal ..."/"[REHEARSAL] Customer A/B" (created 2026-08-10/11, all synthetic `@example.com` emails or none — the IANA-reserved documentation domain, never used for real accounts; clearly leftover from an earlier autonomous session's own regression testing, not real business records). All 11 archived via the app's existing, reversible Archive/Trash mechanism (not deleted) — recoverable from the Invoices → Trash view if any turn out to matter. Active Invoices list now shows only real customer records (15, down from 26). One related item remains: a customer record with a synthetic `@delivered.resend.dev` email in the Customers list — left untouched (lower urgency, and customer-record removal has a different risk profile than invoice archiving given potential linked history) | Found and archived, 2026-08-18 |
 | Y10 | **Master pricing report** — prepared but not sent (needs explicit approval to email) | Nothing | `docs/PendingOwnerActions.md` #19 |
 | Y11 | **Price-Matching Guarantee mechanics** — the Mission section names it, but no eligibility/reimbursement policy exists yet | Nothing until a customer tries to invoke it | `docs/PendingOwnerActions.md` #24 |
 | Y12 | **Individual Vial pricing formula** — old formula still in use pending a replacement decision | Nothing today (only affects 8 owner-approved public-vial products) | `docs/PendingOwnerActions.md` #18 |
@@ -88,7 +88,7 @@
 
 **None found that block a soft launch of the core application.**
 
-The one item that could arguably be RED — **real storefront checkout is dark** — is deliberately, correctly gated (not broken) pending Y1's owner decision, and the business's actual current sales channel (admin-created invoices) is fully live and operating today ($4,978 in revenue across 26 real invoices, verified in the live Admin dashboard). Soft launch does not require flipping `STOREFRONT_CHECKOUT_ENABLED` on day one if invoice-based selling is the intended initial channel — that's Michael's call (Y1).
+The one item that could arguably be RED — **real storefront checkout is dark** — is deliberately, correctly gated (not broken) pending Y1's owner decision, and the business's actual current sales channel (admin-created invoices) is fully live and operating today ($4,978 in revenue across 15 real invoices — 26 before this session archived 11 leftover test "Rehearsal" invoices, see Y9 — verified in the live Admin dashboard). Soft launch does not require flipping `STOREFRONT_CHECKOUT_ENABLED` on day one if invoice-based selling is the intended initial channel — that's Michael's call (Y1).
 
 No tax calculation exists anywhere in the storefront checkout flow (`Invoice.tax` stays 0; no Stripe Tax integration). **This is flagged, not classified, because it's a legal question this environment can't answer**: if Pepscore's jurisdiction(s) require sales tax collection on these transactions, this becomes a real blocker before real checkout activates. Recommend Michael confirm with a tax advisor before flipping Y1.
 
@@ -116,8 +116,11 @@ Code fixes (all tested, committed, pushed, deployed, live-verified):
 2. `app/api/checkout/route.ts` — added Stripe `idempotencyKey` to checkout session creation
 3. `NEXT_PUBLIC_APP_URL` (Vercel env var) + `app/sitemap.ts`/`app/robots.ts`/`app/layout.tsx`/`lib/storefront/structuredData.ts` fallbacks — corrected from a stale/inconsistent domain to the current real serving domain
 
+Production data cleanup:
+4. Archived 11 leftover "Rehearsal"/test invoices from an earlier autonomous session's own regression testing, via the app's existing reversible Archive/Trash mechanism (see Y9) — no permanent deletion, no real (paid) records touched
+
 Documentation:
-4. `docs/assets/audits/PEPSCORE-DOMAIN-CUTOVER-CHECKLIST.md` — updated for the AOAI transfer (was still written against the frozen pre-transfer domain and team)
-5. This document
+5. `docs/assets/audits/PEPSCORE-DOMAIN-CUTOVER-CHECKLIST.md` — updated for the AOAI transfer (was still written against the frozen pre-transfer domain and team)
+6. This document
 
 No public customer AI activation, no domain cutover, no real financial transactions, no real customer communications performed this session.
