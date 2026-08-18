@@ -40,6 +40,10 @@ const requestSchema = z.discriminatedUnion('type', [
 
 export async function POST(req: NextRequest) {
   const config = loadAiConfig()
+  // TEMPORARY (AI-1.12 credential-presence check) -- boolean only, never the
+  // value itself. Removed in the very next commit once read from Vercel
+  // runtime logs; not left in production long-term.
+  console.log('[ai-config-check] AI_GATEWAY_API_KEY present server-side:', !!config.gatewayApiKey)
   if (!config.featureEnabled) {
     return NextResponse.json({ error: 'Pepscore Intelligence is not currently enabled.' }, { status: 503 })
   }
