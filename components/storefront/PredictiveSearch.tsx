@@ -64,11 +64,23 @@ interface PredictiveSearchProps {
   inputClassName?: string
   placeholder?: string
   autoFocus?: boolean
-  // Fired after a result is selected or a full-search is submitted, and
-  // (desktop only) when the field collapses empty on blur/click-outside --
-  // lets each caller decide what "closing" means for its own chrome
-  // (collapse the icon-toggled desktop field, close the mobile hamburger).
+  // Fired when the search field itself collapses empty -- on blur or a
+  // click/tap outside this component's own containerRef. Desktop uses this
+  // to hide the field back to just the icon. 2026-08-18 mobile-nav fix:
+  // this must NOT be wired to closing a caller's larger surrounding menu
+  // (see onSelect below) -- a tap on any element outside this narrow
+  // search box, including a nav link elsewhere in the same mobile menu,
+  // fires this via `mousedown`, which used to unmount the whole menu
+  // (including the tapped link) before the link's own `click` event could
+  // fire, making every mobile nav item dead on first real tap.
   onClose?: () => void
+  // Fired specifically when the user completes a search action -- picks a
+  // result (goToProduct) or submits the field (submitFullSearch). Unlike
+  // onClose, this never fires from an incidental outside click, so it's
+  // safe for a caller to wire this to closing a larger surrounding menu
+  // (Header.tsx's mobile hamburger) without that menu swallowing clicks on
+  // its own other contents.
+  onSelect?: () => void
   // Optional decorative/interactive chrome (2026-08-17 homepage-search
   // parity fix) -- rendered as siblings of the input inside this
   // component's own <form>, so a caller-styled search icon or submit
@@ -80,7 +92,7 @@ interface PredictiveSearchProps {
   rightSlot?: React.ReactNode
 }
 
-export function PredictiveSearch({ className = '', inputClassName = '', placeholder = 'Search products…', autoFocus, onClose, leftSlot, rightSlot }: PredictiveSearchProps) {
+export function PredictiveSearch({ className = '', inputClassName = '', placeholder = 'Search products…', autoFocus, onClose, onSelect, leftSlot, rightSlot }: PredictiveSearchProps) {
   const router = useRouter()
   const [value, setValue] = useState('')
   const [index, setIndex] = useState<SearchIndexItem[] | null>(null)
@@ -121,6 +133,7 @@ export function PredictiveSearch({ className = '', inputClassName = '', placehol
     setValue('')
     setOpen(false)
     onClose?.()
+    onSelect?.()
   }
 
   function submitFullSearch() {
@@ -129,6 +142,7 @@ export function PredictiveSearch({ className = '', inputClassName = '', placehol
     router.push(`/search?q=${encodeURIComponent(trimmed)}`)
     setOpen(false)
     onClose?.()
+    onSelect?.()
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {

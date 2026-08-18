@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { ShoppingCart, Menu, X, Search } from 'lucide-react'
 import { useCartStore } from '@/lib/cart-store'
+import { NAV_ITEMS } from '@/lib/storefront/navItems'
 import { BrandLockup } from './BrandLockup'
 import { PredictiveSearch } from './PredictiveSearch'
 
@@ -25,12 +26,34 @@ export function Header() {
   const [searchOpen, setSearchOpen] = useState(false)
   const { toggleCart, count } = useCartStore()
   const cartCount = count()
+  const mobileNavRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 20)
     window.addEventListener('scroll', handler)
     return () => window.removeEventListener('scroll', handler)
   }, [])
+
+  // Closes the mobile menu on a genuine outside tap (backdrop, another
+  // header control) -- scoped to mobileNavRef, which wraps both the
+  // hamburger toggle and the dropdown panel, so toggling the button itself
+  // never counts as "outside". Deliberately independent of
+  // PredictiveSearch's own internal outside-click handling (2026-08-18
+  // mobile-nav fix): that component's onClose used to be wired to this
+  // same setMenuOpen(false), which fired on a mousedown anywhere outside
+  // its own small search box -- including every nav link below it in this
+  // same menu -- unmounting the whole menu before the tapped link's own
+  // click event could ever fire. See PredictiveSearch.tsx's onClose/
+  // onSelect doc comments for the full mechanism.
+  useEffect(() => {
+    if (!menuOpen) return
+    function handleClickOutside(e: MouseEvent) {
+      if (!mobileNavRef.current || mobileNavRef.current.contains(e.target as Node)) return
+      setMenuOpen(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [menuOpen])
 
   // Next.js <Link> only scrolls to top on an actual route change -- clicking
   // href="/" while already on "/" is a no-op for the router (same pathname,
@@ -49,6 +72,7 @@ export function Header() {
 
   return (
     <header
+      ref={mobileNavRef}
       className={`relative sticky top-0 z-[900] bg-black border-b transition-shadow ${
         scrolled ? 'border-[#D4AF37]/25 shadow-[0_4px_16px_rgba(0,0,0,0.4)]' : 'border-[#D4AF37]/15'
       }`}
@@ -90,14 +114,7 @@ export function Header() {
               pattern now covers the whole tablet/laptop range below it
               instead of a cramped or wrapping desktop row (2026-08-13). */}
           <ul className="hidden xl:flex gap-7 items-center list-none">
-            {[
-              ['Products', '/#products'],
-              ['Categories', '/categories'],
-              ['Bulk Orders', '/#bulk'],
-              ['Why Us', '/#features'],
-              ['Mission', '/#about'],
-              ['Contact', '/#contact'],
-            ].map(([label, href]) => (
+            {NAV_ITEMS.map(([label, href]) => (
               <li key={label}>
                 <Link
                   href={href}
@@ -151,6 +168,8 @@ export function Header() {
               className="xl:hidden p-1 text-white"
               onClick={() => setMenuOpen(!menuOpen)}
               aria-label="Toggle menu"
+              aria-expanded={menuOpen}
+              aria-controls="mobile-nav-menu"
             >
               {menuOpen ? <X size={22} /> : <Menu size={22} />}
             </button>
@@ -160,20 +179,13 @@ export function Header() {
 
       {/* Mobile menu */}
       {menuOpen && (
-        <div className="xl:hidden bg-black border-t border-[#D4AF37]/15 px-6 py-4 flex flex-col gap-4">
+        <div id="mobile-nav-menu" className="xl:hidden bg-black border-t border-[#D4AF37]/15 px-6 py-4 flex flex-col gap-4">
           <PredictiveSearch
             className="w-full"
-            onClose={() => setMenuOpen(false)}
+            onSelect={() => setMenuOpen(false)}
             inputClassName="w-full border border-white/15 bg-white/[0.04] rounded-full px-4 py-2.5 text-[14px] text-white placeholder:text-white/35 focus:outline-none focus:border-[#D4AF37]/50 transition-colors"
           />
-          {[
-            ['Products', '/#products'],
-            ['Categories', '/categories'],
-            ['Bulk Orders', '/#bulk'],
-            ['Why Us', '/#features'],
-            ['Mission', '/#about'],
-            ['Contact', '/#contact'],
-          ].map(([label, href]) => (
+          {NAV_ITEMS.map(([label, href]) => (
             <Link
               key={label}
               href={href}
