@@ -3072,3 +3072,83 @@ enum CommunicationStatus {
   FAILED
   SKIPPED
 }
+
+// ─── AI Foundation (AI-0B, 2026-08-18) ──────────────────────────────────────
+// Structured, privacy-conscious event logging for the AI policy/provider
+// layer -- lib/ai/compliance/ and lib/ai/usage/. Purely additive: neither
+// model below is referenced by, or adds a field/relation to, any existing
+// model in this file (matches AdminAuditLog.adminId's plain-string-no-
+// relation convention, not CustomerAccessEvent's FK-relation one, so the
+// User model itself needs zero changes).
+//
+// AiComplianceEvent deliberately does NOT store raw prompt text (owner
+// decision, 2026-08-18 item 4) -- structured classification/policy
+// metadata only. A future compliance-review feature that genuinely needs
+// prompt retention requires a separate, narrowly-scoped owner-approved
+// design (retention duration, access controls, deletion policy) before any
+// such field is added here.
+//
+// AiPolicyCategory/AiPolicyAction are real enums, not free strings like
+// Communication.category -- unlike that field (deliberately migration-free
+// so routine new categories don't need a schema change), this taxonomy is
+// explicitly fixed by owner decision ("do not expand this casually"), so a
+// migration gate on adding a new category is the intended behavior, not
+// friction to route around.
+model AiComplianceEvent {
+  id                   String           @id @default(cuid())
+  userId               String?
+  sessionId            String?
+  policyCategory       AiPolicyCategory
+  policyAction         AiPolicyAction
+  feature              String
+  classifierConfidence Float?
+  classifierMethod     String?
+  repeatCount          Int              @default(1)
+  reviewStatus         AiReviewStatus   @default(UNREVIEWED)
+  createdAt            DateTime         @default(now())
+
+  @@index([userId, createdAt])
+  @@index([policyCategory, createdAt])
+}
+
+enum AiPolicyCategory {
+  CATALOG
+  RESEARCH
+  LITERATURE
+  ACCOUNT
+  ADMIN
+  HUMAN_USE
+  JAILBREAK
+  PROMPT_INJECTION
+  UNKNOWN
+}
+
+enum AiPolicyAction {
+  ALLOW
+  REFUSE
+  ESCALATE
+}
+
+enum AiReviewStatus {
+  UNREVIEWED
+  REVIEWED
+  ESCALATED_TO_OWNER
+}
+
+model AiUsageEvent {
+  id                 String   @id @default(cuid())
+  userId             String?
+  provider           String
+  model              String
+  feature            String
+  inputTokens        Int
+  outputTokens       Int
+  latencyMs          Int
+  estimatedCostCents Int
+  success            Boolean
+  usedFallback       Boolean  @default(false)
+  createdAt          DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([provider, model, createdAt])
+}
