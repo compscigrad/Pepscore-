@@ -14,6 +14,12 @@
 // 404s when AI_FEATURE_ENABLED is off, so this component only ever mounts
 // when the feature is genuinely live -- it still handles a 503 gracefully
 // in case the flag flips off between page load and a request completing.
+//
+// AI-1.13 added the "Ask a Question" tab -- the one genuinely free-text
+// control here, backed by researchQa.ts's live-model pipeline. It renders
+// UNAVAILABLE the same way as a policy refusal (both just show
+// result.reason) since there's nothing actionable a customer can do about
+// either besides trying a different question.
 import { useState } from 'react'
 import { MERCHANDISING_TAXONOMY } from '@/lib/storefront/merchandisingTaxonomy'
 
@@ -39,7 +45,7 @@ interface CategoryEntry {
   citation: Citation
 }
 
-type Mode = 'compare' | 'discover' | 'explain'
+type Mode = 'compare' | 'discover' | 'explain' | 'ask'
 
 interface FetchState<T> {
   loading: boolean
@@ -116,6 +122,11 @@ export function PepscoreIntelligenceConcierge() {
     result: null,
   })
 
+  const [question, setQuestion] = useState('')
+  const [askState, setAskState] = useState<
+    FetchState<{ status: string; reason?: string; answer?: string; citations?: Citation[] }>
+  >({ loading: false, error: null, result: null })
+
   async function runCompare(e: React.FormEvent) {
     e.preventDefault()
     const productNames = compareNames.map((n) => n.trim()).filter(Boolean)
@@ -170,6 +181,24 @@ export function PepscoreIntelligenceConcierge() {
     }
   }
 
+  async function runAsk(e: React.FormEvent) {
+    e.preventDefault()
+    if (!question.trim()) {
+      setAskState({ loading: false, error: 'Enter a question.', result: null })
+      return
+    }
+    setAskState({ loading: true, error: null, result: null })
+    try {
+      const result = await callIntelligence<{ status: string; reason?: string; answer?: string; citations?: Citation[] }>({
+        type: 'ask',
+        question: question.trim(),
+      })
+      setAskState({ loading: false, error: null, result })
+    } catch (err) {
+      setAskState({ loading: false, error: err instanceof Error ? err.message : 'Something went wrong.', result: null })
+    }
+  }
+
   return (
     <main className="bg-black min-h-screen">
       <div className="max-w-[820px] mx-auto px-6 py-14">
@@ -192,6 +221,9 @@ export function PepscoreIntelligenceConcierge() {
           </button>
           <button type="button" className={tabClass(mode === 'explain')} onClick={() => setMode('explain')}>
             Explain a Compound
+          </button>
+          <button type="button" className={tabClass(mode === 'ask')} onClick={() => setMode('ask')}>
+            Ask a Question
           </button>
         </div>
 
@@ -308,6 +340,42 @@ export function PepscoreIntelligenceConcierge() {
               <p className="text-white/50 text-[13px] mb-4">{explainState.result.reason ?? 'This request could not be completed.'}</p>
             )}
             {explainState.result?.status === 'ALLOWED' && explainState.result.entry && <CompoundCard entry={explainState.result.entry} />}
+          </section>
+        )}
+
+        {mode === 'ask' && (
+          <section>
+            <form onSubmit={runAsk} className="flex flex-col gap-3 mb-6">
+              <textarea
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                placeholder="e.g. What research areas involve mitochondrial peptides?"
+                maxLength={500}
+                rows={3}
+                className={inputClass}
+              />
+              <button
+                type="submit"
+                disabled={askState.loading}
+                className="self-end bg-[#D4AF37] text-black font-heading text-[12px] font-bold uppercase tracking-wide px-5 py-2.5 rounded-full disabled:opacity-50"
+              >
+                {askState.loading ? 'Thinking…' : 'Ask'}
+              </button>
+            </form>
+            {askState.error && <p className="text-red-400 text-[13px] mb-4">{askState.error}</p>}
+            {askState.result && askState.result.status !== 'ALLOWED' && (
+              <p className="text-white/50 text-[13px] mb-4">{askState.result.reason ?? 'This request could not be completed.'}</p>
+            )}
+            {askState.result?.status === 'ALLOWED' && (
+              <div className="border border-white/10 rounded-lg p-4">
+                <p className="text-white/80 text-[14px] leading-relaxed whitespace-pre-wrap">{askState.result.answer}</p>
+                {askState.result.citations && askState.result.citations.length > 0 && (
+                  <p className="text-white/35 text-[11px] mt-3">
+                    Sources: {askState.result.citations.map((c) => c.citationLabel).join(', ')}
+                  </p>
+                )}
+              </div>
+            )}
           </section>
         )}
       </div>

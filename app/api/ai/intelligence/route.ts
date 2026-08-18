@@ -1,8 +1,9 @@
 // POST /api/ai/intelligence -- the Pepscore Intelligence customer-facing
-// entry point (AI-1.3). Structured requests only (compare | discover),
-// never free-text natural-language input -- see lib/ai/intelligence/
-// compoundComparison.ts's header for why free-text Q&A stays BLOCKED
-// (needs a real LLM to parse intent; no model route is approved yet).
+// entry point. compare | discover | explain (AI-1.3/1.6) are structured,
+// retrieval-only, deterministic requests. ask (AI-1.13) is free-text
+// research Q&A -- the one capability that genuinely needs a live model to
+// parse arbitrary intent, wired through the same policy/retrieval/
+// citation/failover pipeline as everything else.
 //
 // Dark by default: AI_FEATURE_ENABLED defaults off (unset), so this
 // route returns 503 for everyone until an owner explicitly turns it on.
@@ -22,6 +23,7 @@ import { getClientIp } from '@/lib/rateLimit'
 import { compareCompounds } from '@/lib/ai/intelligence/compoundComparison'
 import { discoverByCategory } from '@/lib/ai/intelligence/categoryDiscovery'
 import { explainCompound } from '@/lib/ai/intelligence/compoundExplainer'
+import { askResearchQuestion } from '@/lib/ai/intelligence/researchQa'
 
 const requestSchema = z.discriminatedUnion('type', [
   z.object({
@@ -36,6 +38,10 @@ const requestSchema = z.discriminatedUnion('type', [
     type: z.literal('explain'),
     productName: z.string().trim().min(1),
   }),
+  z.object({
+    type: z.literal('ask'),
+    question: z.string().trim().min(1).max(500),
+  }),
 ])
 
 export async function POST(req: NextRequest) {
@@ -49,18 +55,27 @@ export async function POST(req: NextRequest) {
   const role = resolveAiRole(isAdmin, !!clerkUserId)
   const identifier = clerkUserId ?? `ip:${getClientIp(req)}`
 
+  const body = await req.json().catch(() => null)
+  const parsed = requestSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Invalid request.' }, { status: 400 })
+  }
+
+  // 'ask' runs through runAiPipeline, which performs its own complete
+  // rate-limit/budget check internally (its step 1, using the identical
+  // checkAiRateLimit against the identical identifier) -- checking again
+  // here would consume two rate-limit tokens for one logical request.
+  if (parsed.data.type === 'ask') {
+    const result = await askResearchQuestion(parsed.data.question, role, identifier)
+    return NextResponse.json(result)
+  }
+
   const rateLimit = checkAiRateLimit(identifier, role, {
     perMinute: config.rateLimitPerMinute,
     perDay: config.rateLimitPerDay,
   })
   if (!rateLimit.allowed) {
     return NextResponse.json({ error: 'Too many requests. Please try again shortly.' }, { status: 429 })
-  }
-
-  const body = await req.json().catch(() => null)
-  const parsed = requestSchema.safeParse(body)
-  if (!parsed.success) {
-    return NextResponse.json({ error: 'Invalid request.' }, { status: 400 })
   }
 
   if (parsed.data.type === 'compare') {
