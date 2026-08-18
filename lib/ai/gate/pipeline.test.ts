@@ -4,6 +4,7 @@ import { ProviderRouter } from '../providers/router'
 import { MockAiProvider } from '../providers/mockProvider'
 import type { AiConfig } from '../providers/config'
 import type { RetrievalAdapter, RetrievedSource, RetrievalQuery } from '../retrieval/types'
+import { Tier1CatalogRetrieval } from '../retrieval/tier1Catalog'
 
 // A fixed-content stub adapter -- controls exactly what "gets retrieved"
 // independent of Tier1CatalogRetrieval's real search-ranking behavior, so
@@ -276,6 +277,48 @@ describe('runAiPipeline', () => {
 
       expect(outcome.status).toBe('REFUSED')
       expect(retrieveCalled).toBe(false)
+    })
+
+    // 2026-08-18 live-verification finding: every other test above uses
+    // StubRetrieval, which proves the pipeline forwards WHATEVER a source
+    // returns -- it can't catch a bug where the real adapter itself
+    // returns nothing for a question Pepscore's own catalog can answer.
+    // This wires the real Tier1CatalogRetrieval (exactly as the admin
+    // live-test route and researchQa.ts do), so a regression in either the
+    // adapter's matching or the pipeline's context-injection shows up here
+    // without needing a live provider call.
+    it('an end-to-end catalog research question reaches the provider with real Pepscore context (not a stub)', async () => {
+      const router = new ProviderRouter(new MockAiProvider({ completionText: 'grounded research answer' }))
+      let capturedMessages: { role: string; content: string }[] = []
+      const originalComplete = router.complete.bind(router)
+      router.complete = async (req) => { capturedMessages = req.messages; return originalComplete(req) }
+
+      const products = [
+        { id: 'mots-c', name: 'MOTS-c', size: '10mg', category: 'Mitochondrial Peptide', searchSynonyms: null },
+        { id: 'ss-31', name: 'SS-31', size: '10mg', category: 'Mitochondrial Peptide', searchSynonyms: null },
+        { id: 'sema', name: 'Semaglutide', size: '5mg', category: 'GLP-1 Agonist', searchSynonyms: null },
+      ]
+
+      const outcome = await runAiPipeline(
+        {
+          text: 'What Pepscore catalog families are associated with mitochondrial research?',
+          identifier: uniqueId(),
+          role: 'ADMIN',
+          feature: 'test',
+          router,
+          config: baseConfig,
+          retrievalAdapters: [new Tier1CatalogRetrieval(products)],
+        },
+        fakeDeps()
+      )
+
+      expect(outcome.status).toBe('COMPLETED')
+      if (outcome.status === 'COMPLETED') {
+        const citedIds = outcome.citations.map((c) => c.sourceId)
+        expect(citedIds).toEqual(expect.arrayContaining(['mots-c', 'ss-31']))
+        expect(citedIds).not.toContain('sema')
+      }
+      expect(capturedMessages.some((m) => m.role === 'system' && m.content.includes('Mitochondrial Peptide'))).toBe(true)
     })
   })
 })
