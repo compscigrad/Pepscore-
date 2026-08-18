@@ -6,6 +6,8 @@
 
 **How to read this doc:** GREEN means verified and launch-ready today. YELLOW means Michael has a specific, scoped action to take — most of these are already tracked in full detail in `docs/PendingOwnerActions.md`, which this doc links to rather than duplicates. RED means something genuinely blocks soft launch. BLUE is intentionally deferred, not needed for initial revenue. Nothing here is a nice-to-have dressed up as a blocker.
 
+**Updated 2026-08-18 (same day, follow-up sprint):** reduced the YELLOW list to its smallest form — **`OWNER-LAUNCH-CHECKLIST.md` is the single document to read first.** That sprint also corrected two earlier findings that turned out to be wrong (Y4's legal pages were already fully drafted and live, not placeholders; Y3's Resend gap was narrower than stated — SPF/MX present, only the DKIM record is actually missing), and prepared five new supporting documents for owner decisions this environment can't make alone (sales tax, checkout shipping, Stripe/Shippo live-readiness, legal sign-off, and a final live-transaction rehearsal procedure).
+
 ---
 
 ## 🟢 GREEN — Verified and launch-ready
@@ -61,26 +63,29 @@
 
 ## 🟡 YELLOW — Owner action required
 
-**Full detail for most of these is already tracked in `docs/PendingOwnerActions.md` (26 items, actively maintained) — linking rather than duplicating. Summarized here for the launch-critical ones:**
+**The shortest possible version of this section is `OWNER-LAUNCH-CHECKLIST.md`, written 2026-08-18 in a follow-up sprint — start there.** It supersedes the table below for prioritization; this table stays as the fuller index. Six supporting documents were prepared in that same sprint (research/plans, not activations): `SalesTaxDecision.md`, `CheckoutShippingOptions.md`, `StripeShippoLiveReadiness.md`, `LegalComplianceStatus.md`, `FinalTransactionRehearsal.md`, plus this file.
 
 | # | Item | What's blocked | Detail |
 |---|---|---|---|
-| Y1 | **Flip `STOREFRONT_CHECKOUT_ENABLED`** once Stripe live keys are activated and RUO merchant-eligibility is confirmed | Real storefront checkout (currently shows a clean "Coming Soon" page) | `docs/PendingOwnerActions.md` #1 |
+| Y1 | **Flip `STOREFRONT_CHECKOUT_ENABLED`** once Stripe live keys are activated and RUO merchant-eligibility is confirmed | Real storefront checkout (currently shows a clean "Coming Soon" page) | `StripeShippoLiveReadiness.md`, `docs/PendingOwnerActions.md` #1 |
 | Y2 | **Enable PayPal** in the Stripe Dashboard | PayPal as a checkout option specifically (card/ACH unaffected) | `docs/PendingOwnerActions.md` #2 |
-| Y3 | **Resend domain verification** for `pepscorelab.com` (DNS records) | Cosmetic only — email currently sends from Resend's shared sandbox `From:` address; Reply-To is already correct | `docs/PendingOwnerActions.md` #5 |
-| Y4 | **Legal/policy page copy** — Terms of Service, Privacy Policy, Shipping Policy, Returns & Refunds; decide whether a public Lab Results/COA page is part of launch | Nothing functionally, but a real pre-launch trust/compliance gap for a commerce site | `docs/PendingOwnerActions.md` #9 |
+| Y3 | **Add the missing Resend DKIM record.** Corrected 2026-08-18 by direct DNS lookup: `send.pepscorelab.com`'s SPF and bounce-handling MX are already correctly in place, but `resend._domainkey.pepscorelab.com` (CNAME) does not currently resolve — check the Resend Dashboard for the exact required value | Weaker mail authentication / more likely to land in spam even once the domain shows "verified" — not fully cosmetic, narrower than originally stated | New finding, 2026-08-18 |
+| Y4 | ~~Legal/policy page copy~~ — **corrected 2026-08-18, was overstated.** All five pages (`/terms /privacy /shipping /returns /lab-results`) are already fully drafted and live, not placeholders — direct code read found the "Coming soon" footer fallback is dead code today. Remaining: fill in the Governing Law blank in Terms, confirm the COA claim is accurate, give final sign-off | Nothing functionally — pages are live today, just not search-indexed until approved | `LegalComplianceStatus.md` |
 | Y5 | **Confirm Clerk production keys** before wide traffic (currently on development keys — works fine in real browsers, may fail in strict-privacy contexts) | Nothing for most users today | `docs/PendingOwnerActions.md` #26 |
 | Y6 | **Enable phone/SMS as a Clerk sign-in/MFA factor** | Nothing — email/password auth already works and is Clerk-secured | `docs/PendingOwnerActions.md` #11 |
 | Y7 | **Confirm Neon DB backup/PITR retention window** in the Neon dashboard | Nothing — automatic PITR exists by default on paid tiers, this only confirms the exact window | `docs/PendingOwnerActions.md` #10 |
-| Y8 | **Review and clear 5 paid orders awaiting shipping labels** (oldest is 25 days old: PS-2026-000016, Chris Daly) — real, live operational data seen in the Fulfillment Command Center today | Nothing blocking launch, but genuinely actionable now | New finding, 2026-08-18 |
-| Y9 | ~~Leftover "Rehearsal"/test invoices in production~~ — **done.** Found 11 draft/unpaid invoices named "Rehearsal ..."/"[REHEARSAL] Customer A/B" (created 2026-08-10/11, all synthetic `@example.com` emails or none — the IANA-reserved documentation domain, never used for real accounts; clearly leftover from an earlier autonomous session's own regression testing, not real business records). All 11 archived via the app's existing, reversible Archive/Trash mechanism (not deleted) — recoverable from the Invoices → Trash view if any turn out to matter. Active Invoices list now shows only real customer records (15, down from 26). One related item remains: a customer record with a synthetic `@delivered.resend.dev` email in the Customers list — left untouched (lower urgency, and customer-record removal has a different risk profile than invoice archiving given potential linked history) | Found and archived, 2026-08-18 |
+| Y8 | ~~Review and clear 5 paid orders awaiting shipping labels~~ — **reclassified 2026-08-18: not a pure owner action, blocked on Shippo's Trust & Safety review** (`docs/PendingOwnerActions.md` #4) — purchasing is platform-gated regardless of what anyone clicks until that clears. Becomes actionable the moment `SHIPPO_PURCHASING_ENABLED` can be safely flipped | Nothing blocking launch (manual-tracking fallback is the real current workflow); becomes real backlog once Shippo clears | `StripeShippoLiveReadiness.md` |
+| Y9 | ~~Leftover "Rehearsal"/test invoices in production~~ — **done.** 11 draft/unpaid invoices (synthetic `@example.com` test data from an earlier session's own regression testing) archived via the app's reversible Archive mechanism. Active Invoices list now shows 15 real records, down from 26. One related, lower-urgency item remains untouched: one customer record with a synthetic `@delivered.resend.dev` email | — | Found and archived, 2026-08-18 |
 | Y10 | **Master pricing report** — prepared but not sent (needs explicit approval to email) | Nothing | `docs/PendingOwnerActions.md` #19 |
 | Y11 | **Price-Matching Guarantee mechanics** — the Mission section names it, but no eligibility/reimbursement policy exists yet | Nothing until a customer tries to invoke it | `docs/PendingOwnerActions.md` #24 |
 | Y12 | **Individual Vial pricing formula** — old formula still in use pending a replacement decision | Nothing today (only affects 8 owner-approved public-vial products) | `docs/PendingOwnerActions.md` #18 |
-| Y13 | **One live mobile-viewport browser check** — this session's browser-automation tooling could not resize the actual rendering viewport (confirmed on two attempts); mobile is code-verified only | Nothing — this is a verification gap, not a known defect | New finding, 2026-08-18 |
+| Y13 | **One live mobile-viewport browser check** — reconfirmed 2026-08-18 via `window.innerWidth` that the browser-automation tooling genuinely cannot resize the rendering viewport in this environment (not a transient issue); mobile stays code-verified only | Nothing — verification gap, not a known defect | Reconfirmed 2026-08-18 |
 | Y14 | **One live customer-side (non-admin) Clerk login QA walkthrough** of `/account/orders` and `/account/tracking` | Nothing — shipped and tested from the admin/engineering side | `docs/PendingOwnerActions.md` #7 |
+| Y15 | **Decide sales tax collection.** No tax calculation exists anywhere in checkout today (`Invoice.tax` stays 0). Ship-from address is confirmed DC (informational only, not a legal conclusion) | Nothing until real checkout goes live — should be decided before Y1 | `SalesTaxDecision.md` |
+| Y16 | **Decide checkout shipping.** Every order is currently charged exactly $0 shipping regardless of the advertised $150 free-shipping threshold (both branches of the code evaluate to 0) — not a customer-harming bug, but the threshold isn't actually enforced | Nothing until real checkout goes live — should be decided before Y1 | `CheckoutShippingOptions.md` |
+| Y17 | **Run the final transaction rehearsal** once Stripe is live, before public announcement | Confirms the live pipeline end-to-end with real (small, refunded) money | `FinalTransactionRehearsal.md` |
 
-*(Full list of 26 tracked items, including finance/COGS backfill decisions, Twilio SMS registration, and RUO legal-wording sign-off, is in `docs/PendingOwnerActions.md` — none of them block soft launch of the core storefront/admin/payments flow.)*
+*(Full list of 26 tracked items in `docs/PendingOwnerActions.md`, including finance/COGS backfill decisions and Twilio SMS registration — none of them block soft launch of the core storefront/admin/payments flow.)*
 
 ---
 
@@ -90,9 +95,7 @@
 
 The one item that could arguably be RED — **real storefront checkout is dark** — is deliberately, correctly gated (not broken) pending Y1's owner decision, and the business's actual current sales channel (admin-created invoices) is fully live and operating today ($4,978 in revenue across 15 real invoices — 26 before this session archived 11 leftover test "Rehearsal" invoices, see Y9 — verified in the live Admin dashboard). Soft launch does not require flipping `STOREFRONT_CHECKOUT_ENABLED` on day one if invoice-based selling is the intended initial channel — that's Michael's call (Y1).
 
-No tax calculation exists anywhere in the storefront checkout flow (`Invoice.tax` stays 0; no Stripe Tax integration). **This is flagged, not classified, because it's a legal question this environment can't answer**: if Pepscore's jurisdiction(s) require sales tax collection on these transactions, this becomes a real blocker before real checkout activates. Recommend Michael confirm with a tax advisor before flipping Y1.
-
-Shipping cost is hardcoded to $0 at storefront checkout time by design (`app/api/checkout/route.ts` comment: "Shippo rates fetched post-checkout") — reconciled later via admin. Confirm this is the intended launch behavior before flipping Y1, since it means paid orders never charge shipping automatically at checkout today.
+Sales tax (Y15) and checkout shipping (Y16) are both real open decisions, not classified RED because neither is a code defect — see `SalesTaxDecision.md` and `CheckoutShippingOptions.md` for the full analysis and options. Recommend deciding both before flipping Y1.
 
 ---
 
@@ -124,3 +127,17 @@ Documentation:
 6. This document
 
 No public customer AI activation, no domain cutover, no real financial transactions, no real customer communications performed this session.
+
+## What changed in the follow-up sprint (same day, 2026-08-18)
+
+Research/planning documents (no activation, no code change):
+- `docs/launch/OWNER-LAUNCH-CHECKLIST.md` — the single, shortest-possible prioritized action list
+- `docs/launch/SalesTaxDecision.md`, `CheckoutShippingOptions.md`, `StripeShippoLiveReadiness.md`, `LegalComplianceStatus.md`, `FinalTransactionRehearsal.md`
+
+Corrections to earlier findings (this doc and `docs/PendingOwnerActions.md` both updated):
+- Y4/PendingOwnerActions #9: legal pages were already fully drafted and live, not placeholders — earlier finding was stale/overstated
+- Y3/PendingOwnerActions #5: narrowed from "add DNS records" to "add the one missing DKIM record" — SPF/MX confirmed present by direct lookup
+- Y8: reclassified — blocked on Shippo's third-party review, not a pure owner action
+- Y13: reconfirmed (not just repeated) via `window.innerWidth` that the mobile-viewport tooling limitation is real, not transient
+
+No public customer AI activation, no domain cutover, no real financial transactions, no real customer communications, no Stripe/Shippo live-mode activation performed in the follow-up sprint either.
