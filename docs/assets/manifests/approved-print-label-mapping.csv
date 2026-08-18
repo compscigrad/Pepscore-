@@ -1,0 +1,118 @@
+productId,slug,familyName,canonicalProductName,strength,vialSizeMl,finishedSizeInches,pixelSizeAt600Dpi,png,pdf,archived,storefrontVisible
+cmp1x107r0031bot9t3tyvbej,5-amino-1mq-5mg,5-Amino-1MQ,5-Amino-1MQ,5mg,3,1.75 x 0.75,1050 x 450,3ml/png/5-Amino-1MQ 5mg - 3mL Label.png,3ml/pdf/5-Amino-1MQ 5mg - 3mL Label.pdf,False,True
+cmp1x108s0033bot9k0g3gg3v,5-amino-1mq-50mg,5-Amino-1MQ,5-Amino-1MQ,50mg,3,1.75 x 0.75,1050 x 450,3ml/png/5-Amino-1MQ 50mg - 3mL Label.png,3ml/pdf/5-Amino-1MQ 50mg - 3mL Label.pdf,False,True
+cmp1x10870032bot9kj4ilpef,5-amino-1mq-10mg,5-Amino-1MQ,5-Amino-1MQ,10mg,3,1.75 x 0.75,1050 x 450,3ml/png/5-Amino-1MQ 10mg - 3mL Label.png,3ml/pdf/5-Amino-1MQ 10mg - 3mL Label.pdf,False,True
+cmp1x0zcv001mbot90jf63mc1,aod-9604-5mg,AOD 9604,AOD 9604,5mg,3,1.75 x 0.75,1050 x 450,3ml/png/AOD 9604 5mg - 3mL Label.png,3ml/pdf/AOD 9604 5mg - 3mL Label.pdf,False,True
+cmp1x104e002tbot9me1o84p2,ara-290-10mg,Ara-290,Ara-290,10mg,3,1.75 x 0.75,1050 x 450,3ml/png/Ara-290 10mg - 3mL Label.png,3ml/pdf/Ara-290 10mg - 3mL Label.pdf,False,True
+cmp1x10az0037bot98dqxdq6v,b12-10ml,B12,B12 1mg/ml,10ml,10,2.5 x 1.25,1500 x 750,10ml/png/B12 10ml - 10mL Label.png,10ml/pdf/B12 10ml - 10mL Label.pdf,False,True
+cmp1x10kx0039bot9rq5on8ee,bac-water-10ml,BAC Water,BAC Water,10ml,10,2.5 x 1.25,1500 x 750,10ml/png/BAC Water 10ml - 10mL Label.png,10ml/pdf/BAC Water 10ml - 10mL Label.pdf,True,False
+cmp1x10bi0038bot97bu2tgp9,bac-water-3ml,BAC Water,BAC Water,3ml,3,1.75 x 0.75,1050 x 450,3ml/png/BAC Water 3ml - 3mL Label.png,3ml/pdf/BAC Water 3ml - 3mL Label.pdf,True,False
+cmp1x0z8m001dbot9tpvegtnx,bpc-157-5mg,BPC 157,BPC 157,5mg,3,1.75 x 0.75,1050 x 450,3ml/png/BPC 157 5mg - 3mL Label.png,3ml/pdf/BPC 157 5mg - 3mL Label.pdf,False,True
+cmp1x0z93001ebot9hvie8m94,bpc-157-10mg,BPC 157,BPC 157,10mg,3,1.75 x 0.75,1050 x 450,3ml/png/BPC 157 10mg - 3mL Label.png,3ml/pdf/BPC 157 10mg - 3mL Label.pdf,False,True
+cmp1x0zaz001ibot9h12tu0lb,bpc10-tb10-20mg,BPC 157 + TB500,BPC10 + TB10,20mg,3,1.75 x 0.75,1050 x 450,3ml/png/BPC 157 + TB500 20mg - 3mL Label.png,3ml/pdf/BPC 157 + TB500 20mg - 3mL Label.pdf,True,False
+cmp1x0zai001hbot99755vfiv,bpc5-tb5-10mg,BPC 157 + TB500,BPC5 + TB5,10mg,3,1.75 x 0.75,1050 x 450,3ml/png/BPC 157 + TB500 10mg - 3mL Label.png,3ml/pdf/BPC 157 + TB500 10mg - 3mL Label.pdf,True,False
+cmp1x105e002wbot9y3ofnqmr,botulinum-toxin-100mg,Botulinum Toxin Type A,Botulinum Toxin Type A,100 units,3,1.75 x 0.75,1050 x 450,3ml/png/Botulinum Toxin Type A 100 units - 3mL Label.png,3ml/pdf/Botulinum Toxin Type A 100 units - 3mL Label.pdf,True,False
+cmp1x0zfa001rbot9nrmch7y8,cjc1295-no-dac-10mg,CJC-1295 No DAC,CJC-1295 No DAC,10mg,3,1.75 x 0.75,1050 x 450,3ml/png/CJC-1295 No DAC 10mg - 3mL Label.png,3ml/pdf/CJC-1295 No DAC 10mg - 3mL Label.pdf,False,True
+cmp1x0zeu001qbot9zzdy9w0y,cjc1295-no-dac-5mg,CJC-1295 No DAC,CJC-1295 No DAC,5mg,3,1.75 x 0.75,1050 x 450,3ml/png/CJC-1295 No DAC 5mg - 3mL Label.png,3ml/pdf/CJC-1295 No DAC 5mg - 3mL Label.pdf,False,True
+cmp1x0zfu001sbot9mkteotxd,cjc1295-with-dac-2mg,CJC-1295 With DAC,CJC-1295 With DAC,2mg,3,1.75 x 0.75,1050 x 450,3ml/png/CJC-1295 With DAC 2mg - 3mL Label.png,3ml/pdf/CJC-1295 With DAC 2mg - 3mL Label.pdf,False,True
+cmp1x0zgb001tbot98toptrd1,cjc1295-with-dac-5mg,CJC-1295 With DAC,CJC-1295 With DAC,5mg,3,1.75 x 0.75,1050 x 450,3ml/png/CJC-1295 With DAC 5mg - 3mL Label.png,3ml/pdf/CJC-1295 With DAC 5mg - 3mL Label.pdf,False,True
+cmp1x0zgt001ubot9raqr097r,cjc1295-ipa-10mg,CJC-1295 + Ipamorelin,CJC-1295 without DAC 5mg + Ipamorelin 5mg,10mg,3,1.75 x 0.75,1050 x 450,3ml/png/CJC-1295 + Ipamorelin 10mg - 3mL Label.png,3ml/pdf/CJC-1295 + Ipamorelin 10mg - 3mL Label.pdf,False,True
+cmp1x0ywr000obot9x09osvhe,cagrilintide-10mg,Cagrilintide,Cagrilintide,10mg,3,1.75 x 0.75,1050 x 450,3ml/png/Cagrilintide 10mg - 3mL Label.png,3ml/pdf/Cagrilintide 10mg - 3mL Label.pdf,False,True
+cmp1x0yw9000nbot9nywh6ntb,cagrilintide-5mg,Cagrilintide,Cagrilintide,5mg,3,1.75 x 0.75,1050 x 450,3ml/png/Cagrilintide 5mg - 3mL Label.png,3ml/pdf/Cagrilintide 5mg - 3mL Label.pdf,False,True
+cmp1x0yx8000pbot9ihqsh2kh,cagri-sema-2-5mg,Cagrilintide + Semaglutide,Cagrilintide 2.5mg + Semaglutide 2.5mg,5mg,3,1.75 x 0.75,1050 x 450,3ml/png/Cagrilintide + Semaglutide 5mg - 3mL Label.png,3ml/pdf/Cagrilintide + Semaglutide 5mg - 3mL Label.pdf,False,True
+cmp1x0yxq000qbot9eo5zhjxj,cagri-sema-5mg,Cagrilintide + Semaglutide,Cagrilintide 5mg + Semaglutide 5mg,10mg,3,1.75 x 0.75,1050 x 450,3ml/png/Cagrilintide + Semaglutide 10mg - 3mL Label.png,3ml/pdf/Cagrilintide + Semaglutide 10mg - 3mL Label.pdf,False,True
+cmp1x103f002qbot9gogq41g6,cerebrolysin-60mg,Cerebrolysin,Cerebrolysin (6 vials),60mg,3,1.75 x 0.75,1050 x 450,3ml/png/Cerebrolysin 60mg - 3mL Label.png,3ml/pdf/Cerebrolysin 60mg - 3mL Label.pdf,False,True
+cmp1x102v002obot97t9bgt1r,dsip-5mg,DSIP,DSIP,5mg,3,1.75 x 0.75,1050 x 450,3ml/png/DSIP 5mg - 3mL Label.png,3ml/pdf/DSIP 5mg - 3mL Label.pdf,False,True
+cmp1x1035002pbot9h46e6lxf,dsip-15mg,DSIP,DSIP,15mg,3,1.75 x 0.75,1050 x 450,3ml/png/DSIP 15mg - 3mL Label.png,3ml/pdf/DSIP 15mg - 3mL Label.pdf,False,True
+cmp1x0znn002bbot9hjcisqmd,dermorphin-5mg,Dermorphin,Dermorphin,5mg,3,1.75 x 0.75,1050 x 450,3ml/png/Dermorphin 5mg - 3mL Label.png,3ml/pdf/Dermorphin 5mg - 3mL Label.pdf,False,True
+cmp1x100m002jbot9u25xkjhs,epo-3000iu,EPO,EPO 3000IU,3000iu,3,1.75 x 0.75,1050 x 450,3ml/png/EPO 3000iu - 3mL Label.png,3ml/pdf/EPO 3000iu - 3mL Label.pdf,True,False
+cmp1x0z2g0010bot9wshf7rsl,epithalon-10mg,Epithalon,Epithalon,10mg,3,1.75 x 0.75,1050 x 450,3ml/png/Epithalon 10mg - 3mL Label.png,3ml/pdf/Epithalon 10mg - 3mL Label.pdf,False,True
+cmp1wfede0004101lqyudhnof,epithalon-50mg,Epithalon,Epithalon,50mg,3,1.75 x 0.75,1050 x 450,3ml/png/Epithalon 50mg - 3mL Label.png,3ml/pdf/Epithalon 50mg - 3mL Label.pdf,False,True
+cmp1x10a50036bot9hyydh90k,g610-10mg,G610,G610,10mg,3,1.75 x 0.75,1050 x 450,3ml/png/G610 10mg - 3mL Label.png,3ml/pdf/G610 10mg - 3mL Label.pdf,False,True
+cmp1x10ld003abot9z6pp621m,ga-water-3ml,GA = AA Water,GA = AA Water,3ml,3,1.75 x 0.75,1050 x 450,3ml/png/GA = AA Water 3ml - 3mL Label.png,3ml/pdf/GA = AA Water 3ml - 3mL Label.pdf,True,False
+cmp1wfeen0007101lfhpfjj1p,ghk-cu-100mg,GHK-Cu,GHK-Cu,100mg,3,1.75 x 0.75,1050 x 450,3ml/png/GHK-Cu 100mg - 3mL Label.png,3ml/pdf/GHK-Cu 100mg - 3mL Label.pdf,False,True
+cmp1x0yz4000tbot93f10ihys,ghk-cu-50mg,GHK-Cu,GHK-Cu,50mg,3,1.75 x 0.75,1050 x 450,3ml/png/GHK-Cu 50mg - 3mL Label.png,3ml/pdf/GHK-Cu 50mg - 3mL Label.pdf,False,True
+cmp1x0zij001zbot9a4dd88pe,ghrp-6-5mg,GHRP-6 Acetate,GHRP-6 Acetate,5mg,3,1.75 x 0.75,1050 x 450,3ml/png/GHRP-6 Acetate 5mg - 3mL Label.png,3ml/pdf/GHRP-6 Acetate 5mg - 3mL Label.pdf,False,True
+cmsida3m30000a3jeo3wwem23,glow70-70mg,GLOW70,GLOW70,70mg,3,1.75 x 0.75,1050 x 450,3ml/png/GLOW70 70mg - 3mL Label.png,3ml/pdf/GLOW70 70mg - 3mL Label.pdf,False,True
+cmp1x0z03000vbot96bmqfoiu,glutathione-600mg,Glutathione,Glutathione,600mg,10,2.5 x 1.25,1500 x 750,10ml/png/Glutathione 600mg - 10mL Label.png,10ml/pdf/Glutathione 600mg - 10mL Label.pdf,False,True
+cmp1x0z10000xbot9baf08cb1,glutathione-1500mg,Glutathione,Glutathione,1500mg,10,2.5 x 1.25,1500 x 750,10ml/png/Glutathione 1500mg - 10mL Label.png,10ml/pdf/Glutathione 1500mg - 10mL Label.pdf,False,True
+cmp1x0z0m000wbot97wyoxzaf,glutathione-1200mg,Glutathione,Glutathione,1200mg,10,2.5 x 1.25,1500 x 750,10ml/png/Glutathione 1200mg - 10mL Label.png,10ml/pdf/Glutathione 1200mg - 10mL Label.pdf,False,True
+cmp1x0zqi002gbot94ra55yc6,hcg-5000iu,HCG,HCG,5000iu,3,1.75 x 0.75,1050 x 450,3ml/png/HCG 5000iu - 3mL Label.png,3ml/pdf/HCG 5000iu - 3mL Label.pdf,False,True
+cmp1x0zqz002hbot9ajlkbp2q,hcg-10000iu,HCG,HCG,10000iu,3,1.75 x 0.75,1050 x 450,3ml/png/HCG 10000iu - 3mL Label.png,3ml/pdf/HCG 10000iu - 3mL Label.pdf,False,True
+cmp1x0zjk0022bot996k5n5om,hgh-10iu,HGH,HGH,10iu,3,1.75 x 0.75,1050 x 450,3ml/png/HGH 10iu - 3mL Label.png,3ml/pdf/HGH 10iu - 3mL Label.pdf,False,True
+cmp1x0zk10023bot96tiu35rw,hgh-15iu,HGH,HGH,15iu,3,1.75 x 0.75,1050 x 450,3ml/png/HGH 15iu - 3mL Label.png,3ml/pdf/HGH 15iu - 3mL Label.pdf,False,True
+cmp1x0zkh0024bot93wmw9ziz,hgh-24iu,HGH,HGH,24iu,3,1.75 x 0.75,1050 x 450,3ml/png/HGH 24iu - 3mL Label.png,3ml/pdf/HGH 24iu - 3mL Label.pdf,False,True
+cmp1x1004002ibot9oy5mrs24,hmg-75iu,HMG,HMG,75iu,3,1.75 x 0.75,1050 x 450,3ml/png/HMG 75iu - 3mL Label.png,3ml/pdf/HMG 75iu - 3mL Label.pdf,False,True
+cmp1x0z86001cbot9z5eonn4l,humanin-10mg,Humanin,Humanin,10mg,3,1.75 x 0.75,1050 x 450,3ml/png/Humanin 10mg - 3mL Label.png,3ml/pdf/Humanin 10mg - 3mL Label.pdf,False,True
+cmp1x0zly0027bot9m40gpq2p,igf-des-2mg,IGF-DES,IGF-DES,2mg,3,1.75 x 0.75,1050 x 450,3ml/png/IGF-DES 2mg - 3mL Label.png,3ml/pdf/IGF-DES 2mg - 3mL Label.pdf,False,True
+cmp1x0zkz0025bot93vmta6vd,igf-ilr3-0-1mg,IGF-ILR3,IGF-ILR3,0.1mg,3,1.75 x 0.75,1050 x 450,3ml/png/IGF-ILR3 0.1mg - 3mL Label.png,3ml/pdf/IGF-ILR3 0.1mg - 3mL Label.pdf,True,False
+cmp1x0zlh0026bot9q27xeaah,igf-ilr3-1mg,IGF-ILR3,IGF-ILR3,1mg,3,1.75 x 0.75,1050 x 450,3ml/png/IGF-ILR3 1mg - 3mL Label.png,3ml/pdf/IGF-ILR3 1mg - 3mL Label.pdf,True,False
+cmp1x0zhk001wbot99xjpc46w,ipamorelin-10mg,Ipamorelin,Ipamorelin,10mg,3,1.75 x 0.75,1050 x 450,3ml/png/Ipamorelin 10mg - 3mL Label.png,3ml/pdf/Ipamorelin 10mg - 3mL Label.pdf,False,True
+cmp1x0zh2001vbot9nsbu67ie,ipamorelin-5mg,Ipamorelin,Ipamorelin,5mg,3,1.75 x 0.75,1050 x 450,3ml/png/Ipamorelin 5mg - 3mL Label.png,3ml/pdf/Ipamorelin 5mg - 3mL Label.pdf,False,True
+cmp1x0zdu001obot94kvwjm4l,klow-80mg,KLOW,KLOW,80mg,3,1.75 x 0.75,1050 x 450,3ml/png/KLOW 80mg - 3mL Label.png,3ml/pdf/KLOW 80mg - 3mL Label.pdf,False,True
+cmp1x0zbx001kbot9nto9gom7,kpv-10mg,KPV (Lysine-Proline-Valine),KPV (Lysine-Proline-Valine),10mg,3,1.75 x 0.75,1050 x 450,3ml/png/KPV (Lysine-Proline-Valine) 10mg - 3mL Label.png,3ml/pdf/KPV (Lysine-Proline-Valine) 10mg - 3mL Label.pdf,True,False
+cmp1x0zbg001jbot9joc67y2w,kpv-5mg,KPV (Lysine-Proline-Valine),KPV (Lysine-Proline-Valine),5mg,3,1.75 x 0.75,1050 x 450,3ml/png/KPV (Lysine-Proline-Valine) 5mg - 3mL Label.png,3ml/pdf/KPV (Lysine-Proline-Valine) 5mg - 3mL Label.pdf,True,False
+cmp1x0zo3002cbot9hk820efe,kisspeptin-10-5mg,KissPeptin-10,KissPeptin-10,5mg,3,1.75 x 0.75,1050 x 450,3ml/png/KissPeptin-10 5mg - 3mL Label.png,3ml/pdf/KissPeptin-10 5mg - 3mL Label.pdf,False,True
+cmp1wfee60006101lq2ecn8gc,kisspeptin-10-10mg,KissPeptin-10,KissPeptin-10,10mg,3,1.75 x 0.75,1050 x 450,3ml/png/KissPeptin-10 10mg - 3mL Label.png,3ml/pdf/KissPeptin-10 10mg - 3mL Label.pdf,False,True
+cmp1x105u002xbot93onan8km,lc120-10ml,LC120,LC120,10ml,10,2.5 x 1.25,1500 x 750,10ml/png/LC120 10ml - 10mL Label.png,10ml/pdf/LC120 10ml - 10mL Label.pdf,True,False
+cmp1x106d002ybot964huurl2,lc216-10ml,LC216,LC216,10ml,10,2.5 x 1.25,1500 x 750,10ml/png/LC216 10ml - 10mL Label.png,10ml/pdf/LC216 10ml - 10mL Label.pdf,True,False
+cmp1x0zce001lbot91kgw4msa,ll37-5mg,LL37,LL37,5mg,3,1.75 x 0.75,1050 x 450,3ml/png/LL37 5mg - 3mL Label.png,3ml/pdf/LL37 5mg - 3mL Label.pdf,False,True
+cmp1x104x002vbot9d1ys0vok,lemon-bottle-10ml,Lemon Bottle,Lemon Bottle,10ml,10,2.5 x 1.25,1500 x 750,10ml/png/Lemon Bottle 10ml - 10mL Label.png,10ml/pdf/Lemon Bottle 10ml - 10mL Label.pdf,True,False
+cmp1x0z680018bot9mihrv6te,mots-c-10mg,MOTS-c,MOTS-c,10mg,3,1.75 x 0.75,1050 x 450,3ml/png/MOTS-c 10mg - 3mL Label.png,3ml/pdf/MOTS-c 10mg - 3mL Label.pdf,False,True
+cmp1x0z6q0019bot9086qpl6w,mots-c-40mg,MOTS-c,MOTS-c,40mg,3,1.75 x 0.75,1050 x 450,3ml/png/MOTS-c 40mg - 3mL Label.png,3ml/pdf/MOTS-c 40mg - 3mL Label.pdf,False,True
+cmp1x0zme0028bot9o66nweef,mt-2-10mg,MT-2,MT-2,10mg,3,1.75 x 0.75,1050 x 450,3ml/png/MT-2 10mg - 3mL Label.png,3ml/pdf/MT-2 10mg - 3mL Label.pdf,False,True
+cmp1x0zmn0029bot9h5g1bxxa,mt1-5mg,MT1,MT1,5mg (1 vial),3,1.75 x 0.75,1050 x 450,3ml/png/MT1 5mg - 3mL Label.png,3ml/pdf/MT1 5mg - 3mL Label.pdf,True,False
+cmp1x0yyn000sbot912ng7871,mazdutide-10mg,Mazdutide,Mazdutide,10mg,3,1.75 x 0.75,1050 x 450,3ml/png/Mazdutide 10mg - 3mL Label.png,3ml/pdf/Mazdutide 10mg - 3mL Label.pdf,False,True
+cmp1x0z1i000ybot94euhsqur,nad-plus-100mg,NAD+,NAD+,100mg,10,2.5 x 1.25,1500 x 750,10ml/png/NAD+ 100mg - 10mL Label.png,10ml/pdf/NAD+ 100mg - 10mL Label.pdf,False,True
+cmp1wfecv0003101lvnslbrnz,nad-plus-500mg,NAD+,NAD+,500mg,10,2.5 x 1.25,1500 x 750,10ml/png/NAD+ 500mg - 10mL Label.png,10ml/pdf/NAD+ 500mg - 10mL Label.pdf,False,True
+cmp1x0zq6002fbot9oxqghmhz,oxytocin-10mg,Oxytocin,Oxytocin,10mg,3,1.75 x 0.75,1050 x 450,3ml/png/Oxytocin 10mg - 3mL Label.png,3ml/pdf/Oxytocin 10mg - 3mL Label.pdf,False,True
+cmp1x0zpe002ebot9p888h38a,oxytocin-2mg,Oxytocin,Oxytocin,2mg,3,1.75 x 0.75,1050 x 450,3ml/png/Oxytocin 2mg - 3mL Label.png,3ml/pdf/Oxytocin 2mg - 3mL Label.pdf,False,True
+cmp1x109a0034bot9p8bb13zt,pnc-27-5mg,PNC 27,PNC 27,5mg,3,1.75 x 0.75,1050 x 450,3ml/png/PNC 27 5mg - 3mL Label.png,3ml/pdf/PNC 27 5mg - 3mL Label.pdf,False,True
+cmp1x109m0035bot98ygrfci5,pnc-27-10mg,PNC 27,PNC 27,10mg,3,1.75 x 0.75,1050 x 450,3ml/png/PNC 27 10mg - 3mL Label.png,3ml/pdf/PNC 27 10mg - 3mL Label.pdf,False,True
+cmp1wfef20008101l80sbtq6i,pt-141-10mg,PT-141,PT-141,10mg,3,1.75 x 0.75,1050 x 450,3ml/png/PT-141 10mg - 3mL Label.png,3ml/pdf/PT-141 10mg - 3mL Label.pdf,False,True
+cmp1x0z4t0015bot9ermpkjm2,pinealon-5mg,Pinealon,Pinealon,5mg,3,1.75 x 0.75,1050 x 450,3ml/png/Pinealon 5mg - 3mL Label.png,3ml/pdf/Pinealon 5mg - 3mL Label.pdf,False,True
+cmp1x0z5r0017bot9y0p5b3xq,pinealon-20mg,Pinealon,Pinealon,20mg,3,1.75 x 0.75,1050 x 450,3ml/png/Pinealon 20mg - 3mL Label.png,3ml/pdf/Pinealon 20mg - 3mL Label.pdf,False,True
+cmp1x0z5a0016bot9k3bsj58e,pinealon-10mg,Pinealon,Pinealon,10mg,3,1.75 x 0.75,1050 x 450,3ml/png/Pinealon 10mg - 3mL Label.png,3ml/pdf/Pinealon 10mg - 3mL Label.pdf,False,True
+cmp1x0yty000ibot9edhsvf3y,retatrutide-30mg,Retatrutide,Retatrutide,30mg,3,1.75 x 0.75,1050 x 450,3ml/png/Retatrutide 30mg - 3mL Label.png,3ml/pdf/Retatrutide 30mg - 3mL Label.pdf,False,True
+cmp1x0yue000jbot9zyegtcgd,retatrutide-36mg,Retatrutide,Retatrutide,36mg,3,1.75 x 0.75,1050 x 450,3ml/png/Retatrutide 36mg - 3mL Label.png,3ml/pdf/Retatrutide 36mg - 3mL Label.pdf,False,True
+cmp1x0ysz000gbot9phlwxrp7,retatrutide-20mg,Retatrutide,Retatrutide,20mg,3,1.75 x 0.75,1050 x 450,3ml/png/Retatrutide 20mg - 3mL Label.png,3ml/pdf/Retatrutide 20mg - 3mL Label.pdf,False,True
+cmp1x0ys1000ebot9hlvg8318,retatrutide-10mg,Retatrutide,Retatrutide,10mg,3,1.75 x 0.75,1050 x 450,3ml/png/Retatrutide 10mg - 3mL Label.png,3ml/pdf/Retatrutide 10mg - 3mL Label.pdf,False,True
+cmp1x0yuv000kbot9rf73ss79,retatrutide-40mg,Retatrutide,Retatrutide,40mg,3,1.75 x 0.75,1050 x 450,3ml/png/Retatrutide 40mg - 3mL Label.png,3ml/pdf/Retatrutide 40mg - 3mL Label.pdf,False,True
+cmp1x0ysi000fbot93z22t9e5,retatrutide-15mg,Retatrutide,Retatrutide,15mg,3,1.75 x 0.75,1050 x 450,3ml/png/Retatrutide 15mg - 3mL Label.png,3ml/pdf/Retatrutide 15mg - 3mL Label.pdf,False,True
+cmp1x0yvc000lbot93o61carm,retatrutide-50mg,Retatrutide,Retatrutide,50mg,3,1.75 x 0.75,1050 x 450,3ml/png/Retatrutide 50mg - 3mL Label.png,3ml/pdf/Retatrutide 50mg - 3mL Label.pdf,False,True
+cmp1x0yti000hbot9pfplrpw5,retatrutide-24mg,Retatrutide,Retatrutide,24mg,3,1.75 x 0.75,1050 x 450,3ml/png/Retatrutide 24mg - 3mL Label.png,3ml/pdf/Retatrutide 24mg - 3mL Label.pdf,False,True
+cmp1x0yrj000dbot903qfrtkq,retatrutide-5mg,Retatrutide,Retatrutide,5mg,3,1.75 x 0.75,1050 x 450,3ml/png/Retatrutide 5mg - 3mL Label.png,3ml/pdf/Retatrutide 5mg - 3mL Label.pdf,False,True
+cmp1wfec80002101lr442r8ci,retatrutide-60mg,Retatrutide,Retatrutide,60mg,3,1.75 x 0.75,1050 x 450,3ml/png/Retatrutide 60mg - 3mL Label.png,3ml/pdf/Retatrutide 60mg - 3mL Label.pdf,False,True
+cmp1x10790030bot9o6tpi405,slu-pp-332-5mg,SLU-PP-332,SLU-PP-332,5mg,3,1.75 x 0.75,1050 x 450,3ml/png/SLU-PP-332 5mg - 3mL Label.png,3ml/pdf/SLU-PP-332 5mg - 3mL Label.pdf,False,True
+cmp1x0z77001abot99rc97f5i,ss-31-10mg,SS-31,SS-31,10mg,3,1.75 x 0.75,1050 x 450,3ml/png/SS-31 10mg - 3mL Label.png,3ml/pdf/SS-31 10mg - 3mL Label.pdf,False,True
+cmp1x0z7o001bbot90aym90ga,ss-31-50mg,SS-31,SS-31,50mg,3,1.75 x 0.75,1050 x 450,3ml/png/SS-31 50mg - 3mL Label.png,3ml/pdf/SS-31 50mg - 3mL Label.pdf,False,True
+cmp1x102m002nbot9hh55rdoj,selank-11mg,Selank,Selank,11mg,3,1.75 x 0.75,1050 x 450,3ml/png/Selank 11mg - 3mL Label.png,3ml/pdf/Selank 11mg - 3mL Label.pdf,False,True
+cmp1x1026002mbot9fivslvyd,selank-5mg,Selank,Selank,5mg,3,1.75 x 0.75,1050 x 450,3ml/png/Selank 5mg - 3mL Label.png,3ml/pdf/Selank 5mg - 3mL Label.pdf,False,True
+cmp1x0yj80000bot9f16ro9uc,semaglutide-5mg,Semaglutide,Semaglutide,5mg,3,1.75 x 0.75,1050 x 450,3ml/png/Semaglutide 5mg - 3mL Label.png,3ml/pdf/Semaglutide 5mg - 3mL Label.pdf,False,True
+cmp1x0ymq0003bot9mwi1db4k,semaglutide-20mg,Semaglutide,Semaglutide,20mg,3,1.75 x 0.75,1050 x 450,3ml/png/Semaglutide 20mg - 3mL Label.png,3ml/pdf/Semaglutide 20mg - 3mL Label.pdf,False,True
+cmp1wfeb60000101ltaijvzml,semaglutide-30mg,Semaglutide,Semaglutide,30mg,3,1.75 x 0.75,1050 x 450,3ml/png/Semaglutide 30mg - 3mL Label.png,3ml/pdf/Semaglutide 30mg - 3mL Label.pdf,False,True
+cmp1x0ym90002bot9rp4vgo4x,semaglutide-15mg,Semaglutide,Semaglutide,15mg,3,1.75 x 0.75,1050 x 450,3ml/png/Semaglutide 15mg - 3mL Label.png,3ml/pdf/Semaglutide 15mg - 3mL Label.pdf,False,True
+cmp1x0ylr0001bot9ep2fjzhg,semaglutide-10mg,Semaglutide,Semaglutide,10mg,3,1.75 x 0.75,1050 x 450,3ml/png/Semaglutide 10mg - 3mL Label.png,3ml/pdf/Semaglutide 10mg - 3mL Label.pdf,False,True
+cmp1x101n002lbot97zsm7tu0,semax-11mg,Semax,Semax,11mg,3,1.75 x 0.75,1050 x 450,3ml/png/Semax 11mg - 3mL Label.png,3ml/pdf/Semax 11mg - 3mL Label.pdf,False,True
+cmp1x1014002kbot938mey488,semax-5mg,Semax,Semax,5mg,3,1.75 x 0.75,1050 x 450,3ml/png/Semax 5mg - 3mL Label.png,3ml/pdf/Semax 5mg - 3mL Label.pdf,False,True
+cmp1x0zib001ybot991terh55,sermorelin-10mg,Sermorelin Acetate,Sermorelin Acetate,10mg,3,1.75 x 0.75,1050 x 450,3ml/png/Sermorelin Acetate 10mg - 3mL Label.png,3ml/pdf/Sermorelin Acetate 10mg - 3mL Label.pdf,False,True
+cmp1x0zhv001xbot97sue263a,sermorelin-5mg,Sermorelin Acetate,Sermorelin Acetate,5mg,3,1.75 x 0.75,1050 x 450,3ml/png/Sermorelin Acetate 5mg - 3mL Label.png,3ml/pdf/Sermorelin Acetate 5mg - 3mL Label.pdf,False,True
+cmp1x104n002ubot9if4r2h0d,snap-8-10mg,Snap-8,Snap-8,10mg,3,1.75 x 0.75,1050 x 450,3ml/png/Snap-8 10mg - 3mL Label.png,3ml/pdf/Snap-8 10mg - 3mL Label.pdf,False,True
+cmp1x0yy6000rbot905g5t5fa,survodutide-10mg,Survodutide,Survodutide,10mg,3,1.75 x 0.75,1050 x 450,3ml/png/Survodutide 10mg - 3mL Label.png,3ml/pdf/Survodutide 10mg - 3mL Label.pdf,False,True
+cmp1x0za2001gbot9d9ri71wk,tb500-10mg,TB500,TB500,10mg,3,1.75 x 0.75,1050 x 450,3ml/png/TB500 10mg - 3mL Label.png,3ml/pdf/TB500 10mg - 3mL Label.pdf,False,True
+cmp1x0z9k001fbot9idwp9mkr,tb500-5mg,TB500,TB500,5mg,3,1.75 x 0.75,1050 x 450,3ml/png/TB500 5mg - 3mL Label.png,3ml/pdf/TB500 5mg - 3mL Label.pdf,False,True
+cmp1x0zj00020bot91xcjgrgt,tesamorelin-5mg,Tesamorelin,Tesamorelin,5mg,3,1.75 x 0.75,1050 x 450,3ml/png/Tesamorelin 5mg - 3mL Label.png,3ml/pdf/Tesamorelin 5mg - 3mL Label.pdf,False,True
+cmp1x0zja0021bot9jh9mmnlj,tesamorelin-10mg,Tesamorelin,Tesamorelin,10mg,3,1.75 x 0.75,1050 x 450,3ml/png/Tesamorelin 10mg - 3mL Label.png,3ml/pdf/Tesamorelin 10mg - 3mL Label.pdf,False,True
+cmp1x0z3e0012bot9mzivv82d,thymalin-10mg,Thymalin,Thymalin,10mg,3,1.75 x 0.75,1050 x 450,3ml/png/Thymalin 10mg - 3mL Label.png,3ml/pdf/Thymalin 10mg - 3mL Label.pdf,False,True
+cmp1x0z3v0013bot9bnvk1aaa,thymosin-alpha1-5mg,Thymosin Alpha-1,Thymosin Alpha-1,5mg,3,1.75 x 0.75,1050 x 450,3ml/png/Thymosin Alpha-1 5mg - 3mL Label.png,3ml/pdf/Thymosin Alpha-1 5mg - 3mL Label.pdf,False,True
+cmp1x0z4c0014bot9lrid4jom,thymosin-alpha1-10mg,Thymosin Alpha-1,Thymosin Alpha-1,10mg,3,1.75 x 0.75,1050 x 450,3ml/png/Thymosin Alpha-1 10mg - 3mL Label.png,3ml/pdf/Thymosin Alpha-1 10mg - 3mL Label.pdf,False,True
+cmp1x0yoq0007bot9zwbimrtu,tirzepatide-15mg,Tirzepatide,Tirzepatide,15mg,3,1.75 x 0.75,1050 x 450,3ml/png/Tirzepatide 15mg - 3mL Label.png,3ml/pdf/Tirzepatide 15mg - 3mL Label.pdf,False,True
+cmp1x0ypo0009bot91venf8kx,tirzepatide-30mg,Tirzepatide,Tirzepatide,30mg,3,1.75 x 0.75,1050 x 450,3ml/png/Tirzepatide 30mg - 3mL Label.png,3ml/pdf/Tirzepatide 30mg - 3mL Label.pdf,False,True
+cmp1x0yo90006bot9r0ztywt6,tirzepatide-10mg,Tirzepatide,Tirzepatide,10mg,3,1.75 x 0.75,1050 x 450,3ml/png/Tirzepatide 10mg - 3mL Label.png,3ml/pdf/Tirzepatide 10mg - 3mL Label.pdf,False,True
+cmp1wfebz0001101lrvssjdze,tirzepatide-60mg,Tirzepatide,Tirzepatide,60mg,3,1.75 x 0.75,1050 x 450,3ml/png/Tirzepatide 60mg - 3mL Label.png,3ml/pdf/Tirzepatide 60mg - 3mL Label.pdf,False,True
+cmp1x0yql000bbot9y3kplgfo,tirzepatide-50mg,Tirzepatide,Tirzepatide,50mg,3,1.75 x 0.75,1050 x 450,3ml/png/Tirzepatide 50mg - 3mL Label.png,3ml/pdf/Tirzepatide 50mg - 3mL Label.pdf,False,True
+cmp1x0yp80008bot9qqtthuf2,tirzepatide-20mg,Tirzepatide,Tirzepatide,20mg,3,1.75 x 0.75,1050 x 450,3ml/png/Tirzepatide 20mg - 3mL Label.png,3ml/pdf/Tirzepatide 20mg - 3mL Label.pdf,False,True
+cmp1x0yq3000abot97ngxwwoh,tirzepatide-40mg,Tirzepatide,Tirzepatide,40mg,3,1.75 x 0.75,1050 x 450,3ml/png/Tirzepatide 40mg - 3mL Label.png,3ml/pdf/Tirzepatide 40mg - 3mL Label.pdf,False,True
+cmp1x0ynu0005bot9bh6j06bx,tirzepatide-5mg,Tirzepatide,Tirzepatide,5mg,3,1.75 x 0.75,1050 x 450,3ml/png/Tirzepatide 5mg - 3mL Label.png,3ml/pdf/Tirzepatide 5mg - 3mL Label.pdf,False,True
+cmp1x1045002sbot9ibduu1ou,vip10-10mg,VIP10,VIP10,10mg,3,1.75 x 0.75,1050 x 450,3ml/png/VIP10 10mg - 3mL Label.png,3ml/pdf/VIP10 10mg - 3mL Label.pdf,True,False
+cmp1x103w002rbot9kgiv5pbt,vip5-5mg,VIP5,VIP5,5mg,3,1.75 x 0.75,1050 x 450,3ml/png/VIP5 5mg - 3mL Label.png,3ml/pdf/VIP5 5mg - 3mL Label.pdf,True,False

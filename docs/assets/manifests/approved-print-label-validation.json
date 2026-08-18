@@ -1,0 +1,17 @@
+{
+  "storefrontFamilyImages": 65,
+  "labelPng3ml": 108,
+  "labelPdf3ml": 108,
+  "labelPng10ml": 10,
+  "labelPdf10ml": 10,
+  "tabled": 1,
+  "bad3mlDimensions": [],
+  "bad10mlDimensions": [],
+  "storefrontFamilyImagesAfterCorrection": 64,
+  "labelPng3mlAfterCorrection": 107,
+  "labelPng10mlAfterCorrection": 10,
+  "bad3mlDimensionsAfterCorrection": [],
+  "bad10mlDimensionsAfterCorrection": [],
+  "canonicalizedLegacyFamily": "BPC 157 + GHK-Cu + TB500",
+  "canonicalFamily": "GLOW70"
+}

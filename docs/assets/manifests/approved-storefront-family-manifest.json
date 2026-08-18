@@ -1,0 +1,605 @@
+{
+  "sourceProductRows": 120,
+  "rawDatabaseFamilies": 68,
+  "generatedStorefrontFamilies": 64,
+  "excludedByOwner": [
+    "GLOW50"
+  ],
+  "approvedControl": "Semaglutide.png",
+  "records": [
+    {
+      "familyName": "5-Amino-1MQ",
+      "filename": "5-Amino-1MQ.png",
+      "displayLines": [
+        "5-Amino-1MQ"
+      ],
+      "variantCount": 3,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "AOD 9604",
+      "filename": "AOD 9604.png",
+      "displayLines": [
+        "AOD 9604"
+      ],
+      "variantCount": 1,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "Ara-290",
+      "filename": "Ara-290.png",
+      "displayLines": [
+        "Ara-290"
+      ],
+      "variantCount": 1,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "B12",
+      "filename": "B12.png",
+      "displayLines": [
+        "B12"
+      ],
+      "variantCount": 1,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "BAC Water",
+      "filename": "BAC Water.png",
+      "displayLines": [
+        "BAC Water"
+      ],
+      "variantCount": 2,
+      "status": "ARCHIVED_ONLY"
+    },
+    {
+      "familyName": "BPC 157",
+      "filename": "BPC 157.png",
+      "displayLines": [
+        "BPC 157"
+      ],
+      "variantCount": 2,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "BPC 157 + TB500",
+      "filename": "BPC 157 + TB500.png",
+      "displayLines": [
+        "BPC 157",
+        "TB500"
+      ],
+      "variantCount": 2,
+      "status": "ARCHIVED_ONLY"
+    },
+    {
+      "familyName": "Botulinum Toxin Type A",
+      "filename": "Botulinum Toxin Type A.png",
+      "displayLines": [
+        "Botulinum",
+        "Toxin Type A"
+      ],
+      "variantCount": 1,
+      "status": "ARCHIVED_ONLY"
+    },
+    {
+      "familyName": "CJC-1295 + Ipamorelin",
+      "filename": "CJC-1295 + Ipamorelin.png",
+      "displayLines": [
+        "CJC-1295",
+        "Ipamorelin"
+      ],
+      "variantCount": 1,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "CJC-1295 No DAC",
+      "filename": "CJC-1295 No DAC.png",
+      "displayLines": [
+        "CJC-1295 No DAC"
+      ],
+      "variantCount": 2,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "CJC-1295 With DAC",
+      "filename": "CJC-1295 With DAC.png",
+      "displayLines": [
+        "CJC-1295 With DAC"
+      ],
+      "variantCount": 2,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "Cagrilintide",
+      "filename": "Cagrilintide.png",
+      "displayLines": [
+        "Cagrilintide"
+      ],
+      "variantCount": 2,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "Cagrilintide + Semaglutide",
+      "filename": "Cagrilintide + Semaglutide.png",
+      "displayLines": [
+        "Cagrilintide",
+        "Semaglutide"
+      ],
+      "variantCount": 2,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "Cerebrolysin",
+      "filename": "Cerebrolysin.png",
+      "displayLines": [
+        "Cerebrolysin"
+      ],
+      "variantCount": 1,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "DSIP",
+      "filename": "DSIP.png",
+      "displayLines": [
+        "DSIP"
+      ],
+      "variantCount": 2,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "Dermorphin",
+      "filename": "Dermorphin.png",
+      "displayLines": [
+        "Dermorphin"
+      ],
+      "variantCount": 1,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "EPO",
+      "filename": "EPO.png",
+      "displayLines": [
+        "EPO"
+      ],
+      "variantCount": 1,
+      "status": "ARCHIVED_ONLY"
+    },
+    {
+      "familyName": "Epithalon",
+      "filename": "Epithalon.png",
+      "displayLines": [
+        "Epithalon"
+      ],
+      "variantCount": 2,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "G610",
+      "filename": "G610.png",
+      "displayLines": [
+        "G610"
+      ],
+      "variantCount": 1,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "GA = AA Water",
+      "filename": "GA = AA Water.png",
+      "displayLines": [
+        "GA = AA Water"
+      ],
+      "variantCount": 1,
+      "status": "ARCHIVED_ONLY"
+    },
+    {
+      "familyName": "GHK-Cu",
+      "filename": "GHK-Cu.png",
+      "displayLines": [
+        "GHK-Cu"
+      ],
+      "variantCount": 2,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "GHRP-6 Acetate",
+      "filename": "GHRP-6 Acetate.png",
+      "displayLines": [
+        "GHRP-6 Acetate"
+      ],
+      "variantCount": 1,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "GLOW70",
+      "filename": "GLOW70.png",
+      "displayLines": [
+        "GLOW70"
+      ],
+      "variantCount": 1,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "Glutathione",
+      "filename": "Glutathione.png",
+      "displayLines": [
+        "Glutathione"
+      ],
+      "variantCount": 3,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "HCG",
+      "filename": "HCG.png",
+      "displayLines": [
+        "HCG"
+      ],
+      "variantCount": 2,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "HGH",
+      "filename": "HGH.png",
+      "displayLines": [
+        "HGH"
+      ],
+      "variantCount": 3,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "HMG",
+      "filename": "HMG.png",
+      "displayLines": [
+        "HMG"
+      ],
+      "variantCount": 1,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "Humanin",
+      "filename": "Humanin.png",
+      "displayLines": [
+        "Humanin"
+      ],
+      "variantCount": 1,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "IGF-DES",
+      "filename": "IGF-DES.png",
+      "displayLines": [
+        "IGF-DES"
+      ],
+      "variantCount": 1,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "IGF-ILR3",
+      "filename": "IGF-ILR3.png",
+      "displayLines": [
+        "IGF-ILR3"
+      ],
+      "variantCount": 2,
+      "status": "ARCHIVED_ONLY"
+    },
+    {
+      "familyName": "Ipamorelin",
+      "filename": "Ipamorelin.png",
+      "displayLines": [
+        "Ipamorelin"
+      ],
+      "variantCount": 2,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "KLOW",
+      "filename": "KLOW.png",
+      "displayLines": [
+        "KLOW"
+      ],
+      "variantCount": 1,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "KPV (Lysine-Proline-Valine)",
+      "filename": "KPV (Lysine-Proline-Valine).png",
+      "displayLines": [
+        "KPV",
+        "(Lysine-Proline-Valine)"
+      ],
+      "variantCount": 2,
+      "status": "ARCHIVED_ONLY"
+    },
+    {
+      "familyName": "KissPeptin-10",
+      "filename": "KissPeptin-10.png",
+      "displayLines": [
+        "KissPeptin-10"
+      ],
+      "variantCount": 2,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "LC Custom Ingredients",
+      "filename": "LC Custom Ingredients.png",
+      "displayLines": [
+        "LC Custom",
+        "Ingredients"
+      ],
+      "variantCount": 1,
+      "status": "ARCHIVED_ONLY"
+    },
+    {
+      "familyName": "LC120",
+      "filename": "LC120.png",
+      "displayLines": [
+        "LC120"
+      ],
+      "variantCount": 1,
+      "status": "ARCHIVED_ONLY"
+    },
+    {
+      "familyName": "LC216",
+      "filename": "LC216.png",
+      "displayLines": [
+        "LC216"
+      ],
+      "variantCount": 1,
+      "status": "ARCHIVED_ONLY"
+    },
+    {
+      "familyName": "LL37",
+      "filename": "LL37.png",
+      "displayLines": [
+        "LL37"
+      ],
+      "variantCount": 1,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "Lemon Bottle",
+      "filename": "Lemon Bottle.png",
+      "displayLines": [
+        "Lemon Bottle"
+      ],
+      "variantCount": 1,
+      "status": "ARCHIVED_ONLY"
+    },
+    {
+      "familyName": "MOTS-c",
+      "filename": "MOTS-c.png",
+      "displayLines": [
+        "MOTS-c"
+      ],
+      "variantCount": 2,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "MT-2",
+      "filename": "MT-2.png",
+      "displayLines": [
+        "MT-2"
+      ],
+      "variantCount": 1,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "MT1",
+      "filename": "MT1.png",
+      "displayLines": [
+        "MT1"
+      ],
+      "variantCount": 1,
+      "status": "ARCHIVED_ONLY"
+    },
+    {
+      "familyName": "Mazdutide",
+      "filename": "Mazdutide.png",
+      "displayLines": [
+        "Mazdutide"
+      ],
+      "variantCount": 1,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "NAD+",
+      "filename": "NAD+.png",
+      "displayLines": [
+        "NAD+"
+      ],
+      "variantCount": 2,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "Oxytocin",
+      "filename": "Oxytocin.png",
+      "displayLines": [
+        "Oxytocin"
+      ],
+      "variantCount": 2,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "PNC 27",
+      "filename": "PNC 27.png",
+      "displayLines": [
+        "PNC 27"
+      ],
+      "variantCount": 2,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "PT-141",
+      "filename": "PT-141.png",
+      "displayLines": [
+        "PT-141"
+      ],
+      "variantCount": 1,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "Pinealon",
+      "filename": "Pinealon.png",
+      "displayLines": [
+        "Pinealon"
+      ],
+      "variantCount": 3,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "Retatrutide",
+      "filename": "Retatrutide.png",
+      "displayLines": [
+        "Retatrutide"
+      ],
+      "variantCount": 10,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "SLU-PP-332",
+      "filename": "SLU-PP-332.png",
+      "displayLines": [
+        "SLU-PP-332"
+      ],
+      "variantCount": 1,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "SS-31",
+      "filename": "SS-31.png",
+      "displayLines": [
+        "SS-31"
+      ],
+      "variantCount": 2,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "Selank",
+      "filename": "Selank.png",
+      "displayLines": [
+        "Selank"
+      ],
+      "variantCount": 2,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "Semaglutide",
+      "filename": "Semaglutide.png",
+      "displayLines": [
+        "Semaglutide"
+      ],
+      "variantCount": 5,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "Semax",
+      "filename": "Semax.png",
+      "displayLines": [
+        "Semax"
+      ],
+      "variantCount": 2,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "Sermorelin Acetate",
+      "filename": "Sermorelin Acetate.png",
+      "displayLines": [
+        "Sermorelin Acetate"
+      ],
+      "variantCount": 2,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "Snap-8",
+      "filename": "Snap-8.png",
+      "displayLines": [
+        "Snap-8"
+      ],
+      "variantCount": 1,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "Survodutide",
+      "filename": "Survodutide.png",
+      "displayLines": [
+        "Survodutide"
+      ],
+      "variantCount": 1,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "TB500",
+      "filename": "TB500.png",
+      "displayLines": [
+        "TB500"
+      ],
+      "variantCount": 2,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "Tesamorelin",
+      "filename": "Tesamorelin.png",
+      "displayLines": [
+        "Tesamorelin"
+      ],
+      "variantCount": 2,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "Thymalin",
+      "filename": "Thymalin.png",
+      "displayLines": [
+        "Thymalin"
+      ],
+      "variantCount": 1,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "Thymosin Alpha-1",
+      "filename": "Thymosin Alpha-1.png",
+      "displayLines": [
+        "Thymosin Alpha-1"
+      ],
+      "variantCount": 2,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "Tirzepatide",
+      "filename": "Tirzepatide.png",
+      "displayLines": [
+        "Tirzepatide"
+      ],
+      "variantCount": 8,
+      "status": "ACTIVE_OR_MIXED"
+    },
+    {
+      "familyName": "VIP10",
+      "filename": "VIP10.png",
+      "displayLines": [
+        "VIP10"
+      ],
+      "variantCount": 1,
+      "status": "ARCHIVED_ONLY"
+    },
+    {
+      "familyName": "VIP5",
+      "filename": "VIP5.png",
+      "displayLines": [
+        "VIP5"
+      ],
+      "variantCount": 1,
+      "status": "ARCHIVED_ONLY"
+    }
+  ],
+  "canonicalizationCorrections": {
+    "BPC 157 + GHK-Cu + TB500": {
+      "canonicalStorefrontFamily": "GLOW70",
+      "reason": "Owner-confirmed: the 70mg GHK-Cu/BPC-157/TB-500 blend is GLOW70, not a separate storefront family.",
+      "frontDisplay": "GLOW70",
+      "strengthPanel4OClock": [
+        "GHK-Cu 50mg",
+        "BPC-157 10mg",
+        "TB-500 10mg"
+      ]
+    }
+  }
+}
