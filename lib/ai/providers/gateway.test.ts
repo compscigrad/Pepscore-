@@ -129,4 +129,26 @@ describe('AiGatewayProvider', () => {
 
     expect(await provider.healthCheck()).toBe(true)
   })
+
+  it('complete() targets the completionModelOverride, not config.primaryModel, when one is given -- this is what lets a fallback provider exist as a genuinely distinct model target', async () => {
+    MODEL_ROUTES.push({ model: 'approved-fallback-model', providerRoute: 'test', zdrEligible: true, dataPolicyVerified: true, dateVerified: '2026-08-18', notes: 'test fixture' })
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ choices: [{ message: { content: 'fallback answer' } }], usage: {} }),
+    })
+    const provider = new AiGatewayProvider(baseConfig, mockFetch, 'approved-fallback-model')
+
+    await provider.complete({ messages: [{ role: 'user', content: 'hi' }] })
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body)
+    expect(body.model).toBe('approved-fallback-model')
+  })
+
+  it('complete() with an unapproved completionModelOverride still throws, even if config.primaryModel is approved', async () => {
+    const mockFetch = vi.fn()
+    const provider = new AiGatewayProvider(baseConfig, mockFetch, 'unapproved-fallback-model')
+
+    await expect(provider.complete({ messages: [{ role: 'user', content: 'hi' }] })).rejects.toThrow(AiProviderError)
+    expect(mockFetch).not.toHaveBeenCalled()
+  })
 })

@@ -27,7 +27,13 @@ export class AiGatewayProvider implements AiProvider {
 
   constructor(
     private readonly config: AiConfig,
-    private readonly fetchImpl: typeof fetch = fetch
+    private readonly fetchImpl: typeof fetch = fetch,
+    // Optional -- without it, complete() always targets config.primaryModel.
+    // Needed so a genuine fallback provider (a second AiGatewayProvider
+    // instance targeting config.fallbackModel) can exist at all -- see
+    // factory.ts, AI-1.11. Embedding/moderation are unaffected; each already
+    // has its own dedicated config field.
+    private readonly completionModelOverride?: string
   ) {}
 
   private assertConfigured() {
@@ -50,7 +56,7 @@ export class AiGatewayProvider implements AiProvider {
 
   async complete(req: CompletionRequest): Promise<CompletionResult> {
     this.assertConfigured()
-    const model = this.config.primaryModel
+    const model = this.completionModelOverride ?? this.config.primaryModel
     if (!model) throw new AiProviderError('AI_PRIMARY_MODEL is not configured')
     this.assertRouteApproved(model)
 
