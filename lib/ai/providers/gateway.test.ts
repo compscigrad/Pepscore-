@@ -70,6 +70,7 @@ describe('AiGatewayProvider', () => {
     const body = JSON.parse(init.body)
     expect(body.model).toBe('approved-model')
     expect(body.messages).toEqual([{ role: 'user', content: 'hi' }])
+    expect(body.providerOptions.gateway.zeroDataRetention).toBe(true)
 
     expect(result.text).toBe('hello back')
     expect(result.provider).toBe('vercel-ai-gateway')
@@ -112,6 +113,16 @@ describe('AiGatewayProvider', () => {
 
     expect(result.flagged).toBe(true)
     expect(result.categories).toEqual(['violence'])
+    expect(JSON.parse(mockFetch.mock.calls[0][1].body).providerOptions.gateway.zeroDataRetention).toBe(true)
+  })
+
+  it('embed() requests zero data retention on every call', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ data: [{ embedding: [0.1] }] }) })
+    const provider = new AiGatewayProvider(baseConfig, mockFetch)
+
+    await provider.embed({ input: ['hi'] })
+
+    expect(JSON.parse(mockFetch.mock.calls[0][1].body).providerOptions.gateway.zeroDataRetention).toBe(true)
   })
 
   it('healthCheck() returns false without a key and never calls fetch', async () => {

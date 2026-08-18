@@ -54,6 +54,11 @@ export interface PipelineParams {
   // tested for when one does. Omitted/empty means no retrieval happens,
   // matching every caller's current behavior exactly.
   retrievalAdapters?: RetrievalAdapter[]
+  // AI-1.12 -- passed straight through to the provider call. Undefined
+  // means "no cap" (a provider's own default applies), matching every
+  // existing caller's behavior exactly. Callers doing cost-bounded internal
+  // verification (e.g. the admin live-test route) should always set this.
+  maxTokens?: number
 }
 
 // Injectable so tests can exercise the full orchestration (rate limiting,
@@ -128,7 +133,7 @@ export async function runAiPipeline(params: PipelineParams, deps: PipelineDeps =
   // 5. Provider call with automatic primary -> fallback (AI-0B.1's router).
   // A failure here (both primary and fallback exhausted) is a safe
   // failure, not a silent continuation -- no text is ever generated.
-  const request: CompletionRequest = { messages }
+  const request: CompletionRequest = { messages, maxTokens: params.maxTokens }
   let completion
   try {
     completion = await params.router.complete(request)

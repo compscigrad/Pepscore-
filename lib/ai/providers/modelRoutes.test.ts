@@ -1,13 +1,37 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { MODEL_ROUTES, isRouteApproved } from './modelRoutes'
 
-describe('modelRoutes', () => {
+// Snapshot the real, shipped default content before any test's beforeEach
+// clears the shared array -- this is the actual production state, not a
+// test fixture.
+const REAL_DEFAULT_ROUTES = [...MODEL_ROUTES]
+
+describe('modelRoutes -- real shipped defaults (AI-1.12)', () => {
+  it('registers exactly the two live-integration-phase routes, both approved', () => {
+    expect(REAL_DEFAULT_ROUTES.map((r) => r.model)).toEqual(['anthropic/claude-haiku-4.5', 'google/gemini-3.1-flash-lite'])
+    for (const route of REAL_DEFAULT_ROUTES) {
+      expect(route.zdrEligible).toBe(true)
+      expect(route.dataPolicyVerified).toBe(true)
+      expect(route.dateVerified).not.toBeNull()
+    }
+  })
+
+  it('primary and fallback are genuinely different underlying providers, not just different model IDs from the same vendor', () => {
+    const providers = new Set(REAL_DEFAULT_ROUTES.map((r) => r.providerRoute))
+    expect(providers.size).toBe(REAL_DEFAULT_ROUTES.length)
+  })
+
+  it('excludes the documented claude-fable-5 ZDR exception', () => {
+    expect(REAL_DEFAULT_ROUTES.some((r) => r.model.includes('claude-fable'))).toBe(false)
+  })
+})
+
+describe('isRouteApproved -- approval rules', () => {
   beforeEach(() => {
     MODEL_ROUTES.length = 0
   })
 
-  it('has no approved routes by default (no production model route has been verified yet)', () => {
-    expect(MODEL_ROUTES).toEqual([])
+  it('returns false for a model with no registered route', () => {
     expect(isRouteApproved('anything')).toBe(false)
   })
 

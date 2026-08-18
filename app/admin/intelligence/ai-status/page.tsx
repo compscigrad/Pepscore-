@@ -23,6 +23,7 @@ import {
   getReviewQueue,
 } from '@/lib/ai/observability/adminSummary'
 import { MarkReviewedButton } from '@/components/admin/MarkReviewedButton'
+import { LiveTestPanel } from '@/components/admin/LiveTestPanel'
 
 const WINDOW_DAYS = 30
 
@@ -107,6 +108,16 @@ export default async function AiStatusPage() {
               <p className="text-white text-sm tabular-nums">{config.tier3SourceCount} sources</p>
             </div>
           </div>
+        </section>
+
+        <section className="mb-10">
+          <h2 className="font-heading text-lg font-bold text-white mb-1">Live Model Verification</h2>
+          <p className="text-white/50 text-sm mb-4">
+            Runs a fixed, non-PII prompt through the real pipeline (policy gate → retrieval → live provider → output
+            gate). Returns NOT_CONFIGURED with no network call if the flag, credential, or an approved model route
+            is missing. Never customer-facing.
+          </p>
+          <LiveTestPanel />
         </section>
 
         <section className="mb-10">

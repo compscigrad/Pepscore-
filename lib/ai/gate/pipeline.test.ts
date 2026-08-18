@@ -48,6 +48,20 @@ function fakeDeps(overrides: Partial<PipelineDeps> = {}): Required<PipelineDeps>
 }
 
 describe('runAiPipeline', () => {
+  it('passes maxTokens through to the provider request when set -- cost-safety cap for internal verification callers (AI-1.12)', async () => {
+    const router = new ProviderRouter(new MockAiProvider({ completionText: 'ok' }))
+    let capturedMaxTokens: number | undefined
+    const originalComplete = router.complete.bind(router)
+    router.complete = async (req) => { capturedMaxTokens = req.maxTokens; return originalComplete(req) }
+
+    await runAiPipeline(
+      { text: 'do you sell Semaglutide', identifier: uniqueId(), role: 'CLIENT', feature: 'test', router, config: baseConfig, maxTokens: 150 },
+      fakeDeps()
+    )
+
+    expect(capturedMaxTokens).toBe(150)
+  })
+
   it('completes successfully for an allowed request, logging both compliance and usage events', async () => {
     const router = new ProviderRouter(new MockAiProvider({ completionText: 'safe research answer' }))
     const deps = fakeDeps()

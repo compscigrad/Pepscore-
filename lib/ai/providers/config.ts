@@ -28,12 +28,21 @@ const DEV_DEFAULT_DAILY_COST_LIMIT_CENTS = 100
 const DEV_DEFAULT_RATE_LIMIT_PER_MINUTE = 5
 const DEV_DEFAULT_RATE_LIMIT_PER_DAY = 50
 
+// AI-1.12 -- defaults matching the two entries registered in
+// modelRoutes.ts's MODEL_ROUTES (see that file's own header for the
+// ZDR/provider-diversity reasoning). Env var overrides still work for a
+// future model swap without a code change; these just mean an owner
+// doesn't have to separately set AI_PRIMARY_MODEL/AI_FALLBACK_MODEL just
+// to match what's already approved in code.
+const DEFAULT_PRIMARY_MODEL = 'anthropic/claude-haiku-4.5'
+const DEFAULT_FALLBACK_MODEL = 'google/gemini-3.1-flash-lite'
+
 export function loadAiConfig(): AiConfig {
   return {
     featureEnabled: process.env.AI_FEATURE_ENABLED === 'true',
     gatewayApiKey: process.env.AI_GATEWAY_API_KEY,
-    primaryModel: process.env.AI_PRIMARY_MODEL,
-    fallbackModel: process.env.AI_FALLBACK_MODEL,
+    primaryModel: process.env.AI_PRIMARY_MODEL ?? DEFAULT_PRIMARY_MODEL,
+    fallbackModel: process.env.AI_FALLBACK_MODEL ?? DEFAULT_FALLBACK_MODEL,
     embeddingModel: process.env.AI_EMBEDDING_MODEL,
     moderationModel: process.env.AI_MODERATION_MODEL,
     dailyCostLimitCents: Number(process.env.AI_DAILY_COST_LIMIT_CENTS ?? DEV_DEFAULT_DAILY_COST_LIMIT_CENTS),

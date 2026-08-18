@@ -48,6 +48,20 @@ describe('loadAiConfig', () => {
     expect(loadAiConfig().featureEnabled).toBe(true)
   })
 
+  it('defaults primaryModel/fallbackModel to the AI-1.12 registered, ZDR-approved routes when unset', () => {
+    const config = loadAiConfig()
+    expect(config.primaryModel).toBe('anthropic/claude-haiku-4.5')
+    expect(config.fallbackModel).toBe('google/gemini-3.1-flash-lite')
+  })
+
+  it('respects an explicit env override for primaryModel/fallbackModel', () => {
+    process.env.AI_PRIMARY_MODEL = 'openai/gpt-5-mini'
+    process.env.AI_FALLBACK_MODEL = 'xai/grok-4.6'
+    const config = loadAiConfig()
+    expect(config.primaryModel).toBe('openai/gpt-5-mini')
+    expect(config.fallbackModel).toBe('xai/grok-4.6')
+  })
+
   it('applies conservative development defaults for cost/rate limits when unset', () => {
     const config = loadAiConfig()
     expect(config.dailyCostLimitCents).toBe(100)

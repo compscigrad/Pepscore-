@@ -30,7 +30,7 @@ describe('buildProviderRouterFromConfig', () => {
     expect(buildProviderRouterFromConfig({ ...baseConfig, gatewayApiKey: undefined })).toBeNull()
   })
 
-  it('returns null when the primary model has no approved route -- matches production reality today, since MODEL_ROUTES is empty', () => {
+  it('returns null when the primary model has no approved route', () => {
     expect(buildProviderRouterFromConfig(baseConfig)).toBeNull()
   })
 

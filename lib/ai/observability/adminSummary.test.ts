@@ -6,8 +6,12 @@ describe('buildConfigStatus', () => {
     const status = buildConfigStatus()
     expect(status.featureEnabled).toBe(false)
     expect(status.gatewayConfigured).toBe(false)
-    expect(status.approvedModelRouteCount).toBe(0)
-    expect(status.totalModelRouteCount).toBe(0)
+  })
+
+  it('counts the real shipped MODEL_ROUTES entries (AI-1.12 registered two, both approved)', () => {
+    const status = buildConfigStatus()
+    expect(status.totalModelRouteCount).toBe(2)
+    expect(status.approvedModelRouteCount).toBe(2)
   })
 
   it('never exposes the raw config values themselves -- only booleans/counts', () => {

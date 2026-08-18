@@ -15,6 +15,17 @@
 // No live calls happen anywhere in AI-0B: nothing in the app currently
 // constructs an AiGatewayProvider with a real fetch, and AI_FEATURE_ENABLED
 // defaults off regardless.
+//
+// AI-1.12 -- every request additionally sets providerOptions.gateway.
+// zeroDataRetention=true (verified against vercel.com/docs/ai-gateway/
+// security-and-compliance/zdr, accessed 2026-08-18). Per that doc, AI
+// Gateway does NOT route based on provider data-retention policy by
+// default -- the flag must be requested. With it set, Gateway restricts
+// routing to confirmed-ZDR providers for the requested model and fails
+// the request closed (400 no_providers_available) if none exist, rather
+// than silently sending data through an unverified provider. This is a
+// second, Vercel-enforced layer on top of modelRoutes.ts's own static
+// approval gate below -- either one failing means the call never happens.
 import type { AiProvider, CompletionRequest, CompletionResult, EmbeddingRequest, EmbeddingResult, ModerationRequest, ModerationResult } from './types'
 import { AiProviderError } from './types'
 import { isRouteApproved } from './modelRoutes'
@@ -74,6 +85,7 @@ export class AiGatewayProvider implements AiProvider {
           messages: req.messages,
           max_tokens: req.maxTokens,
           temperature: req.temperature,
+          providerOptions: { gateway: { zeroDataRetention: true } },
         }),
       })
     } catch (err) {
@@ -110,7 +122,7 @@ export class AiGatewayProvider implements AiProvider {
           Authorization: `Bearer ${this.config.gatewayApiKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ model, input: req.input }),
+        body: JSON.stringify({ model, input: req.input, providerOptions: { gateway: { zeroDataRetention: true } } }),
       })
     } catch (err) {
       throw new AiProviderError('Gateway embedding request failed to send', err)
@@ -142,7 +154,7 @@ export class AiGatewayProvider implements AiProvider {
           Authorization: `Bearer ${this.config.gatewayApiKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ model, input: req.input }),
+        body: JSON.stringify({ model, input: req.input, providerOptions: { gateway: { zeroDataRetention: true } } }),
       })
     } catch (err) {
       throw new AiProviderError('Gateway moderation request failed to send', err)
