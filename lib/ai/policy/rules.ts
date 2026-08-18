@@ -52,6 +52,14 @@ const ACCOUNT_RULES: Rule[] = [
 
 const CATALOG_RULES: Rule[] = [
   { category: 'CATALOG', pattern: /\b(do you sell|price of|in stock|catalog|available sizes?)\b/i, description: 'catalog/product query' },
+  // AI-1.3 structured-intelligence request shapes (lib/ai/intelligence/) --
+  // these are system-generated from explicit, structured input (product
+  // names / a category slug), not arbitrary free text, but still run
+  // through the same policy gate as everything else rather than being
+  // special-cased around it. Matches exactly the text
+  // compoundComparison.ts/categoryDiscovery.ts construct.
+  { category: 'CATALOG', pattern: /\bcompare the research classifications? of\b/i, description: 'structured compound comparison request' },
+  { category: 'CATALOG', pattern: /\bwhat products are categorized under\b/i, description: 'structured category discovery request' },
 ]
 
 const LITERATURE_RULES: Rule[] = [
