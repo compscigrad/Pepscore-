@@ -12,6 +12,7 @@ import { isCurrentUserAdmin } from '@/lib/auth/rbac'
 import { listCustomers, type ListCustomersParams } from '@/lib/customers'
 import { formatPhoneDisplay } from '@/lib/invoice/format'
 import { LeadStatusBadge, type LeadStatusValue } from '@/components/admin/CustomerLeadStatusControl'
+import { AdminCustomerSearch } from '@/components/admin/AdminCustomerSearch'
 import { computePortalAdoptionOverview, type PortalAdoptionStatus } from '@/lib/portal/adoptionStatus'
 import { PORTAL_ADOPTION_STATUS_LABEL, PORTAL_ADOPTION_STATUS_STYLE, PORTAL_ADOPTION_STATUS_VALUES } from '@/lib/portal/adoptionStatusDisplay'
 
@@ -122,6 +123,14 @@ export default async function AdminCustomersPage({ searchParams }: PageProps) {
           <Link href="/admin" className="text-[12px] font-heading font-bold text-gold hover:text-gold-dark uppercase tracking-[0.06em]">
             ← Admin Dashboard
           </Link>
+        </div>
+
+        {/* Quick jump -- predictive lookup for "I know who I'm looking
+            for" (2026-08-17), distinct from the URL-driven filter form
+            below it for "show me customers matching these criteria". The
+            two solve different workflows and both stay. */}
+        <div className="mb-4 max-w-md">
+          <AdminCustomerSearch />
         </div>
 
         {/* Filters -- a plain GET form so the whole view stays URL-driven,

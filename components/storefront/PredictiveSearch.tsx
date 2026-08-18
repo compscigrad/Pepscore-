@@ -69,9 +69,18 @@ interface PredictiveSearchProps {
   // lets each caller decide what "closing" means for its own chrome
   // (collapse the icon-toggled desktop field, close the mobile hamburger).
   onClose?: () => void
+  // Optional decorative/interactive chrome (2026-08-17 homepage-search
+  // parity fix) -- rendered as siblings of the input inside this
+  // component's own <form>, so a caller-styled search icon or submit
+  // button (e.g. HomeSearchBar's pill button) keeps working via native
+  // form submission instead of every caller reimplementing its own
+  // predictive dropdown. Both undefined by default -- Header.tsx's two
+  // existing call sites are unaffected.
+  leftSlot?: React.ReactNode
+  rightSlot?: React.ReactNode
 }
 
-export function PredictiveSearch({ className = '', inputClassName = '', placeholder = 'Search products…', autoFocus, onClose }: PredictiveSearchProps) {
+export function PredictiveSearch({ className = '', inputClassName = '', placeholder = 'Search products…', autoFocus, onClose, leftSlot, rightSlot }: PredictiveSearchProps) {
   const router = useRouter()
   const [value, setValue] = useState('')
   const [index, setIndex] = useState<SearchIndexItem[] | null>(null)
@@ -150,6 +159,7 @@ export function PredictiveSearch({ className = '', inputClassName = '', placehol
           else submitFullSearch()
         }}
       >
+        {leftSlot}
         <input
           type="search"
           autoFocus={autoFocus}
@@ -185,6 +195,7 @@ export function PredictiveSearch({ className = '', inputClassName = '', placehol
           autoComplete="off"
           className={inputClassName}
         />
+        {rightSlot}
       </form>
 
       {open && trimmed.length > 0 && (
