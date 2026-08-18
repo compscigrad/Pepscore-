@@ -60,6 +60,17 @@ export interface ProductDetailProps {
   sku: string | null
 }
 
+// Integrated metallic frame (2026-08-17 black-frame reduction sprint,
+// owner-approved "Option C") -- the prior treatment was p-10 (40px)
+// padding over a flat dark gradient panel, which measured out to only
+// 41.6% real photo coverage of the image box (40px fixed padding, plus a
+// second ~37px object-contain gap on left/right from the padded content
+// area's aspect ratio not matching the photo's own 1.9:1). This tight
+// 4px padding + page-matched black background (so the box doesn't read as
+// a separate panel) + a refined double-edge gold border (hairline border
+// plus an inset glow) gets to 93%+ coverage while keeping a deliberate,
+// premium edge rather than either a heavy surround or raw edge-to-edge.
+
 export function ProductDetail({
   id,
   slug,
@@ -158,12 +169,22 @@ export function ProductDetail({
       </div>
 
       <div className="max-w-[1200px] mx-auto px-6 py-10 grid grid-cols-1 lg:grid-cols-2 gap-14">
-        {/* Image */}
-        <div className="bg-gradient-to-br from-[#161616] to-[#0a0a0a] rounded-card border border-[#D4AF37]/15 flex items-center justify-center p-10 h-[380px] lg:h-[460px]">
+        {/* Image -- 2026-08-17 reshaped toward the same ~1.9:1 wide/cinematic
+            ratio as ProductCard's image box (owner request, matching the
+            vialSample.png photography standard), replacing the prior fixed
+            h-[380px]/lg:h-[460px] (which produced a near-square/portrait box
+            the wide photo top/bottom-letterboxed inside). aspect-[1.9/1] on
+            the outer box + h-full (was h-[300px] fixed) on the inner Image
+            wrapper so the real-photo branch fills whatever height the
+            aspect-ratio box actually computes at any viewport width, instead
+            of a second, independent fixed height. SingleVialImage (SVG
+            placeholder) branch is untouched. Frame treatment ("Option C")
+            below. */}
+        <div className="flex items-center justify-center aspect-[1.9/1] bg-black rounded-card border border-[#D4AF37]/40 shadow-[inset_0_0_0_1px_rgba(212,175,55,0.18)] p-1">
           {imageUrl === GENERIC_PLACEHOLDER ? (
             <SingleVialImage productName={name} className="h-[280px] w-auto drop-shadow-md" />
           ) : (
-            <div className="relative h-[300px] w-full">
+            <div className="relative h-full w-full">
               <Image src={imageUrl} alt={imageAlt} fill className="object-contain drop-shadow-md" priority />
             </div>
           )}

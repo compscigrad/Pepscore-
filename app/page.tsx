@@ -462,7 +462,7 @@ export default async function HomePage() {
 const STATIC_PRODUCTS: ProductCardProps[] = [
   {
     name: 'Semaglutide', category: 'GLP-1 Agonist', badge: 'Popular',
-    imageUrl: '/images/Semaglutide.png',
+    imageUrl: '/images/products/families/Semaglutide.png',
     description: 'GLP-1 receptor agonist studied for metabolic regulation, glucose homeostasis, and appetite suppression research.',
     variants: [
       { id:'1a', slug:'semaglutide-5mg',  size:'5mg',  standardCasePrice:138, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, caseAvailability:'AVAILABLE', individualVialAvailability:'AVAILABLE', availabilityMessageOverride:null },
@@ -473,7 +473,7 @@ const STATIC_PRODUCTS: ProductCardProps[] = [
   },
   {
     name: 'Tirzepatide', category: 'Dual GIP/GLP-1', badge: 'Best Seller',
-    imageUrl: '/images/Tirzepatide.png',
+    imageUrl: '/images/products/families/Tirzepatide.png',
     description: 'Dual GIP/GLP-1 receptor agonist studied for superior metabolic outcomes and cardiometabolic research applications.',
     variants: [
       { id:'2a', slug:'tirzepatide-5mg',  size:'5mg',  standardCasePrice:147, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, caseAvailability:'AVAILABLE', individualVialAvailability:'AVAILABLE', availabilityMessageOverride:null },
@@ -484,7 +484,7 @@ const STATIC_PRODUCTS: ProductCardProps[] = [
   },
   {
     name: 'Retatrutide', category: 'Triple Agonist', badge: 'New',
-    imageUrl: '/images/Retatrutide.png',
+    imageUrl: '/images/products/families/Retatrutide.png',
     description: 'Triple receptor agonist (GIP/GLP-1/Glucagon) — the next generation of metabolic research compounds.',
     variants: [
       { id:'3a', slug:'retatrutide-5mg',  size:'5mg',  standardCasePrice:240, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, caseAvailability:'AVAILABLE', individualVialAvailability:'AVAILABLE', availabilityMessageOverride:null },
@@ -495,7 +495,7 @@ const STATIC_PRODUCTS: ProductCardProps[] = [
   },
   {
     name: 'NAD+', category: 'Coenzyme', badge: null,
-    imageUrl: '/images/nad.png',
+    imageUrl: '/images/products/families/NAD+.png',
     description: 'Essential coenzyme precursor critical for cellular energy metabolism, DNA repair, and longevity pathway research.',
     variants: [
       { id:'4a', slug:'nad-plus-100mg', size:'100mg', standardCasePrice:168, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, caseAvailability:'AVAILABLE', individualVialAvailability:'AVAILABLE', availabilityMessageOverride:null },
@@ -504,8 +504,8 @@ const STATIC_PRODUCTS: ProductCardProps[] = [
   },
   {
     name: 'Epithalon', category: 'Longevity Peptide', badge: null,
-    imageUrl: '/images/epithalon.png',
-    description: 'Tetrapeptide studied for telomerase activation, circadian regulation, and anti-aging biological processes.',
+    imageUrl: '/images/products/families/Epithalon.png',
+    description: 'Tetrapeptide studied for telomerase activation, circadian regulation, and cellular-aging biological processes.',
     variants: [
       { id:'5a', slug:'epithalon-10mg', size:'10mg', standardCasePrice:144, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, caseAvailability:'AVAILABLE', individualVialAvailability:'AVAILABLE', availabilityMessageOverride:null },
       { id:'5b', slug:'epithalon-50mg', size:'50mg', standardCasePrice:369, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, caseAvailability:'AVAILABLE', individualVialAvailability:'AVAILABLE', availabilityMessageOverride:null },
@@ -513,7 +513,7 @@ const STATIC_PRODUCTS: ProductCardProps[] = [
   },
   {
     name: 'CJC-1295 / Ipamorelin', category: 'GH Secretagogue', badge: null,
-    imageUrl: '/images/cjc1295.png',
+    imageUrl: '/images/products/families/CJC-1295 and Ipamorelin.png',
     description: 'Synergistic GHRH analog and selective ghrelin mimetic combination for growth hormone secretion research.',
     variants: [
       { id:'6a', slug:'cjc1295-ipa-10mg', size:'10mg', standardCasePrice:297, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, caseAvailability:'AVAILABLE', individualVialAvailability:'AVAILABLE', availabilityMessageOverride:null },
@@ -521,7 +521,7 @@ const STATIC_PRODUCTS: ProductCardProps[] = [
   },
   {
     name: 'KissPeptin-10', category: 'Reproductive Peptide', badge: null,
-    imageUrl: '/images/kisspeptin.png',
+    imageUrl: '/images/products/families/KissPeptin-10.png',
     description: 'Hypothalamic neuropeptide studied for reproductive endocrinology, LH/FSH regulation, and fertility research.',
     variants: [
       { id:'7a', slug:'kisspeptin-10-5mg',  size:'5mg',  standardCasePrice:186, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, caseAvailability:'AVAILABLE', individualVialAvailability:'AVAILABLE', availabilityMessageOverride:null },
@@ -530,7 +530,7 @@ const STATIC_PRODUCTS: ProductCardProps[] = [
   },
   {
     name: 'GHK-Cu', category: 'Copper Peptide', badge: null,
-    imageUrl: '/images/ghk-cu.png',
+    imageUrl: '/images/products/families/GHK-Cu.png',
     description: 'Copper-binding tripeptide widely researched for tissue remodeling, wound healing, and dermal regeneration.',
     variants: [
       { id:'8a', slug:'ghk-cu-50mg',  size:'50mg',  standardCasePrice:108, unitsPerCase:null, individualVialPrice:null, spaCasePrice:null, caseAvailability:'AVAILABLE', individualVialAvailability:'AVAILABLE', availabilityMessageOverride:null },

@@ -3,7 +3,7 @@ import { resolveProductImage, PRODUCT_FALLBACK_IMAGE } from './productImages'
 
 describe('resolveProductImage', () => {
   it('returns the curated map entry when the product name is known', () => {
-    expect(resolveProductImage('Semaglutide', 'https://example.com/whatever.png')).toBe('/images/Semaglutide.png')
+    expect(resolveProductImage('Semaglutide', 'https://example.com/whatever.png')).toBe('/images/products/families/Semaglutide.png')
   })
 
   it('returns a local dbUrl unchanged for an unmapped product', () => {

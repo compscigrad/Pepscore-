@@ -7,66 +7,112 @@ export const PRODUCT_FALLBACK_IMAGE = '/images/products/default-single-vial.png'
 // detail pages) -- these are lineup/hero shots, not single-product photos.
 export const LINEUP_IMAGES = new Set(['/images/ALL.png', '/images/hero-vials.jpeg'])
 
-// Full product name → single-vial image mapping.
-// Sources: existing product photos + ZIP pepscore_single_vial_images.zip
+// Full product name -> FAMILY storefront image mapping (2026-08-17 approved
+// asset import). Source of truth: the two owner-approved packages
+// (Pepscore_Storefront_Family_Images_APPROVED_CORRECTED.zip,
+// Pepscore_Print_Labels_APPROVED_CORRECTED.zip) and their manifests,
+// preserved at docs/assets/manifests/approved-*. 64 approved family images
+// live at public/images/products/families/ -- sibling strengths of the
+// same family intentionally share one file (e.g. every Semaglutide row
+// below points at the same Semaglutide.png); this is photography at the
+// FAMILY level, never per-strength, and none of these images have mg/
+// strength text on them by design.
+//
+// Three names are NOT in this map, deliberately:
+//   - 'GLOW50' -- owner-excluded from the approved batch (archived,
+//     superseded by GLOW70). No replacement image exists. Falls through to
+//     its existing dbUrl/fallback rather than being given a new asset.
+//   - Nothing else is intentionally missing; every other one of the 68
+//     live distinct product names resolves to one of the 64 files below.
+//
+// GLOW70 canonicalization (owner-approved, final): the legacy DB record
+// named 'BPC 10mg + GHK-Cu 50mg + TB500 10mg' (archived, slug
+// bpc-ghk-tb-70mg) is the SAME physical blend as GLOW70, just recorded
+// under its old spelled-out name before the GLOW70 brand name existed.
+// Both entries below point at GLOW70.png -- there is no separate
+// 'BPC 157 + GHK-Cu + TB500' storefront image. The underlying database
+// records were NOT merged/deleted (see the asset-import migration report
+// for why: doing so automatically could affect pricing, orders, or
+// inventory history) -- this is an image-resolution-layer fix only.
+//
+// Filenames use " and " rather than " + " as a join word (BPC 157 and
+// TB500.png, CJC-1295 and Ipamorelin.png, Cagrilintide and
+// Semaglutide.png) -- a real bug found 2026-08-17: next/image's
+// optimizer silently fails (naturalWidth 0, no console error) for a
+// static path containing " + " with spaces on both sides, even though
+// the raw static file serves fine at the same URL. 'NAD+.png' is
+// unaffected (no surrounding spaces around its '+'), confirming the
+// trigger is specifically a space-plus-space sequence, not the
+// character alone. Renamed the three affected files rather than trying
+// to patch encoding at every call site.
 export const PRODUCT_IMAGE_MAP: Record<string, string> = {
-  // Existing hero-quality product photos
-  'Semaglutide':       '/images/Semaglutide.png',
-  'Tirzepatide':       '/images/Tirzepatide.png',
-  'Retatrutide':       '/images/Retatrutide.png',
-  'NAD+':              '/images/nad.png',
-  'Epithalon':         '/images/epithalon.png',
-
-  // From pepscore_single_vial_images.zip → public/images/products/
-  'GHK-Cu':                                        '/images/products/ghk-cu.png',
-  'KissPeptin-10':                                 '/images/products/kisspeptin-10.png',
-  'BPC 157':                                       '/images/products/bpc-157.png',
-  'TB500':                                         '/images/products/tb500.png',
-  'KPV (Lysine-Proline-Valine)':                   '/images/products/kpv.png',
-  'LL37':                                          '/images/products/ll37.png',
-  'MOTS-c':                                        '/images/products/mots-c.png',
-  'Thymosin Alpha-1':                              '/images/products/thymosin-alpha-1.png',
-  'Thymalin':                                      '/images/products/thymalin.png',
-  'Tesamorelin':                                   '/images/products/tesamorelin.png',
-  'AOD 9604':                                      '/images/products/aod-9604.png',
-  'SLU-PP-332':                                    '/images/products/slu-pp-332.png',
-  'SS-31':                                         '/images/products/ss-31.png',
-  'Humanin':                                       '/images/products/humanin.png',
-  'Pinealon':                                      '/images/products/pinealon.png',
-  'PT-141':                                        '/images/products/pt-141.png',
-  'HCG':                                           '/images/products/hcg.png',
-  'HMG':                                           '/images/products/hmg.png',
-  'Oxytocin':                                      '/images/products/oxytocin.png',
-  'Ipamorelin':                                    '/images/products/ipamorelin.png',
-  'Sermorelin Acetate':                            '/images/products/sermorelin-acetate.png',
-  'CJC-1295 With DAC':                             '/images/products/cjc-1295-with-dac.png',
-  'CJC-1295 No DAC':                               '/images/products/cjc-1295-no-dac.png',
-  'CJC-1295 without DAC 5mg + Ipamorelin 5mg':     '/images/products/cjc-1295-no-dac.png',
-  'IGF-ILR3':                                      '/images/products/igf-1-lr3.png',
-  'IGF-DES':                                       '/images/products/igf-des.png',
-  'GHRP-6 Acetate':                                '/images/products/ghrp-6-acetate.png',
-  'Semax':                                         '/images/products/semax.png',
-  'Selank':                                        '/images/products/selank.png',
-  'DSIP':                                          '/images/products/dsip.png',
-  'Snap-8':                                        '/images/products/snap-8.png',
-  'MT-2':                                          '/images/products/mt-2.png',
-  'MT1':                                           '/images/products/mt1-5mg.png',
-  'Dermorphin':                                    '/images/products/dermorphin.png',
-  'Lemon Bottle':                                  '/images/products/lemon-bottle.png',
-  'BAC Water':                                     '/images/products/bac-water.png',
-  'GA = AA Water':                                 '/images/products/ga-aa-water.png',
-  'Botulinum Toxin Type A':                        '/images/products/botulinum-toxin.png',
-  'VIP5':                                          '/images/products/vip5.png',
-  'VIP10':                                         '/images/products/vip10.png',
-  'EPO 3000IU':                                    '/images/products/epo3000iu.png',
-  'LC120':                                         '/images/products/lc120-10ml.png',
-  'LC216':                                         '/images/products/lc216-10ml.png',
-  '5-Amino-1MQ':                                   '/images/products/5-amino-1mq.png',
-  'B12 1mg/ml':                                    '/images/products/b12-1mg-ml-10ml.png',
-  'PNC 27':                                        '/images/products/pnc-27.png',
-  'Survodutide':                                   '/images/products/survodutide.png',
-  'Ara-290':                                       '/images/products/ara-290.png',
-  'G610':                                          '/images/products/g610.png',
+  '5-Amino-1MQ': '/images/products/families/5-Amino-1MQ.png',
+  'AOD 9604': '/images/products/families/AOD 9604.png',
+  'Ara-290': '/images/products/families/Ara-290.png',
+  'B12 1mg/ml': '/images/products/families/B12.png',
+  'BAC Water': '/images/products/families/BAC Water.png',
+  'BPC 10mg + GHK-Cu 50mg + TB500 10mg': '/images/products/families/GLOW70.png',
+  'BPC 157': '/images/products/families/BPC 157.png',
+  'BPC10 + TB10': '/images/products/families/BPC 157 and TB500.png',
+  'BPC5 + TB5': '/images/products/families/BPC 157 and TB500.png',
+  'Botulinum Toxin Type A': '/images/products/families/Botulinum Toxin Type A.png',
+  'CJC-1295 No DAC': '/images/products/families/CJC-1295 No DAC.png',
+  'CJC-1295 With DAC': '/images/products/families/CJC-1295 With DAC.png',
+  'CJC-1295 without DAC 5mg + Ipamorelin 5mg': '/images/products/families/CJC-1295 and Ipamorelin.png',
+  'Cagrilintide': '/images/products/families/Cagrilintide.png',
+  'Cagrilintide 2.5mg + Semaglutide 2.5mg': '/images/products/families/Cagrilintide and Semaglutide.png',
+  'Cagrilintide 5mg + Semaglutide 5mg': '/images/products/families/Cagrilintide and Semaglutide.png',
+  'Cerebrolysin (6 vials)': '/images/products/families/Cerebrolysin.png',
+  'DSIP': '/images/products/families/DSIP.png',
+  'Dermorphin': '/images/products/families/Dermorphin.png',
+  'EPO 3000IU': '/images/products/families/EPO.png',
+  'Epithalon': '/images/products/families/Epithalon.png',
+  'G610': '/images/products/families/G610.png',
+  'GA = AA Water': '/images/products/families/GA = AA Water.png',
+  'GHK-Cu': '/images/products/families/GHK-Cu.png',
+  'GHRP-6 Acetate': '/images/products/families/GHRP-6 Acetate.png',
+  'GLOW70': '/images/products/families/GLOW70.png',
+  'Glutathione': '/images/products/families/Glutathione.png',
+  'HCG': '/images/products/families/HCG.png',
+  'HGH': '/images/products/families/HGH.png',
+  'HMG': '/images/products/families/HMG.png',
+  'Humanin': '/images/products/families/Humanin.png',
+  'IGF-DES': '/images/products/families/IGF-DES.png',
+  'IGF-ILR3': '/images/products/families/IGF-ILR3.png',
+  'Ipamorelin': '/images/products/families/Ipamorelin.png',
+  'KLOW': '/images/products/families/KLOW.png',
+  'KPV (Lysine-Proline-Valine)': '/images/products/families/KPV (Lysine-Proline-Valine).png',
+  'KissPeptin-10': '/images/products/families/KissPeptin-10.png',
+  'LC Custom Ingredients': '/images/products/families/LC Custom Ingredients.png',
+  'LC120': '/images/products/families/LC120.png',
+  'LC216': '/images/products/families/LC216.png',
+  'LL37': '/images/products/families/LL37.png',
+  'Lemon Bottle': '/images/products/families/Lemon Bottle.png',
+  'MOTS-c': '/images/products/families/MOTS-c.png',
+  'MT-2': '/images/products/families/MT-2.png',
+  'MT1': '/images/products/families/MT1.png',
+  'Mazdutide': '/images/products/families/Mazdutide.png',
+  'NAD+': '/images/products/families/NAD+.png',
+  'Oxytocin': '/images/products/families/Oxytocin.png',
+  'PNC 27': '/images/products/families/PNC 27.png',
+  'PT-141': '/images/products/families/PT-141.png',
+  'Pinealon': '/images/products/families/Pinealon.png',
+  'Retatrutide': '/images/products/families/Retatrutide.png',
+  'SLU-PP-332': '/images/products/families/SLU-PP-332.png',
+  'SS-31': '/images/products/families/SS-31.png',
+  'Selank': '/images/products/families/Selank.png',
+  'Semaglutide': '/images/products/families/Semaglutide.png',
+  'Semax': '/images/products/families/Semax.png',
+  'Sermorelin Acetate': '/images/products/families/Sermorelin Acetate.png',
+  'Snap-8': '/images/products/families/Snap-8.png',
+  'Survodutide': '/images/products/families/Survodutide.png',
+  'TB500': '/images/products/families/TB500.png',
+  'Tesamorelin': '/images/products/families/Tesamorelin.png',
+  'Thymalin': '/images/products/families/Thymalin.png',
+  'Thymosin Alpha-1': '/images/products/families/Thymosin Alpha-1.png',
+  'Tirzepatide': '/images/products/families/Tirzepatide.png',
+  'VIP10': '/images/products/families/VIP10.png',
+  'VIP5': '/images/products/families/VIP5.png',
 }
 
 // Must mirror next.config.ts's images.remotePatterns exactly. next/image
