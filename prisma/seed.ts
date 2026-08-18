@@ -334,9 +334,17 @@ const MERCHANDISING_BY_NAME: Record<string, 'POPULAR' | 'BEST_SELLER'> = {
   'NAD+': 'BEST_SELLER',
 }
 
+// Permanently discontinued products (2026-08-17 owner correction) -- without
+// this, a fresh reseed would resurrect GLOW50 as a fully active, sellable,
+// visible product via the schema's ACTIVE default, undoing the one-time
+// production correction in scripts/seed-approved-pricing.ts. Slug-keyed
+// since name alone isn't unique across strengths.
+const DISCONTINUED_SLUGS = new Set(['glow50-50mg'])
+
 const productsWithMerchandising = productsWithDescriptions.map(p => ({
   ...p,
   merchandisingStatus: MERCHANDISING_BY_NAME[p.name] ?? 'NONE',
+  ...(DISCONTINUED_SLUGS.has(p.slug) ? { pricingStatus: 'INACTIVE' as const } : {}),
 }))
 
 async function main() {

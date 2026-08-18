@@ -39,10 +39,10 @@ const ENTRIES: DirectoryEntry[] = [
   { label: 'GLOW70', href: '/search?q=GLOW70', icon: Layers },
   { label: 'Tesamorelin', href: '/search?q=Tesamorelin', icon: Flame },
   { label: 'GHK-Cu Blends', href: '/categories/recovery-injury-research', icon: Bandage },
-  { label: 'Anti-Aging & Longevity', href: '/categories/anti-aging-longevity', icon: Hourglass },
+  { label: 'Cellular Aging & Longevity', href: '/categories/anti-aging-longevity', icon: Hourglass },
   { label: 'Cognitive & Mood', href: '/categories/brain-mood-cognitive', icon: Brain },
   { label: 'Hormonal & Reproductive', href: '/categories/sexual-health-hormonal', icon: HeartHandshake },
-  { label: 'Cosmetic & Skin', href: '/categories/skin-hair-cosmetic', icon: Sparkles },
+  { label: 'Dermal & Skin', href: '/categories/skin-hair-cosmetic', icon: Sparkles },
 ]
 
 export function CatalogDirectory() {

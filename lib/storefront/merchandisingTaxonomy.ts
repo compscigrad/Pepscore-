@@ -19,6 +19,18 @@
 // These are short category-level descriptors only; they never override or
 // contradict the authoritative per-product description shown on a
 // product's own detail page.
+//
+// LABELS were tightened for the same reason 2026-08-17 (Part C, FDA/FTC
+// risk-reduction pass) -- descriptions were already clean, but several
+// labels still carried personal-outcome-implying words the owner
+// explicitly flagged (Anti-Aging, Fat Loss, Sexual Health, Cosmetic,
+// Performance, Injury) even though each was suffixed "Research". Renamed
+// to match the tone of each category's own (already-approved) description
+// text: Anti-Aging -> Cellular Aging, Fat Loss -> Metabolic, Sexual
+// Health -> Reproductive, Cosmetic -> Dermal, Performance -> Endocrine,
+// Injury -> Tissue Repair. Slugs/URLs were NOT changed in this pass (see
+// the taxonomy audit report for why) -- only the human-readable label and
+// components/storefront/CatalogDirectory.tsx's matching tile labels.
 import type { LucideIcon } from 'lucide-react'
 import { Scale, Flame, Dumbbell, Bandage, Hourglass, Brain, ShieldCheck, HeartHandshake, Sparkles, FlaskConical, Layers } from 'lucide-react'
 
@@ -40,14 +52,14 @@ export const MERCHANDISING_TAXONOMY: MerchandisingCategory[] = [
   },
   {
     slug: 'fat-loss-body-recomposition',
-    label: 'Fat Loss / Body Recomposition Research',
+    label: 'Metabolic / Body Composition Research',
     description: 'Compounds studied for lipid metabolism and body-composition research applications.',
     icon: Flame,
     productNames: ['Tesamorelin', 'AOD 9604', 'SLU-PP-332'],
   },
   {
     slug: 'growth-hormone-performance',
-    label: 'Growth Hormone / Performance Research',
+    label: 'Growth Hormone / Endocrine Research',
     description: 'Growth-hormone secretagogues and related compounds studied for endocrine and performance research.',
     icon: Dumbbell,
     // Order matters (2026-08-12 merchandising fix): Ipamorelin leads, the
@@ -59,14 +71,14 @@ export const MERCHANDISING_TAXONOMY: MerchandisingCategory[] = [
   },
   {
     slug: 'recovery-injury-research',
-    label: 'Recovery / Injury Research',
+    label: 'Recovery / Tissue Repair Research',
     description: 'Compounds studied for tissue-repair and recovery-pathway research.',
     icon: Bandage,
     productNames: ['BPC 157', 'TB500', 'BPC10 + TB10', 'BPC5 + TB5', 'GHK-Cu', 'GLOW70', 'KLOW', 'KPV (Lysine-Proline-Valine)', 'LL37', 'MOTS-c', 'Epithalon'],
   },
   {
     slug: 'anti-aging-longevity',
-    label: 'Anti-Aging / Longevity Research',
+    label: 'Cellular Aging / Longevity Research',
     description: 'Compounds studied for cellular-aging and longevity-pathway research.',
     icon: Hourglass,
     productNames: ['Epithalon', 'Thymalin', 'SS-31', 'Humanin', 'Pinealon', 'NAD+'],
@@ -87,14 +99,14 @@ export const MERCHANDISING_TAXONOMY: MerchandisingCategory[] = [
   },
   {
     slug: 'sexual-health-hormonal',
-    label: 'Sexual Health / Hormonal Research',
+    label: 'Reproductive / Hormonal Research',
     description: 'Compounds studied for reproductive-endocrinology and hormonal-signaling research.',
     icon: HeartHandshake,
     productNames: ['PT-141', 'KissPeptin-10', 'HCG', 'HMG', 'Oxytocin'],
   },
   {
     slug: 'skin-hair-cosmetic',
-    label: 'Skin / Hair / Cosmetic Research',
+    label: 'Dermal / Hair Research',
     description: 'Compounds studied for dermal and tissue-remodeling research.',
     icon: Sparkles,
     productNames: ['GHK-Cu', 'Snap-8', 'MT-2'],
@@ -111,7 +123,15 @@ export const MERCHANDISING_TAXONOMY: MerchandisingCategory[] = [
     label: 'Blends / Stacks',
     description: 'Pre-formulated multi-compound combinations for research convenience.',
     icon: Layers,
-    productNames: ['GLOW70', 'GLOW50', 'KLOW', 'BPC 10mg + GHK-Cu 50mg + TB500 10mg', 'Cagrilintide 2.5mg + Semaglutide 2.5mg', 'Cagrilintide 5mg + Semaglutide 5mg'],
+    // GLOW50 and the legacy "BPC 10mg + GHK-Cu 50mg + TB500 10mg" name were
+    // removed here 2026-08-17 (owner correction): GLOW50 is permanently
+    // discontinued (see scripts/seed-approved-pricing.ts, zero historical
+    // order/invoice references), and the legacy name is not a separate
+    // product -- it's GLOW70 under its old pre-rebrand name (see
+    // lib/storefront/productImages.ts's PRODUCT_IMAGE_MAP comment). Both
+    // rows stay in the database (pricingStatus INACTIVE), just no longer
+    // listed here as if they were distinct, live catalog members.
+    productNames: ['GLOW70', 'KLOW', 'Cagrilintide 2.5mg + Semaglutide 2.5mg', 'Cagrilintide 5mg + Semaglutide 5mg'],
   },
 ]
 

@@ -26,8 +26,13 @@ describe('merchandisingTaxonomy', () => {
     expect(categoriesForProductName('Not A Real Product')).toEqual([])
   })
 
-  it('does not list a discontinued product as the only member of a category (GLOW50 stays alongside active GLOW70)', () => {
+  it('blends-stacks lists the active GLOW70 and does not list discontinued/false-identity names', () => {
     const blends = getMerchandisingCategory('blends-stacks')
     expect(blends?.productNames).toContain('GLOW70')
+    // GLOW50 (discontinued 2026-08-17) and the legacy pre-rebrand GLOW70
+    // name must never reappear here -- see the productNames comment in
+    // merchandisingTaxonomy.ts for why.
+    expect(blends?.productNames).not.toContain('GLOW50')
+    expect(blends?.productNames).not.toContain('BPC 10mg + GHK-Cu 50mg + TB500 10mg')
   })
 })
