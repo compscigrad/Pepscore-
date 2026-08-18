@@ -26,7 +26,7 @@ export interface UpdatePortalProfileInput {
   preferredPaymentMethod?: string | null
 }
 
-function summarizeChanges(before: Record<string, unknown>, after: UpdatePortalProfileInput): string {
+export function summarizeChanges(before: Record<string, unknown>, after: UpdatePortalProfileInput): string {
   const changed = Object.keys(after).filter((k) => JSON.stringify(before[k]) !== JSON.stringify((after as Record<string, unknown>)[k]))
   return changed.length > 0 ? `Updated: ${changed.join(', ')}` : 'No fields changed'
 }
