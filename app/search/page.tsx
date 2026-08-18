@@ -11,6 +11,7 @@ import { ProductCard } from '@/components/storefront/ProductCard'
 import { searchProducts } from '@/lib/storefront/search'
 import { groupByName } from '@/lib/storefront/groupByName'
 import { getCurrentCustomerSpaEligible } from '@/lib/storefront/spaEligibility'
+import { logSearchEvent } from '@/lib/analytics/searchEvents'
 
 export const metadata: Metadata = {
   title: 'Search Results | Pepscore Lab',
@@ -26,6 +27,13 @@ export default async function SearchPage({ searchParams }: PageProps) {
   const query = (q ?? '').trim()
   const [rows, spaEligible] = await Promise.all([query ? searchProducts(query) : Promise.resolve([]), getCurrentCustomerSpaEligible()])
   const products = groupByName(rows, { spaEligible })
+
+  // First-party search-event capture (AI-1.1) -- once per full-search page
+  // view, not per keystroke, so the existing predictive combobox is
+  // untouched. Fire-and-forget would risk being cut off by the serverless
+  // runtime before completing, so this is awaited (a single indexed
+  // insert, negligible added latency) rather than left unawaited.
+  if (query) await logSearchEvent(query, rows.length)
 
   return (
     <>

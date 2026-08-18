@@ -3152,3 +3152,22 @@ model AiUsageEvent {
   @@index([userId, createdAt])
   @@index([provider, model, createdAt])
 }
+
+// ─── First-Party Search Analytics (AI-1.1, 2026-08-18) ──────────────────────
+// The existing SEARCH analytics event (lib/analytics/events.ts) only ever
+// went to @vercel/analytics -- a third-party hosted dashboard, not a
+// queryable first-party data source. There was no way for this app itself
+// (an admin page, or a future AI-1 "search-demand analysis"/"zero-result
+// search insights" capability) to read what people actually searched for.
+// This is that first-party record -- logged once per full /search page
+// view (app/search/page.tsx), not per keystroke, so it adds zero latency
+// to the existing fast, client-side-only predictive search.
+model SearchEvent {
+  id          String   @id @default(cuid())
+  query       String
+  resultCount Int
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([resultCount, createdAt])
+}
