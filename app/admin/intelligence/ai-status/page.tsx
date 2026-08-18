@@ -1,9 +1,11 @@
-// Admin AI Control Panel (AI-1.4) -- the operational-readiness surface for
-// Pepscore Intelligence: feature-flag state, provider/model configuration
-// presence (booleans only, never secret values), usage/cost, safety/
-// compliance activity, and the Tier 2/3 corpus size. Read-only for this
-// checkpoint -- matches the sibling search/product intelligence pages'
-// plain-aggregation convention, no AI-generated summary here either.
+// Admin AI Control Panel (AI-1.4, review action added AI-1.9) -- the
+// operational-readiness surface for Pepscore Intelligence: feature-flag
+// state, provider/model configuration presence (booleans only, never
+// secret values), usage/cost, safety/compliance activity, and the Tier 2/3
+// corpus size. Everything except the Safety Review Queue's "Mark
+// Reviewed" action is read-only plain aggregation, matching the sibling
+// search/product intelligence pages' convention -- no AI-generated
+// summary here either.
 //
 // This is deliberately separate from @vercel/analytics-backed marketing
 // analytics (owner instruction: keep AI compliance data separate from
@@ -20,6 +22,7 @@ import {
   getComplianceSummary,
   getReviewQueue,
 } from '@/lib/ai/observability/adminSummary'
+import { MarkReviewedButton } from '@/components/admin/MarkReviewedButton'
 
 const WINDOW_DAYS = 30
 
@@ -212,7 +215,8 @@ export default async function AiStatusPage() {
                   <th className="py-2 pr-4">Confidence</th>
                   <th className="py-2 pr-4">Method</th>
                   <th className="py-2 pr-4">Repeats</th>
-                  <th className="py-2">When</th>
+                  <th className="py-2 pr-4">When</th>
+                  <th className="py-2"></th>
                 </tr>
               </thead>
               <tbody>
@@ -223,7 +227,10 @@ export default async function AiStatusPage() {
                     <td className="py-2 pr-4 tabular-nums">{row.classifierConfidence?.toFixed(2) ?? '—'}</td>
                     <td className="py-2 pr-4">{row.classifierMethod ?? '—'}</td>
                     <td className="py-2 pr-4 tabular-nums">{row.repeatCount}</td>
-                    <td className="py-2">{row.createdAt.toLocaleString()}</td>
+                    <td className="py-2 pr-4">{row.createdAt.toLocaleString()}</td>
+                    <td className="py-2">
+                      <MarkReviewedButton eventId={row.id} />
+                    </td>
                   </tr>
                 ))}
               </tbody>

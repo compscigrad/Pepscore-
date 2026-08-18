@@ -205,3 +205,13 @@ export async function getReviewQueue(limit = 25): Promise<ReviewQueueEntry[]> {
     take: limit,
   })
 }
+
+// Closes the review-queue loop (AI-1.9): the queue was read-only in AI-1.4
+// by deliberate scope decision, but a queue nothing can ever clear isn't a
+// real compliance-review capability, just visibility. Marks REVIEWED, not
+// ESCALATED_TO_OWNER -- an admin escalating further to the owner is a
+// separate, not-yet-requested action, not implied by "an admin looked at
+// this."
+export async function markComplianceEventReviewed(id: string) {
+  return prisma.aiComplianceEvent.update({ where: { id }, data: { reviewStatus: 'REVIEWED' } })
+}
