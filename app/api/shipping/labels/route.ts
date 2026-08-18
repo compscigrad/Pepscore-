@@ -7,6 +7,7 @@ import { requireAdmin } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/prisma'
 import { purchaseLabel, getRates } from '@/lib/shippo'
 import { getFulfillmentSettings } from '@/lib/fulfillment/settings'
+import { isShippoPurchasingEnabled, SHIPPO_PURCHASING_DEFERRED_MESSAGE } from '@/lib/fulfillment/labels'
 import { sendCategorizedEmail } from '@/lib/notifications/log'
 import { buildTrackingUpdateHtml } from '@/emails/TrackingUpdate'
 import type { ShippingAddress } from '@/types'
@@ -27,6 +28,10 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    if (!isShippoPurchasingEnabled()) {
+      return NextResponse.json({ error: SHIPPO_PURCHASING_DEFERRED_MESSAGE }, { status: 400 })
+    }
+
     const { orderId, rateObjectId } = await req.json()
 
     const order = await prisma.order.findUnique({

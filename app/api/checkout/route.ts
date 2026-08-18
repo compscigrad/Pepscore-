@@ -489,6 +489,15 @@ export async function POST(req: NextRequest) {
           customerEmail,
         },
         return_url: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+      }, {
+        // Guards against Stripe's own SDK-level retry (e.g. a network
+        // blip mid-request) creating a second live Session for the one
+        // order this handler already committed above -- order.id is
+        // unique per POST, so this doesn't (and isn't meant to) cover a
+        // literal double-click causing two separate POSTs/orders; that's
+        // the rate limit + MAX_CONCURRENT_PENDING_ORDERS_PER_EMAIL guard's
+        // job.
+        idempotencyKey: order.id,
       })
 
       // Save the session ID to the order so the webhook can find it
