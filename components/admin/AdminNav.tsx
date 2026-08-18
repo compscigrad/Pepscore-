@@ -61,6 +61,7 @@ const NAV: NavGroup[] = [
     items: [
       { label: 'Search Demand', href: '/admin/intelligence/search' },
       { label: 'Product Engagement', href: '/admin/intelligence/products' },
+      { label: 'AI Control Panel', href: '/admin/intelligence/ai-status' },
     ],
   },
   {
