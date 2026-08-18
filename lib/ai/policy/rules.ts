@@ -60,6 +60,7 @@ const CATALOG_RULES: Rule[] = [
   // compoundComparison.ts/categoryDiscovery.ts construct.
   { category: 'CATALOG', pattern: /\bcompare the research classifications? of\b/i, description: 'structured compound comparison request' },
   { category: 'CATALOG', pattern: /\bwhat products are categorized under\b/i, description: 'structured category discovery request' },
+  { category: 'CATALOG', pattern: /\bexplain the research areas associated with\b/i, description: 'structured compound research-area explainer request' },
 ]
 
 const LITERATURE_RULES: Rule[] = [

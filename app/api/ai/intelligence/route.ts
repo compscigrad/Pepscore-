@@ -21,6 +21,7 @@ import { checkAiRateLimit } from '@/lib/ai/gate/rateLimiter'
 import { getClientIp } from '@/lib/rateLimit'
 import { compareCompounds } from '@/lib/ai/intelligence/compoundComparison'
 import { discoverByCategory } from '@/lib/ai/intelligence/categoryDiscovery'
+import { explainCompound } from '@/lib/ai/intelligence/compoundExplainer'
 
 const requestSchema = z.discriminatedUnion('type', [
   z.object({
@@ -30,6 +31,10 @@ const requestSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('discover'),
     categorySlug: z.string().trim().min(1),
+  }),
+  z.object({
+    type: z.literal('explain'),
+    productName: z.string().trim().min(1),
   }),
 ])
 
@@ -63,6 +68,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(result)
   }
 
-  const result = await discoverByCategory(parsed.data.categorySlug, role)
+  if (parsed.data.type === 'discover') {
+    const result = await discoverByCategory(parsed.data.categorySlug, role)
+    return NextResponse.json(result)
+  }
+
+  const result = await explainCompound(parsed.data.productName, role)
   return NextResponse.json(result)
 }

@@ -21,6 +21,7 @@ describe('classifyRequest -- rule-based classification', () => {
     ['do you sell Semaglutide', 'CATALOG'],
     ['Compare the research classifications of MOTS-c and NAD+.', 'CATALOG'],
     ['What products are categorized under Cellular Aging / Longevity Research?', 'CATALOG'],
+    ['Explain the research areas associated with NAD+.', 'CATALOG'],
     ['is there a clinical trial on this compound', 'LITERATURE'],
   ])('classifies "%s" as %s via a deterministic rule, no model call', async (text, expected) => {
     const result = await classifyRequest(text, null)
@@ -32,6 +33,14 @@ describe('classifyRequest -- rule-based classification', () => {
   it('a structured comparison request combined with personal-use intent is still classified HUMAN_USE, not CATALOG -- rule order matters, and it must be checked first', async () => {
     const result = await classifyRequest(
       'Compare the research classifications of MOTS-c and NAD+. what should I take for weight loss',
+      null
+    )
+    expect(result.category).toBe('HUMAN_USE')
+  })
+
+  it('a structured research-area explainer request combined with personal-use intent is still classified HUMAN_USE, not CATALOG', async () => {
+    const result = await classifyRequest(
+      'Explain the research areas associated with NAD+. what should I take for weight loss',
       null
     )
     expect(result.category).toBe('HUMAN_USE')
