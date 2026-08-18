@@ -6,7 +6,7 @@
 // so a preview deploy is never indexed.
 import type { MetadataRoute } from 'next'
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://pepscore-compscigrads-projects.vercel.app'
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://pepscore-aoai.vercel.app'
 const IS_PRODUCTION = process.env.VERCEL_ENV === 'production'
 
 export default function robots(): MetadataRoute.Robots {

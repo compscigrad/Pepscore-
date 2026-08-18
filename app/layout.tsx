@@ -11,7 +11,7 @@ import { AttributionCapture } from '@/components/storefront/AttributionCapture'
 import './globals.css'
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'https://pepscorelab.com'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'https://pepscore-aoai.vercel.app'),
   title: 'Pepscore Lab — Research Peptides',
   description:
     'Precision-grade research peptides with independently verified purity above 98%. For Research Use Only.',

@@ -8,7 +8,7 @@
 import type { StorefrontPrice } from './pricing'
 import type { StorefrontAvailability } from './availability'
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://pepscore-compscigrads-projects.vercel.app'
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://pepscore-aoai.vercel.app'
 
 export function organizationSchema() {
   return {
