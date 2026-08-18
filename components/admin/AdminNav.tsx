@@ -57,6 +57,13 @@ const NAV: NavGroup[] = [
     items: [{ label: 'Finance', href: '/admin/finance' }],
   },
   {
+    label: 'Intelligence',
+    items: [
+      { label: 'Search Demand', href: '/admin/intelligence/search' },
+      { label: 'Product Engagement', href: '/admin/intelligence/products' },
+    ],
+  },
+  {
     label: 'Settings',
     items: [
       { label: 'Invoice Settings', href: '/admin/settings/invoices' },
