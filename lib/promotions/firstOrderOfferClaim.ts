@@ -53,7 +53,7 @@ export class FirstOrderOfferNotLiveError extends Error {}
 // Same name-splitting convention as lib/leads/service.ts's captureLead() --
 // Customer.firstName/lastName are both required but this form only
 // collects one "name" field.
-function splitName(name: string): { firstName: string; lastName: string } {
+export function splitName(name: string): { firstName: string; lastName: string } {
   const trimmed = name.trim()
   const spaceIndex = trimmed.indexOf(' ')
   if (spaceIndex === -1) return { firstName: trimmed, lastName: '' }
@@ -65,8 +65,8 @@ function splitName(name: string): { firstName: string; lastName: string } {
 // encode the discount value in the code text (see docs/Decisions.md) --
 // redemption always resolves through the authoritative PromotionCode row,
 // never by parsing the code string.
-const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
-function generatePromotionCodeText(): string {
+export const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
+export function generatePromotionCodeText(): string {
   let code = 'FIRST-'
   for (let i = 0; i < 8; i++) code += CODE_ALPHABET[crypto.randomInt(CODE_ALPHABET.length)]
   return code

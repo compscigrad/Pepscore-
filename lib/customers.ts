@@ -197,7 +197,7 @@ export interface PossibleDuplicateMatch {
   reasons: Array<'NAME' | 'COMPANY' | 'ADDRESS'>
 }
 
-function jsonZipMatches(address: Prisma.JsonValue, zip: string): boolean {
+export function jsonZipMatches(address: Prisma.JsonValue, zip: string): boolean {
   if (!address || typeof address !== 'object' || Array.isArray(address)) return false
   return (address as Record<string, unknown>).zip === zip
 }
