@@ -267,6 +267,10 @@ function OperationsSummarySection({ data }: { data: AdminOperationsSummary }) {
           </div>
         ))}
       </div>
+      <p className="text-[12px] text-white/40 -mt-2 mb-8">
+        Revenue here totals all non-cancelled invoices, including unpaid pending/draft ones — for revenue recognized on issued/paid invoices only, see{' '}
+        <a href="/admin/finance" className="text-gold/70 hover:text-gold underline">Finance → P&amp;L / Sales Tax</a>.
+      </p>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {[
           { label: 'Pending Refunds', value: `${refunds.pendingCount} (${formatCurrency(refunds.pendingAmount)})`, sub: `${formatCurrency(refunds.completedTotal)} completed all-time` },

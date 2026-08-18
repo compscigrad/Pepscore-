@@ -8,6 +8,8 @@
 
 **Updated 2026-08-18 (same day, follow-up sprint):** reduced the YELLOW list to its smallest form — **`OWNER-LAUNCH-CHECKLIST.md` is the single document to read first.** That sprint also corrected two earlier findings that turned out to be wrong (Y4's legal pages were already fully drafted and live, not placeholders; Y3's Resend gap was narrower than stated — SPF/MX present, only the DKIM record is actually missing), and prepared five new supporting documents for owner decisions this environment can't make alone (sales tax, checkout shipping, Stripe/Shippo live-readiness, legal sign-off, and a final live-transaction rehearsal procedure).
 
+**Updated 2026-08-18 (Finance Center sprint, later same day):** the $4,978 revenue figure cited below (RED section) was itself found to include $1,075.00 from 11 leftover "Rehearsal" test invoices that archiving alone hadn't excluded from revenue totals — a real reporting bug, now fixed (`Invoice.isTestData` field + backfill). The correct, current figure is **$3,903.00 across 15 active invoices**. See `docs/finance/PEPSCORE-FINANCIAL-ARCHITECTURE.md` for the full fix and `docs/finance/PEPSCORE-TAX-REPORTING-GUIDE.md` for the new Admin → Finance reporting suite this sprint built on top of it.
+
 ---
 
 ## 🟢 GREEN — Verified and launch-ready
@@ -93,7 +95,7 @@
 
 **None found that block a soft launch of the core application.**
 
-The one item that could arguably be RED — **real storefront checkout is dark** — is deliberately, correctly gated (not broken) pending Y1's owner decision, and the business's actual current sales channel (admin-created invoices) is fully live and operating today ($4,978 in revenue across 15 real invoices — 26 before this session archived 11 leftover test "Rehearsal" invoices, see Y9 — verified in the live Admin dashboard). Soft launch does not require flipping `STOREFRONT_CHECKOUT_ENABLED` on day one if invoice-based selling is the intended initial channel — that's Michael's call (Y1).
+The one item that could arguably be RED — **real storefront checkout is dark** — is deliberately, correctly gated (not broken) pending Y1's owner decision, and the business's actual current sales channel (admin-created invoices) is fully live and operating today (~~$4,978~~ **$3,903.00** in revenue across 15 real invoices — corrected same-day by the later Finance Center sprint, which found the original figure still counted $1,075.00 from the 11 archived "Rehearsal" test invoices; archiving alone hadn't excluded them from revenue, see the note at the top of this doc — verified in the live Admin dashboard). Soft launch does not require flipping `STOREFRONT_CHECKOUT_ENABLED` on day one if invoice-based selling is the intended initial channel — that's Michael's call (Y1).
 
 Sales tax (Y15) and checkout shipping (Y16) are both real open decisions, not classified RED because neither is a code defect — see `SalesTaxDecision.md` and `CheckoutShippingOptions.md` for the full analysis and options. Recommend deciding both before flipping Y1.
 
