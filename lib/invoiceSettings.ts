@@ -15,7 +15,7 @@ export interface InvoiceSettingsData {
   autoEmailPaymentReceived: boolean
 }
 
-function parseNotificationMap(value: Prisma.JsonValue | null): Partial<Record<ShippingStatus, boolean>> {
+export function parseNotificationMap(value: Prisma.JsonValue | null): Partial<Record<ShippingStatus, boolean>> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
   return value as Partial<Record<ShippingStatus, boolean>>
 }

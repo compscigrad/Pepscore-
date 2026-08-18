@@ -15,7 +15,7 @@ import type { FulfillmentAlertType } from '@prisma/client'
 // not listed here (NEEDS_FULFILLMENT, IN_TRANSIT, DELIVERED) are healthy/
 // expected states -- no alert, and any previously-open alert for that
 // invoice gets resolved below.
-function alertTypeForBucket(row: FulfillmentQueueRow): FulfillmentAlertType | null {
+export function alertTypeForBucket(row: FulfillmentQueueRow): FulfillmentAlertType | null {
   switch (row.bucket) {
     case 'LABEL_NEEDED':
       return 'NO_LABEL'
@@ -34,7 +34,7 @@ function alertTypeForBucket(row: FulfillmentQueueRow): FulfillmentAlertType | nu
   }
 }
 
-function alertMessage(row: FulfillmentQueueRow, alertType: FulfillmentAlertType): string {
+export function alertMessage(row: FulfillmentQueueRow, alertType: FulfillmentAlertType): string {
   const label = `${row.invoiceNumber} (${row.customerName})`
   switch (alertType) {
     case 'NO_LABEL':

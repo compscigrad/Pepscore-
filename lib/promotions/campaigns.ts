@@ -28,7 +28,7 @@ export interface CreatePromotionCampaignInput {
   createdBy: string
 }
 
-function validateDiscount(discountType: PromotionType, discountValue: number): void {
+export function validateDiscount(discountType: PromotionType, discountValue: number): void {
   if (discountValue <= 0) throw new PromotionCampaignError('Discount value must be greater than 0.')
   if (discountType === 'PERCENTAGE' && discountValue > 100) {
     throw new PromotionCampaignError('A percentage discount cannot exceed 100.')
