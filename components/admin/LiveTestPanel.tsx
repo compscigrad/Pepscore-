@@ -7,6 +7,12 @@
 // the route's own no-arbitrary-text posture.
 import { useState } from 'react'
 import { SYNTHETIC_TEST_PROMPTS } from '@/lib/ai/testing/syntheticPrompts'
+import { DarkListbox } from '@/components/ui/DarkListbox'
+
+const PROMPT_OPTIONS = SYNTHETIC_TEST_PROMPTS.map((p) => ({
+  value: p.key,
+  label: `[${p.category === 'ALLOWED_EXAMPLE' ? 'allowed' : 'prohibited'}] ${p.text}`,
+}))
 
 interface LiveTestOutcome {
   status: string
@@ -55,17 +61,13 @@ export function LiveTestPanel() {
   return (
     <div>
       <div className="flex gap-3 mb-4">
-        <select
+        <DarkListbox
           value={promptKey}
-          onChange={(e) => setPromptKey(e.target.value)}
-          className="border border-white/15 bg-white/[0.04] rounded px-3 py-2 text-[13px] text-white"
-        >
-          {SYNTHETIC_TEST_PROMPTS.map((p) => (
-            <option key={p.key} value={p.key}>
-              [{p.category === 'ALLOWED_EXAMPLE' ? 'allowed' : 'prohibited'}] {p.text}
-            </option>
-          ))}
-        </select>
+          onChange={setPromptKey}
+          options={PROMPT_OPTIONS}
+          ariaLabel="Synthetic test prompt"
+          className="min-w-[420px]"
+        />
         <button
           onClick={runTest}
           disabled={running}

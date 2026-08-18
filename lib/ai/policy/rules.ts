@@ -35,7 +35,17 @@ const PROMPT_INJECTION_RULES: Rule[] = [
 const HUMAN_USE_RULES: Rule[] = [
   { category: 'HUMAN_USE', pattern: /\b(what|how much|how many (mg|milligrams|units)?)\b.{0,30}\bshould\s+i\s+(take|inject|use|dose)/i, description: 'personal dosing question' },
   { category: 'HUMAN_USE', pattern: /\bmy (dose|dosage|cycle|stack)\b/i, description: 'personal dose/cycle reference' },
-  { category: 'HUMAN_USE', pattern: /\b(build|make|create|design)\s+(me\s+)?a\s+(cycle|stack)\b/i, description: 'personal cycle/stack construction' },
+  // 2026-08-18 live-verification fix: the original pattern required "a"
+  // directly followed by "cycle"/"stack" ("build me a cycle") and missed
+  // the far more common real-world phrasing with a qualifier in between
+  // ("build me a peptide cycle") -- confirmed by tracing the exact live
+  // test failure, not guessed. `(\w+\s+){0,2}` allows up to two qualifier
+  // words ("a peptide cycle", "a custom research stack") while still
+  // requiring the "verb + a + ... + cycle/stack/protocol/regimen"
+  // structure, so it doesn't fire on a bare mention of "cycle" in an
+  // unrelated scientific sentence (e.g. "the cell cycle").
+  { category: 'HUMAN_USE', pattern: /\b(build|make|create|design)\s+(me\s+)?a\s+(\w+\s+){0,2}(cycle|stack|protocol|regimen)\b/i, description: 'personal cycle/stack/protocol construction' },
+  { category: 'HUMAN_USE', pattern: /\b(cycle|stack|protocol|regimen)\s+for\s+me\b/i, description: 'personal cycle/stack/protocol/regimen request' },
   { category: 'HUMAN_USE', pattern: /\bhelp me (lose weight|build muscle|get lean|slow aging|look younger)\b/i, description: 'personal outcome request' },
   { category: 'HUMAN_USE', pattern: /\bshould i (take|inject|use)\b/i, description: 'personal use recommendation request' },
   { category: 'HUMAN_USE', pattern: /\bwhat should i take\b/i, description: 'disguised dosing request' },
@@ -61,6 +71,17 @@ const CATALOG_RULES: Rule[] = [
   { category: 'CATALOG', pattern: /\bcompare the research classifications? of\b/i, description: 'structured compound comparison request' },
   { category: 'CATALOG', pattern: /\bwhat products are categorized under\b/i, description: 'structured category discovery request' },
   { category: 'CATALOG', pattern: /\bexplain the research areas associated with\b/i, description: 'structured compound research-area explainer request' },
+  // 2026-08-18 live-verification fix: "Explain the research classification
+  // of Semaglutide." (the exact synthetic ALLOWED test prompt) matched
+  // none of the three rules above -- each covers a different fixed
+  // phrase, and none of them is "research classification(s) of X". Rather
+  // than special-case that one sentence, generalized to the actual
+  // pattern family the owner asked for: any free-text question asking for
+  // a compound's research classification/category, not just this app's
+  // own system-generated request shapes.
+  { category: 'CATALOG', pattern: /\bresearch classifications? (of|for)\b/i, description: 'free-text research-classification question' },
+  { category: 'CATALOG', pattern: /\bresearch categor(y|ies) (of|for)\b/i, description: 'free-text research-category question' },
+  { category: 'CATALOG', pattern: /\bwhat research categor(y|ies) is\b/i, description: 'free-text "what research category is X" question' },
 ]
 
 const LITERATURE_RULES: Rule[] = [

@@ -22,6 +22,9 @@
 // either besides trying a different question.
 import { useState } from 'react'
 import { MERCHANDISING_TAXONOMY } from '@/lib/storefront/merchandisingTaxonomy'
+import { DarkListbox } from '@/components/ui/DarkListbox'
+
+const CATEGORY_OPTIONS = MERCHANDISING_TAXONOMY.map((c) => ({ value: c.slug, label: c.label }))
 
 interface Citation {
   sourceId: string
@@ -275,13 +278,13 @@ export function PepscoreIntelligenceConcierge() {
         {mode === 'discover' && (
           <section>
             <form onSubmit={runDiscover} className="flex gap-3 mb-6">
-              <select value={categorySlug} onChange={(e) => setCategorySlug(e.target.value)} className={inputClass}>
-                {MERCHANDISING_TAXONOMY.map((c) => (
-                  <option key={c.slug} value={c.slug}>
-                    {c.label}
-                  </option>
-                ))}
-              </select>
+              <DarkListbox
+                value={categorySlug}
+                onChange={setCategorySlug}
+                options={CATEGORY_OPTIONS}
+                ariaLabel="Research category"
+                className="flex-1"
+              />
               <button
                 type="submit"
                 disabled={discoverState.loading}

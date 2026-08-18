@@ -20,24 +20,43 @@
     @apply font-heading;
   }
 
-  /* Dropdown-contrast fix (site-wide audit, 2026-08-18): a native
-     <select>'s expanded option list is rendered by the browser/OS, not by
-     Tailwind background utilities on the element -- setting text-white on
-     a select (the pattern used throughout the admin/AI dark-themed
-     surfaces) does nothing to its popup's background, which stays the
-     browser's light default. Result: white-on-white, unreadable option
-     text. `color-scheme` is the one CSS property that actually controls
-     native form-control chrome (including the select popup), so scoping
-     `color-scheme: dark` to every select carrying text-white fixes every
-     current and future dark-themed select in one place -- no per-file
-     changes needed. Light-themed selects (the site's default cream/dark-
-     text body) are untouched, since they don't carry text-white and the
-     browser's light-mode popup already matches. Custom (non-native)
-     dropdown/popover components (PredictiveSearch, AdminCustomerSearch,
-     etc.) fully control their own background/text CSS already and don't
-     need this -- audited separately, already correctly dark-on-dark. */
+  /* Dropdown-contrast fix, round 2 (2026-08-18): round 1 relied solely on
+     `color-scheme: dark` -- the standards-correct way to tell a browser to
+     render native form-control chrome (including a <select>'s expanded
+     popup) in dark mode. Real-world manual testing showed it does not
+     reliably win on every browser/OS combination -- <option> background/
+     text rendering inside a native select's popup has always been one of
+     the least consistently implemented corners of the web platform across
+     engines, `color-scheme` included. This adds a second, more direct
+     layer: explicit background/color on the <option> elements themselves,
+     which Chrome/Edge/Firefox do respect directly in most cases even when
+     the popup chrome around them doesn't fully honor color-scheme. Kept
+     scoped to the same text-white selects as round 1 -- light-themed
+     selects (cream body, dark text) are untouched either way.
+     The one fully bulletproof fix -- not dependent on ANY native-rendering
+     behavior -- is components/ui/DarkListbox.tsx, a custom-built listbox
+     that owns its own background/text CSS end to end. That's what now
+     backs the two highest-visibility surfaces flagged during live
+     verification (the AI Control Panel's live-test prompt picker and the
+     customer Research Concierge's category picker). This CSS layer is the
+     remaining fallback for the ~28 other native <select> elements
+     elsewhere in the admin/invoice/portal codebase not yet converted --
+     real defense-in-depth, but converting each of those to DarkListbox
+     individually is future work, not claimed as done here. */
   select[class*="text-white"] {
     color-scheme: dark;
+  }
+  select[class*="text-white"] option {
+    background-color: #141414;
+    color: #ffffff;
+  }
+  select[class*="text-white"] option:checked,
+  select[class*="text-white"] option:hover {
+    background-color: #2a2a2a;
+    color: #ffffff;
+  }
+  select[class*="text-white"] option:disabled {
+    color: rgba(255, 255, 255, 0.4);
   }
 }
 

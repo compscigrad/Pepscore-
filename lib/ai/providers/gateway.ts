@@ -33,6 +33,23 @@ import type { AiConfig } from './config'
 
 const GATEWAY_BASE_URL = 'https://ai-gateway.vercel.sh/v1'
 
+// AI-1.16 -- live verification surfaced PROVIDER_FAILURE with no detail
+// beyond an HTTP status, making the real cause (a specific Gateway error
+// category -- e.g. no_providers_available, invalid_model, quota_exceeded)
+// impossible to diagnose from the app's own logs/admin surface. Vercel's
+// error responses are structured JSON ({error, type, statusCode} per the
+// AI Gateway REST docs) -- safe to read and surface; it's never anything
+// containing the API key itself. Bounded to 300 chars so a malformed or
+// unexpectedly large body can't bloat a thrown error/log line.
+async function describeFailedResponse(res: Response): Promise<string> {
+  try {
+    const text = await res.text()
+    return text.slice(0, 300) || `HTTP ${res.status}`
+  } catch {
+    return `HTTP ${res.status}`
+  }
+}
+
 export class AiGatewayProvider implements AiProvider {
   readonly name = 'vercel-ai-gateway'
 
@@ -93,7 +110,7 @@ export class AiGatewayProvider implements AiProvider {
     }
 
     if (!res.ok) {
-      throw new AiProviderError(`Gateway completion failed: ${res.status}`)
+      throw new AiProviderError(`Gateway completion failed: ${res.status} ${await describeFailedResponse(res)}`)
     }
 
     const data = await res.json()
@@ -129,7 +146,7 @@ export class AiGatewayProvider implements AiProvider {
     }
 
     if (!res.ok) {
-      throw new AiProviderError(`Gateway embedding failed: ${res.status}`)
+      throw new AiProviderError(`Gateway embedding failed: ${res.status} ${await describeFailedResponse(res)}`)
     }
 
     const data = await res.json()
@@ -161,7 +178,7 @@ export class AiGatewayProvider implements AiProvider {
     }
 
     if (!res.ok) {
-      throw new AiProviderError(`Gateway moderation failed: ${res.status}`)
+      throw new AiProviderError(`Gateway moderation failed: ${res.status} ${await describeFailedResponse(res)}`)
     }
 
     const data = await res.json()

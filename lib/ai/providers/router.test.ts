@@ -43,4 +43,12 @@ describe('ProviderRouter', () => {
 
     await expect(router.complete(req)).rejects.toThrow(AiProviderError)
   })
+
+  it('folds both providers\' own error messages into the thrown error -- diagnosing a real failure (AI-1.16) requires more than a generic "both failed" string', async () => {
+    const primary = new MockAiProvider({ shouldFailCompletion: true })
+    const fallback = new MockAiProvider({ shouldFailCompletion: true })
+    const router = new ProviderRouter(primary, fallback)
+
+    await expect(router.complete(req)).rejects.toThrow(/Primary:[\s\S]*Fallback:/)
+  })
 })
