@@ -2,7 +2,7 @@
 // Quarter / Year / Custom range). Pure, server-safe -- no client-only APIs.
 import type { DateRange } from '@/lib/finance/reports'
 
-export type FinanceRangeKey = 'THIS_MONTH' | 'LAST_MONTH' | 'THIS_QUARTER' | 'THIS_YEAR' | 'CUSTOM'
+export type FinanceRangeKey = 'TODAY' | 'THIS_WEEK' | 'THIS_MONTH' | 'LAST_MONTH' | 'THIS_QUARTER' | 'THIS_YEAR' | 'LAST_YEAR' | 'CUSTOM'
 
 export interface ResolvedFinanceRange extends DateRange {
   key: FinanceRangeKey
@@ -42,6 +42,20 @@ export function resolveFinanceRange(params: { range?: string; from?: string; to?
     }
   }
 
+  if (key === 'TODAY') {
+    return { key, label: 'Today', from: startOfDay(now), to: endOfDay(now) }
+  }
+  if (key === 'THIS_WEEK') {
+    // Sunday-start week, matching JS's own getDay() convention (0 = Sunday).
+    const from = startOfDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay()))
+    const to = endOfDay(new Date(from.getFullYear(), from.getMonth(), from.getDate() + 6))
+    return { key, label: 'This Week', from, to }
+  }
+  if (key === 'LAST_YEAR') {
+    const from = startOfDay(new Date(now.getFullYear() - 1, 0, 1))
+    const to = endOfDay(new Date(now.getFullYear() - 1, 11, 31))
+    return { key, label: 'Last Year', from, to }
+  }
   if (key === 'LAST_MONTH') {
     const from = startOfDay(new Date(now.getFullYear(), now.getMonth() - 1, 1))
     const to = endOfDay(new Date(now.getFullYear(), now.getMonth(), 0))

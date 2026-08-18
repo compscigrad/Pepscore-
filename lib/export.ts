@@ -115,6 +115,13 @@ export interface FinanceExportInput {
   refundsSheet: FinanceSheet
   vendorsSheet: FinanceSheet
   needsReviewSheet: FinanceSheet
+  // 2026-08-18 Finance Center sprint additions -- optional so this type
+  // stays backward compatible with any other caller of buildFinanceExportXLSX.
+  salesTaxSheet?: FinanceSheet
+  ownerTransactionsSheet?: FinanceSheet
+  stripeReconciliationSheet?: FinanceSheet
+  form1099kSheet?: FinanceSheet
+  unreconciledItemsSheet?: FinanceSheet
 }
 
 function appendSheet(wb: XLSX.WorkBook, sheet: FinanceSheet) {
@@ -140,6 +147,11 @@ export function buildFinanceExportXLSX(input: FinanceExportInput): Buffer {
   appendSheet(wb, input.refundsSheet)
   appendSheet(wb, input.vendorsSheet)
   appendSheet(wb, input.needsReviewSheet)
+  if (input.salesTaxSheet) appendSheet(wb, input.salesTaxSheet)
+  if (input.ownerTransactionsSheet) appendSheet(wb, input.ownerTransactionsSheet)
+  if (input.stripeReconciliationSheet) appendSheet(wb, input.stripeReconciliationSheet)
+  if (input.form1099kSheet) appendSheet(wb, input.form1099kSheet)
+  if (input.unreconciledItemsSheet) appendSheet(wb, input.unreconciledItemsSheet)
 
   return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer
 }

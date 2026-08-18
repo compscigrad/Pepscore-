@@ -859,26 +859,30 @@ export interface InvoiceDashboardStats {
 export async function getInvoiceDashboardStats(): Promise<InvoiceDashboardStats> {
   const [totalInvoices, paidInvoices, partiallyPaidInvoices, pendingShipments, deliveredOrders, outstandingAgg, revenueAgg] =
     await Promise.all([
-      prisma.invoice.count({ where: { archivedAt: null, deletedAt: null } }),
-      prisma.invoice.count({ where: { archivedAt: null, deletedAt: null, paymentStatus: 'PAID' } }),
-      prisma.invoice.count({ where: { archivedAt: null, deletedAt: null, paymentStatus: 'PARTIALLY_PAID' } }),
+      prisma.invoice.count({ where: { archivedAt: null, deletedAt: null, isTestData: false } }),
+      prisma.invoice.count({ where: { archivedAt: null, deletedAt: null, isTestData: false, paymentStatus: 'PAID' } }),
+      prisma.invoice.count({ where: { archivedAt: null, deletedAt: null, isTestData: false, paymentStatus: 'PARTIALLY_PAID' } }),
       prisma.invoice.count({
-        where: { archivedAt: null, deletedAt: null, deliveryStatus: { in: ['PREPARING', 'PACKED'] } },
+        where: { archivedAt: null, deletedAt: null, isTestData: false, deliveryStatus: { in: ['PREPARING', 'PACKED'] } },
       }),
-      prisma.invoice.count({ where: { archivedAt: null, deletedAt: null, deliveryStatus: 'DELIVERED' } }),
+      prisma.invoice.count({ where: { archivedAt: null, deletedAt: null, isTestData: false, deliveryStatus: 'DELIVERED' } }),
       // Summed in the database rather than fetching every row and reducing
       // in JS -- this ran on every admin dashboard/invoices page load and
       // grew unbounded with total invoice count (all-time, not date-scoped).
       prisma.invoice.aggregate({
-        where: { archivedAt: null, deletedAt: null, status: { notIn: ['CANCELLED', 'VOID'] } },
+        where: { archivedAt: null, deletedAt: null, isTestData: false, status: { notIn: ['CANCELLED', 'VOID'] } },
         _sum: { balanceDue: true },
       }),
       // Revenue counts archived invoices too — an auto-archived invoice is
       // still a real, fully-paid sale, and organizing it out of the active
       // list shouldn't organize it out of revenue reporting. Trashed
       // invoices never count, though — those are "probably a mistake."
+      // isTestData: false (2026-08-18) -- the one real gap this didn't
+      // already cover: a rehearsal/test invoice is not "probably a
+      // mistake," it was never a real transaction at all, and previously
+      // had no exclusion here regardless of archive/delete state.
       prisma.invoice.aggregate({
-        where: { deletedAt: null, status: { notIn: ['CANCELLED', 'VOID'] } },
+        where: { deletedAt: null, isTestData: false, status: { notIn: ['CANCELLED', 'VOID'] } },
         _sum: { total: true },
       }),
     ])

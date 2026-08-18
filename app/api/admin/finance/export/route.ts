@@ -25,14 +25,22 @@ export async function GET(req: NextRequest) {
   }
 
   const data = await assembleFinanceExport({ from, to })
-  const filenameRange = `${fromParam}_to_${toParam}`
+  // Deterministic filename: PEPSCORE_TAX-YEAR_REPORT-TYPE_EXPORT-DATE
+  // (spec #20) -- tax year here means the year the range's end date falls
+  // in, matching the same convention getMonthlySummary/getForm1099KReport
+  // use elsewhere; report type is the date range itself since this export
+  // is range-scoped, not a fixed annual package.
+  const taxYear = to.getFullYear()
+  const exportDate = new Date().toISOString().slice(0, 10)
+  const reportType = `${fromParam}_to_${toParam}`
+  const baseFilename = `Pepscore_${taxYear}_${reportType}_Export_${exportDate}`
 
   if (format === 'csv') {
     const csv = buildFinanceExportCSV(data.expenseSheet)
     return new NextResponse(csv, {
       headers: {
         'Content-Type': 'text/csv',
-        'Content-Disposition': `attachment; filename="pepscore-finance-expenses-${filenameRange}.csv"`,
+        'Content-Disposition': `attachment; filename="${baseFilename}_ExpenseLedger.csv"`,
       },
     })
   }
@@ -41,7 +49,7 @@ export async function GET(req: NextRequest) {
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'Content-Disposition': `attachment; filename="pepscore-finance-${filenameRange}.xlsx"`,
+      'Content-Disposition': `attachment; filename="${baseFilename}.xlsx"`,
     },
   })
 }

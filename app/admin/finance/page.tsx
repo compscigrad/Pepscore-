@@ -17,6 +17,17 @@ import {
 } from '@/lib/finance/reports'
 import { listExpenses } from '@/lib/finance/expenses'
 import { listInventoryPurchases } from '@/lib/finance/inventoryPurchases'
+import { getSalesTaxSummary } from '@/lib/finance/salesTax'
+import { getStripeReconciliationReport, getStripeReconciliationSummary } from '@/lib/finance/stripeReconciliation'
+import { getProfitLossReport } from '@/lib/finance/profitLoss'
+import { getMonthlySummary } from '@/lib/finance/monthlySummary'
+import { listOwnerTransactions, getOwnerTransactionSummary } from '@/lib/finance/ownerTransactions'
+import { getBusinessTaxProfile, getMissingProfileFields } from '@/lib/finance/taxProfile'
+import { listTaxReminders } from '@/lib/finance/taxReminders'
+import { listVendors1099WithPayments } from '@/lib/finance/vendors1099'
+import { getForm1099KReconciliationReport } from '@/lib/finance/form1099k'
+import { getDataQualityFlags } from '@/lib/finance/dataQualityFlags'
+import { listMonthlyCloses } from '@/lib/finance/monthlyClose'
 import { prisma } from '@/lib/prisma'
 import { FinanceView } from '@/components/admin/FinanceView'
 
@@ -40,8 +51,14 @@ export default async function FinancePage({ searchParams }: PageProps) {
 
   const params = await searchParams
   const range = resolveFinanceRange(params)
+  const taxYear = range.to.getFullYear()
 
-  const [metrics, expenses, discounts, refunds, losses, purchases, vendors, products] = await Promise.all([
+  const [
+    metrics, expenses, discounts, refunds, losses, purchases, vendors, products,
+    salesTax, stripeReconciliation, stripeReconciliationSummary, profitLoss, monthlySummary,
+    ownerTransactions, ownerTransactionSummary, taxProfile, taxReminders, vendors1099,
+    form1099k, dataQualityFlags, monthlyCloses,
+  ] = await Promise.all([
     getFinanceDashboardMetrics(range),
     listExpenses({ from: range.from, to: range.to }),
     getDiscountsCreditsReport(range),
@@ -50,11 +67,26 @@ export default async function FinancePage({ searchParams }: PageProps) {
     listInventoryPurchases({ from: range.from, to: range.to }),
     getVendorReport(range),
     prisma.product.findMany({ select: { id: true, name: true, size: true }, orderBy: { name: 'asc' } }),
+    getSalesTaxSummary(range),
+    getStripeReconciliationReport(range),
+    getStripeReconciliationSummary(range),
+    getProfitLossReport(range),
+    getMonthlySummary(taxYear),
+    listOwnerTransactions({ from: range.from, to: range.to }),
+    getOwnerTransactionSummary(range),
+    getBusinessTaxProfile(),
+    listTaxReminders(),
+    listVendors1099WithPayments(taxYear),
+    getForm1099KReconciliationReport(taxYear),
+    getDataQualityFlags(),
+    listMonthlyCloses(taxYear),
   ])
+  const missingProfileFields = getMissingProfileFields(taxProfile)
 
   return (
     <FinanceView
       range={range}
+      taxYear={taxYear}
       metrics={metrics}
       expenses={expenses}
       discounts={discounts}
@@ -63,6 +95,20 @@ export default async function FinancePage({ searchParams }: PageProps) {
       purchases={purchases}
       vendors={vendors}
       products={products}
+      salesTax={salesTax}
+      stripeReconciliation={stripeReconciliation}
+      stripeReconciliationSummary={stripeReconciliationSummary}
+      profitLoss={profitLoss}
+      monthlySummary={monthlySummary}
+      ownerTransactions={ownerTransactions}
+      ownerTransactionSummary={ownerTransactionSummary}
+      taxProfile={taxProfile}
+      missingProfileFields={missingProfileFields}
+      taxReminders={taxReminders}
+      vendors1099={vendors1099}
+      form1099k={form1099k}
+      dataQualityFlags={dataQualityFlags}
+      monthlyCloses={monthlyCloses}
       prefill={params.open === '1' ? { category: params.category, invoiceId: params.invoiceId } : undefined}
     />
   )

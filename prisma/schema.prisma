@@ -464,6 +464,12 @@ model Order {
   createdAt             DateTime          @default(now())
   updatedAt             DateTime          @updatedAt
 
+  // Same test-data exclusion marker as Invoice.isTestData above -- kept
+  // symmetric even though the Order table has zero rows in production
+  // today (storefront checkout hasn't launched), purely so financial
+  // reporting never needs a later migration once real Orders exist.
+  isTestData Boolean @default(false)
+
   // Phase 4A Critical #1 -- the one promotion code applied to this order,
   // if any. Additive/nullable: every pre-existing Order row has both null.
   // A single nullable FK is a deliberate scope decision for this slice --
@@ -624,6 +630,16 @@ model Invoice {
   // Financials — stored (not just derived) so history survives later price/promo edits
   subtotal       Float @default(0)
   discountTotal  Float @default(0)
+  // Sales tax charged on this invoice, if any (2026-08-18 Finance Center
+  // sprint). Additive -- every pre-existing invoice defaults to 0, matching
+  // actual reality (no tax has ever been collected on any invoice or
+  // storefront order to date; see docs/launch/SalesTaxDecision.md). Not
+  // wired into any invoice-creation UI yet -- this field exists so the
+  // Sales Tax Ledger has something real to report against once either a
+  // manual invoice starts charging tax or Stripe Tax activates at
+  // checkout, without a later migration. Never fabricated: reports read
+  // this field as-is, $0 stays $0.
+  tax            Float @default(0)
   total          Float @default(0)
   amountPaid     Float @default(0)
   balanceDue     Float @default(0)
@@ -668,6 +684,23 @@ model Invoice {
   archiveReason String?
   archivedBy    String?
   archiveSource InvoiceArchiveSource?
+
+  // Financial-reporting test-data exclusion (2026-08-18 Finance Center
+  // sprint). Distinct from archivedAt -- archiving a real, completed
+  // invoice keeps it in financial history (that's the whole point of
+  // Archive vs Trash, see above), so lib/finance/reports.ts deliberately
+  // never filters on archivedAt. isTestData is the opposite: a permanent
+  // "this was never a real transaction" marker that revenue/COGS/refund
+  // reporting always excludes, regardless of status or archive state.
+  // Defaults false (every pre-existing and future real invoice is
+  // unaffected); set true only for the 11 specific "Rehearsal"/
+  // "[REHEARSAL] Customer A/B" invoices identified and archived earlier
+  // in this same session (synthetic @example.com test data from an
+  // earlier autonomous session's own regression testing) via one
+  // explicit, audited backfill by invoice number -- never inferred from a
+  // fuzzy pattern match against future invoices, per the standing "do not
+  // automatically classify ambiguous real records as test" rule.
+  isTestData Boolean @default(false)
 
   // Soft-delete holding spot, distinct from archivedAt: Archive is for
   // completed invoices you keep for records; this is for "get this out of my
@@ -3205,4 +3238,227 @@ model ProductEngagementEvent {
 enum ProductEngagementEventType {
   VIEW
   ADD_TO_CART
+}
+
+// ─── Finance Center (2026-08-18 sprint) ─────────────────────────────────────
+// Builds on the existing Finance & Expense Intelligence models
+// (FinanceExpense/InventoryPurchase, 2026-08-12) rather than duplicating
+// them -- everything below is genuinely new reporting/tracking capability
+// that had no prior home: owner equity movements, business tax profile,
+// tax-deadline reminders, contractor 1099 tracking, and annual 1099-K
+// reconciliation. None of this asserts a tax obligation, files anything, or
+// moves money -- see docs/finance/PEPSCORE-TAX-REPORTING-GUIDE.md.
+
+// Money the owner puts into or takes out of the business -- explicitly
+// never sales revenue, a customer refund, or a business expense (spec
+// requirement: these three categories must never be confused). Kept as
+// its own model rather than a FinanceExpense subtype so "is this owner
+// equity or a real expense" is a schema-level fact, not a runtime
+// category check that a report could get wrong.
+model OwnerTransaction {
+  id          String               @id @default(cuid())
+  type        OwnerTransactionType
+  amount      Float
+  date        DateTime
+  description String
+  // Plain string, matching FinanceExpense's own receiptUrl/providerReference
+  // convention -- a bank transfer reference, check number, or receipt link.
+  sourceReference String?
+  notes           String?
+
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type])
+  @@index([date])
+}
+
+enum OwnerTransactionType {
+  CONTRIBUTION
+  DISTRIBUTION
+  REIMBURSEMENT
+  OWNER_PAID_EXPENSE
+}
+
+// Singleton row (fixed id) -- the business's own tax/entity identity,
+// configuration metadata only, never asserted or guessed by this
+// environment. Every field defaults to null/UNKNOWN; nothing here is
+// required to use any other part of the Finance Center. Entity type and
+// tax classification are stored as their own fields (not hardcoded
+// assumptions elsewhere) specifically so they can change later --
+// Decisions.md's own precedent for "don't bake in a business fact that
+// might not stay true."
+model BusinessTaxProfile {
+  id String @id @default("singleton")
+
+  legalBusinessName String?
+  dba               String?
+  ein               String?
+  stateOfFormation  String?
+  businessAddress   Json?
+
+  taxYearType TaxYearType @default(CALENDAR_YEAR)
+
+  entityType BusinessEntityType @default(UNKNOWN)
+  // Free text, not a fixed enum -- federal tax classification wording
+  // (disregarded entity, partnership, S-corp election specifics, etc.)
+  // varies enough by actual CPA-prepared filing that a hardcoded enum
+  // would either be incomplete or invite guessing. Same reasoning for the
+  // two registration fields below.
+  federalTaxClassification String?
+
+  accountingMethod AccountingMethod @default(UNKNOWN)
+
+  stateLocalTaxRegistrations String?
+  salesTaxRegistrations      String?
+
+  updatedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum TaxYearType {
+  CALENDAR_YEAR
+  FISCAL_YEAR
+}
+
+enum BusinessEntityType {
+  UNKNOWN
+  SOLE_PROPRIETORSHIP
+  SINGLE_MEMBER_LLC
+  MULTI_MEMBER_LLC_PARTNERSHIP
+  S_CORPORATION
+  C_CORPORATION
+  OTHER_CPA_DETERMINED
+}
+
+enum AccountingMethod {
+  UNKNOWN
+  CASH
+  ACCRUAL
+}
+
+// Configurable deadline/reminder tracking -- status defaults to
+// NOT_CONFIGURED and is never auto-derived into "legally required" just
+// because a date exists in the system (spec requirement: the software
+// must never assert a filing obligation on its own).
+model TaxReminder {
+  id                String            @id @default(cuid())
+  reminderType      TaxReminderType
+  dueDate           DateTime?
+  status            TaxReminderStatus @default(NOT_CONFIGURED)
+  notes             String?
+  ownerCpaConfirmed Boolean           @default(false)
+
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([reminderType])
+  @@index([dueDate])
+}
+
+enum TaxReminderType {
+  FEDERAL_ESTIMATED_TAX
+  DC_ESTIMATED_TAX
+  ANNUAL_FEDERAL_FILING
+  DC_FILING
+  SALES_TAX_FILING
+  CONTRACTOR_1099_REPORTING
+  BUSINESS_REGISTRATION_RENEWAL
+  OTHER
+}
+
+enum TaxReminderStatus {
+  NOT_CONFIGURED
+  UPCOMING
+  COMPLETED
+  OVERDUE
+}
+
+// Contractor/vendor 1099 tracking foundation. Deliberately does not store
+// a full TIN/SSN -- only whether a W-9 was received and the last 4 digits
+// of the TIN, matching the same last-4-only pattern already established
+// for payment card/bank display (see Payment.bankAccountLast4). Real
+// secure full-TIN collection is explicitly deferred to a proper secure
+// workflow/provider, not built here. Payments-to-date are computed live
+// from FinanceExpense.vendor at report time (lib/finance/vendors1099.ts),
+// never cached here, so there is exactly one source of truth for the
+// dollar amount and it can never drift from the expense ledger.
+model Vendor1099 {
+  id           String                 @id @default(cuid())
+  vendorName   String
+  payeeType    VendorPayeeType        @default(UNKNOWN)
+  w9Received   Boolean                @default(false)
+  tinLast4     String?
+  reviewStatus Vendor1099ReviewStatus @default(UNREVIEWED)
+  notes        String?
+
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([vendorName])
+}
+
+enum VendorPayeeType {
+  UNKNOWN
+  BUSINESS
+  INDIVIDUAL
+}
+
+enum Vendor1099ReviewStatus {
+  UNREVIEWED
+  REVIEWED
+  FILED
+  NOT_APPLICABLE
+}
+
+// One row per tax year -- the owner manually enters what the payment
+// processor's actual 1099-K reports as gross receipts once it arrives at
+// year-end (no automated import exists), and
+// lib/finance/form1099kReconciliation.ts computes book gross/refunds/
+// fees/shipping/tax/adjustments/difference live from existing records at
+// report time, never stored redundantly here.
+model Form1099KReconciliation {
+  id                     String    @id @default(cuid())
+  taxYear                Int       @unique
+  processorReportedGross Float?
+  notes                  String?
+  enteredBy              String?
+  enteredAt              DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Monthly close checklist -- a non-destructive workflow marker, not a
+// data-locking mechanism (nothing in this codebase is prevented from being
+// edited after a month is "closed"; this is a tracking/visibility tool
+// only). Reopen is always available, matching the spec's explicit
+// "closing must never be destructive" requirement.
+model MonthlyClose {
+  id    String @id @default(cuid())
+  year  Int
+  month Int // 1-12
+
+  ordersReconciled   Boolean @default(false)
+  paymentsReconciled Boolean @default(false)
+  refundsReconciled  Boolean @default(false)
+  shippingReconciled Boolean @default(false)
+  expensesEntered    Boolean @default(false)
+  receiptsReviewed   Boolean @default(false)
+  salesTaxReviewed   Boolean @default(false)
+  bankReconciled     Boolean @default(false)
+
+  closedAt   DateTime?
+  closedBy   String?
+  reopenedAt DateTime?
+  reopenedBy String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([year, month])
 }

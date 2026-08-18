@@ -34,7 +34,12 @@ export interface FinanceDashboardMetrics {
 }
 
 export async function getFinanceDashboardMetrics(range: DateRange): Promise<FinanceDashboardMetrics> {
-  const invoiceWhere = { issuedAt: { gte: range.from, lte: range.to }, status: { in: RECOGNIZED_REVENUE_STATUSES } }
+  // isTestData: false -- excludes the 11 known rehearsal/test invoices
+  // (2026-08-18 backfill) from every revenue-recognizing query below.
+  // Deliberately NOT filtering on archivedAt: archiving a real, completed
+  // invoice is a filing action, not a "this wasn't real" marker -- see
+  // Invoice.isTestData's own schema comment.
+  const invoiceWhere = { issuedAt: { gte: range.from, lte: range.to }, status: { in: RECOGNIZED_REVENUE_STATUSES }, isTestData: false }
 
   const [revenueAgg, invoiceItems, shippingExpenseAgg, paymentFeesAgg, opexAgg, needsReviewCount, refundsAgg] = await Promise.all([
     prisma.invoice.aggregate({ where: invoiceWhere, _sum: { subtotal: true, discountTotal: true, total: true } }),
@@ -46,7 +51,7 @@ export async function getFinanceDashboardMetrics(range: DateRange): Promise<Fina
     prisma.financeExpense.aggregate({ where: { category: 'PAYMENT_PROCESSING', date: { gte: range.from, lte: range.to } }, _sum: { amount: true } }),
     prisma.financeExpense.aggregate({ where: { taxTreatment: 'OPERATING_EXPENSE', date: { gte: range.from, lte: range.to } }, _sum: { amount: true } }),
     prisma.financeExpense.count({ where: { taxTreatment: 'NEEDS_ACCOUNTANT_REVIEW', date: { gte: range.from, lte: range.to } } }),
-    prisma.invoiceRefund.aggregate({ where: { status: 'COMPLETED', completedAt: { gte: range.from, lte: range.to } }, _sum: { completedAmount: true } }),
+    prisma.invoiceRefund.aggregate({ where: { status: 'COMPLETED', completedAt: { gte: range.from, lte: range.to }, invoice: { isTestData: false } }, _sum: { completedAmount: true } }),
   ])
 
   const itemsWithCost = invoiceItems.filter((i) => i.costOfGoods !== null)
@@ -94,7 +99,7 @@ export interface DiscountCreditRow {
 // credit (spec #21/#29).
 export async function getDiscountsCreditsReport(range: DateRange): Promise<DiscountCreditRow[]> {
   const rows = await prisma.invoiceDiscount.findMany({
-    where: { invoice: { issuedAt: { gte: range.from, lte: range.to } } },
+    where: { invoice: { issuedAt: { gte: range.from, lte: range.to }, isTestData: false } },
     include: { invoice: { select: { invoiceNumber: true, customerName: true, issuedAt: true } }, backorderCompensation: { select: { id: true } }, promotion: { select: { id: true } } },
     orderBy: { invoice: { issuedAt: 'desc' } },
   })
@@ -121,7 +126,7 @@ export interface RefundReportRow {
 
 export async function getRefundReport(range: DateRange): Promise<RefundReportRow[]> {
   const rows = await prisma.invoiceRefund.findMany({
-    where: { status: 'COMPLETED', completedAt: { gte: range.from, lte: range.to } },
+    where: { status: 'COMPLETED', completedAt: { gte: range.from, lte: range.to }, invoice: { isTestData: false } },
     include: { invoice: { select: { invoiceNumber: true, customerName: true } } },
     orderBy: { completedAt: 'desc' },
   })

@@ -39,6 +39,32 @@ describe('resolveFinanceRange', () => {
     expect(range.to).toEqual(new Date(2026, 11, 31, 23, 59, 59, 999))
   })
 
+  it('resolves LAST_YEAR to the prior Jan 1 - Dec 31', () => {
+    const range = resolveFinanceRange({ range: 'LAST_YEAR' }, NOW)
+    expect(range.from).toEqual(new Date(2025, 0, 1, 0, 0, 0, 0))
+    expect(range.to).toEqual(new Date(2025, 11, 31, 23, 59, 59, 999))
+  })
+
+  it('resolves TODAY to just the current day', () => {
+    const range = resolveFinanceRange({ range: 'TODAY' }, NOW)
+    expect(range.from).toEqual(new Date(2026, 7, 12, 0, 0, 0, 0))
+    expect(range.to).toEqual(new Date(2026, 7, 12, 23, 59, 59, 999))
+  })
+
+  it('resolves THIS_WEEK to the Sunday-Saturday week containing now', () => {
+    // NOW is Wednesday 2026-08-12 -> week is Sun 2026-08-09 to Sat 2026-08-15
+    const range = resolveFinanceRange({ range: 'THIS_WEEK' }, NOW)
+    expect(range.from).toEqual(new Date(2026, 7, 9, 0, 0, 0, 0))
+    expect(range.to).toEqual(new Date(2026, 7, 15, 23, 59, 59, 999))
+  })
+
+  it('resolves THIS_WEEK correctly when now itself is a Sunday', () => {
+    const sunday = new Date(2026, 7, 9, 10, 0)
+    const range = resolveFinanceRange({ range: 'THIS_WEEK' }, sunday)
+    expect(range.from).toEqual(new Date(2026, 7, 9, 0, 0, 0, 0))
+    expect(range.to).toEqual(new Date(2026, 7, 15, 23, 59, 59, 999))
+  })
+
   it('resolves a valid CUSTOM range', () => {
     const range = resolveFinanceRange({ range: 'CUSTOM', from: '2026-01-01', to: '2026-01-31' }, NOW)
     expect(range.key).toBe('CUSTOM')
