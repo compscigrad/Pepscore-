@@ -4,7 +4,8 @@ import { MODEL_ROUTES } from './modelRoutes'
 import type { AiConfig } from './config'
 
 const baseConfig: AiConfig = {
-  featureEnabled: true,
+  featureEnabled: false,
+  liveModelEnabled: true,
   gatewayApiKey: 'test-key',
   primaryModel: 'approved-model',
   fallbackModel: 'approved-fallback-model',
@@ -20,9 +21,14 @@ beforeEach(() => {
 })
 
 describe('buildProviderRouterFromConfig', () => {
-  it('returns null when the feature flag is off, even with everything else configured', () => {
+  it('returns null when liveModelEnabled is off, even with everything else configured -- the actual kill switch (AI-1.15)', () => {
     MODEL_ROUTES.push({ model: 'approved-model', providerRoute: 'test', zdrEligible: true, dataPolicyVerified: true, dateVerified: '2026-08-18', notes: '' })
-    expect(buildProviderRouterFromConfig({ ...baseConfig, featureEnabled: false })).toBeNull()
+    expect(buildProviderRouterFromConfig({ ...baseConfig, liveModelEnabled: false })).toBeNull()
+  })
+
+  it('is unaffected by featureEnabled (the separate public-customer flag) -- a router can be built for admin/internal use while the public route stays off', () => {
+    MODEL_ROUTES.push({ model: 'approved-model', providerRoute: 'test', zdrEligible: true, dataPolicyVerified: true, dateVerified: '2026-08-18', notes: '' })
+    expect(buildProviderRouterFromConfig({ ...baseConfig, featureEnabled: false, liveModelEnabled: true })).not.toBeNull()
   })
 
   it('returns null without a gateway credential', () => {

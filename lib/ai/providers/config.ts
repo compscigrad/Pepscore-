@@ -3,13 +3,32 @@
 // style feature flags). No AIProviderConfig database table -- see the
 // AI-0B scope review's rationale for keeping this env-only.
 //
-// AI_FEATURE_ENABLED defaults OFF (unset = off, same convention as every
-// other rollout flag in .env.local.example). Nothing in lib/ai/ is called
-// from existing storefront/admin code paths, so this flag is a second,
-// belt-and-suspenders layer -- not the only thing standing between AI-0B
-// and production traffic.
+// AI-1.15 split what used to be one ambiguous flag into two independent
+// kill switches, after live verification surfaced the real problem: with
+// only AI_FEATURE_ENABLED, turning on admin/internal live-model testing
+// required also opening the public customer route -- there was no way to
+// verify a live model without exposing it. Now:
+//
+//   - featureEnabled  (AI_FEATURE_ENABLED)  = PUBLIC customer AI. Gates
+//     app/api/ai/intelligence/route.ts's top-level 503 and
+//     app/research/page.tsx's notFound(). Stays OFF -- public activation
+//     remains owner-gated, unaffected by this split.
+//   - liveModelEnabled (AI_LIVE_MODEL_ENABLED) = whether ANY real
+//     provider router can be constructed at all (buildProviderRouterFromConfig,
+//     factory.ts). Independent of featureEnabled -- an owner can turn
+//     this on for admin/internal verification (the live-test route,
+//     app/api/admin/ai/live-test) while the public route stays fully
+//     dark. Turning it off is the actual kill switch: every live-model
+//     consumer (askResearchQuestion, the admin live-test route) checks
+//     this via buildProviderRouterFromConfig and fails closed to
+//     UNAVAILABLE/NOT_CONFIGURED with zero network calls -- no paid
+//     request, storefront and every non-AI feature stay fully healthy.
+//
+// Both default OFF (unset), same convention as every other rollout flag
+// in .env.local.example.
 export interface AiConfig {
   featureEnabled: boolean
+  liveModelEnabled: boolean
   gatewayApiKey: string | undefined
   primaryModel: string | undefined
   fallbackModel: string | undefined
@@ -40,6 +59,7 @@ const DEFAULT_FALLBACK_MODEL = 'google/gemini-3.1-flash-lite'
 export function loadAiConfig(): AiConfig {
   return {
     featureEnabled: process.env.AI_FEATURE_ENABLED === 'true',
+    liveModelEnabled: process.env.AI_LIVE_MODEL_ENABLED === 'true',
     gatewayApiKey: process.env.AI_GATEWAY_API_KEY,
     primaryModel: process.env.AI_PRIMARY_MODEL ?? DEFAULT_PRIMARY_MODEL,
     fallbackModel: process.env.AI_FALLBACK_MODEL ?? DEFAULT_FALLBACK_MODEL,

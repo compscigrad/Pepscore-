@@ -6,6 +6,7 @@ import type { AiConfig } from './config'
 
 const baseConfig: AiConfig = {
   featureEnabled: false,
+  liveModelEnabled: false,
   gatewayApiKey: 'test-key',
   primaryModel: 'approved-model',
   fallbackModel: undefined,

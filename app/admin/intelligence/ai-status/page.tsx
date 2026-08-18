@@ -69,11 +69,22 @@ export default async function AiStatusPage() {
 
         <section className="mb-10">
           <h2 className="font-heading text-lg font-bold text-white mb-1">Activation Status</h2>
-          <p className="text-white/50 text-sm mb-4">Public activation is owner-gated regardless of what is engineered below -- this section shows what would need to be true first.</p>
+          <p className="text-white/50 text-sm mb-4">
+            Two independent kill switches, not one. <strong className="text-white/70">Public Customer AI</strong> gates the
+            storefront-facing route (<code className="text-white/60">/research</code>, <code className="text-white/60">/api/ai/intelligence</code>) --
+            it can stay off indefinitely; that decision is separately owner-gated.
+            <strong className="text-white/70"> Live Model Calls</strong> is the actual switch for whether any real, paid
+            provider request can happen at all (admin verification included) -- turn it off to stop spending immediately
+            without touching public activation or removing any code.
+          </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <div className="border border-gold/30 rounded p-4">
+              <p className="text-white/40 text-[11px] uppercase tracking-wide mb-2">Live Model Calls</p>
+              <StatusPill ok={config.liveModelEnabled} onLabel="Enabled" offLabel="Disabled (kill switch on)" />
+            </div>
             <div className="border border-white/10 rounded p-4">
-              <p className="text-white/40 text-[11px] uppercase tracking-wide mb-2">Feature Flag</p>
-              <StatusPill ok={config.featureEnabled} onLabel="Enabled" offLabel="Disabled (dark)" />
+              <p className="text-white/40 text-[11px] uppercase tracking-wide mb-2">Public Customer AI</p>
+              <StatusPill ok={config.publicAiEnabled} onLabel="Enabled" offLabel="Disabled (dark)" />
             </div>
             <div className="border border-white/10 rounded p-4">
               <p className="text-white/40 text-[11px] uppercase tracking-wide mb-2">Gateway Credential</p>
@@ -81,11 +92,13 @@ export default async function AiStatusPage() {
             </div>
             <div className="border border-white/10 rounded p-4">
               <p className="text-white/40 text-[11px] uppercase tracking-wide mb-2">Primary Model</p>
-              <StatusPill ok={config.primaryModelConfigured} onLabel="Configured" offLabel="Not Configured" />
+              <p className="text-white text-sm">{config.primaryModel ?? '—'}</p>
+              <StatusPill ok={config.primaryModelApproved} onLabel="Approved Route" offLabel="Not Approved" />
             </div>
             <div className="border border-white/10 rounded p-4">
               <p className="text-white/40 text-[11px] uppercase tracking-wide mb-2">Fallback Model</p>
-              <StatusPill ok={config.fallbackModelConfigured} onLabel="Configured" offLabel="Not Configured" />
+              <p className="text-white text-sm">{config.fallbackModel ?? '—'}</p>
+              <StatusPill ok={config.fallbackModelApproved} onLabel="Approved Route" offLabel="Not Approved" />
             </div>
             <div className="border border-white/10 rounded p-4">
               <p className="text-white/40 text-[11px] uppercase tracking-wide mb-2">Approved Model Routes</p>
@@ -96,16 +109,12 @@ export default async function AiStatusPage() {
               <p className="text-white text-sm tabular-nums">{config.rateLimitPerMinute}/min · {config.rateLimitPerDay}/day</p>
             </div>
             <div className="border border-white/10 rounded p-4">
-              <p className="text-white/40 text-[11px] uppercase tracking-wide mb-2">Daily Cost Limit</p>
+              <p className="text-white/40 text-[11px] uppercase tracking-wide mb-2">App Daily Cost Limit</p>
               <p className="text-white text-sm tabular-nums">${(config.dailyCostLimitCents / 100).toFixed(2)}</p>
             </div>
             <div className="border border-white/10 rounded p-4">
-              <p className="text-white/40 text-[11px] uppercase tracking-wide mb-2">Tier 2 Corpus</p>
-              <p className="text-white text-sm tabular-nums">{config.tier2SourceCount} sources</p>
-            </div>
-            <div className="border border-white/10 rounded p-4">
-              <p className="text-white/40 text-[11px] uppercase tracking-wide mb-2">Tier 3 Corpus</p>
-              <p className="text-white text-sm tabular-nums">{config.tier3SourceCount} sources</p>
+              <p className="text-white/40 text-[11px] uppercase tracking-wide mb-2">Tier 2 / Tier 3 Corpus</p>
+              <p className="text-white text-sm tabular-nums">{config.tier2SourceCount} / {config.tier3SourceCount} sources</p>
             </div>
           </div>
         </section>
@@ -114,8 +123,10 @@ export default async function AiStatusPage() {
           <h2 className="font-heading text-lg font-bold text-white mb-1">Live Model Verification</h2>
           <p className="text-white/50 text-sm mb-4">
             Runs a fixed, non-PII prompt through the real pipeline (policy gate → retrieval → live provider → output
-            gate). Returns NOT_CONFIGURED with no network call if the flag, credential, or an approved model route
-            is missing. Never customer-facing.
+            gate). Returns NOT_CONFIGURED with no network call if Live Model Calls is off, the credential is missing,
+            or the configured model has no approved route above. Never customer-facing -- gated separately from
+            Public Customer AI. The Vercel AI Gateway key itself carries its own $20 spend cap, set at creation and
+            not changed by this app.
           </p>
           <LiveTestPanel />
         </section>

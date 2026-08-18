@@ -5,6 +5,7 @@ import { loadAiConfig } from './config'
 
 const AI_ENV_KEYS = [
   'AI_FEATURE_ENABLED',
+  'AI_LIVE_MODEL_ENABLED',
   'AI_GATEWAY_API_KEY',
   'AI_PRIMARY_MODEL',
   'AI_FALLBACK_MODEL',
@@ -46,6 +47,23 @@ describe('loadAiConfig', () => {
   it('only enables the feature flag on the exact string "true"', () => {
     process.env.AI_FEATURE_ENABLED = 'true'
     expect(loadAiConfig().featureEnabled).toBe(true)
+  })
+
+  it('defaults liveModelEnabled to false when AI_LIVE_MODEL_ENABLED is unset -- the AI-1.15 kill switch defaults off, same as every other rollout flag', () => {
+    expect(loadAiConfig().liveModelEnabled).toBe(false)
+  })
+
+  it('only enables liveModelEnabled on the exact string "true"', () => {
+    process.env.AI_LIVE_MODEL_ENABLED = 'true'
+    expect(loadAiConfig().liveModelEnabled).toBe(true)
+  })
+
+  it('liveModelEnabled and featureEnabled are independent -- one can be true while the other is false', () => {
+    process.env.AI_LIVE_MODEL_ENABLED = 'true'
+    process.env.AI_FEATURE_ENABLED = 'false'
+    const config = loadAiConfig()
+    expect(config.liveModelEnabled).toBe(true)
+    expect(config.featureEnabled).toBe(false)
   })
 
   it('defaults primaryModel/fallbackModel to the AI-1.12 registered, ZDR-approved routes when unset', () => {

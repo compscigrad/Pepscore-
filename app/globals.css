@@ -19,6 +19,26 @@
   h1, h2, h3, h4, h5, h6 {
     @apply font-heading;
   }
+
+  /* Dropdown-contrast fix (site-wide audit, 2026-08-18): a native
+     <select>'s expanded option list is rendered by the browser/OS, not by
+     Tailwind background utilities on the element -- setting text-white on
+     a select (the pattern used throughout the admin/AI dark-themed
+     surfaces) does nothing to its popup's background, which stays the
+     browser's light default. Result: white-on-white, unreadable option
+     text. `color-scheme` is the one CSS property that actually controls
+     native form-control chrome (including the select popup), so scoping
+     `color-scheme: dark` to every select carrying text-white fixes every
+     current and future dark-themed select in one place -- no per-file
+     changes needed. Light-themed selects (the site's default cream/dark-
+     text body) are untouched, since they don't carry text-white and the
+     browser's light-mode popup already matches. Custom (non-native)
+     dropdown/popover components (PredictiveSearch, AdminCustomerSearch,
+     etc.) fully control their own background/text CSS already and don't
+     need this -- audited separately, already correctly dark-on-dark. */
+  select[class*="text-white"] {
+    color-scheme: dark;
+  }
 }
 
 @layer utilities {

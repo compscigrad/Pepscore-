@@ -33,6 +33,7 @@ function uniqueId() {
 
 const baseConfig: AiConfig = {
   featureEnabled: true,
+  liveModelEnabled: true,
   gatewayApiKey: 'test',
   primaryModel: 'test-model',
   fallbackModel: undefined,

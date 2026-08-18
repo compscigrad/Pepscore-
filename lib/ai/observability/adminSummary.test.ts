@@ -2,10 +2,19 @@ import { describe, it, expect } from 'vitest'
 import { buildConfigStatus, aggregateUsage, aggregateCompliance } from './adminSummary'
 
 describe('buildConfigStatus', () => {
-  it('reports the feature flag off and no configured provider secrets by default -- matches the dark-by-default env, no keys set in this test run', () => {
+  it('reports public AI and live-model calls both off, and no configured provider secret, by default -- matches the dark-by-default env, no keys set in this test run', () => {
     const status = buildConfigStatus()
-    expect(status.featureEnabled).toBe(false)
+    expect(status.publicAiEnabled).toBe(false)
+    expect(status.liveModelEnabled).toBe(false)
     expect(status.gatewayConfigured).toBe(false)
+  })
+
+  it('reports the real default primary/fallback model identifiers and their approval status (AI-1.12/1.15) -- these are real model IDs, not secrets, safe to expose', () => {
+    const status = buildConfigStatus()
+    expect(status.primaryModel).toBe('anthropic/claude-haiku-4.5')
+    expect(status.fallbackModel).toBe('google/gemini-3.1-flash-lite')
+    expect(status.primaryModelApproved).toBe(true)
+    expect(status.fallbackModelApproved).toBe(true)
   })
 
   it('counts the real shipped MODEL_ROUTES entries (AI-1.12 registered two, both approved)', () => {
@@ -14,10 +23,9 @@ describe('buildConfigStatus', () => {
     expect(status.approvedModelRouteCount).toBe(2)
   })
 
-  it('never exposes the raw config values themselves -- only booleans/counts', () => {
+  it('never exposes the raw gateway secret itself', () => {
     const status = buildConfigStatus()
     expect(status).not.toHaveProperty('gatewayApiKey')
-    expect(status).not.toHaveProperty('primaryModel')
   })
 })
 

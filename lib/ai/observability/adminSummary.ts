@@ -21,11 +21,21 @@ function windowStart(days: number): Date {
 }
 
 // ─── Configuration status (no DB, no secrets) ───────────────────────────
+// AI-1.15 -- publicAiEnabled and liveModelEnabled are reported as two
+// separate booleans (not one), matching the two-flag kill-switch split in
+// providers/config.ts -- an admin must be able to see "is the public
+// route open" and "can any live model call happen at all" as distinct
+// facts, not one conflated status. primaryModel/fallbackModel are real
+// model identifiers (e.g. "anthropic/claude-haiku-4.5"), not secrets --
+// safe to surface directly, unlike gatewayApiKey.
 export interface AiConfigStatus {
-  featureEnabled: boolean
+  publicAiEnabled: boolean
+  liveModelEnabled: boolean
   gatewayConfigured: boolean
-  primaryModelConfigured: boolean
-  fallbackModelConfigured: boolean
+  primaryModel: string | undefined
+  fallbackModel: string | undefined
+  primaryModelApproved: boolean
+  fallbackModelApproved: boolean
   approvedModelRouteCount: number
   totalModelRouteCount: number
   rateLimitPerMinute: number
@@ -38,10 +48,13 @@ export interface AiConfigStatus {
 export function buildConfigStatus(): AiConfigStatus {
   const config = loadAiConfig()
   return {
-    featureEnabled: config.featureEnabled,
+    publicAiEnabled: config.featureEnabled,
+    liveModelEnabled: config.liveModelEnabled,
     gatewayConfigured: !!config.gatewayApiKey,
-    primaryModelConfigured: !!config.primaryModel,
-    fallbackModelConfigured: !!config.fallbackModel,
+    primaryModel: config.primaryModel,
+    fallbackModel: config.fallbackModel,
+    primaryModelApproved: !!config.primaryModel && isRouteApproved(config.primaryModel),
+    fallbackModelApproved: !!config.fallbackModel && isRouteApproved(config.fallbackModel),
     approvedModelRouteCount: MODEL_ROUTES.filter((r) => isRouteApproved(r.model)).length,
     totalModelRouteCount: MODEL_ROUTES.length,
     rateLimitPerMinute: config.rateLimitPerMinute,

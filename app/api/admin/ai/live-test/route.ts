@@ -8,10 +8,12 @@
 // Runs the exact same runAiPipeline() every future generation-based
 // capability would use: rate limit -> budget -> input policy -> retrieval
 // (Tier 1 catalog, sanitized, cited) -> provider call (primary -> fallback)
-// -> output policy. If no live provider can actually be built (feature
-// flag off, no gateway credential, or no approved model route), returns
-// NOT_CONFIGURED and never attempts a network call -- this route is safe
-// to deploy and hit before a real credential exists.
+// -> output policy. If no live provider can actually be built
+// (AI_LIVE_MODEL_ENABLED off, no gateway credential, or no approved model
+// route), returns NOT_CONFIGURED and never attempts a network call -- this
+// route is safe to deploy and hit before a real credential exists, and
+// this specific check (independent of AI_FEATURE_ENABLED, the separate
+// public-customer flag) is the actual owner kill switch for this route.
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireAdmin } from '@/lib/auth/rbac'
@@ -38,8 +40,8 @@ export async function POST(req: Request) {
     return NextResponse.json({
       status: 'NOT_CONFIGURED',
       reason:
-        'No live provider router could be built. Check: AI_FEATURE_ENABLED, AI_GATEWAY_API_KEY, and whether the ' +
-        'configured primary model has an approved entry in lib/ai/providers/modelRoutes.ts.',
+        'No live provider router could be built. Check: AI_LIVE_MODEL_ENABLED, AI_GATEWAY_API_KEY, and whether ' +
+        'the configured primary model has an approved entry in lib/ai/providers/modelRoutes.ts.',
     })
   }
 
