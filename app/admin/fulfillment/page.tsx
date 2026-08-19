@@ -14,7 +14,7 @@ import { listFulfillmentQueue, BUCKET_LABEL, ACTIONABLE_BUCKETS, type Fulfillmen
 import { reconcileFulfillmentAlerts } from '@/lib/fulfillment/alerts'
 import { FulfillmentQueueTable } from '@/components/admin/FulfillmentQueueTable'
 
-const DISPLAY_ORDER: FulfillmentBucket[] = ['LABEL_NEEDED', 'STALLED', 'EXCEPTION', 'AWAITING_CARRIER_SCAN', 'NEEDS_FULFILLMENT', 'IN_TRANSIT', 'DELIVERED']
+const DISPLAY_ORDER: FulfillmentBucket[] = ['LABEL_NEEDED', 'STALLED', 'EXCEPTION', 'AWAITING_CARRIER_SCAN', 'NEEDS_FULFILLMENT', 'IN_TRANSIT', 'SELF_DELIVERY', 'DELIVERED']
 
 export default async function FulfillmentCommandCenterPage({ searchParams }: { searchParams: Promise<{ bucket?: string }> }) {
   const { userId } = await auth()

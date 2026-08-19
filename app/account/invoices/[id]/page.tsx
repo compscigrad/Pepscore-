@@ -12,7 +12,8 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getPortalAuthState } from '@/lib/portalAuth'
 import { getPortalInvoiceDetail } from '@/lib/portal/invoices'
-import { formatMoney, formatDate } from '@/lib/invoice/format'
+import { formatMoney, formatDate, formatCarrierLabel } from '@/lib/invoice/format'
+import { isTrackableCarrier } from '@/lib/tracking/types'
 import { StatusBadge } from '@/components/invoices/StatusBadge'
 import { PortalStatusShell } from '@/components/account/PortalStatusShell'
 import { PortalPaymentControls } from '@/components/account/PortalPaymentControls'
@@ -166,6 +167,20 @@ export default async function InvoiceDetailPage({ params }: PageProps) {
                   </div>
                 </div>
               ))}
+            </div>
+          </Section>
+        ) : invoice.carrier && !isTrackableCarrier(invoice.carrier) ? (
+          // Self-delivery/pickup order -- no real Shipment row is ever
+          // expected here, so this is a resolved state, not an empty one.
+          <Section title="Delivery">
+            <div className="bg-white/[0.03] border border-white/10 rounded-lg p-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <p className="text-white text-sm font-medium">{formatCarrierLabel(invoice.carrier)}</p>
+                <span className="text-blue-300 text-xs font-heading font-bold uppercase tracking-[0.06em]">
+                  {invoice.deliveryStatus === 'DELIVERED' ? 'Delivered' : 'Preparing for delivery'}
+                </span>
+              </div>
+              <p className="text-white/40 text-xs mt-1.5">This order is not shipped via a trackable carrier — no tracking number applies.</p>
             </div>
           </Section>
         ) : null}

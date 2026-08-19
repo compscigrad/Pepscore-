@@ -11,7 +11,8 @@
 import { prisma } from '@/lib/prisma'
 import { getPrimaryShipment } from '@/lib/shipments/primary'
 import { getFulfillmentSettings } from '@/lib/fulfillment/settings'
-import type { Shipment, ShippingStatus, InvoiceStatus } from '@prisma/client'
+import { TRACKABLE_CARRIERS } from '@/lib/tracking/types'
+import type { Shipment, ShippingStatus, InvoiceStatus, ShippingCarrier, DeliveryStatus } from '@prisma/client'
 
 export type FulfillmentBucket =
   | 'NOT_APPLICABLE' // not paid enough yet, or invoice cancelled/void -- excluded from the queue
@@ -22,6 +23,17 @@ export type FulfillmentBucket =
   | 'STALLED' // label-with-no-scan or in-transit-with-no-movement, past its threshold
   | 'EXCEPTION' // carrier exception/returned/lost, or a shipment exists on a since-refunded/cancelled/voided invoice
   | 'DELIVERED'
+  // 2026-08-19 self-delivery parity fix: a real state, not an absence of
+  // one. An invoice with a non-trackable carrier (HAND_DELIVERY/PICKUP/
+  // COURIER/OTHER) set via the legacy carrier/trackingNumber fields and
+  // no real Shipment row -- previously fell into NEEDS_FULFILLMENT/
+  // LABEL_NEEDED forever (this bucket derivation had no way to know the
+  // order was already being handled outside the trackable-carrier
+  // system), which meant the Command Center nagged the owner about a sale
+  // that was never going to get a tracking number by design. Deliberately
+  // excluded from ACTIONABLE_BUCKETS below -- self-delivery is not an
+  // exception condition.
+  | 'SELF_DELIVERY'
 
 const AWAITING_SCAN_STATUSES: ShippingStatus[] = ['NOT_SHIPPED', 'TRACKING_ADDED', 'LABEL_CREATED', 'CARRIER_AWAITING_PACKAGE']
 const MOVING_STATUSES: ShippingStatus[] = ['ACCEPTED_BY_CARRIER', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'AVAILABLE_FOR_PICKUP', 'DELIVERY_ATTEMPTED']
@@ -34,6 +46,12 @@ export interface FulfillmentBucketInput {
   paidAt: Date | null
   hasActivePaymentArrangement: boolean
   hasActiveBackorder: boolean
+  // 2026-08-19 self-delivery parity fix -- the legacy Invoice.carrier/
+  // deliveryStatus fields, read only when there's no real Shipment row.
+  // Never used to override a genuine Shipment's own status; only fills
+  // the gap that field combination was previously invisible to.
+  legacyCarrier: ShippingCarrier | null
+  legacyDeliveryStatus: DeliveryStatus
   shipment: {
     normalizedStatus: ShippingStatus
     // The best available "when did this leg start" timestamp for the
@@ -75,6 +93,14 @@ export function deriveFulfillmentBucket(input: FulfillmentBucketInput): Fulfillm
   }
 
   if (!input.shipment) {
+    // Self-delivery/pickup/courier set via the legacy carrier field, no
+    // real Shipment ever expected -- recognize it as handled rather than
+    // perpetually nagging for a label/tracking number that was never
+    // going to exist for this sale.
+    if (input.legacyCarrier && !TRACKABLE_CARRIERS.includes(input.legacyCarrier)) {
+      if (input.legacyDeliveryStatus === 'DELIVERED') return 'DELIVERED'
+      return 'SELF_DELIVERY'
+    }
     const ageHours = hoursSince(input.paidAt, input.now)
     if (ageHours !== null && ageHours >= input.thresholds.labelNeededHours) return 'LABEL_NEEDED'
     return 'NEEDS_FULFILLMENT'
@@ -112,6 +138,7 @@ export const BUCKET_LABEL: Record<FulfillmentBucket, string> = {
   STALLED: 'Stalled / Needs Attention',
   EXCEPTION: 'Exception',
   DELIVERED: 'Delivered',
+  SELF_DELIVERY: 'Self Delivery / Pickup',
 }
 
 // Buckets that represent genuine, current risk -- used both for the
@@ -188,6 +215,8 @@ export async function listFulfillmentQueue(now: number = Date.now()): Promise<Fu
       paidAt: invoice.paidAt,
       hasActivePaymentArrangement: hasActiveArrangement,
       hasActiveBackorder: hasBackorder,
+      legacyCarrier: invoice.carrier,
+      legacyDeliveryStatus: invoice.deliveryStatus,
       shipment: shipmentInput,
       thresholds: {
         labelNeededHours: settings.labelNeededHours,

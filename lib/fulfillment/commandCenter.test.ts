@@ -10,6 +10,8 @@ const base: FulfillmentBucketInput = {
   paidAt: new Date(NOW - 1 * 60 * 60 * 1000), // 1h ago
   hasActivePaymentArrangement: false,
   hasActiveBackorder: false,
+  legacyCarrier: null,
+  legacyDeliveryStatus: 'PREPARING',
   shipment: null,
   thresholds: THRESHOLDS,
   now: NOW,
@@ -141,5 +143,45 @@ describe('deriveFulfillmentBucket', () => {
         shipment: { normalizedStatus: 'SOME_FUTURE_STATUS', phaseStartedAt: hoursAgo(1), monitoringActive: true, voidedAt: null },
       })
     ).toBe('EXCEPTION')
+  })
+
+  // 2026-08-19 self-delivery parity fix: a HAND_DELIVERY/PICKUP/COURIER/OTHER
+  // invoice with no real Shipment row (the legacy carrier-field path) was
+  // previously indistinguishable from "genuinely needs a label" -- it fell
+  // into NEEDS_FULFILLMENT/LABEL_NEEDED forever, regardless of age.
+  it('a fresh self-delivery invoice (no shipment, non-trackable carrier) -> SELF_DELIVERY, not NEEDS_FULFILLMENT', () => {
+    expect(deriveFulfillmentBucket({ ...base, paidAt: hoursAgo(2), legacyCarrier: 'HAND_DELIVERY' })).toBe('SELF_DELIVERY')
+  })
+
+  it('a self-delivery invoice never escalates to LABEL_NEEDED no matter how old', () => {
+    expect(deriveFulfillmentBucket({ ...base, paidAt: hoursAgo(500), legacyCarrier: 'HAND_DELIVERY' })).toBe('SELF_DELIVERY')
+    expect(deriveFulfillmentBucket({ ...base, paidAt: hoursAgo(500), legacyCarrier: 'PICKUP' })).toBe('SELF_DELIVERY')
+    expect(deriveFulfillmentBucket({ ...base, paidAt: hoursAgo(500), legacyCarrier: 'COURIER' })).toBe('SELF_DELIVERY')
+    expect(deriveFulfillmentBucket({ ...base, paidAt: hoursAgo(500), legacyCarrier: 'OTHER' })).toBe('SELF_DELIVERY')
+  })
+
+  it('a self-delivery invoice explicitly marked DELIVERED -> DELIVERED, not SELF_DELIVERY', () => {
+    expect(
+      deriveFulfillmentBucket({ ...base, legacyCarrier: 'HAND_DELIVERY', legacyDeliveryStatus: 'DELIVERED' })
+    ).toBe('DELIVERED')
+  })
+
+  it('a trackable carrier set on the legacy field with no shipment yet still uses the normal NEEDS_FULFILLMENT/LABEL_NEEDED path', () => {
+    expect(deriveFulfillmentBucket({ ...base, paidAt: hoursAgo(2), legacyCarrier: 'USPS' })).toBe('NEEDS_FULFILLMENT')
+    expect(deriveFulfillmentBucket({ ...base, paidAt: hoursAgo(25), legacyCarrier: 'USPS' })).toBe('LABEL_NEEDED')
+  })
+
+  it('a real Shipment row always takes priority over the legacy carrier field, even if that carrier is non-trackable', () => {
+    // Once a real Shipment exists (e.g. manually added tracking for a
+    // HAND_DELIVERY carrier), the genuine shipment status drives the
+    // bucket -- the legacy-field short-circuit only applies when there is
+    // no Shipment row at all.
+    expect(
+      deriveFulfillmentBucket({
+        ...base,
+        legacyCarrier: 'HAND_DELIVERY',
+        shipment: { normalizedStatus: 'DELIVERED', phaseStartedAt: hoursAgo(1), monitoringActive: true, voidedAt: null },
+      })
+    ).toBe('DELIVERED')
   })
 })

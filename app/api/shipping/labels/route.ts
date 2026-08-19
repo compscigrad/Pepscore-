@@ -8,6 +8,7 @@ import { prisma } from '@/lib/prisma'
 import { purchaseLabel, getRates } from '@/lib/shippo'
 import { getFulfillmentSettings } from '@/lib/fulfillment/settings'
 import { isShippoPurchasingEnabled, SHIPPO_PURCHASING_DEFERRED_MESSAGE } from '@/lib/fulfillment/labels'
+import { createExpenseIdempotent } from '@/lib/finance/expenses'
 import { sendCategorizedEmail } from '@/lib/notifications/log'
 import { buildTrackingUpdateHtml } from '@/emails/TrackingUpdate'
 import type { ShippingAddress } from '@/types'
@@ -67,7 +68,14 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    // Log shipping expense for accounting
+    // Legacy Expense row -- still what the Admin Overview dashboard's
+    // "2026 Expense Breakdown" card reads (app/admin/page.tsx). Left in
+    // place; the FinanceExpense write below is the additive fix so the
+    // real Finance Center (P&L/monthly summary/accountant exports/
+    // reconciliation) also sees Order-side shipping cost, matching the
+    // exact bridge already built for Invoice-side postage
+    // (lib/fulfillment/labels.ts) and Order-side Stripe fees
+    // (lib/payments/orderFulfillment.ts).
     await prisma.expense.create({
       data: {
         type: 'SHIPPING',
@@ -76,6 +84,23 @@ export async function POST(req: NextRequest) {
         orderId: order.id,
       },
     })
+
+    // Idempotent on Shippo's own label id -- a retried/duplicate request
+    // for the same purchased label can never double-post the shipping
+    // cost as a business expense.
+    await createExpenseIdempotent(
+      {
+        date: new Date(),
+        vendor: 'Shippo',
+        description: `${label.carrier} ${label.servicelevel_name} label — ${label.tracking_number}`,
+        amount: parseFloat(label.rate.amount),
+        category: 'SHIPPING_POSTAGE',
+        taxTreatment: 'OPERATING_EXPENSE',
+        orderId: order.id,
+        providerReference: label.object_id,
+      },
+      userId
+    )
 
     // Send tracking email to customer
     const trackingUrl = getCarrierTrackingUrl(label.carrier, label.tracking_number)

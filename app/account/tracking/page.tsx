@@ -4,7 +4,8 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getPortalAuthState } from '@/lib/portalAuth'
 import { listPortalInvoiceTracking } from '@/lib/portal/invoices'
-import { formatDate } from '@/lib/invoice/format'
+import { formatDate, formatCarrierLabel } from '@/lib/invoice/format'
+import { isTrackableCarrier } from '@/lib/tracking/types'
 import { StatusBadge } from '@/components/invoices/StatusBadge'
 import { PortalStatusShell } from '@/components/account/PortalStatusShell'
 
@@ -49,6 +50,14 @@ export default async function TrackingPage() {
                         <StatusBadge status={s.normalizedStatus} variant="shipping" />
                       </div>
                     ))}
+                  </div>
+                ) : invoice.carrier && !isTrackableCarrier(invoice.carrier) ? (
+                  // Self-delivery/pickup invoice with no real Shipment row --
+                  // this is a resolved, expected state, not a missing one.
+                  // No tracking number is ever expected here.
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-white/60">{formatCarrierLabel(invoice.carrier)}</span>
+                    <span className="text-blue-300 font-medium">{invoice.deliveryStatus === 'DELIVERED' ? 'Delivered' : 'Preparing for delivery'}</span>
                   </div>
                 ) : null}
 

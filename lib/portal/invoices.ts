@@ -83,6 +83,12 @@ export async function listPortalInvoiceTracking(customerId: string) {
       invoiceNumber: true,
       orderStatus: true,
       createdAt: true,
+      // Legacy self-delivery/pickup fields, read only when there are no
+      // real (unvoided) Shipment rows -- see the SELF_DELIVERY bucket fix
+      // in lib/fulfillment/commandCenter.ts for the admin-side counterpart
+      // of this same gap.
+      carrier: true,
+      deliveryStatus: true,
       shipments: {
         where: { voidedAt: null },
         orderBy: { createdAt: 'desc' },

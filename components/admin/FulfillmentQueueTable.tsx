@@ -16,6 +16,7 @@ const BUCKET_STYLE: Record<FulfillmentBucket, string> = {
   STALLED: 'bg-red-400/10 text-red-300',
   EXCEPTION: 'bg-purple-400/10 text-purple-300',
   DELIVERED: 'bg-green-400/10 text-green-300',
+  SELF_DELIVERY: 'bg-blue-400/10 text-blue-300',
 }
 
 function Pill({ label, className }: { label: string; className: string }) {
