@@ -858,20 +858,21 @@ export function FinanceView({
             {stripeReconciliation.length > 0 && (
               <div className={`${card} overflow-x-auto`}>
                 <table className="w-full text-[13px]">
-                  <thead><tr className="border-b border-white/10">{['Order #', 'Order Total', 'Stripe Gross', 'Fees', 'Refunded', 'Net Settlement', 'Payout', 'Status'].map((h) => (
+                  <thead><tr className="border-b border-white/10">{['Order #', 'Order Total', 'Stripe Gross', 'Fees', 'Fee Source', 'Refunded', 'Net Settlement', 'Payout', 'Status'].map((h) => (
                     <th key={h} className="text-left font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 px-4 py-3 whitespace-nowrap">{h}</th>
                   ))}</tr></thead>
                   <tbody>
                     {stripeReconciliation.map((r) => (
                       <tr key={r.orderId} className="border-b border-white/10">
-                        <td className="px-4 py-3 text-white">{r.orderNumber}</td>
-                        <td className="px-4 py-3 text-white/70">{money(r.orderTotal)}</td>
-                        <td className="px-4 py-3 text-white/70">{money(r.stripeGross)}</td>
-                        <td className="px-4 py-3 text-white/70">{money(r.stripeFees)}</td>
-                        <td className="px-4 py-3 text-white/70">{money(r.refundedAmount)}</td>
-                        <td className="px-4 py-3 text-white font-semibold">{money(r.netSettlement)}</td>
-                        <td className="px-4 py-3 text-white/50">{r.payoutId ?? '—'}</td>
-                        <td className={`px-4 py-3 font-semibold ${r.status === 'MATCHED' ? 'text-green-400' : r.status === 'MISMATCH' ? 'text-red-400' : 'text-amber-400'}`}>{r.status}</td>
+                        <td className="px-4 py-3 text-white whitespace-nowrap">{r.orderNumber}</td>
+                        <td className="px-4 py-3 text-white/70 whitespace-nowrap">{money(r.orderTotal)}</td>
+                        <td className="px-4 py-3 text-white/70 whitespace-nowrap">{money(r.stripeGross)}</td>
+                        <td className="px-4 py-3 text-white/70 whitespace-nowrap">{money(r.stripeFees)}</td>
+                        <td className={`px-4 py-3 text-[12px] whitespace-nowrap ${r.stripeFeeIsEstimated ? 'text-amber-400' : 'text-white/50'}`}>{r.stripeFeeIsEstimated ? 'Estimated' : 'Stripe (real)'}</td>
+                        <td className="px-4 py-3 text-white/70 whitespace-nowrap">{money(r.refundedAmount)}</td>
+                        <td className="px-4 py-3 text-white font-semibold whitespace-nowrap">{money(r.netSettlement)}</td>
+                        <td className="px-4 py-3 text-white/50 whitespace-nowrap">{r.payoutId ?? '—'}</td>
+                        <td className={`px-4 py-3 font-semibold whitespace-nowrap ${r.status === 'MATCHED' ? 'text-green-400' : r.status === 'MISMATCH' ? 'text-red-400' : 'text-amber-400'}`}>{r.status}</td>
                       </tr>
                     ))}
                   </tbody>

@@ -174,9 +174,9 @@ export async function assembleFinanceExport(range: DateRange): Promise<FinanceEx
 
   const stripeReconciliationSheet: FinanceSheet = {
     name: 'Stripe Reconciliation',
-    headers: ['Order #', 'Order Total', 'Stripe Gross', 'Fees', 'Refunded', 'Net Settlement', 'Payout ID', 'Status'],
-    rows: stripeReconciliation.map((r) => [r.orderNumber, money(r.orderTotal), money(r.stripeGross), money(r.stripeFees), money(r.refundedAmount), money(r.netSettlement), r.payoutId ?? '', r.status]),
-    colWidths: [16, 12, 12, 10, 10, 14, 20, 12],
+    headers: ['Order #', 'Order Total', 'Stripe Gross', 'Fees', 'Fee Source', 'Refunded', 'Net Settlement', 'Payout ID', 'Status'],
+    rows: stripeReconciliation.map((r) => [r.orderNumber, money(r.orderTotal), money(r.stripeGross), money(r.stripeFees), r.stripeFeeIsEstimated ? 'Estimated' : 'Stripe (real)', money(r.refundedAmount), money(r.netSettlement), r.payoutId ?? '', r.status]),
+    colWidths: [16, 12, 12, 10, 14, 10, 14, 20, 12],
   }
 
   const form1099kSheet: FinanceSheet = {

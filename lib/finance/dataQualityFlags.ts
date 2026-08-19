@@ -35,7 +35,8 @@ export interface DataQualityFlag {
     | 'NEGATIVE_IMPOSSIBLE_TOTAL'
     | 'EXPENSE_NEEDS_ACCOUNTANT_REVIEW'
     | 'ORDER_WITHOUT_PAYMENT'
-  entityType: 'Invoice' | 'Order' | 'FinanceExpense'
+    | 'STRIPE_FEE_ESTIMATED'
+  entityType: 'Invoice' | 'Order' | 'FinanceExpense' | 'Payment'
   entityId: string
   reference: string // invoice/order number or expense description, for display
   detail: string
@@ -146,6 +147,27 @@ export async function getDataQualityFlags(): Promise<DataQualityFlag[]> {
       entityId: order.id,
       reference: order.orderNumber,
       detail: `status=${order.status}, total=$${order.total.toFixed(2)} -- no linked Payment ever reached SUCCEEDED`,
+    })
+  }
+
+  // 2026-08-19 Stripe fee-reconciliation hardening -- a Payment whose
+  // stripeFee/netAmount came from the published-rate estimate (real
+  // balance_transaction wasn't retrievable at webhook time) rather than
+  // Stripe's own real data. Never silently corrected here -- surfaced so
+  // an admin can re-check the real figure against the Stripe Dashboard
+  // if it matters for a specific transaction.
+  const estimatedFeePayments = await prisma.payment.findMany({
+    where: { provider: 'STRIPE', stripeFeeIsEstimated: true, order: { isTestData: false } },
+    select: { id: true, stripeFee: true, order: { select: { orderNumber: true } } },
+    take: 200,
+  })
+  for (const p of estimatedFeePayments) {
+    flags.push({
+      type: 'STRIPE_FEE_ESTIMATED',
+      entityType: 'Payment',
+      entityId: p.id,
+      reference: p.order.orderNumber,
+      detail: `Recorded fee ($${p.stripeFee.toFixed(2)}) is a published-rate estimate, not Stripe's real balance transaction`,
     })
   }
 

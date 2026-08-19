@@ -1487,6 +1487,17 @@ model Payment {
   netAmount             Float         @default(0)
   createdAt             DateTime      @default(now())
 
+  // 2026-08-19 Stripe fee-reconciliation hardening -- true whenever
+  // stripeFee/netAmount above came from the published-pricing formula
+  // (lib/stripe.ts's estimateStripeFee/estimateAchFee) rather than
+  // Stripe's own balance_transaction on the actual charge. Set false the
+  // moment a real balance transaction was successfully retrieved. Exists
+  // so reporting/reconciliation can honestly distinguish "real Stripe
+  // data" from "a published-rate estimate used because the real figure
+  // wasn't retrievable at webhook time" rather than silently treating
+  // both the same way.
+  stripeFeeIsEstimated Boolean @default(true)
+
   provider              PaymentProvider             @default(STRIPE)
   methodType            StorefrontPaymentMethodType @default(CARD)
   providerTransactionId String?                     @unique

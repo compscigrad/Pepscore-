@@ -8,7 +8,8 @@
 // or failed order actually does" is defined in exactly one place rather
 // than duplicated per payment method.
 import { prisma } from '@/lib/prisma'
-import { estimateStripeFee, estimateAchFee } from '@/lib/stripe'
+import { getRealStripeFee, resolvePaymentFee } from '@/lib/stripe'
+import { createExpenseIdempotent } from '@/lib/finance/expenses'
 import { sendCategorizedEmail } from '@/lib/notifications/log'
 import { buildOrderConfirmationHtml } from '@/emails/OrderConfirmation'
 import { achPaymentProcessingSubject, buildAchPaymentProcessingHtml } from '@/emails/AchPaymentProcessing'
@@ -17,6 +18,8 @@ import { finalizeRedemption } from '@/lib/promotions/redemption'
 import { trackServerEvent } from '@/lib/analytics/serverTrack'
 import { AnalyticsEvent } from '@/lib/analytics/events'
 import type { StorefrontPaymentMethodType, Order } from '@prisma/client'
+
+const WEBHOOK_ACTOR_ID = 'system-stripe-webhook'
 
 export interface MarkOrderPaidInput {
   orderId: string
@@ -34,8 +37,14 @@ export interface MarkOrderPaidInput {
 // idempotent steps unnecessarily -- fulfillAllOrderReservationsTx and the
 // expense/email steps don't themselves re-check that.
 export async function markOrderPaid(input: MarkOrderPaidInput): Promise<Order> {
-  const fee = input.methodType === 'ACH' ? estimateAchFee(input.amountTotal) : estimateStripeFee(input.amountTotal)
-  const netAmount = input.amountTotal - fee
+  // Real Stripe balance-transaction data is the source of truth for the
+  // actual fee Stripe charged -- never the published-rate estimate, per
+  // the standing "don't calculate Stripe fees using an assumed percentage
+  // if Stripe exposes the actual fee" rule. Falls back to the estimate
+  // (and marks the row stripeFeeIsEstimated: true) only when the real
+  // balance transaction genuinely isn't retrievable, never silently.
+  const real = await getRealStripeFee(input.paymentIntentId)
+  const { fee, net: netAmount, stripeFeeIsEstimated } = resolvePaymentFee(real, input.methodType === 'ACH' ? 'ACH' : 'CARD', input.amountTotal)
 
   const order = await prisma.order.update({
     where: { id: input.orderId },
@@ -53,11 +62,12 @@ export async function markOrderPaid(input: MarkOrderPaidInput): Promise<Order> {
       status: 'SUCCEEDED',
       stripeFee: fee,
       netAmount,
+      stripeFeeIsEstimated,
       provider: 'STRIPE',
       methodType: input.methodType,
       completedAt: new Date(),
     },
-    update: { status: 'SUCCEEDED', stripeFee: fee, netAmount, completedAt: new Date() },
+    update: { status: 'SUCCEEDED', stripeFee: fee, netAmount, stripeFeeIsEstimated, completedAt: new Date() },
   })
 
   await prisma.$transaction((tx) => fulfillAllOrderReservationsTx(tx, order.id, 'system-stripe-webhook'))
@@ -76,6 +86,13 @@ export async function markOrderPaid(input: MarkOrderPaidInput): Promise<Order> {
     await prisma.invoice.update({ where: { id: order.invoice.id }, data: { status: 'ISSUED', paidAt: new Date() } })
   }
 
+  // Legacy Expense rows -- still what the Admin Overview dashboard's own
+  // "2026 Expense Breakdown" card reads (app/admin/page.tsx). Left
+  // untouched rather than removed to avoid breaking that existing
+  // display; the FinanceExpense write below is the additive fix so the
+  // Finance Center's P&L/monthly-summary/exports also see this fee,
+  // which they didn't before (they only ever read FinanceExpense, never
+  // this legacy model -- a real, separate integration gap this closes).
   await prisma.expense.createMany({
     data: [
       {
@@ -92,6 +109,31 @@ export async function markOrderPaid(input: MarkOrderPaidInput): Promise<Order> {
       },
     ],
   })
+
+  // FinanceExpense mirror of the Stripe-fee row above -- the Finance
+  // Center's P&L/monthlySummary/exports/reconciliation all read
+  // FinanceExpense (category PAYMENT_PROCESSING), never the legacy
+  // Expense model, so without this the real fee captured above would
+  // never actually reach any Finance Center report. Idempotent on
+  // input.paymentIntentId: a redelivered webhook for the same payment
+  // (Stripe's own retry behavior, or this same event reaching
+  // checkout.session.completed and later async_payment_succeeded for one
+  // ACH payment) can never double-post the same fee, matching the exact
+  // pattern lib/fulfillment/labels.ts already uses for Shippo postage.
+  await createExpenseIdempotent(
+    {
+      date: new Date(),
+      vendor: 'Stripe',
+      description: `${input.methodType === 'ACH' ? 'ACH' : 'Card'} processing fee for order ${order.orderNumber}${stripeFeeIsEstimated ? ' (estimated -- real balance transaction unavailable at webhook time)' : ''}`,
+      amount: fee,
+      category: 'PAYMENT_PROCESSING',
+      taxTreatment: 'OPERATING_EXPENSE',
+      orderId: order.id,
+      providerReference: input.paymentIntentId,
+      notes: stripeFeeIsEstimated ? 'Estimated via published Stripe rate; real balance_transaction was not retrievable at webhook time.' : `Real Stripe balance transaction fee.`,
+    },
+    WEBHOOK_ACTOR_ID
+  )
 
   try {
     const html = buildOrderConfirmationHtml({

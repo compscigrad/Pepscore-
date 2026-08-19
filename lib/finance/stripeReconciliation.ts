@@ -21,6 +21,7 @@ export interface StripeReconciliationRow {
   stripePaymentIntentId: string
   stripeGross: number
   stripeFees: number
+  stripeFeeIsEstimated: boolean
   refundedAmount: number
   netSettlement: number
   payoutId: string | null
@@ -42,6 +43,25 @@ export function deriveReconciliationStatus(orderTotal: number, paymentAmount: nu
   return 'MATCHED'
 }
 
+// Pure -- exported for unit testing. 2026-08-19 Stripe fee-reconciliation
+// hardening: a real, found-and-fixed defect. `Payment.netAmount` is set
+// once, at charge time, from either Stripe's real balance transaction
+// (amount - fee) or the published-rate fallback -- it has no way to know
+// about a refund that happens later, since refunds are recorded
+// separately via reconcilePaymentEvent(). The previous inline expression
+// (`p.netAmount || p.amount - p.stripeFee - p.refundedAmount`) used
+// netAmount as-is whenever it was truthy, which is true for every real
+// payment markOrderPaid() ever creates -- meaning the refund-aware
+// fallback branch was structurally dead code, and a refund on any
+// payment never actually reduced its displayed Net Settlement. Fixed by
+// always subtracting refundedAmount from whichever gross-minus-fee figure
+// is available, never trusting a stored net-at-charge-time value alone
+// once a refund exists.
+export function computeNetSettlement(amount: number, fee: number, netAmount: number, refundedAmount: number): number {
+  const grossLessFee = netAmount || amount - fee
+  return grossLessFee - refundedAmount
+}
+
 export async function getStripeReconciliationReport(range: DateRange): Promise<StripeReconciliationRow[]> {
   const payments = await prisma.payment.findMany({
     where: { provider: 'STRIPE', createdAt: { gte: range.from, lte: range.to }, order: { isTestData: false } },
@@ -56,8 +76,9 @@ export async function getStripeReconciliationReport(range: DateRange): Promise<S
     stripePaymentIntentId: p.stripePaymentIntentId,
     stripeGross: p.amount,
     stripeFees: p.stripeFee,
+    stripeFeeIsEstimated: p.stripeFeeIsEstimated,
     refundedAmount: p.refundedAmount,
-    netSettlement: p.netAmount || p.amount - p.stripeFee - p.refundedAmount,
+    netSettlement: computeNetSettlement(p.amount, p.stripeFee, p.netAmount, p.refundedAmount),
     payoutId: p.payoutId,
     settledAt: p.settledAt,
     status: deriveReconciliationStatus(p.order.total, p.amount, p.status, p.settledAt),
