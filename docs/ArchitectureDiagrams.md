@@ -1,6 +1,6 @@
 # Pepscore Lab — Architecture Diagrams
 
-Companion to `docs/Architecture.md` (invoice-module-scoped) and `docs/CaseStudy.md` (full narrative history). This document holds system-level Mermaid diagrams for the ten flows tracked as a standing documentation requirement. Every node and edge below is grounded in real route paths, real function/model names, and real file locations as of commit `d602c11` (diagram 5, Financial Data Flow, updated 2026-08-19 for the Finance P1 sprint and the P0 verification pass's `deletedAt` fix; all other diagrams unchanged since `72a5baf` — none of this sprint's Admin cleanup or Finance P1 work altered the Customer Journey, Admin Operating System, Commerce/Payment, Fulfillment, AI Intelligence, Auth/RBAC, Webhook/Automation, Deployment, or Domain/Launch flows) — see the file path noted under each diagram for where to verify it directly. This is a living document: extend it, don't replace it, whenever a diagrammed flow changes materially.
+Companion to `docs/Architecture.md` (invoice-module-scoped) and `docs/CaseStudy.md` (full narrative history). This document holds system-level Mermaid diagrams for the ten flows tracked as a standing documentation requirement. Every node and edge below is grounded in real route paths, real function/model names, and real file locations as of commit `13ebf90` (diagrams 3 and 5 updated 2026-08-19: the Finance P1 sprint, the P0 verification pass's `deletedAt` fix, and the Stripe fee-reconciliation hardening pass — real balance-transaction fees, the `computeNetSettlement()` refund-bug fix, and the `markOrderPaid → FinanceExpense` bridge; all other diagrams unchanged since `72a5baf` — none of this work altered the Customer Journey, Admin Operating System, Fulfillment, AI Intelligence, Auth/RBAC, Webhook/Automation, Deployment, or Domain/Launch flows) — see the file path noted under each diagram for where to verify it directly. This is a living document: extend it, don't replace it, whenever a diagrammed flow changes materially.
 
 ---
 
@@ -92,7 +92,7 @@ flowchart TD
       F --> G["recordPayment() — lib/invoices.ts"]
     end
     D --> H["Stripe webhook\napp/api/webhooks/stripe/route.ts\n(signature-verified)"]
-    H -->|checkout.session.completed| I[markOrderPaid]
+    H -->|checkout.session.completed| I["markOrderPaid\ngetRealStripeFee() — real balance_transaction,\nnever the published-rate estimate\n(fallback flags stripeFeeIsEstimated)"]
     H -->|async_payment_succeeded/failed — ACH| I
     H -->|charge.refunded| J[PaymentProviderAdapter reconciler]
     H -->|charge.dispute.created| J
@@ -138,14 +138,15 @@ flowchart TD
 
 ## 5. Financial Data Flow
 
-Grounded in: `lib/finance/*.ts`, `docs/finance/PEPSCORE-FINANCIAL-ARCHITECTURE.md`. Updated 2026-08-19 for the Finance P1 sprint (`estimatedTax.ts`, the QuickBooks/Xero export sheet) and the P0 verification pass's `deletedAt` fix (`600af53`/`fde75da`/`6579ba3`, current through `d602c11`).
+Grounded in: `lib/finance/*.ts`, `docs/finance/PEPSCORE-FINANCIAL-ARCHITECTURE.md`. Updated 2026-08-19 for the Finance P1 sprint (`estimatedTax.ts`, the QuickBooks/Xero export sheet), the P0 verification pass's `deletedAt` fix (`600af53`/`fde75da`/`6579ba3`), and the Stripe fee-reconciliation hardening pass (`13ebf90`) — real balance-transaction fees, the `computeNetSettlement()` refund-bug fix, and the `markOrderPaid → FinanceExpense` bridge.
 
 ```mermaid
 flowchart TD
+    STRIPE["Stripe balance_transaction\n(real fee/net — getRealStripeFee())"] -.-> PAY
     subgraph Canonical["Canonical models (never duplicated)"]
       INV[Invoice / InvoiceItem]
       ORD[Order / OrderItem]
-      PAY[Payment / InvoicePayment]
+      PAY["Payment / InvoicePayment\n(stripeFee/netAmount real by default;\nstripeFeeIsEstimated flags the rare fallback)"]
       DISC[InvoiceDiscount / PromotionCode]
       REF[InvoiceRefund]
       LEDG["InventoryLedgerEntry\n(DAMAGE_LOSS)"]
@@ -154,16 +155,18 @@ flowchart TD
       OWNT[OwnerTransaction]
       BTP["BusinessTaxProfile\n(singleton — incl. estimatedTaxRatePercent)"]
     end
+    PAY -.markOrderPaid mirrors the real fee.-> EXP2["FinanceExpense\n(category PAYMENT_PROCESSING,\nidempotent on paymentIntentId)"]
+    EXP2 --> EXP
     Canonical --> REPORTS["lib/finance/reports.ts\nDashboard, discounts, refunds, inventory loss, vendor spend"]
     Canonical --> TAX["lib/finance/salesTax.ts\n(currently $0 — nothing collects tax)"]
-    Canonical --> RECON["lib/finance/stripeReconciliation.ts\nMATCHED/PARTIAL/MISMATCH/PENDING"]
+    Canonical --> RECON["lib/finance/stripeReconciliation.ts\nMATCHED/PARTIAL/MISMATCH/PENDING\ncomputeNetSettlement() always subtracts refunds"]
     REPORTS --> PL["lib/finance/profitLoss.ts\n(pure composition — Revenue -> COGS -> Gross Profit -> Op. Profit)"]
     TAX --> PL
     REPORTS --> MS["monthlySummary.ts\n(per-month Book Profit)"]
     Canonical --> V1099["lib/finance/vendors1099.ts\n(TIN last-4 only)"]
     RECON --> F1099K["form1099k.ts\nprocessor gross vs. book gross"]
     MS & BTP --> ETAX["estimatedTax.ts (P1)\ncomputeMonthBookProfit() x owner flat rate\n'Estimate only — not tax advice' always shown"]
-    PL & MS & RECON & V1099 & F1099K --> DQ["dataQualityFlags.ts\n(surfaced for review, never auto-corrected;\nincl. ORDER_WITHOUT_PAYMENT)"]
+    PL & MS & RECON & V1099 & F1099K --> DQ["dataQualityFlags.ts\n(surfaced for review, never auto-corrected;\nincl. ORDER_WITHOUT_PAYMENT, STRIPE_FEE_ESTIMATED)"]
     PL & MS & RECON & V1099 & F1099K --> EXPORT["export.ts — 14-sheet XLSX/CSV\n(pure composition, zero duplicated calc)\n+ buildQuickBooksXeroExpenseSheet (P1)\nno paid API connection required"]
     INV -.isTestData AND deletedAt.-> EXCL["Test/rehearsal + soft-deleted records\nexcluded from every revenue-recognizing query\n(closed a live $1.00 contamination, 6579ba3)"]
     EXP -.testDataExclusion helper.-> EXCL2["FinanceExpense linked to a test\ninvoice/order also excluded"]

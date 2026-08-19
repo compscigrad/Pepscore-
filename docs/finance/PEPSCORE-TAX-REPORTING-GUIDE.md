@@ -46,7 +46,7 @@ A checklist, not a lock — nothing in the app is prevented from being edited af
 
 ## Annual export package (Admin → Finance, "Export Excel")
 
-One workbook per date range, deterministic filename (`Pepscore_<year>_<range>_Export_<export-date>.xlsx`). Sheets: Summary, Expense Ledger, Shipping, Discounts & Credits, Inventory/COGS, Refunds, Vendors, Needs Review, Sales Tax, Owner Transactions, Stripe Reconciliation, 1099-K Reconciliation, Unreconciled Items, QuickBooks-Xero Import. Hand this to a CPA as-is — every number in it traces back to a real Pepscore record, never a synthesized or estimated one.
+One workbook per date range, deterministic filename (`Pepscore_<year>_<range>_Export_<export-date>.xlsx`). Sheets: Summary, Expense Ledger, Shipping, Discounts & Credits, Inventory/COGS, Refunds, Vendors, Needs Review, Sales Tax, Owner Transactions, Stripe Reconciliation, 1099-K Reconciliation, Unreconciled Items, QuickBooks-Xero Import. Hand this to a CPA as-is — every number in it traces back to a real Pepscore record. The one figure that can, rarely, be an estimate rather than Stripe's own reported number is the processing fee on the Stripe Reconciliation sheet (2026-08-19 hardening pass) — real Stripe balance-transaction data is used whenever available, and the sheet's own "Fee Source" column always says so explicitly ("Stripe (real)" vs. "Estimated") rather than presenting an estimate as if it were confirmed data.
 
 ## QuickBooks / Xero import (Admin → Finance, "Export QuickBooks/Xero")
 

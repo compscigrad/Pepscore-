@@ -34,6 +34,9 @@ Sales tax charged on this invoice. Not written by any code path yet (no invoice-
 
 **If you add a new revenue-touching query anywhere in this codebase, it must include this filter or it will silently include test data again.**
 
+### `Payment.stripeFeeIsEstimated` (new field, `Boolean @default(true)`)
+True whenever `stripeFee`/`netAmount` came from the published-rate estimate (`estimateStripeFee`/`estimateAchFee`) rather than Stripe's own real balance transaction — set `false` the moment `lib/stripe.ts`'s `getRealStripeFee()` successfully retrieves the real figure, which it does for essentially every payment (the estimate is the rare-case fallback, not the normal path). Surfaced directly in the Stripe Reconciliation report/UI/export ("Fee Source" column) and as a `STRIPE_FEE_ESTIMATED` data-quality flag whenever true, so an estimated fee is always visibly disclosed rather than silently presented as equivalent to real Stripe data.
+
 ## Report-definition reference
 
 | Term (as shown in the UI) | Exact definition |
@@ -47,6 +50,7 @@ Sales tax charged on this invoice. Not written by any code path yet (no invoice-
 | Estimated Gross Margin | `Net Revenue − COGS − Shipping Expense − Payment Processing Fees` |
 | Sales Tax Collected | Sum of `Invoice.tax` + `Order.tax` in range (currently always $0 — see the Tax Reporting Guide) |
 | Stripe Reconciliation Status | `MATCHED` / `PARTIAL` / `MISMATCH` / `PENDING` / `NOT_AVAILABLE` — pure function `deriveReconciliationStatus()` in `lib/finance/stripeReconciliation.ts`, unit-tested, tolerates $0.01 of float rounding before flagging a real mismatch |
+| Net Settlement | `computeNetSettlement()` in `lib/finance/stripeReconciliation.ts` — gross-minus-fee (real `netAmount` when available, else `amount - fee`) minus `refundedAmount`, **always**, unit-tested specifically against the bug this replaced (a refund used to never actually reduce this figure) |
 | Book Profit / Estimated Operating Profit | `Gross Profit − Operating Expenses` — explicitly never called "taxable income" anywhere in the UI |
 
 ## Owner-entered data (never inferred by this system)

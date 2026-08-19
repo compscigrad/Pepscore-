@@ -19,6 +19,16 @@
 
 **Rule enforced throughout this codebase**: every report function in `lib/finance/*.ts` reads from one of the models above. None of them recompute or re-derive a number a canonical model already owns. If a report needs a number that doesn't exist anywhere yet (e.g. sales tax collected), it reads the real field (`Invoice.tax`/`Order.tax`) and reports the real value — including $0 when that's the truth — rather than estimating.
 
+## Stripe processing-fee reconciliation (2026-08-19)
+
+`Payment.stripeFee`/`.netAmount` are populated from Stripe's own real balance transaction on the charge (`lib/stripe.ts`'s `getRealStripeFee()` → `PaymentIntent.latest_charge.balance_transaction`), never estimated from the published card/ACH rate — the published-rate functions (`estimateStripeFee`/`estimateAchFee`) exist only as the documented fallback for the rare case the real figure isn't retrievable at webhook time, and that fallback is always disclosed via `Payment.stripeFeeIsEstimated` (surfaced in the Stripe Reconciliation report/export and as a `STRIPE_FEE_ESTIMATED` data-quality flag), never silently blended with real data.
+
+The fee itself is mirrored into `FinanceExpense` (category `PAYMENT_PROCESSING`, `taxTreatment: OPERATING_EXPENSE`) the moment a storefront order is marked paid, idempotently keyed on the Stripe PaymentIntent id — this is what actually makes a real Stripe fee reach the P&L, monthly summary, and accountant export; `Payment.stripeFee` alone only ever fed the Stripe Reconciliation report. Test/rehearsal orders are automatically excluded from this expense the same way every other `FinanceExpense` row is (`getTestDataExpenseExclusion()`).
+
+Net Settlement (`lib/finance/stripeReconciliation.ts`'s `computeNetSettlement()`) always subtracts `refundedAmount` from gross-minus-fee, regardless of whether the stored `netAmount` came from a real balance transaction or the fallback formula — a real, found-and-fixed bug (the original inline expression used the stored `netAmount` as-is whenever it was set, which silently ignored every refund) is documented in `docs/CaseStudy.md`'s own mini case study for this fix, not just in this architecture note.
+
+Refunded amounts (`InvoiceRefund.completedAmount`, and the storefront-side `charge.amount_refunded` normalization) have always come from Stripe's own real event data, never estimated — confirmed, not assumed. Stripe's real behavior of never returning the original processing fee on a refund is correctly preserved: refund reconciliation (`lib/payments/reconcile.ts`) never modifies `stripeFee`.
+
 ## Test-data exclusion
 
 `Invoice.isTestData` / `Order.isTestData` (both `Boolean @default(false)`, added 2026-08-18) exclude non-real transactions from every revenue-recognizing query. This is **distinct from `archivedAt`** — archiving a real, completed invoice is a filing action and does not remove it from financial history; `isTestData` is the only field that means "this was never a real transaction."
