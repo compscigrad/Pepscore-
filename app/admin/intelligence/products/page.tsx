@@ -70,26 +70,28 @@ export default async function ProductIntelligencePage() {
           {rows.length === 0 ? (
             <p className="text-white/40 text-sm">No product engagement recorded in this window.</p>
           ) : (
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-white/10 text-white/40 uppercase text-[11px] tracking-wide">
-                  <th className="py-2 pr-4">Product</th>
-                  <th className="py-2 pr-4">Views</th>
-                  <th className="py-2 pr-4">Added to Cart</th>
-                  <th className="py-2">View → Cart Rate</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.productId} className="border-b border-white/5 text-white/80">
-                    <td className="py-2 pr-4">{row.productName}</td>
-                    <td className="py-2 pr-4">{row.views}</td>
-                    <td className="py-2 pr-4">{row.addsToCart}</td>
-                    <td className="py-2">{(row.viewToCartRate * 100).toFixed(1)}%</td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-white/10 text-white/40 uppercase text-[11px] tracking-wide">
+                    <th className="py-2 pr-4 whitespace-nowrap">Product</th>
+                    <th className="py-2 pr-4 whitespace-nowrap">Views</th>
+                    <th className="py-2 pr-4 whitespace-nowrap">Added to Cart</th>
+                    <th className="py-2 whitespace-nowrap">View → Cart Rate</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {rows.map((row) => (
+                    <tr key={row.productId} className="border-b border-white/5 text-white/80">
+                      <td className="py-2 pr-4 whitespace-nowrap">{row.productName}</td>
+                      <td className="py-2 pr-4 whitespace-nowrap">{row.views}</td>
+                      <td className="py-2 pr-4 whitespace-nowrap">{row.addsToCart}</td>
+                      <td className="py-2 whitespace-nowrap">{(row.viewToCartRate * 100).toFixed(1)}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </section>
 
@@ -99,26 +101,28 @@ export default async function ProductIntelligencePage() {
           {categoryRows.length === 0 ? (
             <p className="text-white/40 text-sm">No product engagement recorded in this window.</p>
           ) : (
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-white/10 text-white/40 uppercase text-[11px] tracking-wide">
-                  <th className="py-2 pr-4">Category</th>
-                  <th className="py-2 pr-4">Views</th>
-                  <th className="py-2 pr-4">Added to Cart</th>
-                  <th className="py-2">View → Cart Rate</th>
-                </tr>
-              </thead>
-              <tbody>
-                {categoryRows.map((row) => (
-                  <tr key={row.slug} className="border-b border-white/5 text-white/80">
-                    <td className="py-2 pr-4">{row.label}</td>
-                    <td className="py-2 pr-4">{row.views}</td>
-                    <td className="py-2 pr-4">{row.addsToCart}</td>
-                    <td className="py-2">{(row.viewToCartRate * 100).toFixed(1)}%</td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-white/10 text-white/40 uppercase text-[11px] tracking-wide">
+                    <th className="py-2 pr-4 whitespace-nowrap">Category</th>
+                    <th className="py-2 pr-4 whitespace-nowrap">Views</th>
+                    <th className="py-2 pr-4 whitespace-nowrap">Added to Cart</th>
+                    <th className="py-2 whitespace-nowrap">View → Cart Rate</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {categoryRows.map((row) => (
+                    <tr key={row.slug} className="border-b border-white/5 text-white/80">
+                      <td className="py-2 pr-4 whitespace-nowrap">{row.label}</td>
+                      <td className="py-2 pr-4 whitespace-nowrap">{row.views}</td>
+                      <td className="py-2 pr-4 whitespace-nowrap">{row.addsToCart}</td>
+                      <td className="py-2 whitespace-nowrap">{(row.viewToCartRate * 100).toFixed(1)}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
           {uncoveredCategories.length > 0 && (
             <p className="text-white/40 text-xs mt-3">
@@ -130,28 +134,30 @@ export default async function ProductIntelligencePage() {
         <section className="mt-10">
           <h2 className="font-heading text-lg font-bold text-white mb-1">Not Yet Measurable</h2>
           <p className="text-white/50 text-sm mb-4">Pepscore Lab is pre-launch -- Order and OrderItem have zero rows in production, so these cannot be computed yet. Shown explicitly rather than omitted or approximated.</p>
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-white/10 text-white/40 uppercase text-[11px] tracking-wide">
-                <th className="py-2 pr-4">Signal</th>
-                <th className="py-2 pr-4">Requires</th>
-                <th className="py-2">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {NOT_YET_MEASURABLE.map((item) => (
-                <tr key={item.label} className="border-b border-white/5 text-white/80">
-                  <td className="py-2 pr-4">{item.label}</td>
-                  <td className="py-2 pr-4">{item.requires}</td>
-                  <td className="py-2">
-                    <span className="inline-block px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wide bg-white/10 text-white/50">
-                      Insufficient Data
-                    </span>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-white/10 text-white/40 uppercase text-[11px] tracking-wide">
+                  <th className="py-2 pr-4 whitespace-nowrap">Signal</th>
+                  <th className="py-2 pr-4 whitespace-nowrap">Requires</th>
+                  <th className="py-2 whitespace-nowrap">Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {NOT_YET_MEASURABLE.map((item) => (
+                  <tr key={item.label} className="border-b border-white/5 text-white/80">
+                    <td className="py-2 pr-4 whitespace-nowrap">{item.label}</td>
+                    <td className="py-2 pr-4 whitespace-nowrap">{item.requires}</td>
+                    <td className="py-2 whitespace-nowrap">
+                      <span className="inline-block px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wide bg-white/10 text-white/50">
+                        Insufficient Data
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
       </div>
     </main>

@@ -45,24 +45,26 @@ export default async function SearchIntelligencePage() {
           {zeroResult.length === 0 ? (
             <p className="text-white/40 text-sm">No zero-result searches recorded in this window.</p>
           ) : (
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-white/10 text-white/40 uppercase text-[11px] tracking-wide">
-                  <th className="py-2 pr-4">Query</th>
-                  <th className="py-2 pr-4">Count</th>
-                  <th className="py-2">Last Searched</th>
-                </tr>
-              </thead>
-              <tbody>
-                {zeroResult.map((row) => (
-                  <tr key={row.query} className="border-b border-white/5 text-white/80">
-                    <td className="py-2 pr-4">{row.query}</td>
-                    <td className="py-2 pr-4">{row.count}</td>
-                    <td className="py-2">{row.lastSearchedAt.toLocaleDateString()}</td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-white/10 text-white/40 uppercase text-[11px] tracking-wide">
+                    <th className="py-2 pr-4 whitespace-nowrap">Query</th>
+                    <th className="py-2 pr-4 whitespace-nowrap">Count</th>
+                    <th className="py-2 whitespace-nowrap">Last Searched</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {zeroResult.map((row) => (
+                    <tr key={row.query} className="border-b border-white/5 text-white/80">
+                      <td className="py-2 pr-4">{row.query}</td>
+                      <td className="py-2 pr-4 whitespace-nowrap">{row.count}</td>
+                      <td className="py-2 whitespace-nowrap">{row.lastSearchedAt.toLocaleDateString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </section>
 
@@ -72,22 +74,24 @@ export default async function SearchIntelligencePage() {
           {topQueries.length === 0 ? (
             <p className="text-white/40 text-sm">No searches recorded in this window.</p>
           ) : (
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-white/10 text-white/40 uppercase text-[11px] tracking-wide">
-                  <th className="py-2 pr-4">Query</th>
-                  <th className="py-2">Count</th>
-                </tr>
-              </thead>
-              <tbody>
-                {topQueries.map((row) => (
-                  <tr key={row.query} className="border-b border-white/5 text-white/80">
-                    <td className="py-2 pr-4">{row.query}</td>
-                    <td className="py-2">{row.count}</td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-white/10 text-white/40 uppercase text-[11px] tracking-wide">
+                    <th className="py-2 pr-4 whitespace-nowrap">Query</th>
+                    <th className="py-2 whitespace-nowrap">Count</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {topQueries.map((row) => (
+                    <tr key={row.query} className="border-b border-white/5 text-white/80">
+                      <td className="py-2 pr-4">{row.query}</td>
+                      <td className="py-2 whitespace-nowrap">{row.count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </section>
       </div>
