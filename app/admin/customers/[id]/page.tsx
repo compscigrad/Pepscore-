@@ -33,6 +33,7 @@ import { LocalTimestamp } from '@/components/admin/LocalTimestamp'
 import { CustomerContactEditor } from '@/components/admin/CustomerContactEditor'
 import { CustomerNotesEditor } from '@/components/admin/CustomerNotesEditor'
 import { CustomerLeadStatusControl, LeadStatusBadge, type LeadStatusValue } from '@/components/admin/CustomerLeadStatusControl'
+import { AdminPageHeader } from '@/components/admin/AdminPageHeader'
 import { CustomerLeadCaptureHistory } from '@/components/admin/CustomerLeadCaptureHistory'
 
 interface PageProps {
@@ -142,32 +143,36 @@ export default async function CustomerProfilePage({ params, searchParams }: Page
 
   return (
     <main className="min-h-screen bg-black p-8">
-      <div className="max-w-[1400px] mx-auto space-y-6">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="font-heading text-3xl font-bold text-white">{fullName}</h1>
+      <div className="max-w-[1400px] mx-auto">
+        <AdminPageHeader
+          title={fullName}
+          subtitle={customer.company}
+          badge={
+            <>
               <StatusBadge status={customer.status} variant="customer" />
               <LeadStatusBadge status={customer.leadStatus as LeadStatusValue} />
-            </div>
-            {customer.company ? <p className="text-white/50 text-sm mt-1">{customer.company}</p> : null}
-            <div className="mt-2 flex items-center gap-2">
-              <span className={`text-[11px] font-heading font-bold uppercase tracking-wide text-white/40`}>Lead status</span>
-              <CustomerLeadStatusControl customerId={customer.id} leadStatus={customer.leadStatus as LeadStatusValue} />
-            </div>
-          </div>
-          <div className="flex items-center gap-6">
-            <Link href={`/admin/invoices/new?customerId=${customer.id}`} className={`${pillPrimary} px-6 py-2.5`}>
-              + New Invoice
-            </Link>
-            <Link
-              href="/admin/invoices"
-              className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
-            >
-              ← Invoices
-            </Link>
-          </div>
+            </>
+          }
+          actions={
+            <>
+              <Link href={`/admin/invoices/new?customerId=${customer.id}`} className={`${pillPrimary} px-6 py-2.5`}>
+                + New Invoice
+              </Link>
+              <Link
+                href="/admin/invoices"
+                className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
+              >
+                ← Invoices
+              </Link>
+            </>
+          }
+        />
+        <div className="flex items-center gap-2 -mt-4 mb-6">
+          <span className="text-[11px] font-heading font-bold uppercase tracking-wide text-white/40">Lead status</span>
+          <CustomerLeadStatusControl customerId={customer.id} leadStatus={customer.leadStatus as LeadStatusValue} />
         </div>
+
+        <div className="space-y-6">
 
         {duplicates.length > 0 ? (
           <div className={`${card} p-4 border-amber-400/30 bg-amber-400/[0.04]`}>
@@ -449,6 +454,7 @@ export default async function CustomerProfilePage({ params, searchParams }: Page
               ))}
             </div>
           )}
+        </div>
         </div>
       </div>
     </main>

@@ -19,6 +19,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getProductEngagementSummary } from '@/lib/analytics/productEngagementInsights'
 import { getCategoryPerformance, categoriesWithNoEngagement } from '@/lib/analytics/categoryPerformance'
+import { AdminPageHeader } from '@/components/admin/AdminPageHeader'
 
 const WINDOW_DAYS = 30
 
@@ -51,18 +52,18 @@ export default async function ProductIntelligencePage() {
   return (
     <main className="min-h-screen bg-black p-8">
       <div className="max-w-[1000px] mx-auto">
-        <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
-          <div>
-            <h1 className="font-heading text-3xl font-bold text-white">Product Engagement Intelligence</h1>
-            <p className="text-white/50 text-sm mt-1">First-party views &amp; add-to-cart activity, last {WINDOW_DAYS} days · Pepscore Lab</p>
-          </div>
-          <Link
-            href="/admin"
-            className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
-          >
-            ← Admin Dashboard
-          </Link>
-        </div>
+        <AdminPageHeader
+          title="Product Engagement Intelligence"
+          subtitle={`First-party views & add-to-cart activity, last ${WINDOW_DAYS} days · Pepscore Lab`}
+          actions={
+            <Link
+              href="/admin"
+              className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
+            >
+              ← Admin Dashboard
+            </Link>
+          }
+        />
 
         <section>
           <h2 className="font-heading text-lg font-bold text-white mb-1">Most-Viewed Products</h2>

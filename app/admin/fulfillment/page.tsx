@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic'
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import { AdminPageHeader } from '@/components/admin/AdminPageHeader'
 import { isCurrentUserAdmin } from '@/lib/auth/rbac'
 import { listFulfillmentQueue, BUCKET_LABEL, ACTIONABLE_BUCKETS, type FulfillmentBucket } from '@/lib/fulfillment/commandCenter'
 import { reconcileFulfillmentAlerts } from '@/lib/fulfillment/alerts'
@@ -54,18 +55,20 @@ export default async function FulfillmentCommandCenterPage({ searchParams }: { s
   return (
     <main className="min-h-screen bg-black p-8">
       <div className="max-w-[1400px] mx-auto">
-        <div className="flex items-center justify-between mb-8 flex-wrap gap-3">
-          <div>
-            <h1 className="font-heading text-3xl font-bold text-white">Fulfillment Command Center</h1>
-            <p className="text-white/50 text-sm mt-1">
+        <AdminPageHeader
+          title="Fulfillment Command Center"
+          subtitle={
+            <>
               {queue.length} order{queue.length === 1 ? '' : 's'} in the operational queue
               {needsAttentionCount > 0 && <span className="text-red-300 font-semibold"> · {needsAttentionCount} need{needsAttentionCount === 1 ? 's' : ''} attention</span>}
-            </p>
-          </div>
-          <Link href="/admin/settings/fulfillment" className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors">
-            SLA Thresholds →
-          </Link>
-        </div>
+            </>
+          }
+          actions={
+            <Link href="/admin/settings/fulfillment" className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors">
+              SLA Thresholds →
+            </Link>
+          }
+        />
 
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-8">
           {DISPLAY_ORDER.map((b) => (

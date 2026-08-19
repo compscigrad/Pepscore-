@@ -21,6 +21,7 @@ import type { Form1099KReconciliationReport } from '@/lib/finance/form1099k'
 import type { DataQualityFlag } from '@/lib/finance/dataQualityFlags'
 import type { EstimatedTaxPlan } from '@/lib/finance/estimatedTax'
 import { card, input as inputCls, label as labelCls, sectionHeading, mutedText, pillPrimary, pillOutline, selectOption } from '@/components/invoices/theme'
+import { AdminPageHeader } from '@/components/admin/AdminPageHeader'
 
 function money(n: number): string {
   return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -585,15 +586,15 @@ export function FinanceView({
   return (
     <main className="min-h-screen bg-black p-6 md:p-8">
       <div className="max-w-[1600px] mx-auto">
-        <div className="flex items-center justify-between flex-wrap gap-3 mb-2">
-          <div>
-            <h1 className="font-heading text-2xl font-bold text-white">Finance</h1>
-            <p className={`${mutedText} text-sm mt-0.5`}>Operational recordkeeping to support bookkeeping/tax prep — not a substitute for a CPA/accountant.</p>
-          </div>
-          <Link href="/admin" className="font-heading text-[12px] font-bold text-gold hover:text-gold-dark uppercase tracking-[0.06em]">
-            ← Admin Dashboard
-          </Link>
-        </div>
+        <AdminPageHeader
+          title="Finance"
+          subtitle="Operational recordkeeping to support bookkeeping/tax prep — not a substitute for a CPA/accountant."
+          actions={
+            <Link href="/admin" className="font-heading text-[12px] font-bold text-gold hover:text-gold-dark uppercase tracking-[0.06em]">
+              ← Admin Dashboard
+            </Link>
+          }
+        />
 
         <div className="flex items-center justify-between flex-wrap gap-3 my-5">
           <RangePicker range={range} />

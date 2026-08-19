@@ -9,6 +9,7 @@ import Link from 'next/link'
 import { listTrashedInvoices } from '@/lib/invoices'
 import { getBulkInvoiceDeletionEligibility, BLOCK_REASON_LABEL } from '@/lib/invoices/deletionEligibility'
 import { TrashTable } from '@/components/invoices/TrashTable'
+import { AdminPageHeader } from '@/components/admin/AdminPageHeader'
 
 export default async function TrashPage() {
   if (!(await isCurrentUserAdmin())) {
@@ -22,18 +23,18 @@ export default async function TrashPage() {
   return (
     <main className="min-h-screen bg-black p-8">
       <div className="max-w-[1400px] mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="font-heading text-3xl font-bold text-white">Trash</h1>
-            <p className="text-white/50 text-sm mt-1">Deleted invoices · Pepscore Lab</p>
-          </div>
-          <Link
-            href="/admin/invoices"
-            className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
-          >
-            ← Invoices
-          </Link>
-        </div>
+        <AdminPageHeader
+          title="Trash"
+          subtitle="Deleted invoices · Pepscore Lab"
+          actions={
+            <Link
+              href="/admin/invoices"
+              className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
+            >
+              ← Invoices
+            </Link>
+          }
+        />
 
         <TrashTable
           initialInvoices={invoices.map((inv) => {

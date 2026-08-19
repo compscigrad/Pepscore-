@@ -11,6 +11,7 @@ import Link from 'next/link'
 import { isCurrentUserAdmin } from '@/lib/auth/rbac'
 import { findReservations } from '@/lib/inventory/corrections'
 import { ReservationCorrectionPanel } from '@/components/admin/ReservationCorrectionPanel'
+import { AdminPageHeader } from '@/components/admin/AdminPageHeader'
 
 interface Props {
   searchParams: Promise<{ invoiceId?: string; productId?: string; status?: string }>
@@ -37,15 +38,15 @@ export default async function AdminReservationsPage({ searchParams }: Props) {
   return (
     <main className="min-h-screen bg-black p-6 md:p-8">
       <div className="max-w-[1200px] mx-auto">
-        <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
-          <div>
-            <h1 className="font-heading text-2xl font-bold text-white">Reservations</h1>
-            <p className="text-white/50 text-sm mt-0.5">Inspect and correct inventory reservations by invoice, product, or status</p>
-          </div>
-          <Link href="/admin/inventory" className="text-[12px] font-heading font-bold text-gold hover:text-gold-dark uppercase tracking-[0.06em]">
-            ← Inventory
-          </Link>
-        </div>
+        <AdminPageHeader
+          title="Reservations"
+          subtitle="Inspect and correct inventory reservations by invoice, product, or status"
+          actions={
+            <Link href="/admin/inventory" className="text-[12px] font-heading font-bold text-gold hover:text-gold-dark uppercase tracking-[0.06em]">
+              ← Inventory
+            </Link>
+          }
+        />
 
         <ReservationCorrectionPanel reservations={reservations} defaultStatus={status ?? 'ACTIVE'} />
       </div>

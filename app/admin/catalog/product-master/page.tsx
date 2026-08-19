@@ -11,6 +11,7 @@ import Link from 'next/link'
 import { isCurrentUserAdmin } from '@/lib/auth/rbac'
 import { listProductMasterRows } from '@/lib/adminProductMaster'
 import { ProductMasterTable } from '@/components/admin/ProductMasterTable'
+import { AdminPageHeader } from '@/components/admin/AdminPageHeader'
 
 export default async function ProductMasterPage() {
   const { userId } = await auth()
@@ -35,20 +36,20 @@ export default async function ProductMasterPage() {
   return (
     <main className="min-h-screen bg-black p-6 md:p-8">
       <div className="max-w-[1600px] mx-auto">
-        <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
-          <div>
-            <h1 className="font-heading text-2xl font-bold text-white">Product Master</h1>
-            <p className="text-white/50 text-sm mt-0.5">{rows.length} product/strength records — Catalog</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <Link href="/admin/inventory" className="text-[12px] font-heading font-bold text-gold hover:text-gold-dark uppercase tracking-[0.06em]">
-              Inventory &amp; Physical Stock →
-            </Link>
-            <Link href="/admin" className="text-[12px] font-heading font-bold text-gold hover:text-gold-dark uppercase tracking-[0.06em]">
-              ← Admin Dashboard
-            </Link>
-          </div>
-        </div>
+        <AdminPageHeader
+          title="Product Master"
+          subtitle={`${rows.length} product/strength records — Catalog`}
+          actions={
+            <>
+              <Link href="/admin/inventory" className="text-[12px] font-heading font-bold text-gold hover:text-gold-dark uppercase tracking-[0.06em]">
+                Inventory &amp; Physical Stock →
+              </Link>
+              <Link href="/admin" className="text-[12px] font-heading font-bold text-gold hover:text-gold-dark uppercase tracking-[0.06em]">
+                ← Admin Dashboard
+              </Link>
+            </>
+          }
+        />
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-white/[0.03] border border-gold/10 rounded-[18px] p-5">

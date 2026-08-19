@@ -9,6 +9,7 @@ import { getFulfillmentSettings } from '@/lib/fulfillment/settings'
 import { listPackagePresets } from '@/lib/fulfillment/presets'
 import { FulfillmentSettingsForm } from '@/components/invoices/FulfillmentSettingsForm'
 import { PackagePresetsForm } from '@/components/invoices/PackagePresetsForm'
+import { AdminPageHeader } from '@/components/admin/AdminPageHeader'
 
 export default async function FulfillmentSettingsPage() {
   if (!(await isCurrentUserAdmin())) {
@@ -20,18 +21,18 @@ export default async function FulfillmentSettingsPage() {
   return (
     <main className="min-h-screen bg-black p-8">
       <div className="max-w-[1400px] mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="font-heading text-3xl font-bold text-white">Fulfillment Settings</h1>
-            <p className="text-white/50 text-sm mt-1">Settings · Fulfillment · Pepscore Lab</p>
-          </div>
-          <Link
-            href="/admin/invoices"
-            className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
-          >
-            ← Invoices
-          </Link>
-        </div>
+        <AdminPageHeader
+          title="Fulfillment Settings"
+          subtitle="Settings · Fulfillment · Pepscore Lab"
+          actions={
+            <Link
+              href="/admin/invoices"
+              className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
+            >
+              ← Invoices
+            </Link>
+          }
+        />
 
         <div className="space-y-6">
           <FulfillmentSettingsForm

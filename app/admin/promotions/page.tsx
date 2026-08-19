@@ -11,6 +11,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
 import { PromotionCampaignManager, type PromotionCampaignView } from '@/components/admin/PromotionCampaignManager'
+import { AdminPageHeader } from '@/components/admin/AdminPageHeader'
 
 export default async function AdminPromotionsPage() {
   if (!(await isCurrentUserAdmin())) {
@@ -48,27 +49,27 @@ export default async function AdminPromotionsPage() {
 
   return (
     <main className="min-h-screen bg-black p-8">
-      <div className="max-w-[1000px] mx-auto space-y-6">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <h1 className="font-heading text-3xl font-bold text-white">Promotions</h1>
-            <p className="text-white/50 text-sm mt-1">Acquisition campaigns · Pepscore Lab</p>
-          </div>
-          <div className="flex items-center gap-6">
-            <Link
-              href="/admin/settings/first-order-offer"
-              className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
-            >
-              FIRST10 Legacy Settings
-            </Link>
-            <Link
-              href="/admin/invoices"
-              className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
-            >
-              ← Invoices
-            </Link>
-          </div>
-        </div>
+      <div className="max-w-[1000px] mx-auto">
+        <AdminPageHeader
+          title="Promotions"
+          subtitle="Acquisition campaigns · Pepscore Lab"
+          actions={
+            <>
+              <Link
+                href="/admin/settings/first-order-offer"
+                className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
+              >
+                FIRST10 Legacy Settings
+              </Link>
+              <Link
+                href="/admin/invoices"
+                className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
+              >
+                ← Invoices
+              </Link>
+            </>
+          }
+        />
 
         <PromotionCampaignManager campaigns={view} />
       </div>

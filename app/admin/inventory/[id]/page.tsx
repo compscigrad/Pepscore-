@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { auth } from '@clerk/nextjs/server'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
+import { AdminPageHeader } from '@/components/admin/AdminPageHeader'
 import { isCurrentUserAdmin } from '@/lib/auth/rbac'
 import { getInventoryDetail } from '@/lib/adminInventory'
 import { SELL_UNIT_LABEL, PRICE_SOURCE_LABEL } from '@/lib/pricing/labels'
@@ -54,17 +55,19 @@ export default async function AdminInventoryDetailPage({ params }: Props) {
   return (
     <main className="min-h-screen bg-black p-6 md:p-8">
       <div className="max-w-[1100px] mx-auto">
-        <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
-          <div>
-            <h1 className="font-heading text-2xl font-bold text-white">
+        <AdminPageHeader
+          title={
+            <>
               {product.name} <span className="text-white/50 font-normal">{product.size}</span>
-            </h1>
-            <p className="text-white/50 text-sm mt-0.5">{product.sku ?? 'No SKU'} · {backorderedVials > 0 ? `${backorderedVials} vial(s) backordered` : 'No active backorders'}</p>
-          </div>
-          <Link href="/admin/inventory" className="text-[12px] font-heading font-bold text-gold hover:text-gold-dark uppercase tracking-[0.06em]">
-            ← Inventory
-          </Link>
-        </div>
+            </>
+          }
+          subtitle={`${product.sku ?? 'No SKU'} · ${backorderedVials > 0 ? `${backorderedVials} vial(s) backordered` : 'No active backorders'}`}
+          actions={
+            <Link href="/admin/inventory" className="text-[12px] font-heading font-bold text-gold hover:text-gold-dark uppercase tracking-[0.06em]">
+              ← Inventory
+            </Link>
+          }
+        />
 
         <div className="mb-6">
           <InventoryDetailPanel product={product} availableUnits={availableUnits} completeCasesAvailable={completeCasesAvailable} />
