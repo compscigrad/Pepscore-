@@ -126,6 +126,21 @@ recorded limitation).
   public-facing captures above, and admin screenshots need care to
   exclude any real customer/order data before being added to a public
   case-study folder).
+- **Finance Center (Dashboard/P&L, Expense Ledger, Discounts & Credits,
+  Inventory/COGS, Refunds, Vendors, Reconciliation, Owner Transactions,
+  Tax Center, Vendor 1099s) — attempted 2026-08-18, not captured.** Live
+  browser access confirmed a real screenshot of the Finance Dashboard tab
+  can be taken (visually verified the corrected $1,431.00 Gross Revenue
+  figure from that same session's P0 verification pass), but this
+  session's toolset has no mechanism to persist raw screenshot image
+  bytes to a file path on disk — the capture exists only as an
+  in-conversation image, not a file this manifest can reference or a
+  future reader can open. A dedicated pass with a tool that can save
+  captures to `docs/case-studies/pepscore/screenshots/` is needed to
+  actually close this gap; each tab needs care taken to exclude any real
+  customer name/email/order total before being added to a public-facing
+  case-study folder (the Finance Center shows live, real business
+  figures, unlike the public storefront pages already captured above).
 
 Naming convention to follow when these are captured:
 `pepscore-landing-before-desktop-YYYY-MM.png`,
