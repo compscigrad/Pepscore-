@@ -8,7 +8,7 @@
 |---|---|---|
 | A sale (direct/manual) | `Invoice` / `InvoiceItem` | The real, current sales channel — see [Data Dictionary](./PEPSCORE-FINANCE-DATA-DICTIONARY.md) |
 | A sale (storefront checkout) | `Order` / `OrderItem` | Zero rows today — checkout hasn't launched |
-| A payment received on an invoice | `InvoicePayment` | Manual recording, no per-transaction Stripe linkage — see "InvoicePayment fee parity" below, a known, tracked, not-yet-closed gap |
+| A payment received on an invoice | `InvoicePayment` | Manual recording; optional real Stripe fee linkage via `stripePaymentIntentId` — see "InvoicePayment fee parity" below |
 | A storefront Stripe payment | `Payment` | Has real Stripe fields (fee, net, payout, settlement) |
 | Discounts/credits applied | `InvoiceDiscount`, `PromotionCode` | Read directly, never re-recorded as an expense |
 | A completed refund | `InvoiceRefund` | `completedAmount`/`completedAt` are authoritative |
@@ -33,9 +33,15 @@ Refunded amounts (`InvoiceRefund.completedAmount`, and the storefront-side `char
 
 Shippo label-purchase cost now reaches `FinanceExpense` (category `SHIPPING_POSTAGE`, `taxTreatment: OPERATING_EXPENSE`) identically on both the Invoice channel (`lib/fulfillment/labels.ts`, already correct since the 2026-08-12 sprint) and the Order/storefront channel (`app/api/shipping/labels/route.ts`, closed 2026-08-19) — both idempotent on Shippo's own label object id via `createExpenseIdempotent()`, so a retried label-purchase request can never double-post the cost. The legacy `Expense` model (still read by the Admin Overview dashboard's own "2026 Expense Breakdown" card) continues to receive a row too on the Order side, unchanged — the `FinanceExpense` write is additive, not a replacement.
 
-## InvoicePayment fee parity — known gap, not yet closed
+## InvoicePayment fee parity (closed 2026-08-19)
 
-`InvoicePayment` (the admin/direct-sale payment record) has no processor-fee field for any `PaymentMethod`, including `STRIPE` — unlike the storefront-side `Payment` model, which has real `stripeFee`/`netAmount`/`stripeFeeIsEstimated` fields populated from Stripe's actual balance transaction (`getRealStripeFee()`/`resolvePaymentFee()`, see "Stripe processing-fee reconciliation" above). Today an admin can tag an `InvoicePayment.method` as `STRIPE`, but there is no linkage field to a real Stripe PaymentIntent/charge, so no real fee can be looked up, no `FinanceExpense` processor-fee entry is posted, and P&L/monthly-summary/export figures for admin-recorded Stripe payments do not reflect a real processing cost. Non-Stripe methods (`CASH`, `CHECK`, `BANK_TRANSFER`, etc.) correctly have no fee assumed for them today — that part is not a gap. This is tracked as the immediate next focused engineering pass, not left undocumented: any schema change must be additive (a nullable Stripe-linkage field, not a rewrite of `InvoicePayment`), and must reuse `resolvePaymentFee()`/`getRealStripeFee()` rather than re-deriving a second fee calculation.
+**Trace performed before implementing**: no live Stripe `PaymentIntent`/Checkout is ever created anywhere in the Invoice/admin code path — confirmed by direct search. `recordPayment()` (`lib/invoices.ts`) is purely a manual ledger entry: an admin types an amount, picks a method from a dropdown, and optionally a reference number. Tagging a payment `STRIPE` has always been a descriptive label for money the admin knows arrived via Stripe (a Payment Link, the Stripe Dashboard, a charge made outside this app) — Pepscore never sees a PaymentIntent for it unless the admin supplies one.
+
+**Fix, additive only**: `InvoicePayment` gained three nullable fields — `stripePaymentIntentId String? @unique`, `stripeFee Float?`, `stripeNetAmount Float?`. The payment form now shows an optional "Stripe PaymentIntent ID" input only when method is `STRIPE`. When supplied, `recordPayment()` calls the same `getRealStripeFee()` built in the Phase 11 hardening pass to retrieve the real balance-transaction fee, then posts an idempotent `FinanceExpense` (category `PAYMENT_PROCESSING`, `providerReference` = the PaymentIntent id — the same field/pattern `createExpenseIdempotent()` already uses, so a real-world charge recorded twice, or reconciled against a webhook-originated storefront `Payment` for the same PaymentIntent, can never double-post the fee).
+
+**Deliberately no estimate fallback**: unlike the webhook path (`markOrderPaid`), which always represents a confirmed, real Stripe charge and estimates only as a documented, disclosed fallback (`stripeFeeIsEstimated`), a manually-recorded `InvoicePayment` is admin-entered data, not a webhook-verified event — if `getRealStripeFee()` can't retrieve the real figure (no PaymentIntent id supplied, or the lookup fails), `stripeFee`/`stripeNetAmount` are left `null` rather than guessed. There is deliberately no `stripeFeeIsEstimated` field on this model, because this path never estimates. Non-Stripe methods (`CASH`, `CHECK`, `BANK_TRANSFER`, etc.) never had a fee assumed and still don't.
+
+**Integration**: once posted, the `FinanceExpense` row reaches P&L, monthly summary, and the accountant export automatically — no additional wiring needed, since every report in `lib/finance/` already reads from the canonical `FinanceExpense` model.
 
 ## Test-data exclusion
 

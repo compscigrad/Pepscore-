@@ -43,6 +43,7 @@ export function PaymentSection({
   const [amount, setAmount] = useState('')
   const [method, setMethod] = useState<PaymentMethod>('NA')
   const [referenceNumber, setReferenceNumber] = useState('')
+  const [stripePaymentIntentId, setStripePaymentIntentId] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   const paymentStatus = computePaymentStatus(amountPaid, total)
@@ -68,13 +69,19 @@ export function PaymentSection({
       const res = await fetch(`/api/admin/invoices/${invoiceId}/payments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: numericAmount, method, referenceNumber: referenceNumber || undefined }),
+        body: JSON.stringify({
+          amount: numericAmount,
+          method,
+          referenceNumber: referenceNumber || undefined,
+          stripePaymentIntentId: method === 'STRIPE' ? stripePaymentIntentId || undefined : undefined,
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Failed to record payment')
       toast.success('Payment recorded')
       setAmount('')
       setReferenceNumber('')
+      setStripePaymentIntentId('')
       setMethod('NA')
       onPaymentRecorded()
     } catch (err) {
@@ -99,6 +106,7 @@ export function PaymentSection({
                 <span className="text-white/70">
                   {new Date(p.paidAt).toLocaleDateString('en-US', { timeZone: 'UTC' })} · {formatPaymentMethodLabel(p.method)}
                   {p.referenceNumber ? ` · ${p.referenceNumber}` : ''}
+                  {p.stripeFee != null ? ` · fee ${formatMoney(p.stripeFee)}` : ''}
                 </span>
                 <span className="font-medium text-white">{formatMoney(p.amount)}</span>
               </div>
@@ -144,6 +152,20 @@ export function PaymentSection({
                 onChange={(e) => setReferenceNumber(e.target.value)}
               />
             </div>
+            {method === 'STRIPE' && (
+              <div className="flex-1 min-w-[160px]">
+                <label className={labelClass} htmlFor="stripePaymentIntentId">
+                  Stripe PaymentIntent ID (optional)
+                </label>
+                <input
+                  id="stripePaymentIntentId"
+                  className={input}
+                  placeholder="pi_..."
+                  value={stripePaymentIntentId}
+                  onChange={(e) => setStripePaymentIntentId(e.target.value)}
+                />
+              </div>
+            )}
             <button
               type="submit"
               disabled={submitting}

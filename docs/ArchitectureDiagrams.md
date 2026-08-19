@@ -142,7 +142,7 @@ flowchart TD
 
 ## 5. Financial Data Flow
 
-Grounded in: `lib/finance/*.ts`, `docs/finance/PEPSCORE-FINANCIAL-ARCHITECTURE.md`. Updated 2026-08-19 for the Finance P1 sprint (`estimatedTax.ts`, the QuickBooks/Xero export sheet), the P0 verification pass's `deletedAt` fix (`600af53`/`fde75da`/`6579ba3`), the Stripe fee-reconciliation hardening pass (`13ebf90`) — real balance-transaction fees, the `computeNetSettlement()` refund-bug fix, and the `markOrderPaid → FinanceExpense` bridge — and the direct-sales parity audit's Order-side shipping-postage bridge (`351661a`; `InvoicePayment` fee parity remains a tracked, not-yet-closed gap).
+Grounded in: `lib/finance/*.ts`, `docs/finance/PEPSCORE-FINANCIAL-ARCHITECTURE.md`. Updated 2026-08-19 for the Finance P1 sprint (`estimatedTax.ts`, the QuickBooks/Xero export sheet), the P0 verification pass's `deletedAt` fix (`600af53`/`fde75da`/`6579ba3`), the Stripe fee-reconciliation hardening pass (`13ebf90`) — real balance-transaction fees, the `computeNetSettlement()` refund-bug fix, and the `markOrderPaid → FinanceExpense` bridge — and the direct-sales parity audit's Order-side shipping-postage bridge and InvoicePayment fee-parity closure (`351661a` and this same-day follow-up).
 
 ```mermaid
 flowchart TD
@@ -163,6 +163,8 @@ flowchart TD
     EXP2 --> EXP
     SHIP["Shippo label purchase\n(Invoice-side lib/fulfillment/labels.ts\nOrder-side api/shipping/labels)"] -.createExpenseIdempotent, keyed on Shippo label id.-> EXP3["FinanceExpense\n(category SHIPPING_POSTAGE,\nboth channels — same pattern)"]
     EXP3 --> EXP
+    IPAY["InvoicePayment\n(admin-recorded; stripePaymentIntentId\noptional, admin-supplied — no live\nPaymentIntent is ever created here)"] -.getRealStripeFee, never estimated.-> EXP4["FinanceExpense\n(category PAYMENT_PROCESSING,\nidempotent on PaymentIntent id)"]
+    EXP4 --> EXP
     Canonical --> REPORTS["lib/finance/reports.ts\nDashboard, discounts, refunds, inventory loss, vendor spend"]
     Canonical --> TAX["lib/finance/salesTax.ts\n(currently $0 — nothing collects tax)"]
     Canonical --> RECON["lib/finance/stripeReconciliation.ts\nMATCHED/PARTIAL/MISMATCH/PENDING\ncomputeNetSettlement() always subtracts refunds"]

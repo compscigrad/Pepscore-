@@ -101,6 +101,12 @@ export const paymentPayloadSchema = z.object({
   referenceNumber: z.string().optional(),
   paidAt: z.coerce.date().optional(),
   notes: z.string().optional(),
+  // Only meaningful when method is 'STRIPE' -- the real Stripe
+  // PaymentIntent id for a charge that happened outside this app (e.g. a
+  // Payment Link or the Stripe Dashboard), letting recordPayment() look up
+  // the real processing fee rather than assuming one. Ignored for every
+  // other payment method.
+  stripePaymentIntentId: z.string().trim().min(1).optional(),
 })
 
 export type PaymentPayload = z.infer<typeof paymentPayloadSchema>

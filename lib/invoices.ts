@@ -25,6 +25,8 @@ import {
   type ApproveArrangementOverrides,
 } from '@/lib/paymentArrangements'
 import { computeOrderStatus } from '@/lib/tracking/orderStatus'
+import { getRealStripeFee } from '@/lib/stripe'
+import { createExpenseIdempotent } from '@/lib/finance/expenses'
 import { sendInvoiceIssuedEmailIfNeeded, sendInvoiceIssuedSmsIfNeeded, sendInvoiceRevisedEmailIfNeeded } from '@/lib/invoiceIssuedEmail'
 import { sendPaymentReceivedEmailIfNeeded } from '@/lib/paymentReceivedEmail'
 import {
@@ -562,7 +564,7 @@ export async function updateInvoice(id: string, payload: InvoicePayload): Promis
   return invoice
 }
 
-export async function recordPayment(invoiceId: string, payload: PaymentPayload): Promise<InvoiceWithRelations> {
+export async function recordPayment(invoiceId: string, payload: PaymentPayload, actorId: string): Promise<InvoiceWithRelations> {
   const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })
   assertPaymentWithinBalance(payload.amount, invoice.balanceDue)
 
@@ -580,7 +582,7 @@ export async function recordPayment(invoiceId: string, payload: PaymentPayload):
   })
   const newPaymentIntentStatus = resolvePaymentIntentAfterPayment(invoice.paymentIntentStatus, paymentAmounts.balanceDue)
 
-  const payment = await prisma.invoicePayment.create({
+  let payment = await prisma.invoicePayment.create({
     data: {
       invoiceId,
       amount: payload.amount,
@@ -588,8 +590,43 @@ export async function recordPayment(invoiceId: string, payload: PaymentPayload):
       referenceNumber: payload.referenceNumber || undefined,
       paidAt: payload.paidAt ?? new Date(),
       notes: payload.notes || undefined,
+      stripePaymentIntentId: payload.method === 'STRIPE' ? payload.stripePaymentIntentId || undefined : undefined,
     },
   })
+
+  // InvoicePayment financial-parity fix (2026-08-19) -- only when the admin
+  // supplied a real Stripe PaymentIntent id for a STRIPE-tagged payment.
+  // Deliberately never falls back to an estimated percentage the way the
+  // storefront webhook path does: a manually-recorded payment isn't a
+  // confirmed webhook event, so a wrong guess here would be presented as
+  // fact in the P&L/export with no disclosure mechanism (no
+  // stripeFeeIsEstimated field exists on this model, by design -- if the
+  // real fee can't be retrieved, none is recorded). Never throws --
+  // getRealStripeFee() already swallows its own errors and returns null.
+  if (payment.stripePaymentIntentId) {
+    const stripePaymentIntentId = payment.stripePaymentIntentId
+    const real = await getRealStripeFee(stripePaymentIntentId)
+    if (real) {
+      payment = await prisma.invoicePayment.update({
+        where: { id: payment.id },
+        data: { stripeFee: real.fee, stripeNetAmount: real.net },
+      })
+      await createExpenseIdempotent(
+        {
+          date: payment.paidAt,
+          vendor: 'Stripe',
+          description: `Card processing fee for invoice ${invoice.invoiceNumber}`,
+          amount: real.fee,
+          category: 'PAYMENT_PROCESSING',
+          taxTreatment: 'OPERATING_EXPENSE',
+          invoiceId,
+          providerReference: stripePaymentIntentId,
+          notes: 'Real Stripe balance transaction fee, captured against a manually-recorded admin/direct-sale payment.',
+        },
+        actorId
+      )
+    }
+  }
 
   await prisma.invoice.update({
     where: { id: invoiceId },

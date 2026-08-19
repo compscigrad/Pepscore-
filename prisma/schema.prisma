@@ -1084,6 +1084,22 @@ model InvoicePayment {
   paidAt          DateTime      @default(now())
   notes           String?
 
+  // 2026-08-19 InvoicePayment financial-parity fix -- additive, nullable.
+  // Admin/direct-sale payments are manually recorded (no live PaymentIntent
+  // is ever created from this app for an Invoice), so a real Stripe fee can
+  // only be captured when the admin supplies the real PaymentIntent id from
+  // the actual Stripe charge (e.g. one processed via a Payment Link or the
+  // Stripe Dashboard outside this app). getRealStripeFee() is then used --
+  // never an estimated percentage -- since an admin-entered "this was
+  // Stripe" tag isn't a confirmed, webhook-verified charge the way a
+  // storefront Payment always is; if the real fee can't be retrieved, these
+  // stay null rather than guessing. stripePaymentIntentId is @unique so the
+  // idempotent FinanceExpense bridge (providerReference) can never
+  // double-post the same real-world charge's fee twice.
+  stripePaymentIntentId String? @unique
+  stripeFee             Float?
+  stripeNetAmount       Float?
+
   // Set when this payment satisfies a scheduled installment (see
   // PaymentArrangement below) — lets an installment's "Paid" status point
   // back to the actual payment record that satisfied it.

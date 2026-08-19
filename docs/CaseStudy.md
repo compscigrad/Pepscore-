@@ -763,7 +763,17 @@ The RBAC migration's admin-authorization foundation was reused immediately: **ad
 
 **PRODUCTION RESULT**: closes the last known instance of this specific integration gap across both channels — Invoice postage, Order postage, and Order Stripe fees now all reach the Finance Center identically.
 
-**Known, tracked, not forgotten**: the parity audit also surfaced that `InvoicePayment` — the admin/direct-sale payment record — has no processor-fee field at all, for any payment method including `STRIPE`, meaning an admin-recorded Stripe payment on a direct sale currently has no route to the real Stripe balance-transaction fee `resolvePaymentFee()` already knows how to fetch. This is a real, scoped gap, not yet closed as of this revision — tracked as the immediate next focused pass (InvoicePayment financial parity) rather than left undocumented.
+### Mini Case Study: InvoicePayment Had No Fee Field — and No Way to Ever Get One
+
+**PROBLEM**: the parity audit surfaced that `InvoicePayment` — the admin/direct-sale payment record — had no processor-fee field at all, for any payment method including `STRIPE`, meaning an admin-recorded Stripe payment on a direct sale had no route to the real Stripe balance-transaction fee the Phase 11 hardening pass already knew how to fetch for the storefront side.
+
+**TRACED BEFORE BUILDING**: rather than assume "Stripe" as a method implied a real, capturable PaymentIntent the way it does on the storefront webhook path, a direct search confirmed no live `PaymentIntent`/Checkout is ever created anywhere in the Invoice/admin code. `recordPayment()` is purely a manual ledger entry — an admin selecting "Stripe" from the method dropdown is recording a fact about money that arrived through Stripe outside this app (a Payment Link, the Stripe Dashboard), not triggering a charge Pepscore initiated or can automatically see.
+
+**FIX**: additive-only schema (`InvoicePayment.stripePaymentIntentId String? @unique`, `.stripeFee Float?`, `.stripeNetAmount Float?`). The payment form gained an optional "Stripe PaymentIntent ID" field, shown only for the `STRIPE` method. When supplied, `recordPayment()` reuses the exact `getRealStripeFee()` function built in Phase 11 to retrieve the real fee, then posts an idempotent `FinanceExpense` (category `PAYMENT_PROCESSING`) keyed on that PaymentIntent id — the same `createExpenseIdempotent()` pattern now used for four separate automated postings across this codebase (Shippo postage ×2 channels, storefront Stripe fees, and now this).
+
+**DELIBERATELY NOT AN ESTIMATE FALLBACK**: unlike the webhook path, a manually-recorded payment is admin-entered, not webhook-verified — if the real fee can't be retrieved (no PaymentIntent id given, or the lookup fails), the fields are left `null` rather than guessed from the published rate. No `stripeFeeIsEstimated` field exists on this model, by design, because this path never estimates.
+
+**PRODUCTION RESULT**: additive schema pushed via `prisma db push` (a new nullable+unique column on an empty-for-this-column table — no data-loss risk despite Prisma's cautious warning, confirmed before accepting). Once posted, the `FinanceExpense` row reaches P&L, monthly summary, and the accountant export automatically, with zero additional wiring — the same "canonical model feeds every downstream report" guarantee every other Finance Center integration already relies on.
 
 ---
 

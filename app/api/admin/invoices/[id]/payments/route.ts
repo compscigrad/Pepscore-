@@ -19,7 +19,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
   try {
     const body = await req.json()
     const payload = paymentPayloadSchema.parse(body)
-    const invoice = await recordPayment(id, payload)
+    const invoice = await recordPayment(id, payload, userId!)
 
     await prisma.adminAuditLog.create({
       data: {
