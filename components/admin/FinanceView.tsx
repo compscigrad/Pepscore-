@@ -1009,28 +1009,30 @@ export function FinanceView({
               {estimatedTaxPlan.ratePercent === null && (
                 <p className="px-4 py-3 text-[12px] text-white/50">No estimated tax rate set — enter one in the Business Profile above to see estimated amounts. Quarterly Book Profit figures below are real regardless.</p>
               )}
-              <table className="w-full text-[13px] mt-2">
-                <thead><tr className="border-b border-white/10">{['Quarter', 'Months', 'Book Profit', 'Informational Due Date', 'Estimated Tax'].map((h) => (
-                  <th key={h} className="text-left font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 px-4 py-3 whitespace-nowrap">{h}</th>
-                ))}</tr></thead>
-                <tbody>
-                  {estimatedTaxPlan.quarters.map((q) => (
-                    <tr key={q.quarter} className="border-b border-white/10">
-                      <td className="px-4 py-3 text-white font-semibold whitespace-nowrap">{q.label}</td>
-                      <td className="px-4 py-3 text-white/70 whitespace-nowrap">{q.monthsIncluded}</td>
-                      <td className={`px-4 py-3 whitespace-nowrap font-semibold ${q.estimatedBookProfit >= 0 ? 'text-white' : 'text-red-400'}`}>{money(q.estimatedBookProfit)}</td>
-                      <td className="px-4 py-3 text-white/50 whitespace-nowrap">{q.informationalDueDate}</td>
-                      <td className="px-4 py-3 text-gold font-semibold whitespace-nowrap">{q.estimatedTaxAmount !== null ? money(q.estimatedTaxAmount) : '—'}</td>
+              <div className="overflow-x-auto">
+                <table className="w-full text-[13px] mt-2">
+                  <thead><tr className="border-b border-white/10">{['Quarter', 'Months', 'Book Profit', 'Informational Due Date', 'Estimated Tax'].map((h) => (
+                    <th key={h} className="text-left font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 px-4 py-3 whitespace-nowrap">{h}</th>
+                  ))}</tr></thead>
+                  <tbody>
+                    {estimatedTaxPlan.quarters.map((q) => (
+                      <tr key={q.quarter} className="border-b border-white/10">
+                        <td className="px-4 py-3 text-white font-semibold whitespace-nowrap">{q.label}</td>
+                        <td className="px-4 py-3 text-white/70 whitespace-nowrap">{q.monthsIncluded}</td>
+                        <td className={`px-4 py-3 whitespace-nowrap font-semibold ${q.estimatedBookProfit >= 0 ? 'text-white' : 'text-red-400'}`}>{money(q.estimatedBookProfit)}</td>
+                        <td className="px-4 py-3 text-white/50 whitespace-nowrap">{q.informationalDueDate}</td>
+                        <td className="px-4 py-3 text-gold font-semibold whitespace-nowrap">{q.estimatedTaxAmount !== null ? money(q.estimatedTaxAmount) : '—'}</td>
+                      </tr>
+                    ))}
+                    <tr className="border-b border-white/10 bg-white/[0.02]">
+                      <td className="px-4 py-3 text-white font-bold whitespace-nowrap" colSpan={2}>Annual</td>
+                      <td className={`px-4 py-3 font-bold whitespace-nowrap ${estimatedTaxPlan.annualEstimatedBookProfit >= 0 ? 'text-white' : 'text-red-400'}`}>{money(estimatedTaxPlan.annualEstimatedBookProfit)}</td>
+                      <td className="px-4 py-3"></td>
+                      <td className="px-4 py-3 text-gold font-bold whitespace-nowrap">{estimatedTaxPlan.annualEstimatedTaxAmount !== null ? money(estimatedTaxPlan.annualEstimatedTaxAmount) : '—'}</td>
                     </tr>
-                  ))}
-                  <tr className="border-b border-white/10 bg-white/[0.02]">
-                    <td className="px-4 py-3 text-white font-bold" colSpan={2}>Annual</td>
-                    <td className={`px-4 py-3 font-bold whitespace-nowrap ${estimatedTaxPlan.annualEstimatedBookProfit >= 0 ? 'text-white' : 'text-red-400'}`}>{money(estimatedTaxPlan.annualEstimatedBookProfit)}</td>
-                    <td className="px-4 py-3"></td>
-                    <td className="px-4 py-3 text-gold font-bold whitespace-nowrap">{estimatedTaxPlan.annualEstimatedTaxAmount !== null ? money(estimatedTaxPlan.annualEstimatedTaxAmount) : '—'}</td>
-                  </tr>
-                </tbody>
-              </table>
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             <div className={`${card} p-5`}>
