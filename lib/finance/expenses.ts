@@ -5,6 +5,7 @@
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
 import type { FinanceExpense, FinanceExpenseCategory, FinanceAccountingTreatment } from '@prisma/client'
+import { getTestDataExpenseExclusion } from './testDataExclusion'
 
 export interface CreateExpenseInput {
   date: Date
@@ -70,11 +71,13 @@ export interface ExpenseFilters {
 }
 
 export async function listExpenses(filters: ExpenseFilters = {}): Promise<FinanceExpense[]> {
+  const expenseTestExclusion = await getTestDataExpenseExclusion()
   return prisma.financeExpense.findMany({
     where: {
       category: filters.category,
       taxTreatment: filters.taxTreatment,
       date: filters.from || filters.to ? { gte: filters.from, lte: filters.to } : undefined,
+      ...expenseTestExclusion,
       ...(filters.query
         ? {
             OR: [

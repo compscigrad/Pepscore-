@@ -10,6 +10,7 @@
 // guaranteed accounting truth (spec #46).
 import { prisma } from '@/lib/prisma'
 import type { InvoiceStatus } from '@prisma/client'
+import { getTestDataExpenseExclusion } from './testDataExclusion'
 
 export const RECOGNIZED_REVENUE_STATUSES: InvoiceStatus[] = ['ISSUED', 'REFUNDED']
 
@@ -40,6 +41,7 @@ export async function getFinanceDashboardMetrics(range: DateRange): Promise<Fina
   // invoice is a filing action, not a "this wasn't real" marker -- see
   // Invoice.isTestData's own schema comment.
   const invoiceWhere = { issuedAt: { gte: range.from, lte: range.to }, status: { in: RECOGNIZED_REVENUE_STATUSES }, isTestData: false }
+  const expenseTestExclusion = await getTestDataExpenseExclusion()
 
   const [revenueAgg, invoiceItems, shippingExpenseAgg, paymentFeesAgg, opexAgg, needsReviewCount, refundsAgg] = await Promise.all([
     prisma.invoice.aggregate({ where: invoiceWhere, _sum: { subtotal: true, discountTotal: true, total: true } }),
@@ -47,10 +49,10 @@ export async function getFinanceDashboardMetrics(range: DateRange): Promise<Fina
       where: { invoice: invoiceWhere },
       select: { quantity: true, costOfGoods: true },
     }),
-    prisma.financeExpense.aggregate({ where: { category: 'SHIPPING_POSTAGE', date: { gte: range.from, lte: range.to } }, _sum: { amount: true } }),
-    prisma.financeExpense.aggregate({ where: { category: 'PAYMENT_PROCESSING', date: { gte: range.from, lte: range.to } }, _sum: { amount: true } }),
-    prisma.financeExpense.aggregate({ where: { taxTreatment: 'OPERATING_EXPENSE', date: { gte: range.from, lte: range.to } }, _sum: { amount: true } }),
-    prisma.financeExpense.count({ where: { taxTreatment: 'NEEDS_ACCOUNTANT_REVIEW', date: { gte: range.from, lte: range.to } } }),
+    prisma.financeExpense.aggregate({ where: { category: 'SHIPPING_POSTAGE', date: { gte: range.from, lte: range.to }, ...expenseTestExclusion }, _sum: { amount: true } }),
+    prisma.financeExpense.aggregate({ where: { category: 'PAYMENT_PROCESSING', date: { gte: range.from, lte: range.to }, ...expenseTestExclusion }, _sum: { amount: true } }),
+    prisma.financeExpense.aggregate({ where: { taxTreatment: 'OPERATING_EXPENSE', date: { gte: range.from, lte: range.to }, ...expenseTestExclusion }, _sum: { amount: true } }),
+    prisma.financeExpense.count({ where: { taxTreatment: 'NEEDS_ACCOUNTANT_REVIEW', date: { gte: range.from, lte: range.to }, ...expenseTestExclusion } }),
     prisma.invoiceRefund.aggregate({ where: { status: 'COMPLETED', completedAt: { gte: range.from, lte: range.to }, invoice: { isTestData: false } }, _sum: { completedAmount: true } }),
   ])
 
@@ -185,9 +187,10 @@ export interface VendorReportRow {
 }
 
 export async function getVendorReport(range: DateRange): Promise<VendorReportRow[]> {
+  const expenseTestExclusion = await getTestDataExpenseExclusion()
   const rows = await prisma.financeExpense.groupBy({
     by: ['vendor'],
-    where: { date: { gte: range.from, lte: range.to }, vendor: { not: null } },
+    where: { date: { gte: range.from, lte: range.to }, vendor: { not: null }, ...expenseTestExclusion },
     _count: { _all: true },
     _sum: { amount: true },
   })

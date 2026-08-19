@@ -3,6 +3,24 @@
 
 import * as XLSX from 'xlsx'
 
+// CSV/spreadsheet formula-injection guard (2026-08-18 Finance/Tax P0
+// verification pass) -- a cell value that starts with =, +, -, or @ is
+// interpreted as a formula by Excel/Sheets/LibreOffice on open, regardless
+// of the source file's declared cell type; a free-text field an admin
+// controls (vendor name, expense description, notes, a customer name on a
+// legacy sales export) is exactly the kind of value that must never reach
+// an accountant's spreadsheet unescaped. Prefixing with a single quote is
+// the standard (OWASP-documented) neutralization: Excel/Sheets render the
+// value as literal text instead of evaluating it, and CSV/XLSX both
+// already round-trip a leading `'` correctly for plain text. Applied to
+// every string cell across every export in this file, not just the ones
+// with an obvious free-text column, since a fixed column list today
+// doesn't guarantee no free-text column is ever added later.
+export function neutralizeFormulaInjection(value: string | number): string | number {
+  if (typeof value !== 'string' || value.length === 0) return value
+  return /^[=+\-@\t\r]/.test(value) ? `'${value}` : value
+}
+
 export interface ExportRow {
   orderNumber: string
   date: string
@@ -38,7 +56,7 @@ export function buildExportXLSX(rows: ExportRow[], year: number): Buffer {
       r.subtotal, r.shippingCost, r.stripeFee, r.tax, r.total,
       r.cogs, r.grossProfit, r.netProfit,
       r.paymentStatus, r.fulfillmentStatus, r.trackingNumber,
-    ]),
+    ].map(neutralizeFormulaInjection)),
     // Totals row
     [
       'TOTALS', '', '', '', '',
@@ -81,7 +99,7 @@ export function buildExportCSV(rows: ExportRow[]): string {
   const body = rows.map(r =>
     cols.map(c => {
       const v = r[c]
-      const s = String(v ?? '')
+      const s = String(neutralizeFormulaInjection(v ?? ''))
       return s.includes(',') ? `"${s}"` : s
     }).join(',')
   )
@@ -125,7 +143,7 @@ export interface FinanceExportInput {
 }
 
 function appendSheet(wb: XLSX.WorkBook, sheet: FinanceSheet) {
-  const wsData = [sheet.headers, ...sheet.rows]
+  const wsData = [sheet.headers, ...sheet.rows.map((row) => row.map(neutralizeFormulaInjection))]
   const ws = XLSX.utils.aoa_to_sheet(wsData)
   if (sheet.colWidths) ws['!cols'] = sheet.colWidths.map((wch) => ({ wch }))
   // Sheet names are capped at 31 chars and can't contain []:*?/\\ in Excel.
@@ -136,7 +154,7 @@ function appendSheet(wb: XLSX.WorkBook, sheet: FinanceSheet) {
 export function buildFinanceExportXLSX(input: FinanceExportInput): Buffer {
   const wb = XLSX.utils.book_new()
 
-  const summaryWs = XLSX.utils.aoa_to_sheet([[`Finance Summary — ${input.rangeLabel}`], [], ...input.summaryRows])
+  const summaryWs = XLSX.utils.aoa_to_sheet([[`Finance Summary — ${input.rangeLabel}`], [], ...input.summaryRows.map((row) => row.map(neutralizeFormulaInjection))])
   summaryWs['!cols'] = [{ wch: 32 }, { wch: 18 }]
   XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary')
 
@@ -161,7 +179,7 @@ export function buildFinanceExportXLSX(input: FinanceExportInput): Buffer {
 // what the Excel export is for.
 export function buildFinanceExportCSV(sheet: FinanceSheet): string {
   const escape = (v: string | number) => {
-    const s = String(v ?? '')
+    const s = String(neutralizeFormulaInjection(v ?? ''))
     return s.includes(',') || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s
   }
   const header = sheet.headers.map(escape).join(',')

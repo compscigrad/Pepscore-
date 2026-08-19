@@ -7,6 +7,7 @@
 // source of truth for money.
 import { prisma } from '@/lib/prisma'
 import type { Vendor1099, VendorPayeeType, Vendor1099ReviewStatus } from '@prisma/client'
+import { getTestDataExpenseExclusion } from './testDataExclusion'
 
 export interface CreateVendor1099Input {
   vendorName: string
@@ -49,11 +50,12 @@ export async function listVendors1099WithPayments(year: number): Promise<Vendor1
   const vendors = await prisma.vendor1099.findMany({ orderBy: { vendorName: 'asc' } })
   const from = new Date(year, 0, 1)
   const to = new Date(year, 11, 31, 23, 59, 59, 999)
+  const expenseTestExclusion = await getTestDataExpenseExclusion()
 
   const results = await Promise.all(
     vendors.map(async (v) => {
       const agg = await prisma.financeExpense.aggregate({
-        where: { vendor: v.vendorName, date: { gte: from, lte: to } },
+        where: { vendor: v.vendorName, date: { gte: from, lte: to }, ...expenseTestExclusion },
         _sum: { amount: true },
       })
       return { ...v, paymentsYtd: agg._sum.amount ?? 0 }
