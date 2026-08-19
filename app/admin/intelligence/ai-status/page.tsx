@@ -153,26 +153,28 @@ export default async function AiStatusPage() {
             </div>
           </div>
           {usage.byModel.length > 0 && (
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-white/10 text-white/40 uppercase text-[11px] tracking-wide">
-                  <th className="py-2 pr-4">Provider</th>
-                  <th className="py-2 pr-4">Model</th>
-                  <th className="py-2 pr-4">Calls</th>
-                  <th className="py-2">Cost</th>
-                </tr>
-              </thead>
-              <tbody>
-                {usage.byModel.map((row) => (
-                  <tr key={`${row.provider}:${row.model}`} className="border-b border-white/5 text-white/80">
-                    <td className="py-2 pr-4">{row.provider}</td>
-                    <td className="py-2 pr-4">{row.model}</td>
-                    <td className="py-2 pr-4 tabular-nums">{row.calls}</td>
-                    <td className="py-2 tabular-nums">${(row.costCents / 100).toFixed(2)}</td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-white/10 text-white/40 uppercase text-[11px] tracking-wide">
+                    <th className="py-2 pr-4 whitespace-nowrap">Provider</th>
+                    <th className="py-2 pr-4 whitespace-nowrap">Model</th>
+                    <th className="py-2 pr-4 whitespace-nowrap">Calls</th>
+                    <th className="py-2 whitespace-nowrap">Cost</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {usage.byModel.map((row) => (
+                    <tr key={`${row.provider}:${row.model}`} className="border-b border-white/5 text-white/80">
+                      <td className="py-2 pr-4 whitespace-nowrap">{row.provider}</td>
+                      <td className="py-2 pr-4 whitespace-nowrap">{row.model}</td>
+                      <td className="py-2 pr-4 tabular-nums whitespace-nowrap">{row.calls}</td>
+                      <td className="py-2 tabular-nums whitespace-nowrap">${(row.costCents / 100).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </section>
 
@@ -195,29 +197,33 @@ export default async function AiStatusPage() {
             <div className="grid sm:grid-cols-2 gap-8">
               <div>
                 <h3 className="text-white/60 text-xs uppercase tracking-wide mb-2">By Category</h3>
-                <table className="w-full text-left text-sm">
-                  <tbody>
-                    {compliance.byCategory.map((row) => (
-                      <tr key={row.category} className="border-b border-white/5 text-white/80">
-                        <td className="py-1.5 pr-4">{row.category}</td>
-                        <td className="py-1.5 tabular-nums">{row.count}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <tbody>
+                      {compliance.byCategory.map((row) => (
+                        <tr key={row.category} className="border-b border-white/5 text-white/80">
+                          <td className="py-1.5 pr-4 whitespace-nowrap">{row.category}</td>
+                          <td className="py-1.5 tabular-nums whitespace-nowrap">{row.count}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
               <div>
                 <h3 className="text-white/60 text-xs uppercase tracking-wide mb-2">By Action</h3>
-                <table className="w-full text-left text-sm">
-                  <tbody>
-                    {compliance.byAction.map((row) => (
-                      <tr key={row.action} className="border-b border-white/5 text-white/80">
-                        <td className="py-1.5 pr-4">{row.action}</td>
-                        <td className="py-1.5 tabular-nums">{row.count}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <tbody>
+                      {compliance.byAction.map((row) => (
+                        <tr key={row.action} className="border-b border-white/5 text-white/80">
+                          <td className="py-1.5 pr-4 whitespace-nowrap">{row.action}</td>
+                          <td className="py-1.5 tabular-nums whitespace-nowrap">{row.count}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
@@ -229,34 +235,36 @@ export default async function AiStatusPage() {
           {reviewQueue.length === 0 ? (
             <p className="text-white/40 text-sm">No unreviewed escalations.</p>
           ) : (
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-white/10 text-white/40 uppercase text-[11px] tracking-wide">
-                  <th className="py-2 pr-4">Category</th>
-                  <th className="py-2 pr-4">Feature</th>
-                  <th className="py-2 pr-4">Confidence</th>
-                  <th className="py-2 pr-4">Method</th>
-                  <th className="py-2 pr-4">Repeats</th>
-                  <th className="py-2 pr-4">When</th>
-                  <th className="py-2"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {reviewQueue.map((row) => (
-                  <tr key={row.id} className="border-b border-white/5 text-white/80">
-                    <td className="py-2 pr-4">{row.policyCategory}</td>
-                    <td className="py-2 pr-4">{row.feature}</td>
-                    <td className="py-2 pr-4 tabular-nums">{row.classifierConfidence?.toFixed(2) ?? '—'}</td>
-                    <td className="py-2 pr-4">{row.classifierMethod ?? '—'}</td>
-                    <td className="py-2 pr-4 tabular-nums">{row.repeatCount}</td>
-                    <td className="py-2 pr-4">{row.createdAt.toLocaleString()}</td>
-                    <td className="py-2">
-                      <MarkReviewedButton eventId={row.id} />
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-white/10 text-white/40 uppercase text-[11px] tracking-wide">
+                    <th className="py-2 pr-4 whitespace-nowrap">Category</th>
+                    <th className="py-2 pr-4 whitespace-nowrap">Feature</th>
+                    <th className="py-2 pr-4 whitespace-nowrap">Confidence</th>
+                    <th className="py-2 pr-4 whitespace-nowrap">Method</th>
+                    <th className="py-2 pr-4 whitespace-nowrap">Repeats</th>
+                    <th className="py-2 pr-4 whitespace-nowrap">When</th>
+                    <th className="py-2"></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {reviewQueue.map((row) => (
+                    <tr key={row.id} className="border-b border-white/5 text-white/80">
+                      <td className="py-2 pr-4 whitespace-nowrap">{row.policyCategory}</td>
+                      <td className="py-2 pr-4 whitespace-nowrap">{row.feature}</td>
+                      <td className="py-2 pr-4 tabular-nums whitespace-nowrap">{row.classifierConfidence?.toFixed(2) ?? '—'}</td>
+                      <td className="py-2 pr-4 whitespace-nowrap">{row.classifierMethod ?? '—'}</td>
+                      <td className="py-2 pr-4 tabular-nums whitespace-nowrap">{row.repeatCount}</td>
+                      <td className="py-2 pr-4 whitespace-nowrap">{row.createdAt.toLocaleString()}</td>
+                      <td className="py-2 whitespace-nowrap">
+                        <MarkReviewedButton eventId={row.id} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </section>
       </div>
