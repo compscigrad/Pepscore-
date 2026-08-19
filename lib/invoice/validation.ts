@@ -36,6 +36,11 @@ const lineItemSchema = z.object({
   skuSnapshot: z.string().optional().nullable(),
   manualPricingOverride: z.boolean().optional(),
   inventoryQuantityConsumed: z.number().int().nonnegative().optional().nullable(),
+  // Finance COGS-coverage fix (2026-08-19) -- total (quantity-extended)
+  // cost of goods for this line. Nullable/optional so a free-typed line
+  // item or a product with no recorded cost stays exactly as valid as
+  // before this field existed.
+  costOfGoods: z.number().nonnegative().optional().nullable(),
 })
 
 const discountSchema = z.object({

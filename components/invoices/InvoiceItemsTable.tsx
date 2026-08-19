@@ -31,6 +31,14 @@ interface Props {
   invoiceId?: string
 }
 
+// Local, not imported from lib/invoices.ts's round2 -- that file pulls in
+// Prisma and is server-only; importing it here would bundle Prisma into
+// this client component (same class of bundling issue documented at
+// lib/promotions/firstOrderOfferClaim.ts's own header comment).
+function round2(value: number): number {
+  return Math.round(value * 100) / 100
+}
+
 function emptyItem(): InvoiceItemDraft {
   return { key: makeKey(), id: null, productId: null, name: '', description: '', quantity: 1, unitPrice: 0, lineDiscount: 0 }
 }
@@ -95,6 +103,18 @@ export function InvoiceItemsTable({ items, onChange, products, onProductPriceUpd
       updateItem(key, { productId: null, name: typedValue, sellUnit: null, unitsPerSellUnit: null, priceTier: null, skuSnapshot: null, inventoryQuantityConsumed: null })
       return
     }
+    // Cost of Goods default (2026-08-19 Finance COGS-coverage fix) --
+    // InvoiceItem.costOfGoods is read by lib/finance/reports.ts as a
+    // PER-LINE-QUANTITY-UNIT value (multiplied by item.quantity at read
+    // time, `(i.costOfGoods ?? 0) * i.quantity`) -- confirmed by reading
+    // that consumer before writing this, since it's a different convention
+    // than OrderItem.costOfGoods (a pre-multiplied line total, set once at
+    // storefront checkout). With no sell unit selected, quantity IS the
+    // vial count, so the per-vial Product.costOfGoods is used as-is.
+    // Always admin-editable afterward -- a starting point, not an enforced
+    // value, since real per-sale cost can differ (batch/lot) from the
+    // catalog baseline.
+    const defaultCostOfGoods = product.costOfGoods > 0 ? product.costOfGoods : null
     // Reset sell-unit selection on every new product pick -- a previous
     // row's Standard Case choice must never silently carry over onto a
     // different product that may not even offer that sell unit.
@@ -107,6 +127,7 @@ export function InvoiceItemsTable({ items, onChange, products, onProductPriceUpd
       priceTier: null,
       skuSnapshot: null,
       inventoryQuantityConsumed: null,
+      costOfGoods: defaultCostOfGoods,
     })
   }
 
@@ -125,6 +146,13 @@ export function InvoiceItemsTable({ items, onChange, products, onProductPriceUpd
       priceTier: getInvoiceLinePriceTier(option.sellUnit),
       skuSnapshot: product.sku,
       inventoryQuantityConsumed: item.quantity * option.unitsPerSellUnit,
+      // Per-line-quantity-unit, matching the same convention as the plain
+      // pickProduct() default above -- item.quantity here counts sell
+      // units (e.g. cases), not vials, so the per-vial Product.costOfGoods
+      // is scaled up to a per-case cost via unitsPerSellUnit, not by the
+      // vial count itself (Finance's own reader multiplies by
+      // item.quantity, i.e. case count, at read time).
+      costOfGoods: product.costOfGoods > 0 ? round2(product.costOfGoods * option.unitsPerSellUnit) : null,
     })
   }
 
@@ -227,6 +255,7 @@ export function InvoiceItemsTable({ items, onChange, products, onProductPriceUpd
                 <th className="pb-2 font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 w-20">Qty</th>
                 <th className="pb-2 font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 w-28">Unit Price</th>
                 <th className="pb-2 font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 w-28">Discount</th>
+                <th className="pb-2 font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 w-28">COGS (per unit)</th>
                 <th className="pb-2 font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 w-28 text-right">Total</th>
                 <th className="pb-2 w-32" />
               </tr>
@@ -295,6 +324,18 @@ export function InvoiceItemsTable({ items, onChange, products, onProductPriceUpd
                       className={input}
                       value={item.lineDiscount}
                       onChange={(e) => updateItem(item.key, { lineDiscount: Number(e.target.value) })}
+                    />
+                  </td>
+                  <td className="py-2 pr-2">
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      className={input}
+                      placeholder="Unknown"
+                      value={item.costOfGoods ?? ''}
+                      onChange={(e) => updateItem(item.key, { costOfGoods: e.target.value === '' ? null : Number(e.target.value) })}
+                      title="Cost of goods PER UNIT of this line's own quantity (e.g. per case if a case sell-unit is selected) -- defaults from the product's catalog cost when available, always editable"
                     />
                   </td>
                   <td className="py-2 pr-2 text-right font-medium text-white whitespace-nowrap">

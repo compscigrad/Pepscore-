@@ -58,6 +58,16 @@ export interface InvoiceItemDraft {
   priceTier?: InvoiceItemPriceTier | null
   skuSnapshot?: string | null
   inventoryQuantityConsumed?: number | null
+  // Per-line-quantity-unit cost of goods (2026-08-19 Finance COGS-coverage
+  // fix) -- lib/finance/reports.ts multiplies this by the line's own
+  // `quantity` at read time, so this is NOT a pre-multiplied line total
+  // (unlike OrderItem.costOfGoods, a different, already-multiplied
+  // convention set once at storefront checkout). Defaults from the matched
+  // product's catalog-level Product.costOfGoods (scaled by unitsPerSellUnit
+  // when a case/SPA/bulk sell unit is selected) when a product is picked,
+  // but always admin-editable afterward; null/undefined means genuinely
+  // unknown, never treated as $0 by any Finance report.
+  costOfGoods?: number | null
   // True only for a Phase 3B "Use Once" price correction -- unitPrice
   // deviates from the product's catalog price for priceTier === 'MANUAL',
   // and the catalog itself was deliberately left untouched.

@@ -311,6 +311,7 @@ export async function createInvoice(payload: InvoicePayload): Promise<InvoiceWit
           skuSnapshot: item.skuSnapshot ?? undefined,
           manualPricingOverride: item.manualPricingOverride ?? undefined,
           inventoryQuantityConsumed: item.inventoryQuantityConsumed ?? undefined,
+          costOfGoods: item.costOfGoods ?? undefined,
         })),
       },
       discounts: {
@@ -469,6 +470,7 @@ export async function updateInvoice(id: string, payload: InvoicePayload): Promis
           skuSnapshot: item.skuSnapshot ?? undefined,
           manualPricingOverride: item.manualPricingOverride ?? undefined,
           inventoryQuantityConsumed: item.inventoryQuantityConsumed ?? undefined,
+          costOfGoods: item.costOfGoods ?? undefined,
         },
       })
     }
@@ -490,6 +492,7 @@ export async function updateInvoice(id: string, payload: InvoicePayload): Promis
           skuSnapshot: item.skuSnapshot ?? undefined,
           manualPricingOverride: item.manualPricingOverride ?? undefined,
           inventoryQuantityConsumed: item.inventoryQuantityConsumed ?? undefined,
+          costOfGoods: item.costOfGoods ?? undefined,
         })),
       })
     }

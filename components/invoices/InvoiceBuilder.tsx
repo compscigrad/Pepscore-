@@ -118,6 +118,7 @@ function itemsToDraft(items: InvoiceWithRelations['items']): InvoiceDraft['items
     priceTier: item.priceTier,
     skuSnapshot: item.skuSnapshot,
     inventoryQuantityConsumed: item.inventoryQuantityConsumed,
+    costOfGoods: item.costOfGoods,
   }))
 }
 
@@ -257,6 +258,7 @@ export function InvoiceBuilder({
           priceTier: item.priceTier ?? undefined,
           skuSnapshot: item.skuSnapshot ?? undefined,
           inventoryQuantityConsumed: item.inventoryQuantityConsumed ?? undefined,
+          costOfGoods: item.costOfGoods ?? undefined,
         })),
         discounts: draft.discounts.map((d) => ({
           promotionId: d.promotionId || undefined,
