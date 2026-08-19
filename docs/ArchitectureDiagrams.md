@@ -331,6 +331,37 @@ flowchart TD
 
 ---
 
+## 11. Lead Capture / Conversion Engine
+
+Grounded in: `lib/promotions/firstOrderOfferClaim.ts`, `lib/promotions/redemption.ts`, `lib/promotions/campaigns.ts`, `lib/promotions/acquisitionPopupSettings.ts`, `lib/storefront/acquisitionPopup.ts`, `lib/portal/bulkInvite.ts`, `lib/notifications/routing.ts`, `prisma/schema.prisma` (`PromotionCampaign`/`PromotionCode`/`LeadCapture`/`CampaignFunnelEvent`/`AcquisitionPopupSettings`). New 2026-08-19 (Phase 15) -- built on the pre-existing `PromotionCampaign`/`PromotionCode` versioned-issuance system (diagram 3), not a parallel one.
+
+```mermaid
+flowchart TD
+    V["Anonymous visitor\n(no fingerprinting --\nnormal first-party session only)"] -->|delay/scroll/exit-intent,\nsuppressed via localStorage| POPUP["Acquisition popup\n(AcquisitionPopupSettings --\nglobal trigger/suppression/\nnurture-cadence switch)"]
+    POPUP -->|submit: email+phone,\nemailConsent required,\nsmsConsent optional| CLAIM["claimFirstOrderOffer()"]
+    CLAIM --> UPSERT["upsertCustomerFromIntake()\n(dedupe by email/phone --\nnever a second Customer)"]
+    UPSERT --> PRIOR{"hasAnyPriorOrder()?\n(real Invoice/Order history,\nANY channel -- never\naccount/login/device signals)"}
+    PRIOR -->|yes -- existing direct-sale customer| WELCOME["LeadCapture recorded,\nno code issued.\n'Welcome back to Pepscore' --\nnever a discount promise\nthey can't redeem"]
+    PRIOR -->|no -- genuinely new| ISSUE["Immutable snapshot issuance\n(existing PromotionCampaign system,\ndiagram 3) -- unique code,\ndiscountType/Value/expiresAt\ncopied at issuance, never\nrecalculated against a later\ncampaign edit"]
+    ISSUE --> FUNNEL["CampaignFunnelEvent\n(POPUP_IMPRESSION/DISMISSED/SUBMITTED)\n-- first-party, honest dashboard numbers,\nnever estimated"]
+    ISSUE --> EMAIL["Code-delivery email\n(transactional -- never\nsuppression-gated)"]
+    ISSUE -.no redemption yet.-> CRON["first-order-offer-reminders cron\n(registered, still inert behind\nFIRST_ORDER_OFFER_REMINDERS_ENABLED +\ndry-run gate)"]
+    CRON -->|24h/72h/168h,\nadmin-configurable| REMINDER["Nurture reminder\n(marketing -- gated by\nmarketingEmailOptedOut,\nunsubscribe link included)"]
+    REMINDER -.stops immediately on.-> REDEEM["Real purchase\n(redeemedAt set)"]
+    ISSUE -->|checkout| RESOLVE["resolvePromotionCode()\n(defense-in-depth: hasAnyPriorOrder()\nchecked AGAIN here, independent\nof the issuance-time check)"]
+    RESOLVE --> REDEEM
+    REDEEM --> DASH["Conversion Dashboard\n(admin/promotions/conversion --\ncapture rate, redemption rate,\nrevenue attributed, real Invoice/\nOrder totals, never estimated)"]
+
+    subgraph Existing["Existing direct-sale customer activation (addendum)"]
+      BULK["Admin Bulk Portal Invite\n(/admin/customers/portal-invite)"] --> ADOPT["computePortalAdoptionOverview()\n(pre-existing -- reused, not duplicated)"]
+      ADOPT --> SAFETY["planRolloutBatch() + getRolloutSafetyConfig()\n(same kill-switch/dry-run/allowlist\nas the automated rollout cron)"]
+      SAFETY --> INVITE["generatePortalInvite()\n(pre-existing)"]
+    end
+    WELCOME -.-> BULK
+```
+
+---
+
 ## Maintaining this document
 
 Each diagram cites the real files it was drawn from — when those files change materially, update the diagram in the same sprint, per the standing rule in `docs/CaseStudy.md`'s "Continuous Update Rule." Do not add a node or edge without first confirming it against the cited source; a diagram that looks plausible but wasn't checked against real code is worse than no diagram.

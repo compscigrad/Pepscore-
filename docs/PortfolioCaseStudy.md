@@ -20,12 +20,12 @@ Pepscore Lab is a peptide-research-supplier e-commerce and back-office platform:
 
 | Metric | Value | How it was measured |
 |---|---|---|
-| Commits shipped to the main branch | 303 | `git log --oneline \| wc -l`, run directly against the repository |
-| Automated tests passing | 1,401, across 128 test files | `npx vitest run`, executed directly against the repository |
-| Test-suite growth over the period covered by this backfill | 626 → 1,401 tests (more than doubled) | Prior case-study revision's recorded count vs. current measured count |
-| Database models | 67 | `grep -c "^model " prisma/schema.prisma` |
-| API routes | 112 total, 76 of them admin-authenticated | Direct file count under `app/api/**` |
-| Admin-authenticated pages | 29, all covered by an automated route/page auth-coverage regression test | Direct file count under `app/admin/**`; verified by the two coverage test suites themselves |
+| Commits shipped to the main branch | 330 | `git log --oneline \| wc -l`, run directly against the repository |
+| Automated tests passing | 1,463, across 132 test files | `npx vitest run`, executed directly against the repository |
+| Test-suite growth over the period covered by this backfill | 626 → 1,463 tests (more than doubled) | Prior case-study revision's recorded count vs. current measured count |
+| Database models | 69 | `grep -c "^model " prisma/schema.prisma` |
+| API routes | 115 total | Direct file count under `app/api/**` |
+| Admin-authenticated pages | 32, all covered by an automated route/page auth-coverage regression test | Direct file count under `app/admin/**`; verified by the two coverage test suites themselves |
 | Third-party integrations | 7 (authentication, payments, shipping/tracking, transactional email, SMS, address lookup, and an AI model gateway) | Direct code audit |
 | Scheduled automation jobs | 6 registered, 1 additional built and safety-gated but not yet enabled | `vercel.json` |
 | Architecture decision log entries | 74, each with a documented decision, reasoning, alternatives considered, benefits, and drawbacks | `docs/Decisions.md` |
@@ -45,6 +45,7 @@ The system is organized into distinct, independently-testable layers, each with 
 - **Commerce & Payments** — a provider-abstraction pattern (one interface, swappable real implementations) covering both payments and shipping, so that adding or replacing a provider never touches UI, webhook, or scheduled-job code.
 - **Fulfillment** — carrier-agnostic shipment tracking, a centralized fulfillment-eligibility gate, and real label-purchase integration (currently held behind an intentional pre-activation safety switch pending third-party account review, unrelated to any code readiness question).
 - **Financial Reporting & Tax Preparation** — a ledger, ledger reconciliation, profit-and-loss reporting, and accountant-ready export system built entirely as a read layer over the platform's own transactional records, with zero duplicated money calculations anywhere in the system.
+- **Lead Capture & Conversion** — a first-visit acquisition popup (delay/scroll/exit-intent triggers, same-browser frequency suppression, independently-tracked email and SMS marketing consent), an immutable versioned-promotion-issuance system, and an automated nurture sequence — all gated by a real cross-channel purchase-history check so an existing offline customer is never mistakenly offered a new-customer discount.
 - **First-Party AI Research Assistant** — a from-scratch, provider-agnostic AI subsystem (see below) with its own policy, safety, retrieval, and observability layers, built and dark-deployed independently of the storefront/admin/checkout code paths.
 - **Authentication & Authorization** — session authentication via a managed identity provider, with a centralized, database-backed role-authorization layer covering every administrative surface.
 - **Automation** — scheduled background jobs for archival, tracking synchronization, reminder delivery, and reservation cleanup, each independently kill-switched.
@@ -77,6 +78,8 @@ A financial-reporting sprint building out a profit-and-loss dashboard found that
 A second defect worth naming from a UX/reliability angle: a live-verification pass on the mobile navigation menu found every menu item was unresponsive on first tap. Root-causing it (rather than patching around the symptom) revealed a genuine event-ordering race — an outside-click handler scoped too broadly was unmounting the entire menu on `mousedown`, before the browser's subsequent `click` event could ever reach the tapped link. The fix narrowed the handler's scope and shipped with a regression test built specifically to exercise real browser event timing (a synthetic click alone could not reproduce the bug), confirmed to fail against the old code before being restored to guard the fix.
 
 A third: live-verifying a first-party AI research assistant's answers against the company's own catalog found that a natural-language question could return an apparently-correct answer while the system's own retrieval log showed zero data had actually been retrieved from the real catalog — meaning the model was answering from general training knowledge, not grounded company data, despite a citation architecture existing specifically to prevent that. Tracing the retrieval call (rather than assuming a prompting or model problem) found the reused search-matching function was correct for its original purpose (exact product-name lookup) but structurally unable to handle open-ended natural-language phrasing. The fix added a narrowly-scoped, catalog-grounded fallback specifically for that failure mode, verified by a true end-to-end pipeline test exercising the real retrieval component rather than a stub.
+
+A fourth, from the lead-capture/conversion sprint: a new first-visit acquisition popup needed to check whether a visitor was eligible for a "first order" discount before promising one. The obvious implementation — "has this person claimed this specific offer before?" — was safe against double redemption, but missed a sharper distinction: a business with an existing offline sales channel can have real customers whose *first website visit* is nowhere near their *first purchase*. Tracing the actual claim path (rather than trusting the surface-level check) found it never consulted the platform's own real transaction history at all. The fix reused an existing cross-channel purchase-history check — already relied on elsewhere for checkout-time validation — at the point of *issuance* as well, so an existing customer now sees a "welcome back" message instead of a discount code they could never actually redeem. The kind of gap that's easy to miss because nothing about it looks broken until you ask exactly whose history the system is checking.
 
 ---
 
