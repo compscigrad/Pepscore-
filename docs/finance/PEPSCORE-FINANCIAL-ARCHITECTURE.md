@@ -53,6 +53,25 @@ Every model in this codebase uses `Float`, not integer cents or `Decimal` — th
 
 `/admin/finance` — one page, tabs (not separate routes), following the existing, deliberate 2026-08-12 IA decision documented in `components/admin/FinanceView.tsx`'s own header comment: "Finance is one section with several report *types*, not several nav destinations." Eleven tabs as of 2026-08-18: Dashboard, P&L/Sales Tax, Expense Ledger, Discounts & Credits, Inventory/COGS, Refunds, Vendors, Reconciliation, Owner Transactions, Tax Center, Vendor 1099s.
 
-## What was explicitly not built (P1, per spec #38)
+## P1 roadmap status (audited 2026-08-18)
 
-Live bank feeds, automatic bank reconciliation, OCR receipt scanning, AI expense categorization, QuickBooks/Xero integration, automated tax filing, automatic 1099 e-filing, advanced forecasting, automatic estimated-tax calculation, payroll. None of these block using the Finance Center today; all are architecturally possible to add later without rebuilding the model above (export/report boundaries are already clean composition layers).
+**Implemented this pass** — safely completable without external credentials, paid subscriptions, or irreversible actions:
+- **QuickBooks/Xero-ready export** (`lib/finance/export.ts`'s `buildQuickBooksXeroExpenseSheet`, Admin → Finance → "Export QuickBooks/Xero") — a bank-import-ready CSV, no paid connection or credential required.
+- **Estimated Tax Planning** (`lib/finance/estimatedTax.ts`, Admin → Finance → Tax Center) — quarterly Book Profit × an owner-entered flat rate, explicitly labeled "Estimate only — not tax advice or a filing," never a computed rate or an asserted filing obligation.
+
+**BLOCKED — OWNER/EXTERNAL DEPENDENCY** — cannot be safely built without one of: real bank credentials, a paid external subscription, a government filing, a tax/legal determination, or a payroll account:
+| Item | What's actually needed |
+|---|---|
+| Live bank feeds | A bank-linking provider (e.g. Plaid) account + real bank credentials the owner would need to authorize directly with their bank — this environment has no bank access and must not attempt to acquire any. |
+| Real automatic bank reconciliation | Depends on live bank feeds above — same blocker. |
+| QuickBooks/Xero **paid API connection** (live two-way sync, distinct from the CSV export already built) | A QuickBooks Online or Xero paid subscription, an OAuth app registration, and the owner's own account credentials for that platform. |
+| Automatic tax filing | A real government filing is a legal act only the owner (or their CPA, with the owner's authorization) can take — this system must never file anything. |
+| 1099 e-filing | Same category as tax filing — a real submission to the IRS/a state, requiring the owner's own filer credentials and legal authorization. |
+| Payroll (incl. S-corp payroll) | A licensed payroll provider account, EIN-linked tax deposits, and ongoing compliance obligations — a new, owner-initiated system, not an extension of bookkeeping. |
+
+**Deferred, not blocked** — safely buildable later, scoped out of this pass by explicit engineering judgment rather than an external dependency:
+- OCR receipt scanning, AI expense categorization (the `lib/ai/` provider/policy infrastructure this project already built could support this, but it's a real, separate scope of work — request/response schema, prompt design, a review-before-apply UX so a wrong AI category is never silently written — not a same-pass addition to an already-large sprint).
+- Advanced forecasting (a distinct feature needing its own design pass on what "forecast" honestly means without inventing numbers).
+- Receipt/document metadata beyond the existing `receiptUrl`/`receiptFilename` fields — blocked on the same real-file-storage-provider decision already tracked in `docs/PendingOwnerActions.md` #21, not attempted here since it's the same owner decision, not new scope.
+
+None of the deferred items block using the Finance Center today; the export/report boundary is deliberately clean composition layers, so any of them can be added later without rebuilding the model above.
