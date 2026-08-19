@@ -111,7 +111,7 @@ Notes: card, ACH, Cash App Pay, and PayPal route through the same `PaymentProvid
 
 ## 4. Fulfillment Flow
 
-Grounded in: `lib/fulfillment/gate.ts` (`checkFulfillmentEligibility`), `lib/fulfillment/labels.ts`, `lib/shipments/primary.ts` (`getPrimaryShipment`), `app/api/webhooks/shippo/route.ts`, `app/api/cron/poll-tracking/route.ts`.
+Grounded in: `lib/fulfillment/gate.ts` (`checkFulfillmentEligibility`), `lib/fulfillment/labels.ts`, `lib/fulfillment/commandCenter.ts` (`deriveFulfillmentBucket`), `lib/shipments/primary.ts` (`getPrimaryShipment`), `app/api/webhooks/shippo/route.ts`, `app/api/cron/poll-tracking/route.ts`. Updated 2026-08-19 for the direct-sales/admin parity audit's `SELF_DELIVERY` bucket fix (`351661a`).
 
 ```mermaid
 flowchart TD
@@ -132,13 +132,17 @@ flowchart TD
     O -->|shipment on cancelled/refunded invoice| P[REFUNDED_AFTER_SHIPMENT]
     O -->|normal exception| Q[CARRIER_EXCEPTION]
     L --> R[Customer notification — if enabled per invoiceSettings]
+    S["Admin sets legacy carrier = HAND_DELIVERY/\nPICKUP/COURIER/OTHER (no trackable Shipment\never expected — Shipment.trackingNumber\nis required, non-nullable)"] --> T{"deriveFulfillmentBucket()\nno Shipment row?"}
+    T -->|non-trackable carrier| U["SELF_DELIVERY bucket\n(excluded from ACTIONABLE_BUCKETS —\na resolved state, not a missing one)"]
+    U -.auto-resolves any stale.-> O
+    U --> V[Portal + email render\ndelivery-method language,\nnever a broken tracking CTA]
 ```
 
 ---
 
 ## 5. Financial Data Flow
 
-Grounded in: `lib/finance/*.ts`, `docs/finance/PEPSCORE-FINANCIAL-ARCHITECTURE.md`. Updated 2026-08-19 for the Finance P1 sprint (`estimatedTax.ts`, the QuickBooks/Xero export sheet), the P0 verification pass's `deletedAt` fix (`600af53`/`fde75da`/`6579ba3`), and the Stripe fee-reconciliation hardening pass (`13ebf90`) — real balance-transaction fees, the `computeNetSettlement()` refund-bug fix, and the `markOrderPaid → FinanceExpense` bridge.
+Grounded in: `lib/finance/*.ts`, `docs/finance/PEPSCORE-FINANCIAL-ARCHITECTURE.md`. Updated 2026-08-19 for the Finance P1 sprint (`estimatedTax.ts`, the QuickBooks/Xero export sheet), the P0 verification pass's `deletedAt` fix (`600af53`/`fde75da`/`6579ba3`), the Stripe fee-reconciliation hardening pass (`13ebf90`) — real balance-transaction fees, the `computeNetSettlement()` refund-bug fix, and the `markOrderPaid → FinanceExpense` bridge — and the direct-sales parity audit's Order-side shipping-postage bridge (`351661a`; `InvoicePayment` fee parity remains a tracked, not-yet-closed gap).
 
 ```mermaid
 flowchart TD
@@ -157,6 +161,8 @@ flowchart TD
     end
     PAY -.markOrderPaid mirrors the real fee.-> EXP2["FinanceExpense\n(category PAYMENT_PROCESSING,\nidempotent on paymentIntentId)"]
     EXP2 --> EXP
+    SHIP["Shippo label purchase\n(Invoice-side lib/fulfillment/labels.ts\nOrder-side api/shipping/labels)"] -.createExpenseIdempotent, keyed on Shippo label id.-> EXP3["FinanceExpense\n(category SHIPPING_POSTAGE,\nboth channels — same pattern)"]
+    EXP3 --> EXP
     Canonical --> REPORTS["lib/finance/reports.ts\nDashboard, discounts, refunds, inventory loss, vendor spend"]
     Canonical --> TAX["lib/finance/salesTax.ts\n(currently $0 — nothing collects tax)"]
     Canonical --> RECON["lib/finance/stripeReconciliation.ts\nMATCHED/PARTIAL/MISMATCH/PENDING\ncomputeNetSettlement() always subtracts refunds"]

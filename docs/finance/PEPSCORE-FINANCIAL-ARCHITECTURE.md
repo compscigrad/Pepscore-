@@ -8,7 +8,7 @@
 |---|---|---|
 | A sale (direct/manual) | `Invoice` / `InvoiceItem` | The real, current sales channel — see [Data Dictionary](./PEPSCORE-FINANCE-DATA-DICTIONARY.md) |
 | A sale (storefront checkout) | `Order` / `OrderItem` | Zero rows today — checkout hasn't launched |
-| A payment received on an invoice | `InvoicePayment` | Manual recording, no per-transaction Stripe linkage |
+| A payment received on an invoice | `InvoicePayment` | Manual recording, no per-transaction Stripe linkage — see "InvoicePayment fee parity" below, a known, tracked, not-yet-closed gap |
 | A storefront Stripe payment | `Payment` | Has real Stripe fields (fee, net, payout, settlement) |
 | Discounts/credits applied | `InvoiceDiscount`, `PromotionCode` | Read directly, never re-recorded as an expense |
 | A completed refund | `InvoiceRefund` | `completedAmount`/`completedAt` are authoritative |
@@ -28,6 +28,14 @@ The fee itself is mirrored into `FinanceExpense` (category `PAYMENT_PROCESSING`,
 Net Settlement (`lib/finance/stripeReconciliation.ts`'s `computeNetSettlement()`) always subtracts `refundedAmount` from gross-minus-fee, regardless of whether the stored `netAmount` came from a real balance transaction or the fallback formula — a real, found-and-fixed bug (the original inline expression used the stored `netAmount` as-is whenever it was set, which silently ignored every refund) is documented in `docs/CaseStudy.md`'s own mini case study for this fix, not just in this architecture note.
 
 Refunded amounts (`InvoiceRefund.completedAmount`, and the storefront-side `charge.amount_refunded` normalization) have always come from Stripe's own real event data, never estimated — confirmed, not assumed. Stripe's real behavior of never returning the original processing fee on a refund is correctly preserved: refund reconciliation (`lib/payments/reconcile.ts`) never modifies `stripeFee`.
+
+## Shipping-postage expense parity across both sales channels (2026-08-19)
+
+Shippo label-purchase cost now reaches `FinanceExpense` (category `SHIPPING_POSTAGE`, `taxTreatment: OPERATING_EXPENSE`) identically on both the Invoice channel (`lib/fulfillment/labels.ts`, already correct since the 2026-08-12 sprint) and the Order/storefront channel (`app/api/shipping/labels/route.ts`, closed 2026-08-19) — both idempotent on Shippo's own label object id via `createExpenseIdempotent()`, so a retried label-purchase request can never double-post the cost. The legacy `Expense` model (still read by the Admin Overview dashboard's own "2026 Expense Breakdown" card) continues to receive a row too on the Order side, unchanged — the `FinanceExpense` write is additive, not a replacement.
+
+## InvoicePayment fee parity — known gap, not yet closed
+
+`InvoicePayment` (the admin/direct-sale payment record) has no processor-fee field for any `PaymentMethod`, including `STRIPE` — unlike the storefront-side `Payment` model, which has real `stripeFee`/`netAmount`/`stripeFeeIsEstimated` fields populated from Stripe's actual balance transaction (`getRealStripeFee()`/`resolvePaymentFee()`, see "Stripe processing-fee reconciliation" above). Today an admin can tag an `InvoicePayment.method` as `STRIPE`, but there is no linkage field to a real Stripe PaymentIntent/charge, so no real fee can be looked up, no `FinanceExpense` processor-fee entry is posted, and P&L/monthly-summary/export figures for admin-recorded Stripe payments do not reflect a real processing cost. Non-Stripe methods (`CASH`, `CHECK`, `BANK_TRANSFER`, etc.) correctly have no fee assumed for them today — that part is not a gap. This is tracked as the immediate next focused engineering pass, not left undocumented: any schema change must be additive (a nullable Stripe-linkage field, not a rewrite of `InvoicePayment`), and must reuse `resolvePaymentFee()`/`getRealStripeFee()` rather than re-deriving a second fee calculation.
 
 ## Test-data exclusion
 
