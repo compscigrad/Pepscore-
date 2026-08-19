@@ -77,7 +77,7 @@ export async function getDataQualityFlags(): Promise<DataQualityFlag[]> {
   // costOfGoods value -- expected to be common on older invoices (the
   // field is new), surfaced for visibility, not treated as urgent.
   const itemsMissingCogs = await prisma.invoiceItem.findMany({
-    where: { costOfGoods: null, invoice: { status: { in: ['ISSUED', 'REFUNDED'] }, isTestData: false } },
+    where: { costOfGoods: null, invoice: { status: { in: ['ISSUED', 'REFUNDED'] }, isTestData: false, deletedAt: null } },
     select: { id: true, name: true, invoice: { select: { invoiceNumber: true } } },
     take: 200, // capped -- this is a visibility list, not a full audit dump
   })

@@ -26,7 +26,7 @@ export interface SalesTaxSummary {
 export async function getSalesTaxSummary(range: DateRange): Promise<SalesTaxSummary> {
   const [invoiceAgg, orderAgg, refundedTaxAgg] = await Promise.all([
     prisma.invoice.aggregate({
-      where: { issuedAt: { gte: range.from, lte: range.to }, status: { in: ['ISSUED', 'REFUNDED'] }, isTestData: false },
+      where: { issuedAt: { gte: range.from, lte: range.to }, status: { in: ['ISSUED', 'REFUNDED'] }, isTestData: false, deletedAt: null },
       _sum: { subtotal: true, tax: true },
       _count: true,
     }),

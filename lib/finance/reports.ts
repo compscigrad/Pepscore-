@@ -35,12 +35,22 @@ export interface FinanceDashboardMetrics {
 }
 
 export async function getFinanceDashboardMetrics(range: DateRange): Promise<FinanceDashboardMetrics> {
-  // isTestData: false -- excludes the 11 known rehearsal/test invoices
-  // (2026-08-18 backfill) from every revenue-recognizing query below.
-  // Deliberately NOT filtering on archivedAt: archiving a real, completed
-  // invoice is a filing action, not a "this wasn't real" marker -- see
-  // Invoice.isTestData's own schema comment.
-  const invoiceWhere = { issuedAt: { gte: range.from, lte: range.to }, status: { in: RECOGNIZED_REVENUE_STATUSES }, isTestData: false }
+  // isTestData: false -- excludes known rehearsal/test invoices from every
+  // revenue-recognizing query below. Deliberately NOT filtering on
+  // archivedAt: archiving a real, completed invoice is a filing action,
+  // not a "this wasn't real" marker -- see Invoice.isTestData's own
+  // schema comment.
+  //
+  // deletedAt: null (added 2026-08-18, Finance/Tax P0 verification pass)
+  // -- a real, live gap found while verifying every report beyond
+  // Revenue: PS-2026-000010 ("TEST DeleteMe," ISSUED, $1) is soft-deleted
+  // but was still counted in Gross Revenue, because this query never
+  // filtered on deletedAt at all (only getInvoiceDashboardStats's older,
+  // separate Overview-page query did). Every invoice-touching query in
+  // this file now filters deletedAt: null for the same reason a deleted
+  // invoice was already excluded from the Overview stat -- deletion is a
+  // stronger signal than archiving that a record shouldn't count.
+  const invoiceWhere = { issuedAt: { gte: range.from, lte: range.to }, status: { in: RECOGNIZED_REVENUE_STATUSES }, isTestData: false, deletedAt: null }
   const expenseTestExclusion = await getTestDataExpenseExclusion()
 
   const [revenueAgg, invoiceItems, shippingExpenseAgg, paymentFeesAgg, opexAgg, needsReviewCount, refundsAgg] = await Promise.all([
@@ -53,7 +63,7 @@ export async function getFinanceDashboardMetrics(range: DateRange): Promise<Fina
     prisma.financeExpense.aggregate({ where: { category: 'PAYMENT_PROCESSING', date: { gte: range.from, lte: range.to }, ...expenseTestExclusion }, _sum: { amount: true } }),
     prisma.financeExpense.aggregate({ where: { taxTreatment: 'OPERATING_EXPENSE', date: { gte: range.from, lte: range.to }, ...expenseTestExclusion }, _sum: { amount: true } }),
     prisma.financeExpense.count({ where: { taxTreatment: 'NEEDS_ACCOUNTANT_REVIEW', date: { gte: range.from, lte: range.to }, ...expenseTestExclusion } }),
-    prisma.invoiceRefund.aggregate({ where: { status: 'COMPLETED', completedAt: { gte: range.from, lte: range.to }, invoice: { isTestData: false } }, _sum: { completedAmount: true } }),
+    prisma.invoiceRefund.aggregate({ where: { status: 'COMPLETED', completedAt: { gte: range.from, lte: range.to }, invoice: { isTestData: false, deletedAt: null } }, _sum: { completedAmount: true } }),
   ])
 
   const itemsWithCost = invoiceItems.filter((i) => i.costOfGoods !== null)
@@ -101,7 +111,7 @@ export interface DiscountCreditRow {
 // credit (spec #21/#29).
 export async function getDiscountsCreditsReport(range: DateRange): Promise<DiscountCreditRow[]> {
   const rows = await prisma.invoiceDiscount.findMany({
-    where: { invoice: { issuedAt: { gte: range.from, lte: range.to }, isTestData: false } },
+    where: { invoice: { issuedAt: { gte: range.from, lte: range.to }, isTestData: false, deletedAt: null } },
     include: { invoice: { select: { invoiceNumber: true, customerName: true, issuedAt: true } }, backorderCompensation: { select: { id: true } }, promotion: { select: { id: true } } },
     orderBy: { invoice: { issuedAt: 'desc' } },
   })
@@ -128,7 +138,7 @@ export interface RefundReportRow {
 
 export async function getRefundReport(range: DateRange): Promise<RefundReportRow[]> {
   const rows = await prisma.invoiceRefund.findMany({
-    where: { status: 'COMPLETED', completedAt: { gte: range.from, lte: range.to }, invoice: { isTestData: false } },
+    where: { status: 'COMPLETED', completedAt: { gte: range.from, lte: range.to }, invoice: { isTestData: false, deletedAt: null } },
     include: { invoice: { select: { invoiceNumber: true, customerName: true } } },
     orderBy: { completedAt: 'desc' },
   })

@@ -32,7 +32,7 @@ export async function getMonthlySummary(year: number): Promise<MonthlySummaryRow
       const to = new Date(year, m + 1, 0, 23, 59, 59, 999)
       const [metrics, invoiceCount] = await Promise.all([
         getFinanceDashboardMetrics({ from, to }),
-        prisma.invoice.count({ where: { issuedAt: { gte: from, lte: to }, status: { in: RECOGNIZED_REVENUE_STATUSES }, isTestData: false } }),
+        prisma.invoice.count({ where: { issuedAt: { gte: from, lte: to }, status: { in: RECOGNIZED_REVENUE_STATUSES }, isTestData: false, deletedAt: null } }),
       ])
       return {
         year,

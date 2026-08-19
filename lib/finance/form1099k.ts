@@ -53,7 +53,7 @@ export async function getForm1099KReconciliationReport(taxYear: number): Promise
     getForm1099KRecord(taxYear),
     getFinanceDashboardMetrics({ from, to }),
     prisma.invoice.aggregate({
-      where: { issuedAt: { gte: from, lte: to }, status: { in: ['ISSUED', 'REFUNDED'] }, isTestData: false },
+      where: { issuedAt: { gte: from, lte: to }, status: { in: ['ISSUED', 'REFUNDED'] }, isTestData: false, deletedAt: null },
       _sum: { tax: true },
     }),
   ])
