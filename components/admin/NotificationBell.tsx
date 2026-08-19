@@ -7,9 +7,10 @@
 // admin page without each page wiring it in, and can never visually
 // collide with the nav's own right-aligned "Storefront" link the way an
 // independently viewport-pinned element did before (2026-08-19 fix).
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatTimeElapsed } from '@/lib/formatTimeElapsed'
+import { AnchoredDropdown } from '@/components/admin/AnchoredDropdown'
 
 interface NotificationItem {
   id: string
@@ -29,6 +30,7 @@ export function NotificationBell() {
   const router = useRouter()
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const [open, setOpen] = useState(false)
+  const buttonRef = useRef<HTMLButtonElement>(null)
 
   const fetchUnread = useCallback(async () => {
     try {
@@ -71,8 +73,9 @@ export function NotificationBell() {
   }
 
   return (
-    <div className="relative z-50">
+    <div>
       <button
+        ref={buttonRef}
         onClick={() => setOpen((o) => !o)}
         className="relative w-11 h-11 rounded-full bg-black border border-gold/20 shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex items-center justify-center hover:border-gold/40 transition-colors"
         aria-label="Notifications"
@@ -85,8 +88,8 @@ export function NotificationBell() {
         )}
       </button>
 
-      {open && (
-        <div className="absolute right-0 mt-2 w-80 bg-[#0a0a0a] rounded-[18px] shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden border border-gold/10">
+      <AnchoredDropdown open={open} anchorRef={buttonRef} align="right">
+        <div className="mt-2 w-80 bg-[#0a0a0a] rounded-[18px] shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden border border-gold/10">
           <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
             <p className="font-heading text-[13px] font-bold text-white">Notifications</p>
             {notifications.length > 0 && (
@@ -131,7 +134,7 @@ export function NotificationBell() {
             )}
           </div>
         </div>
-      )}
+      </AnchoredDropdown>
     </div>
   )
 }
