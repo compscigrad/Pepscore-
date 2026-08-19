@@ -26,6 +26,41 @@ function fmtDate(d: Date | string | null): string {
 function money(n: number): number {
   return Math.round(n * 100) / 100
 }
+function titleCaseCategory(category: string): string {
+  return category.split('_').map((w) => w.charAt(0) + w.slice(1).toLowerCase()).join(' ')
+}
+
+// QuickBooks Online / Xero -ready expense export (P1, 2026-08-18). Neither
+// platform requires a fixed CSV schema for a generic bank/transaction
+// import -- both let the importing user map arbitrary column headers to
+// their own chart of accounts during the upload step -- so this targets
+// the common denominator both accept without modification: Date,
+// Description, Payee, Amount, Category, Memo, with Amount negative for
+// money leaving the business, matching the sign convention both
+// platforms' own bank-statement importers expect. This is a real,
+// immediately-usable export, not a stub -- it does not require a paid
+// QuickBooks/Xero API connection, an OAuth app, or any credential; the
+// owner downloads a file and uploads it through each platform's own
+// existing "import a bank statement" UI. A live, credentialed QBO/Xero
+// API sync (real-time two-way accounting integration) is a materially
+// different, paid-subscription-gated capability and is explicitly out of
+// scope here -- see docs/finance/PEPSCORE-FINANCIAL-ARCHITECTURE.md's P1
+// list.
+export function buildQuickBooksXeroExpenseSheet(expenses: { date: Date; vendor: string | null; description: string; amount: number; category: string; taxTreatment: string; invoiceId: string | null; orderId: string | null }[]): FinanceSheet {
+  return {
+    name: 'QuickBooks-Xero Import',
+    headers: ['Date', 'Description', 'Payee', 'Amount', 'Category', 'Memo'],
+    rows: expenses.map((e) => [
+      fmtDate(e.date),
+      e.description,
+      e.vendor ?? e.description,
+      money(-Math.abs(e.amount)),
+      titleCaseCategory(e.category),
+      [e.invoiceId ? `Invoice ${e.invoiceId}` : null, e.orderId ? `Order ${e.orderId}` : null, `Tax treatment: ${titleCaseCategory(e.taxTreatment)}`].filter(Boolean).join(' | '),
+    ]),
+    colWidths: [12, 32, 20, 12, 26, 40],
+  }
+}
 
 export async function assembleFinanceExport(range: DateRange): Promise<FinanceExportInput> {
   const taxYear = range.to.getFullYear()
@@ -168,9 +203,11 @@ export async function assembleFinanceExport(range: DateRange): Promise<FinanceEx
     colWidths: [30, 14, 20, 40],
   }
 
+  const quickBooksXeroSheet = buildQuickBooksXeroExpenseSheet(expenses)
+
   return {
     rangeLabel, summaryRows, expenseSheet, shippingSheet, discountsSheet, inventoryCogsSheet, refundsSheet, vendorsSheet, needsReviewSheet,
-    salesTaxSheet, ownerTransactionsSheet, stripeReconciliationSheet, form1099kSheet, unreconciledItemsSheet,
+    salesTaxSheet, ownerTransactionsSheet, stripeReconciliationSheet, form1099kSheet, unreconciledItemsSheet, quickBooksXeroSheet,
   }
 }
 

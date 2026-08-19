@@ -13,7 +13,8 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const fromParam = searchParams.get('from')
   const toParam = searchParams.get('to')
-  const format = searchParams.get('format') === 'csv' ? 'csv' : 'xlsx'
+  const formatParam = searchParams.get('format')
+  const format = formatParam === 'csv' ? 'csv' : formatParam === 'qbo' ? 'qbo' : 'xlsx'
 
   if (!fromParam || !toParam) {
     return NextResponse.json({ error: 'from and to query params are required (ISO dates)' }, { status: 400 })
@@ -41,6 +42,16 @@ export async function GET(req: NextRequest) {
       headers: {
         'Content-Type': 'text/csv',
         'Content-Disposition': `attachment; filename="${baseFilename}_ExpenseLedger.csv"`,
+      },
+    })
+  }
+
+  if (format === 'qbo') {
+    const csv = buildFinanceExportCSV(data.quickBooksXeroSheet!)
+    return new NextResponse(csv, {
+      headers: {
+        'Content-Type': 'text/csv',
+        'Content-Disposition': `attachment; filename="${baseFilename}_QuickBooks-Xero.csv"`,
       },
     })
   }

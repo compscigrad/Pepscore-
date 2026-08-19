@@ -574,7 +574,7 @@ export function FinanceView({
   const [showAddVendor1099, setShowAddVendor1099] = useState(false)
   const [showEditProfile, setShowEditProfile] = useState(false)
 
-  const exportHref = (format: 'xlsx' | 'csv') =>
+  const exportHref = (format: 'xlsx' | 'csv' | 'qbo') =>
     `/api/admin/finance/export?from=${range.from.toISOString().slice(0, 10)}&to=${range.to.toISOString().slice(0, 10)}&format=${format}`
 
   return (
@@ -595,6 +595,7 @@ export function FinanceView({
           <div className="flex items-center gap-2">
             <a href={exportHref('xlsx')} className={`${pillOutline} px-4 py-2 text-[12px]`}>Export Excel</a>
             <a href={exportHref('csv')} className={`${pillOutline} px-4 py-2 text-[12px]`}>Export CSV</a>
+            <a href={exportHref('qbo')} className={`${pillOutline} px-4 py-2 text-[12px]`} title="Bank/transaction CSV importable via QuickBooks Online's or Xero's own 'Upload a statement' feature — no paid connection required">Export QuickBooks/Xero</a>
             <button onClick={() => setShowAddExpense((s) => !s)} className={`${pillPrimary} px-4 py-2 text-[12px]`}>+ Add Expense</button>
           </div>
         </div>

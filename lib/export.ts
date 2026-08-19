@@ -140,6 +140,10 @@ export interface FinanceExportInput {
   stripeReconciliationSheet?: FinanceSheet
   form1099kSheet?: FinanceSheet
   unreconciledItemsSheet?: FinanceSheet
+  // P1, 2026-08-18: QuickBooks Online / Xero bank-import-ready sheet --
+  // included in the XLSX workbook when present, and separately
+  // downloadable on its own via format=qbo (see the export route).
+  quickBooksXeroSheet?: FinanceSheet
 }
 
 function appendSheet(wb: XLSX.WorkBook, sheet: FinanceSheet) {
@@ -170,6 +174,7 @@ export function buildFinanceExportXLSX(input: FinanceExportInput): Buffer {
   if (input.stripeReconciliationSheet) appendSheet(wb, input.stripeReconciliationSheet)
   if (input.form1099kSheet) appendSheet(wb, input.form1099kSheet)
   if (input.unreconciledItemsSheet) appendSheet(wb, input.unreconciledItemsSheet)
+  if (input.quickBooksXeroSheet) appendSheet(wb, input.quickBooksXeroSheet)
 
   return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer
 }

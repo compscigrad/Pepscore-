@@ -46,7 +46,11 @@ A checklist, not a lock — nothing in the app is prevented from being edited af
 
 ## Annual export package (Admin → Finance, "Export Excel")
 
-One workbook per date range, deterministic filename (`Pepscore_<year>_<range>_Export_<export-date>.xlsx`). Sheets: Summary, Expense Ledger, Shipping, Discounts & Credits, Inventory/COGS, Refunds, Vendors, Needs Review, Sales Tax, Owner Transactions, Stripe Reconciliation, 1099-K Reconciliation, Unreconciled Items. Hand this to a CPA as-is — every number in it traces back to a real Pepscore record, never a synthesized or estimated one.
+One workbook per date range, deterministic filename (`Pepscore_<year>_<range>_Export_<export-date>.xlsx`). Sheets: Summary, Expense Ledger, Shipping, Discounts & Credits, Inventory/COGS, Refunds, Vendors, Needs Review, Sales Tax, Owner Transactions, Stripe Reconciliation, 1099-K Reconciliation, Unreconciled Items, QuickBooks-Xero Import. Hand this to a CPA as-is — every number in it traces back to a real Pepscore record, never a synthesized or estimated one.
+
+## QuickBooks / Xero import (Admin → Finance, "Export QuickBooks/Xero")
+
+A standalone CSV (Date, Description, Payee, Amount, Category, Memo — amounts negative, matching both platforms' own "money out" bank-import convention) that uploads directly through QuickBooks Online's or Xero's own **existing bank-statement import feature** — neither requires a fixed column schema for this; both let you map columns to your chart of accounts during the upload. This does **not** require a paid QuickBooks/Xero subscription, an API connection, or any credential — it is a file the owner downloads and uploads by hand. A live, real-time two-way accounting sync (the QuickBooks/Xero API, OAuth-connected) is a materially different, subscription-gated capability that has not been built and is not planned without explicit owner approval of the paid connection.
 
 ## What this system will never do without explicit, separate owner action
 
