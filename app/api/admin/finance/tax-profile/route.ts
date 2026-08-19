@@ -21,6 +21,7 @@ const updateSchema = z.object({
   accountingMethod: accountingMethod.optional(),
   stateLocalTaxRegistrations: z.string().nullable().optional(),
   salesTaxRegistrations: z.string().nullable().optional(),
+  estimatedTaxRatePercent: z.number().min(0).max(100).nullable().optional(),
 })
 
 export async function GET() {

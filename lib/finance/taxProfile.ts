@@ -25,6 +25,7 @@ export interface UpdateBusinessTaxProfileInput {
   accountingMethod?: AccountingMethod
   stateLocalTaxRegistrations?: string | null
   salesTaxRegistrations?: string | null
+  estimatedTaxRatePercent?: number | null
 }
 
 export async function upsertBusinessTaxProfile(input: UpdateBusinessTaxProfileInput, actorId: string): Promise<BusinessTaxProfile> {

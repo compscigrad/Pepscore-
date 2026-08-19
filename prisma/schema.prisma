@@ -3341,6 +3341,18 @@ model BusinessTaxProfile {
   stateLocalTaxRegistrations String?
   salesTaxRegistrations      String?
 
+  // P1 estimated-tax planning (2026-08-18) -- an owner-entered, plain
+  // combined effective rate (e.g. federal + state), never
+  // computed/suggested by this system. Null until the owner sets it;
+  // every UI surface reading it must label the resulting figure
+  // "Estimate Only -- Not Tax Advice," never a due amount. Deliberately a
+  // single flat rate, not a bracket calculator -- a real bracket/
+  // self-employment-tax calculation depends on filing status, other
+  // income, and elections this system has no way to know, and a
+  // false-precision calculator would be worse than an honest flat
+  // estimate labeled as one.
+  estimatedTaxRatePercent Float?
+
   updatedBy String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -16,6 +16,7 @@ function fakeProfile(overrides: Partial<BusinessTaxProfile> = {}): BusinessTaxPr
     accountingMethod: 'CASH',
     stateLocalTaxRegistrations: null,
     salesTaxRegistrations: null,
+    estimatedTaxRatePercent: null,
     updatedBy: 'test',
     createdAt: new Date(),
     updatedAt: new Date(),

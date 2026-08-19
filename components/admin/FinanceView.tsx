@@ -19,6 +19,7 @@ import type { OwnerTransactionSummary } from '@/lib/finance/ownerTransactions'
 import type { Vendor1099WithPayments } from '@/lib/finance/vendors1099'
 import type { Form1099KReconciliationReport } from '@/lib/finance/form1099k'
 import type { DataQualityFlag } from '@/lib/finance/dataQualityFlags'
+import type { EstimatedTaxPlan } from '@/lib/finance/estimatedTax'
 import { card, input as inputCls, label as labelCls, sectionHeading, mutedText, pillPrimary, pillOutline, selectOption } from '@/components/invoices/theme'
 
 function money(n: number): string {
@@ -93,6 +94,7 @@ interface Props {
   form1099k: Form1099KReconciliationReport
   dataQualityFlags: DataQualityFlag[]
   monthlyCloses: MonthlyClose[]
+  estimatedTaxPlan: EstimatedTaxPlan
   prefill?: ExpensePrefill
 }
 
@@ -436,6 +438,7 @@ function EditTaxProfileForm({ profile, onDone }: { profile: BusinessTaxProfile |
   const [accountingMethod, setAccountingMethod] = useState(profile?.accountingMethod ?? 'UNKNOWN')
   const [federalTaxClassification, setFederalTaxClassification] = useState(profile?.federalTaxClassification ?? '')
   const [salesTaxRegistrations, setSalesTaxRegistrations] = useState(profile?.salesTaxRegistrations ?? '')
+  const [estimatedTaxRatePercent, setEstimatedTaxRatePercent] = useState(profile?.estimatedTaxRatePercent?.toString() ?? '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -450,6 +453,7 @@ function EditTaxProfileForm({ profile, onDone }: { profile: BusinessTaxProfile |
         body: JSON.stringify({
           legalBusinessName: legalBusinessName || null, dba: dba || null, ein: ein || null, stateOfFormation: stateOfFormation || null,
           entityType, accountingMethod, federalTaxClassification: federalTaxClassification || null, salesTaxRegistrations: salesTaxRegistrations || null,
+          estimatedTaxRatePercent: estimatedTaxRatePercent ? Number(estimatedTaxRatePercent) : null,
         }),
       })
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? 'Failed to save')
@@ -484,6 +488,7 @@ function EditTaxProfileForm({ profile, onDone }: { profile: BusinessTaxProfile |
       </label>
       <label className="block md:col-span-3"><span className={labelCls}>Federal Tax Classification (free text — varies too much to fix as a list)</span><input value={federalTaxClassification} onChange={(e) => setFederalTaxClassification(e.target.value)} className={inputCls} /></label>
       <label className="block md:col-span-3"><span className={labelCls}>Sales Tax Registrations (free text — e.g. &ldquo;DC&rdquo;)</span><input value={salesTaxRegistrations} onChange={(e) => setSalesTaxRegistrations(e.target.value)} className={inputCls} /></label>
+      <label className="block"><span className={labelCls}>Estimated Tax Rate % (optional, for Estimated Tax Planning below — a flat combined rate you supply, never computed or suggested by this system)</span><input type="number" step="0.1" min="0" max="100" value={estimatedTaxRatePercent} onChange={(e) => setEstimatedTaxRatePercent(e.target.value)} placeholder="e.g. 25" className={inputCls} /></label>
       <div className="md:col-span-3 flex items-center gap-3">
         <button type="submit" disabled={busy} className={`${pillPrimary} px-5 py-2.5`}>{busy ? 'Saving…' : 'Save'}</button>
         <button type="button" onClick={onDone} className={`${pillOutline} px-5 py-2.5`}>Cancel</button>
@@ -565,7 +570,7 @@ export function FinanceView({
   range, taxYear, metrics, expenses, discounts, refunds, losses, purchases, vendors, products, prefill,
   salesTax, stripeReconciliation, stripeReconciliationSummary, profitLoss, monthlySummary,
   ownerTransactions, ownerTransactionSummary, taxProfile, missingProfileFields, taxReminders,
-  vendors1099, form1099k, dataQualityFlags, monthlyCloses,
+  vendors1099, form1099k, dataQualityFlags, monthlyCloses, estimatedTaxPlan,
 }: Props) {
   const [tab, setTab] = useState<Tab>('DASHBOARD')
   const [showAddExpense, setShowAddExpense] = useState(Boolean(prefill))
@@ -993,6 +998,39 @@ export function FinanceView({
                 <MetricCard label="Unreconciled Items" value={String(dataQualityFlags.length)} tone={dataQualityFlags.length > 0 ? 'text-amber-400' : 'text-white'} />
                 <MetricCard label="Missing Information" value={String(missingProfileFields.length)} tone={missingProfileFields.length > 0 ? 'text-amber-400' : 'text-white'} />
               </div>
+            </div>
+
+            <div className={`${card} overflow-x-auto`}>
+              <div className="px-4 pt-4">
+                <h3 className={sectionHeading}>Estimated Tax Planning — {taxYear}</h3>
+                <p className="text-[11px] text-amber-400 font-semibold uppercase tracking-wide mt-1">Estimate only — not tax advice or a filing</p>
+                <p className={`${mutedText} text-[12px] mt-1`}>{estimatedTaxPlan.disclaimer}</p>
+              </div>
+              {estimatedTaxPlan.ratePercent === null && (
+                <p className="px-4 py-3 text-[12px] text-white/50">No estimated tax rate set — enter one in the Business Profile above to see estimated amounts. Quarterly Book Profit figures below are real regardless.</p>
+              )}
+              <table className="w-full text-[13px] mt-2">
+                <thead><tr className="border-b border-white/10">{['Quarter', 'Months', 'Book Profit', 'Informational Due Date', 'Estimated Tax'].map((h) => (
+                  <th key={h} className="text-left font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 px-4 py-3 whitespace-nowrap">{h}</th>
+                ))}</tr></thead>
+                <tbody>
+                  {estimatedTaxPlan.quarters.map((q) => (
+                    <tr key={q.quarter} className="border-b border-white/10">
+                      <td className="px-4 py-3 text-white font-semibold whitespace-nowrap">{q.label}</td>
+                      <td className="px-4 py-3 text-white/70 whitespace-nowrap">{q.monthsIncluded}</td>
+                      <td className={`px-4 py-3 whitespace-nowrap font-semibold ${q.estimatedBookProfit >= 0 ? 'text-white' : 'text-red-400'}`}>{money(q.estimatedBookProfit)}</td>
+                      <td className="px-4 py-3 text-white/50 whitespace-nowrap">{q.informationalDueDate}</td>
+                      <td className="px-4 py-3 text-gold font-semibold whitespace-nowrap">{q.estimatedTaxAmount !== null ? money(q.estimatedTaxAmount) : '—'}</td>
+                    </tr>
+                  ))}
+                  <tr className="border-b border-white/10 bg-white/[0.02]">
+                    <td className="px-4 py-3 text-white font-bold" colSpan={2}>Annual</td>
+                    <td className={`px-4 py-3 font-bold whitespace-nowrap ${estimatedTaxPlan.annualEstimatedBookProfit >= 0 ? 'text-white' : 'text-red-400'}`}>{money(estimatedTaxPlan.annualEstimatedBookProfit)}</td>
+                    <td className="px-4 py-3"></td>
+                    <td className="px-4 py-3 text-gold font-bold whitespace-nowrap">{estimatedTaxPlan.annualEstimatedTaxAmount !== null ? money(estimatedTaxPlan.annualEstimatedTaxAmount) : '—'}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
 
             <div className={`${card} p-5`}>

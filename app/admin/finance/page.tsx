@@ -28,6 +28,7 @@ import { listVendors1099WithPayments } from '@/lib/finance/vendors1099'
 import { getForm1099KReconciliationReport } from '@/lib/finance/form1099k'
 import { getDataQualityFlags } from '@/lib/finance/dataQualityFlags'
 import { listMonthlyCloses } from '@/lib/finance/monthlyClose'
+import { getEstimatedTaxPlan } from '@/lib/finance/estimatedTax'
 import { prisma } from '@/lib/prisma'
 import { FinanceView } from '@/components/admin/FinanceView'
 
@@ -57,7 +58,7 @@ export default async function FinancePage({ searchParams }: PageProps) {
     metrics, expenses, discounts, refunds, losses, purchases, vendors, products,
     salesTax, stripeReconciliation, stripeReconciliationSummary, profitLoss, monthlySummary,
     ownerTransactions, ownerTransactionSummary, taxProfile, taxReminders, vendors1099,
-    form1099k, dataQualityFlags, monthlyCloses,
+    form1099k, dataQualityFlags, monthlyCloses, estimatedTaxPlan,
   ] = await Promise.all([
     getFinanceDashboardMetrics(range),
     listExpenses({ from: range.from, to: range.to }),
@@ -80,6 +81,7 @@ export default async function FinancePage({ searchParams }: PageProps) {
     getForm1099KReconciliationReport(taxYear),
     getDataQualityFlags(),
     listMonthlyCloses(taxYear),
+    getEstimatedTaxPlan(taxYear),
   ])
   const missingProfileFields = getMissingProfileFields(taxProfile)
 
@@ -109,6 +111,7 @@ export default async function FinancePage({ searchParams }: PageProps) {
       form1099k={form1099k}
       dataQualityFlags={dataQualityFlags}
       monthlyCloses={monthlyCloses}
+      estimatedTaxPlan={estimatedTaxPlan}
       prefill={params.open === '1' ? { category: params.category, invoiceId: params.invoiceId } : undefined}
     />
   )
