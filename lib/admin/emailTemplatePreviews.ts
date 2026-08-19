@@ -373,7 +373,7 @@ function build(): EmailTemplatePreview[] {
       subject: firstOrderOfferCodeSubject({
         firstName: 'Jordan',
         publicTitle: 'Welcome Offer',
-        discountType: 'PERCENT_OFF' as PromotionType,
+        discountType: 'PERCENTAGE' as PromotionType,
         discountValue: 10,
         code: 'WELCOME10',
         expiresAt: new Date('2026-09-15T00:00:00Z'),
@@ -382,7 +382,7 @@ function build(): EmailTemplatePreview[] {
         firstName: 'Jordan',
         publicTitle: 'Welcome Offer',
         publicDescription: 'Save on your first order.',
-        discountType: 'PERCENT_OFF' as PromotionType,
+        discountType: 'PERCENTAGE' as PromotionType,
         discountValue: 10,
         code: 'WELCOME10',
         expiresAt: new Date('2026-09-15T00:00:00Z'),
