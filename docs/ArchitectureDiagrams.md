@@ -1,6 +1,6 @@
 # Pepscore Lab — Architecture Diagrams
 
-Companion to `docs/Architecture.md` (invoice-module-scoped) and `docs/CaseStudy.md` (full narrative history). This document holds system-level Mermaid diagrams for the ten flows tracked as a standing documentation requirement. Every node and edge below is grounded in real route paths, real function/model names, and real file locations as of commit `72a5baf` — see the file path noted under each diagram for where to verify it directly. This is a living document: extend it, don't replace it, whenever a diagrammed flow changes materially.
+Companion to `docs/Architecture.md` (invoice-module-scoped) and `docs/CaseStudy.md` (full narrative history). This document holds system-level Mermaid diagrams for the ten flows tracked as a standing documentation requirement. Every node and edge below is grounded in real route paths, real function/model names, and real file locations as of commit `d602c11` (diagram 5, Financial Data Flow, updated 2026-08-19 for the Finance P1 sprint and the P0 verification pass's `deletedAt` fix; all other diagrams unchanged since `72a5baf` — none of this sprint's Admin cleanup or Finance P1 work altered the Customer Journey, Admin Operating System, Commerce/Payment, Fulfillment, AI Intelligence, Auth/RBAC, Webhook/Automation, Deployment, or Domain/Launch flows) — see the file path noted under each diagram for where to verify it directly. This is a living document: extend it, don't replace it, whenever a diagrammed flow changes materially.
 
 ---
 
@@ -138,7 +138,7 @@ flowchart TD
 
 ## 5. Financial Data Flow
 
-Grounded in: `lib/finance/*.ts`, `docs/finance/PEPSCORE-FINANCIAL-ARCHITECTURE.md`.
+Grounded in: `lib/finance/*.ts`, `docs/finance/PEPSCORE-FINANCIAL-ARCHITECTURE.md`. Updated 2026-08-19 for the Finance P1 sprint (`estimatedTax.ts`, the QuickBooks/Xero export sheet) and the P0 verification pass's `deletedAt` fix (`600af53`/`fde75da`/`6579ba3`, current through `d602c11`).
 
 ```mermaid
 flowchart TD
@@ -152,20 +152,24 @@ flowchart TD
       PURCH[InventoryPurchase — COGS]
       EXP[FinanceExpense]
       OWNT[OwnerTransaction]
+      BTP["BusinessTaxProfile\n(singleton — incl. estimatedTaxRatePercent)"]
     end
     Canonical --> REPORTS["lib/finance/reports.ts\nDashboard, discounts, refunds, inventory loss, vendor spend"]
     Canonical --> TAX["lib/finance/salesTax.ts\n(currently $0 — nothing collects tax)"]
     Canonical --> RECON["lib/finance/stripeReconciliation.ts\nMATCHED/PARTIAL/MISMATCH/PENDING"]
     REPORTS --> PL["lib/finance/profitLoss.ts\n(pure composition — Revenue -> COGS -> Gross Profit -> Op. Profit)"]
     TAX --> PL
-    REPORTS --> MS[monthlySummary.ts]
+    REPORTS --> MS["monthlySummary.ts\n(per-month Book Profit)"]
     Canonical --> V1099["lib/finance/vendors1099.ts\n(TIN last-4 only)"]
     RECON --> F1099K["form1099k.ts\nprocessor gross vs. book gross"]
-    PL & MS & RECON & V1099 & F1099K --> DQ["dataQualityFlags.ts\n(surfaced for review, never auto-corrected)"]
-    PL & MS & RECON & V1099 & F1099K --> EXPORT["export.ts — 13-sheet XLSX/CSV\n(pure composition, zero duplicated calc)"]
-    INV -.isTestData flag.-> EXCL["Test/rehearsal records excluded\nfrom every revenue-recognizing query"]
+    MS & BTP --> ETAX["estimatedTax.ts (P1)\ncomputeMonthBookProfit() x owner flat rate\n'Estimate only — not tax advice' always shown"]
+    PL & MS & RECON & V1099 & F1099K --> DQ["dataQualityFlags.ts\n(surfaced for review, never auto-corrected;\nincl. ORDER_WITHOUT_PAYMENT)"]
+    PL & MS & RECON & V1099 & F1099K --> EXPORT["export.ts — 14-sheet XLSX/CSV\n(pure composition, zero duplicated calc)\n+ buildQuickBooksXeroExpenseSheet (P1)\nno paid API connection required"]
+    INV -.isTestData AND deletedAt.-> EXCL["Test/rehearsal + soft-deleted records\nexcluded from every revenue-recognizing query\n(closed a live $1.00 contamination, 6579ba3)"]
+    EXP -.testDataExclusion helper.-> EXCL2["FinanceExpense linked to a test\ninvoice/order also excluded"]
     EXCL --> REPORTS
     EXCL --> PL
+    EXCL2 --> REPORTS
 ```
 
 ---
