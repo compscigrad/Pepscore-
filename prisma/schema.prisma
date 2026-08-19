@@ -1986,6 +1986,15 @@ model Customer {
   // of a plain boolean with no redundant companion timestamp column.
   smsOptedOut Boolean @default(false)
 
+  // Email-marketing equivalent of smsOptedOut above (2026-08-19 lead-
+  // capture/conversion engine, section 25 -- consent/suppression center).
+  // Set only via the unsubscribe endpoint (a real, evidenced opt-out
+  // action), never inferred. Marketing-category sends (e.g.
+  // FIRST_ORDER_OFFER_REMINDER) check this before sending; transactional
+  // categories are never gated by it -- see lib/notifications/routing.ts's
+  // isMarketingCategory().
+  marketingEmailOptedOut Boolean @default(false)
+
   billingAddress  Json?
   shippingAddress Json?
 
@@ -2072,7 +2081,27 @@ model LeadCapture {
 
   // Captured at the same instant as this row, so no separate timestamp
   // column is needed -- createdAt below is the consent timestamp.
+  // Kept as-is (general "this is a real submission, not spam" signal,
+  // already read by the admin CRM's consent filter) -- emailConsent/
+  // smsConsent below are the compliance-grade split this field never
+  // provided (2026-08-19 lead-capture/conversion engine: section 6
+  // requires email and SMS marketing consent to be tracked independently,
+  // never bundled into one ambiguous checkbox).
   consent Boolean @default(false)
+
+  // Independent consent tracking. emailConsent defaults to mirroring
+  // `consent` at every existing call site (this offer/form has always
+  // required agreeing to be contacted by email to receive it) --
+  // smsConsent is a genuinely separate, explicit, unchecked-by-default
+  // opt-in per section 6 ("phone number possession != SMS marketing
+  // consent"). consentTextVersion/consentIp are the audit trail for
+  // exactly which disclosure text a visitor agreed to and from where --
+  // never used to infer consent that wasn't explicitly given, only to
+  // evidence consent that was.
+  emailConsent      Boolean @default(false)
+  smsConsent        Boolean @default(false)
+  consentTextVersion String?
+  consentIp          String?
 
   createdAt DateTime @default(now())
 
@@ -2102,6 +2131,11 @@ enum LeadInterestType {
   // in the same admin Leads/CRM list/filters as every other submission,
   // never a disconnected marketing database.
   FIRST_ORDER_OFFER
+  // Price-match inquiry (2026-08-19 lead-capture/conversion engine,
+  // section 19) -- "Found a lower price? Request a price match" feeds this
+  // same LeadCapture/admin-CRM pipeline rather than a disconnected inbox,
+  // so it's triaged and attributed exactly like every other lead type.
+  PRICE_MATCH_REQUEST
 }
 
 // [Roadmap] 10% first-order storefront offer ("FIRST10"). A singleton
@@ -2181,6 +2215,13 @@ model FirstOrderOfferClaim {
   // fixed-dollar campaign into a field literally named "percentage."
   percentage Float?
   consent    Boolean @default(false)
+  // Mirrors LeadCapture.emailConsent/smsConsent (same submission) for
+  // query convenience on this row -- same duplication convention already
+  // used for `consent` above, not a second source of truth (the linked
+  // LeadCapture, via leadCaptureId, remains canonical for the audit-trail
+  // fields consentTextVersion/consentIp).
+  emailConsent Boolean @default(false)
+  smsConsent   Boolean @default(false)
 
   // Set only once real checkout can apply discounts (roadmap items #164/
   // #165) -- distinguishes "claimed, never redeemed" from "claimed and
@@ -2290,13 +2331,33 @@ model PromotionCampaign {
   maxUses           Int? // null = unlimited
   usesPerCustomer   Int     @default(1)
 
+  // Acquisition-popup display fields (2026-08-19 lead-capture/conversion
+  // engine, section 8). Additive -- a campaign that never sets these
+  // simply never appears in the auto-triggered popup (popupEnabled
+  // defaults false); the click-triggered "Claim X% →" banner entry point
+  // is unaffected either way, since it reads publicTitle/publicDescription
+  // directly and doesn't depend on these fields at all.
+  popupEnabled    Boolean @default(false)
+  popupHeadline   String?
+  popupBody       String?
+  termsCopy       String?
+  smsCopy         String?
+  reminderEnabled Boolean @default(true)
+  // Optional per-campaign code prefix (e.g. "WELCOME" -> WELCOME-X92KQ).
+  // Sanitized to A-Z0-9 only, max 12 chars, at write time
+  // (lib/promotions/campaigns.ts) -- generatePromotionCodeText() falls
+  // back to the existing "FIRST-" prefix when unset, so every
+  // pre-existing campaign keeps its current code shape unchanged.
+  promoPrefix String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   createdBy String
   updatedBy String?
 
-  codes  PromotionCode[]
-  claims FirstOrderOfferClaim[]
+  codes        PromotionCode[]
+  claims       FirstOrderOfferClaim[]
+  funnelEvents CampaignFunnelEvent[]
 
   @@index([status])
 }
@@ -2340,6 +2401,80 @@ model PromotionCode {
 
   @@index([campaignId])
   @@index([customerId])
+}
+
+// Acquisition-popup trigger/suppression/nurture-cadence mechanics (2026-08-19
+// lead-capture/conversion engine). Singleton row, same established pattern
+// as FirstOrderOfferConfig/PortalRolloutSettings -- global UI-behavior
+// settings, deliberately separate from PromotionCampaign's own popupEnabled/
+// popupHeadline/popupBody (which are per-campaign CONTENT, not shared
+// trigger MECHANICS). enabled defaults false so shipping this schema + admin
+// UI carries zero storefront behavior change until an admin explicitly
+// turns the popup on.
+model AcquisitionPopupSettings {
+  id String @id @default("singleton")
+
+  enabled Boolean @default(false)
+
+  // Trigger configuration -- any combination may be active at once (the
+  // popup shows on whichever fires first). scrollThresholdPercent null =
+  // that trigger disabled; exitIntentEnabled only ever applies on desktop
+  // (no reliable exit-intent signal on touch devices, see section 3).
+  delayMs                Int     @default(8000)
+  scrollThresholdPercent Int?
+  exitIntentEnabled      Boolean @default(false)
+
+  // Same-browser frequency suppression (section 3/33), in days.
+  capturedSuppressDays  Int @default(90)
+  dismissedSuppressDays Int @default(7)
+
+  // Automated nurture cadence (section 16/17), in hours after claim --
+  // replaces the previously-hardcoded FIRST_ORDER_REMINDER_SCHEDULE_MS
+  // day-2/day-5 constants. Default [24, 72, 168] = 24h/3d/7d, matching the
+  // spec's own conceptual default. lib/promotions/
+  // firstOrderReminderEligibility.ts reads this array's length as the max-
+  // reminders cap -- there is no separate "max reminders" field to keep in
+  // sync.
+  reminderIntervalsHours Int[] @default([24, 72, 168])
+
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+}
+
+enum CampaignFunnelEventType {
+  POPUP_IMPRESSION
+  POPUP_DISMISSED
+  POPUP_SUBMITTED
+}
+
+// First-party funnel event log for the acquisition popup (2026-08-19 lead-
+// capture/conversion engine, section 21/22). Deliberately its own small
+// table, not a reuse of the Vercel-Analytics-backed AnalyticsEvent system
+// (lib/analytics/events.ts) -- that system isn't queryable from application
+// code (Vercel Analytics has no server-side read API this app calls), so it
+// cannot back an Admin dashboard's real numbers. Mirrors the existing
+// SearchEvent/ProductEngagementEvent precedent: a narrow, first-party DB
+// table for exactly the metrics a specific Admin surface needs to compute
+// honestly, dual-logged alongside (not instead of) the existing
+// trackEvent()/AnalyticsEvent calls the popup component already makes.
+model CampaignFunnelEvent {
+  id String @id @default(cuid())
+
+  campaignId String
+  campaign   PromotionCampaign @relation(fields: [campaignId], references: [id])
+
+  eventType CampaignFunnelEventType
+
+  // Set only if the visitor is already identified at event time (rare for
+  // POPUP_IMPRESSION/POPUP_DISMISSED, always set for POPUP_SUBMITTED) --
+  // never used to attempt identification, purely descriptive.
+  customerId String?
+
+  sourcePage String?
+  createdAt  DateTime @default(now())
+
+  @@index([campaignId, eventType])
+  @@index([createdAt])
 }
 
 // Single-purpose, expiring, revocable, admin-initiated invite that binds one

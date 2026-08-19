@@ -25,6 +25,7 @@ export interface PromotionCampaignView {
   isDefaultFirstOrderCampaign: boolean
   firstOrderOnly: boolean
   stackingPolicy: StackingPolicy
+  popupEnabled: boolean
   createdAt: string
   codeCount: number
   redeemedCount: number
@@ -102,6 +103,10 @@ function CreateCampaignForm({ onDone }: { onDone: () => void }) {
   const [stackingPolicy, setStackingPolicy] = useState<StackingPolicy>('NOT_STACKABLE')
   const [startsAt, setStartsAt] = useState('')
   const [expiresAt, setExpiresAt] = useState('')
+  const [popupEnabled, setPopupEnabled] = useState(false)
+  const [popupHeadline, setPopupHeadline] = useState('')
+  const [popupBody, setPopupBody] = useState('')
+  const [promoPrefix, setPromoPrefix] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   async function submit() {
@@ -124,6 +129,10 @@ function CreateCampaignForm({ onDone }: { onDone: () => void }) {
           stackingPolicy,
           startsAt: startsAt ? new Date(`${startsAt}T00:00:00.000Z`).toISOString() : null,
           expiresAt: expiresAt ? new Date(`${expiresAt}T23:59:59.999Z`).toISOString() : null,
+          popupEnabled,
+          popupHeadline: popupHeadline || undefined,
+          popupBody: popupBody || undefined,
+          promoPrefix: promoPrefix || undefined,
         }),
       })
       const data = await res.json().catch(() => null)
@@ -184,6 +193,35 @@ function CreateCampaignForm({ onDone }: { onDone: () => void }) {
           <input type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} className={`${inputClass} max-w-[200px]`} />
         </div>
       </div>
+      <div className="pt-4 border-t border-white/10 space-y-4">
+        <p className="text-[11px] font-heading font-bold uppercase tracking-[0.08em] text-white/40">
+          Acquisition popup (2026-08-19) — requires the global switch at Settings → Acquisition Popup too
+        </p>
+        <label className="flex items-center gap-3 text-sm text-white/80 cursor-pointer">
+          <input type="checkbox" checked={popupEnabled} onChange={(e) => setPopupEnabled(e.target.checked)} className="accent-gold" />
+          Show this campaign in the auto-triggered popup
+        </label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className={labelClass}>Popup headline (optional — falls back to public offer title)</label>
+            <input value={popupHeadline} onChange={(e) => setPopupHeadline(e.target.value)} className={inputClass} />
+          </div>
+          <div>
+            <label className={labelClass}>Promo code prefix (optional — falls back to FIRST)</label>
+            <input
+              value={promoPrefix}
+              onChange={(e) => setPromoPrefix(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12))}
+              placeholder="e.g. WELCOME"
+              className={inputClass}
+            />
+          </div>
+        </div>
+        <div>
+          <label className={labelClass}>Popup body copy (optional — falls back to public description)</label>
+          <input value={popupBody} onChange={(e) => setPopupBody(e.target.value)} className={inputClass} />
+        </div>
+      </div>
+
       <button type="button" onClick={submit} disabled={submitting || !name || !publicTitle} className={`${pillPrimary} px-6 py-2.5`}>
         {submitting ? 'Creating…' : 'Create Campaign'}
       </button>
@@ -243,6 +281,11 @@ function CampaignRow({ campaign, onChanged }: { campaign: PromotionCampaignView;
             {campaign.isDefaultFirstOrderCampaign && (
               <span className="text-[10px] font-heading font-bold uppercase tracking-[0.06em] px-2 py-0.5 rounded-full bg-gold/15 text-gold-light border border-gold/30">
                 Default First-Order Offer
+              </span>
+            )}
+            {campaign.popupEnabled && (
+              <span className="text-[10px] font-heading font-bold uppercase tracking-[0.06em] px-2 py-0.5 rounded-full bg-blue-400/10 text-blue-300 border border-blue-400/20">
+                Popup Enabled
               </span>
             )}
           </div>

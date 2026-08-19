@@ -14,6 +14,8 @@
 import { prisma } from '@/lib/prisma'
 import { upsertCustomerFromIntake, recordCustomerActivity } from '@/lib/customers'
 import { getActiveFirstOrderOffer } from '@/lib/promotions/firstOrderOffer'
+import { hasAnyPriorOrder } from '@/lib/promotions/redemption'
+import { logCampaignFunnelEvent } from '@/lib/promotions/funnelEvents'
 import { sendCategorizedEmail } from '@/lib/notifications/log'
 import { firstOrderOfferCodeSubject, buildFirstOrderOfferCodeHtml } from '@/emails/FirstOrderOfferCode'
 import { Prisma } from '@prisma/client'
@@ -22,11 +24,20 @@ import crypto from 'crypto'
 
 const CONFIG_ID = 'singleton'
 
+// 2026-08-19 lead-capture/conversion engine -- versioned disclosure text
+// identifier, recorded on every LeadCapture row alongside the two consent
+// booleans so the exact wording a visitor agreed to remains reconstructable
+// later (bump this string whenever the consent copy in FirstOrderOfferModal
+// materially changes).
+export const CONSENT_TEXT_VERSION = 'acquisition-v1-2026-08-19'
+
 export interface ClaimFirstOrderOfferInput {
   name: string
   email: string
   phone: string
-  consent: boolean
+  emailConsent: boolean
+  smsConsent: boolean
+  consentIp?: string | null
   sourcePage: string
   referrer?: string | null
   landingUrl?: string | null
@@ -38,13 +49,25 @@ export interface ClaimFirstOrderOfferInput {
 }
 
 export interface ClaimFirstOrderOfferResult {
-  claim: Prisma.FirstOrderOfferClaimGetPayload<Record<string, never>>
+  claim: Prisma.FirstOrderOfferClaimGetPayload<Record<string, never>> | null
   customer: Prisma.CustomerGetPayload<Record<string, never>>
   isNewCustomer: boolean
   alreadyClaimed: boolean
+  // 2026-08-19 lead-capture/conversion engine (section 1/3/4/7) -- true
+  // when this customer already has real, canonical purchase history
+  // (Invoice/Order, ANY sales channel, via hasAnyPriorOrder()) even though
+  // they'd never claimed this specific offer before. No new code is
+  // issued -- an existing direct-sale customer who is only new to the
+  // website/portal must never be told they're eligible for a first-order
+  // discount they can't actually redeem (resolvePromotionCode() would
+  // reject it anyway, but the misleading email/promise itself is the
+  // problem this prevents). The caller shows "Welcome back" messaging
+  // instead of a discount promise.
+  existingCustomerNotEligible: boolean
   // The customer's unique redemption code -- null only in the
   // (not-currently-possible, since no pre-migration claims exist in
-  // production) case of a legacy claim from before code issuance existed.
+  // production) case of a legacy claim from before code issuance existed,
+  // or when existingCustomerNotEligible is true.
   code: string | null
 }
 
@@ -66,8 +89,23 @@ export function splitName(name: string): { firstName: string; lastName: string }
 // redemption always resolves through the authoritative PromotionCode row,
 // never by parsing the code string.
 export const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
-export function generatePromotionCodeText(): string {
-  let code = 'FIRST-'
+export const DEFAULT_CODE_PREFIX = 'FIRST'
+
+// Sanitizes a campaign's optional admin-entered promoPrefix (section 8) to
+// safe code-alphabet characters only, uppercased, capped at 12 chars --
+// never trusts it verbatim (an admin-entered value must never introduce
+// unexpected characters into a code that's parsed nowhere but is still
+// user-facing and support-referenced). Falls back to the original
+// hardcoded "FIRST" prefix when unset/empty/entirely invalid, so every
+// pre-existing campaign's code shape is unchanged by default.
+export function sanitizeCodePrefix(prefix: string | null | undefined): string {
+  if (!prefix) return DEFAULT_CODE_PREFIX
+  const cleaned = prefix.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12)
+  return cleaned || DEFAULT_CODE_PREFIX
+}
+
+export function generatePromotionCodeText(prefix: string = DEFAULT_CODE_PREFIX): string {
+  let code = `${prefix}-`
   for (let i = 0; i < 8; i++) code += CODE_ALPHABET[crypto.randomInt(CODE_ALPHABET.length)]
   return code
 }
@@ -76,11 +114,12 @@ const MAX_CODE_GENERATION_ATTEMPTS = 5
 
 async function issueUniquePromotionCode(
   tx: Prisma.TransactionClient,
-  input: { campaignId: string; customerId: string; discountType: PromotionType; discountValue: number; expiresAt: Date | null }
+  input: { campaignId: string; customerId: string; discountType: PromotionType; discountValue: number; expiresAt: Date | null; codePrefix?: string }
 ): Promise<PromotionCode> {
+  const { codePrefix, ...data } = input
   for (let attempt = 1; attempt <= MAX_CODE_GENERATION_ATTEMPTS; attempt++) {
     try {
-      return await tx.promotionCode.create({ data: { code: generatePromotionCodeText(), ...input } })
+      return await tx.promotionCode.create({ data: { code: generatePromotionCodeText(codePrefix), ...data } })
     } catch (err) {
       const isCollision = err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002'
       if (!isCollision || attempt === MAX_CODE_GENERATION_ATTEMPTS) throw err
@@ -118,7 +157,55 @@ export async function claimFirstOrderOffer(input: ClaimFirstOrderOfferInput): Pr
     include: { promotionCode: true },
   })
   if (existingClaim) {
-    return { claim: existingClaim, customer, isNewCustomer, alreadyClaimed: true, code: existingClaim.promotionCode?.code ?? null }
+    return {
+      claim: existingClaim,
+      customer,
+      isNewCustomer,
+      alreadyClaimed: true,
+      existingCustomerNotEligible: false,
+      code: existingClaim.promotionCode?.code ?? null,
+    }
+  }
+
+  // 2026-08-19 lead-capture/conversion engine (section 1/3/4/7): an
+  // existing direct-sale customer with real prior purchase history on ANY
+  // channel is never eligible for a first-order offer merely because
+  // they're new to the website/lead-capture flow or have never claimed
+  // this specific popup before. Checked here, at ISSUANCE time -- the
+  // redemption-time check in lib/promotions/redemption.ts's
+  // resolvePromotionCode() already existed and stays as the defense-in-
+  // depth backstop, but without this issuance-time check a real customer
+  // would still receive a misleading "you're eligible" code-delivery
+  // email they could never actually redeem. Still records a LeadCapture
+  // row (no accompanying code/claim) so the engagement shows up in the
+  // admin CRM/attribution history -- this is a real signal worth keeping,
+  // just never a discount promise.
+  if (await hasAnyPriorOrder(customer.id)) {
+    await prisma.leadCapture.create({
+      data: {
+        customerId: customer.id,
+        interestType: 'FIRST_ORDER_OFFER',
+        sourcePage: input.sourcePage,
+        referrer: input.referrer ?? undefined,
+        landingUrl: input.landingUrl ?? undefined,
+        utmSource: input.utmSource ?? undefined,
+        utmMedium: input.utmMedium ?? undefined,
+        utmCampaign: input.utmCampaign ?? undefined,
+        utmTerm: input.utmTerm ?? undefined,
+        utmContent: input.utmContent ?? undefined,
+        consent: input.emailConsent,
+        emailConsent: input.emailConsent,
+        smsConsent: input.smsConsent,
+        consentTextVersion: CONSENT_TEXT_VERSION,
+        consentIp: input.consentIp ?? undefined,
+      },
+    })
+    await recordCustomerActivity({
+      customerId: customer.id,
+      eventType: 'FIRST_ORDER_OFFER_INELIGIBLE_EXISTING_CUSTOMER',
+      source: 'SYSTEM',
+    })
+    return { claim: null, customer, isNewCustomer, alreadyClaimed: false, existingCustomerNotEligible: true, code: null }
   }
 
   let claim: Prisma.FirstOrderOfferClaimGetPayload<Record<string, never>>
@@ -137,7 +224,11 @@ export async function claimFirstOrderOffer(input: ClaimFirstOrderOfferInput): Pr
           utmCampaign: input.utmCampaign ?? undefined,
           utmTerm: input.utmTerm ?? undefined,
           utmContent: input.utmContent ?? undefined,
-          consent: input.consent,
+          consent: input.emailConsent,
+          emailConsent: input.emailConsent,
+          smsConsent: input.smsConsent,
+          consentTextVersion: CONSENT_TEXT_VERSION,
+          consentIp: input.consentIp ?? undefined,
         },
       })
 
@@ -147,6 +238,7 @@ export async function claimFirstOrderOffer(input: ClaimFirstOrderOfferInput): Pr
         discountType: campaign.discountType,
         discountValue: campaign.discountValue,
         expiresAt: campaign.expiresAt,
+        codePrefix: sanitizeCodePrefix(campaign.promoPrefix),
       })
 
       const createdClaim = await tx.firstOrderOfferClaim.create({
@@ -156,7 +248,9 @@ export async function claimFirstOrderOffer(input: ClaimFirstOrderOfferInput): Pr
           campaignId: campaign.id,
           promotionCodeId: promotionCode.id,
           leadCaptureId: lead.id,
-          consent: input.consent,
+          consent: input.emailConsent,
+          emailConsent: input.emailConsent,
+          smsConsent: input.smsConsent,
         },
       })
 
@@ -173,7 +267,14 @@ export async function claimFirstOrderOffer(input: ClaimFirstOrderOfferInput): Pr
         where: { customerId: customer.id },
         include: { promotionCode: true },
       })
-      return { claim: raceClaim, customer, isNewCustomer, alreadyClaimed: true, code: raceClaim.promotionCode?.code ?? null }
+      return {
+        claim: raceClaim,
+        customer,
+        isNewCustomer,
+        alreadyClaimed: true,
+        existingCustomerNotEligible: false,
+        code: raceClaim.promotionCode?.code ?? null,
+      }
     }
     throw err
   }
@@ -184,6 +285,10 @@ export async function claimFirstOrderOffer(input: ClaimFirstOrderOfferInput): Pr
     newValue: code.code,
     source: 'SYSTEM',
   })
+
+  // Best-effort funnel log for the Admin conversion dashboard (section 21)
+  // -- never blocks or fails the claim itself.
+  await logCampaignFunnelEvent({ campaignId: campaign.id, eventType: 'POPUP_SUBMITTED', customerId: customer.id, sourcePage: input.sourcePage })
 
   // Best-effort, never blocks the claim response -- sendCategorizedEmail
   // catches its own provider errors internally and always resolves,
@@ -217,5 +322,5 @@ export async function claimFirstOrderOffer(input: ClaimFirstOrderOfferInput): Pr
     )
   }
 
-  return { claim, customer, isNewCustomer, alreadyClaimed: false, code: code.code }
+  return { claim, customer, isNewCustomer, alreadyClaimed: false, existingCustomerNotEligible: false, code: code.code }
 }

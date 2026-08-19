@@ -93,7 +93,15 @@ export function computeDiscountAmount(discountType: PromotionType, discountValue
 // brand-new first-order campaign has since gone live). Checks both real
 // sale records: manual Invoices (customerId-linked) and storefront Orders
 // (userId-linked, since Order has no direct Customer relation).
-async function hasAnyPriorOrder(customerId: string): Promise<boolean> {
+// Exported (2026-08-19 lead-capture/conversion engine, section 1/3/4) --
+// the canonical "has this customer ever completed a real transaction on
+// any sales channel" check, reused at ISSUANCE time by
+// lib/promotions/firstOrderOfferClaim.ts as well as here at REDEMPTION
+// time. Never based on account/portal/login/device signals -- only real
+// Invoice/Order history, so an existing direct-sale customer who is merely
+// new to the website/portal is correctly recognized as ineligible for a
+// first-order offer at both points, not just one.
+export async function hasAnyPriorOrder(customerId: string): Promise<boolean> {
   const customer = await prisma.customer.findUnique({ where: { id: customerId }, select: { userId: true } })
   const [invoiceCount, orderCount] = await Promise.all([
     prisma.invoice.count({ where: { customerId, deletedAt: null, status: { notIn: ['DRAFT', 'CANCELLED', 'VOID'] } } }),

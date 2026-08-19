@@ -31,11 +31,13 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { isNewCustomer, alreadyClaimed } = await claimFirstOrderOffer({
+    const { isNewCustomer, alreadyClaimed, existingCustomerNotEligible } = await claimFirstOrderOffer({
       name: data.name,
       email: data.email,
       phone: data.phone,
-      consent: data.consent,
+      emailConsent: data.emailConsent,
+      smsConsent: data.smsConsent,
+      consentIp: getClientIp(req),
       sourcePage: data.sourcePage,
       referrer: data.referrer,
       landingUrl: data.landingUrl,
@@ -69,7 +71,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    return NextResponse.json({ ok: true, alreadyClaimed })
+    return NextResponse.json({ ok: true, alreadyClaimed, existingCustomerNotEligible })
   } catch (err) {
     if (err instanceof FirstOrderOfferNotLiveError) {
       return NextResponse.json({ error: err.message }, { status: 409 })

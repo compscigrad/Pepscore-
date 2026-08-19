@@ -12,6 +12,9 @@ export const LEAD_INTEREST_TYPES = [
   'PRICING_REVIEW_INTEREST',
   'SPA_WHOLESALE_INQUIRY',
   'SINGLE_VIAL_SPECIAL_REQUEST',
+  // Price-match inquiry (2026-08-19 lead-capture/conversion engine,
+  // section 19) -- "Found a lower price? Request a price match."
+  'PRICE_MATCH_REQUEST',
 ] as const
 
 // At least one of email/phone must be present -- a lead with neither is

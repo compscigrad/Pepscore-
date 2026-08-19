@@ -15,6 +15,7 @@ export type LeadInterestType =
   | 'PRICING_REVIEW_INTEREST'
   | 'SPA_WHOLESALE_INQUIRY'
   | 'SINGLE_VIAL_SPECIAL_REQUEST'
+  | 'PRICE_MATCH_REQUEST'
 
 export interface LeadCaptureTriggerProps {
   interestType: LeadInterestType

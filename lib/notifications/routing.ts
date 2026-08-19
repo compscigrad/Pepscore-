@@ -170,3 +170,24 @@ const CUSTOMER_VISIBLE_CATEGORIES: ReadonlySet<MessageCategory> = new Set<Messag
 export function isCustomerVisibleCategory(category: string): boolean {
   return CUSTOMER_VISIBLE_CATEGORIES.has(category as MessageCategory)
 }
+
+// 2026-08-19 lead-capture/conversion engine, section 25 -- which categories
+// are genuinely marketing (ongoing acquisition/nurture messaging an
+// unsubscribe must actually stop) versus transactional (order/account
+// correspondence an unsubscribe never affects, per section 7's explicit
+// "do not confuse transactional emails with marketing emails"). Deliberately
+// an explicit allowlist, matching CUSTOMER_VISIBLE_CATEGORIES's own
+// fail-closed posture -- a new category defaults to NOT marketing (i.e.
+// never silently suppressed) until someone deliberately opts it in.
+//
+// FIRST_ORDER_OFFER_CODE is intentionally NOT here even though it's part of
+// the acquisition flow: it's the direct, immediate fulfillment of a request
+// the visitor just made in the same submission, not an ongoing nurture
+// send -- gating it on a pre-existing suppression flag would mean a
+// legitimately re-claiming customer never receives the one email they just
+// explicitly asked for.
+const MARKETING_CATEGORIES: ReadonlySet<MessageCategory> = new Set<MessageCategory>(['FIRST_ORDER_OFFER_REMINDER'])
+
+export function isMarketingCategory(category: string): boolean {
+  return MARKETING_CATEGORIES.has(category as MessageCategory)
+}

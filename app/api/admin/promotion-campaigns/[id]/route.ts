@@ -30,6 +30,13 @@ const updateSchema = z.object({
   minPurchaseAmount: z.number().nonnegative().nullable().optional(),
   maxUses: z.number().int().positive().nullable().optional(),
   usesPerCustomer: z.number().int().positive().optional(),
+  popupEnabled: z.boolean().optional(),
+  popupHeadline: z.string().max(200).nullable().optional(),
+  popupBody: z.string().max(1000).nullable().optional(),
+  termsCopy: z.string().max(2000).nullable().optional(),
+  smsCopy: z.string().max(320).nullable().optional(),
+  reminderEnabled: z.boolean().optional(),
+  promoPrefix: z.string().max(12).nullable().optional(),
 })
 
 const activateSchema = z.object({

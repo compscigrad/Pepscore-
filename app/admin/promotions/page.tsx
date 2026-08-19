@@ -42,6 +42,7 @@ export default async function AdminPromotionsPage() {
     isDefaultFirstOrderCampaign: c.isDefaultFirstOrderCampaign,
     firstOrderOnly: c.firstOrderOnly,
     stackingPolicy: c.stackingPolicy,
+    popupEnabled: c.popupEnabled,
     createdAt: c.createdAt.toISOString(),
     codeCount: c._count.codes,
     redeemedCount: redeemedByCampaign.get(c.id) ?? 0,
@@ -55,6 +56,18 @@ export default async function AdminPromotionsPage() {
           subtitle="Acquisition campaigns · Pepscore Lab"
           actions={
             <>
+              <Link
+                href="/admin/promotions/conversion"
+                className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
+              >
+                Conversion Dashboard →
+              </Link>
+              <Link
+                href="/admin/settings/acquisition-popup"
+                className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
+              >
+                Popup Settings
+              </Link>
               <Link
                 href="/admin/settings/first-order-offer"
                 className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"

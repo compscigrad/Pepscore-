@@ -77,6 +77,7 @@ const NAV: NavGroup[] = [
       { label: 'Notifications', href: '/admin/settings/notifications' },
       { label: 'Email Templates', href: '/admin/settings/email-templates' },
       { label: 'First-Order Offer', href: '/admin/settings/first-order-offer' },
+      { label: 'Acquisition Popup', href: '/admin/settings/acquisition-popup' },
     ],
   },
 ]

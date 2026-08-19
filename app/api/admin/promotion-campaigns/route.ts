@@ -23,6 +23,13 @@ const createCampaignSchema = z.object({
   minPurchaseAmount: z.number().nonnegative().optional().nullable(),
   maxUses: z.number().int().positive().optional().nullable(),
   usesPerCustomer: z.number().int().positive().optional(),
+  popupEnabled: z.boolean().optional(),
+  popupHeadline: z.string().max(200).optional().nullable(),
+  popupBody: z.string().max(1000).optional().nullable(),
+  termsCopy: z.string().max(2000).optional().nullable(),
+  smsCopy: z.string().max(320).optional().nullable(),
+  reminderEnabled: z.boolean().optional(),
+  promoPrefix: z.string().max(12).optional().nullable(),
 })
 
 export async function GET(req: NextRequest) {

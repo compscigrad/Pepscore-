@@ -18,7 +18,9 @@ import { groupByName } from '@/lib/storefront/groupByName'
 import { applyHomepagePriority } from '@/lib/storefront/homepagePriority'
 import { getCurrentCustomerSpaEligible } from '@/lib/storefront/spaEligibility'
 import { getActiveFirstOrderOffer } from '@/lib/promotions/firstOrderOffer'
+import { getAcquisitionPopupSettings } from '@/lib/promotions/acquisitionPopupSettings'
 import { formatDiscountLabel } from '@/lib/promotions/format'
+import type { AcquisitionPopupTriggerSettings } from '@/components/storefront/FirstOrderOfferModal'
 
 // Note: resolving the current visitor's SPA eligibility below calls Clerk's
 // auth(), which makes this route dynamic (per-request) regardless of this
@@ -43,12 +45,30 @@ async function getProducts() {
 
 export default async function HomePage() {
   // Gracefully fall back to empty array if DB isn't configured yet
-  const [rawProducts, spaEligible, offer] = await Promise.all([
+  const [rawProducts, spaEligible, offer, popupSettings] = await Promise.all([
     getProducts().catch(() => []),
     getCurrentCustomerSpaEligible(),
     getActiveFirstOrderOffer(),
+    getAcquisitionPopupSettings(),
   ])
   const products = applyHomepagePriority(groupByName(rawProducts, { spaEligible }))
+
+  // Auto-trigger only fires when BOTH the global popup switch AND this
+  // specific campaign have opted in (section 23: an admin can turn the
+  // whole popup mechanism off without touching campaign content, or scope
+  // it to a specific campaign without a deploy either way) --
+  // undefined here means FirstOrderOfferModal behaves exactly as a
+  // manual-click-only trigger, same as before this feature existed.
+  const autoTrigger: AcquisitionPopupTriggerSettings | undefined =
+    popupSettings.enabled && offer.campaign?.popupEnabled
+      ? {
+          delayMs: popupSettings.delayMs,
+          scrollThresholdPercent: popupSettings.scrollThresholdPercent,
+          exitIntentEnabled: popupSettings.exitIntentEnabled,
+          capturedSuppressDays: popupSettings.capturedSuppressDays,
+          dismissedSuppressDays: popupSettings.dismissedSuppressDays,
+        }
+      : undefined
 
   return (
     <>
@@ -157,11 +177,14 @@ export default async function HomePage() {
                 </p>
               </div>
               <FirstOrderOfferModal
-                publicTitle={offer.campaign.publicTitle}
+                campaignId={offer.campaign.id}
+                publicTitle={offer.campaign.popupHeadline ?? offer.campaign.publicTitle}
+                publicDescription={offer.campaign.popupBody ?? offer.campaign.publicDescription}
                 discountType={offer.campaign.discountType}
                 discountValue={offer.campaign.discountValue}
                 triggerLabel={`Claim ${formatDiscountLabel(offer.campaign.discountType, offer.campaign.discountValue)} →`}
                 triggerClassName="shrink-0 bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] hover:shadow-[0_4px_16px_rgba(212,175,55,0.4)] text-black font-heading text-[12px] font-bold tracking-[0.08em] uppercase px-6 py-3 rounded-full transition-all"
+                autoTrigger={autoTrigger}
               />
             </div>
           </section>

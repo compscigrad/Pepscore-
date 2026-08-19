@@ -62,6 +62,12 @@ export interface EmailShellOptions {
   // e.g. "Questions about this invoice? Reply to this email or contact orders@pepscorelab.com."
   footerNote: string
   year?: number
+  // 2026-08-19 lead-capture/conversion engine, section 7/25 -- set only by
+  // genuinely marketing sends (see lib/notifications/routing.ts's
+  // isMarketingCategory()); every transactional email omits this and gets
+  // no unsubscribe link, since an unsubscribe must never appear to apply to
+  // order/account correspondence it can't actually affect.
+  unsubscribeUrl?: string
 }
 
 // Email-safe: no external fonts/CSS, everything inline. Every gradient
@@ -70,7 +76,7 @@ export interface EmailShellOptions {
 // keep the last background declaration they understand (the flat color),
 // clients that do support it use the gradient, since the second
 // declaration wins when both are valid CSS on the same property.
-export function buildEmailShell({ eyebrow, bodyHtml, footerNote, year = new Date().getFullYear() }: EmailShellOptions): string {
+export function buildEmailShell({ eyebrow, bodyHtml, footerNote, year = new Date().getFullYear(), unsubscribeUrl }: EmailShellOptions): string {
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -105,6 +111,7 @@ export function buildEmailShell({ eyebrow, bodyHtml, footerNote, year = new Date
     </div>
     <div style="background:${EMAIL_COLORS.headerBg};padding:20px 36px;border-top:1px solid ${EMAIL_COLORS.border}">
       <p style="margin:0 0 6px;font-size:12px;line-height:1.6;color:${EMAIL_COLORS.textMuted}">${footerNote}</p>
+      ${unsubscribeUrl ? `<p style="margin:0 0 6px;font-size:11px;color:${EMAIL_COLORS.textFooter}"><a href="${unsubscribeUrl}" style="color:${EMAIL_COLORS.textFooter};text-decoration:underline">Unsubscribe from marketing emails</a></p>` : ''}
       <p style="margin:0;font-size:11px;color:${EMAIL_COLORS.textFooter}">© ${year} Pepscore Lab</p>
     </div>
   </div>

@@ -6,6 +6,15 @@
 // consented lead worth a real discount.
 import { z } from 'zod'
 
+// 2026-08-19 lead-capture/conversion engine, section 6 -- email and SMS
+// marketing consent must be tracked independently, never bundled into one
+// ambiguous checkbox. emailConsent is required (this offer is delivered by
+// email, so agreeing to receive it is the whole point of claiming);
+// smsConsent is a genuinely separate, explicit, unchecked-by-default
+// opt-in -- phone number possession is never treated as SMS consent, and
+// no automated marketing SMS is sent regardless of this value (see
+// docs/PendingOwnerActions.md -- SMS marketing activation is a separate,
+// owner-gated decision).
 export const firstOrderOfferClaimSchema = z.object({
   name: z.string().trim().min(1, 'Name is required').max(200),
   // .toLowerCase() added 2026-08-12 -- see lib/leads/validation.ts's
@@ -13,9 +22,10 @@ export const firstOrderOfferClaimSchema = z.object({
   // the exact-match dedup lookup in findCustomerByEmailOrPhone()).
   email: z.string().trim().toLowerCase().email('Enter a valid email address').max(320),
   phone: z.string().trim().min(7, 'Enter a valid phone number').max(40),
-  consent: z.boolean().refine((v) => v === true, {
-    message: 'You must agree to be contacted to claim this offer.',
+  emailConsent: z.boolean().refine((v) => v === true, {
+    message: 'You must agree to receive your offer by email to claim it.',
   }),
+  smsConsent: z.boolean().optional().default(false),
   sourcePage: z.string().trim().min(1).max(500),
   referrer: z.string().trim().max(500).nullable().optional(),
   landingUrl: z.string().trim().max(500).nullable().optional(),

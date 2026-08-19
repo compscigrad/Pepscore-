@@ -25,6 +25,15 @@ export interface CreatePromotionCampaignInput {
   minPurchaseAmount?: number | null
   maxUses?: number | null
   usesPerCustomer?: number
+  // Acquisition-popup fields (2026-08-19 lead-capture/conversion engine,
+  // section 8) -- see prisma/schema.prisma's PromotionCampaign comment.
+  popupEnabled?: boolean
+  popupHeadline?: string | null
+  popupBody?: string | null
+  termsCopy?: string | null
+  smsCopy?: string | null
+  reminderEnabled?: boolean
+  promoPrefix?: string | null
   createdBy: string
 }
 
@@ -60,6 +69,13 @@ export async function createPromotionCampaign(input: CreatePromotionCampaignInpu
       minPurchaseAmount: input.minPurchaseAmount ?? null,
       maxUses: input.maxUses ?? null,
       usesPerCustomer: input.usesPerCustomer ?? 1,
+      popupEnabled: input.popupEnabled ?? false,
+      popupHeadline: input.popupHeadline ?? null,
+      popupBody: input.popupBody ?? null,
+      termsCopy: input.termsCopy ?? null,
+      smsCopy: input.smsCopy ?? null,
+      reminderEnabled: input.reminderEnabled ?? true,
+      promoPrefix: input.promoPrefix ?? null,
       createdBy: input.createdBy,
     },
   })
@@ -79,6 +95,13 @@ export interface UpdatePromotionCampaignInput {
   minPurchaseAmount?: number | null
   maxUses?: number | null
   usesPerCustomer?: number
+  popupEnabled?: boolean
+  popupHeadline?: string | null
+  popupBody?: string | null
+  termsCopy?: string | null
+  smsCopy?: string | null
+  reminderEnabled?: boolean
+  promoPrefix?: string | null
   updatedBy: string
 }
 
@@ -111,6 +134,13 @@ export async function updatePromotionCampaign(id: string, input: UpdatePromotion
       minPurchaseAmount: input.minPurchaseAmount,
       maxUses: input.maxUses,
       usesPerCustomer: input.usesPerCustomer,
+      popupEnabled: input.popupEnabled,
+      popupHeadline: input.popupHeadline,
+      popupBody: input.popupBody,
+      termsCopy: input.termsCopy,
+      smsCopy: input.smsCopy,
+      reminderEnabled: input.reminderEnabled,
+      promoPrefix: input.promoPrefix,
       updatedBy: input.updatedBy,
     },
   })

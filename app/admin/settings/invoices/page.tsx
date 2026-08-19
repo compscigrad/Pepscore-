@@ -46,6 +46,12 @@ export default async function InvoiceSettingsPage() {
                 First-Order Offer →
               </Link>
               <Link
+                href="/admin/settings/acquisition-popup"
+                className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
+              >
+                Acquisition Popup →
+              </Link>
+              <Link
                 href="/admin/settings/payments"
                 className="font-heading text-[12px] font-bold tracking-[0.08em] uppercase text-white/50 hover:text-gold transition-colors"
               >

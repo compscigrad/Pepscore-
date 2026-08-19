@@ -27,7 +27,8 @@ import { prisma } from '@/lib/prisma'
 import { safeCompare } from '@/lib/security/safeCompare'
 import { isPortalRolloutPaused } from '@/lib/portal/rollout'
 import { getReminderSafetyConfig, planReminderBatch, type ReminderCandidate } from '@/lib/portal/reminderSafety'
-import { isClaimDueForFirstOrderReminder, MAX_FIRST_ORDER_REMINDERS } from '@/lib/promotions/firstOrderReminderEligibility'
+import { isClaimDueForFirstOrderReminder, hoursToScheduleMs } from '@/lib/promotions/firstOrderReminderEligibility'
+import { getAcquisitionPopupSettings } from '@/lib/promotions/acquisitionPopupSettings'
 import { sendCategorizedEmail } from '@/lib/notifications/log'
 import { firstOrderOfferReminderSubject, buildFirstOrderOfferReminderHtml } from '@/emails/FirstOrderOfferReminder'
 
@@ -50,9 +51,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ skipped: true, reason: 'FIRST_ORDER_OFFER_REMINDERS_ENABLED is not set' })
   }
 
+  const popupSettings = await getAcquisitionPopupSettings()
+  const scheduleMs = hoursToScheduleMs(popupSettings.reminderIntervalsHours)
+
   const [dueClaims, openReviewCases, paused] = await Promise.all([
     prisma.firstOrderOfferClaim.findMany({
-      where: { redeemedAt: null, remindersSent: { lt: MAX_FIRST_ORDER_REMINDERS } },
+      where: { redeemedAt: null, remindersSent: { lt: scheduleMs.length } },
       include: { customer: true, promotionCode: true, campaign: true },
     }),
     prisma.customerIdentityReviewCase.findMany({ where: { status: 'OPEN' }, select: { customerId: true } }),
@@ -62,7 +66,7 @@ export async function GET(req: NextRequest) {
 
   const now = Date.now()
   const claimsById = new Map(dueClaims.map((c) => [c.id, c]))
-  const dueNow = dueClaims.filter((claim) => isClaimDueForFirstOrderReminder(claim, claim.customer, { now, conflictCustomerIds }))
+  const dueNow = dueClaims.filter((claim) => isClaimDueForFirstOrderReminder(claim, claim.customer, { now, conflictCustomerIds, scheduleMs }))
 
   const candidates: ReminderCandidate[] = dueNow.map((claim) => ({
     inviteId: claim.id,
@@ -124,6 +128,13 @@ export async function GET(req: NextRequest) {
       blocked++
       continue
     }
+    // Per-campaign opt-out (section 8's "REMINDER ENABLED" field) -- a
+    // campaign that explicitly turned reminders off is respected even
+    // though its claim was otherwise due.
+    if (campaign && !campaign.reminderEnabled) {
+      blocked++
+      continue
+    }
 
     const discountType = promotionCode?.discountType ?? campaign?.discountType
     const discountValue = promotionCode?.discountValue ?? campaign?.discountValue
@@ -132,7 +143,7 @@ export async function GET(req: NextRequest) {
       continue
     }
 
-    const isFinalReminder = claim.remindersSent + 1 >= MAX_FIRST_ORDER_REMINDERS
+    const isFinalReminder = claim.remindersSent + 1 >= scheduleMs.length
     const props = {
       firstName: customer.firstName,
       publicTitle: campaign?.publicTitle ?? 'Your first-order offer',
@@ -140,6 +151,7 @@ export async function GET(req: NextRequest) {
       discountValue,
       code: promotionCode?.code ?? null,
       isFinalReminder,
+      customerId: customer.id,
     }
     const context = { customerId: customer.id, actorType: 'SYSTEM' as const }
 

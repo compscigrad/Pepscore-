@@ -18,6 +18,7 @@ export interface FirstOrderOfferReminderProps {
   discountValue: number
   code: string | null
   isFinalReminder: boolean
+  customerId: string
 }
 
 export function firstOrderOfferReminderSubject(props: FirstOrderOfferReminderProps): string {
@@ -48,5 +49,9 @@ export function buildFirstOrderOfferReminderHtml(props: FirstOrderOfferReminderP
     <p style="font-size:12px;color:${EMAIL_COLORS.textMuted};margin:0;text-align:center">Create or sign in to your Pepscore Lab account, then apply this code at checkout.</p>
   `
 
-  return buildEmailShell({ bodyHtml, footerNote: 'Questions about your offer? Reply to this email — we\'re happy to help.' })
+  return buildEmailShell({
+    bodyHtml,
+    footerNote: 'Questions about your offer? Reply to this email — we\'re happy to help.',
+    unsubscribeUrl: `${APP_URL}/unsubscribe?c=${encodeURIComponent(props.customerId)}`,
+  })
 }

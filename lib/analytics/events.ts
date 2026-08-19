@@ -43,6 +43,15 @@ export const AnalyticsEvent = {
   // against data that doesn't exist yet.
   PRODUCED_TO_ORDER_VIEWED: 'produced_to_order_viewed',
   SINGLE_VIAL_SPECIAL_REQUEST_CLICKED: 'single_vial_special_request_clicked',
+  // Added 2026-08-19 (lead-capture/conversion engine) -- distinguishes an
+  // auto-triggered popup actually rendering (impression) from a visitor
+  // closing it without submitting (dismissed). OFFER_VIEWED above still
+  // fires for the manual "Claim X% →" trigger button; these two are
+  // popup-lifecycle-specific and also dual-logged server-side as
+  // CampaignFunnelEvent rows (lib/promotions/funnelEvents.ts) so the Admin
+  // conversion dashboard has real, queryable numbers.
+  LEAD_POPUP_IMPRESSION: 'lead_popup_impression',
+  LEAD_POPUP_DISMISSED: 'lead_popup_dismissed',
 } as const
 
 export type AnalyticsEventName = (typeof AnalyticsEvent)[keyof typeof AnalyticsEvent]

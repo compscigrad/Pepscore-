@@ -13,7 +13,7 @@
 // this pass.
 import { prisma } from '@/lib/prisma'
 import { resend } from '@/lib/resend'
-import { routeFor, type MessageCategory } from './routing'
+import { routeFor, isMarketingCategory, type MessageCategory } from './routing'
 import { attemptSms, type SmsOutcome } from './bestEffortSms'
 import { phoneNumbersMatch } from './phoneMatch'
 import type { TrackingEventSource } from '@prisma/client'
@@ -91,6 +91,29 @@ export interface SendEmailResult {
 export async function sendCategorizedEmail(input: SendEmailInput, context: SendContext): Promise<SendEmailResult> {
   const sender = routeFor(input.category)
   const toAddress = Array.isArray(input.to) ? input.to.join(', ') : input.to
+
+  // Suppression check (2026-08-19 lead-capture/conversion engine, section
+  // 25) -- only ever gates a genuinely marketing category (see
+  // isMarketingCategory's own explicit allowlist), and only for the
+  // customer this send actually concerns, mirroring
+  // sendCategorizedSms's identical smsOptedOut check above.
+  if (isMarketingCategory(input.category) && context.customerId) {
+    const customer = await prisma.customer.findUnique({ where: { id: context.customerId }, select: { marketingEmailOptedOut: true } })
+    if (customer?.marketingEmailOptedOut) {
+      await recordCommunication({
+        channel: 'EMAIL',
+        category: input.category,
+        status: 'SKIPPED',
+        toAddress,
+        subject: input.subject,
+        body: input.html,
+        providerName: 'resend',
+        failureReason: 'SKIPPED_OPTED_OUT',
+        context,
+      })
+      return { sent: false, providerMessageId: null, failureReason: 'SKIPPED_OPTED_OUT' }
+    }
+  }
 
   let providerMessageId: string | null = null
   let failureReason: string | null = null

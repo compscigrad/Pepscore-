@@ -76,6 +76,7 @@ export async function Footer() {
               </p>
             </div>
             <FirstOrderOfferModal
+              campaignId={offer.campaign.id}
               publicTitle={offer.campaign.publicTitle}
               discountType={offer.campaign.discountType}
               discountValue={offer.campaign.discountValue}
@@ -197,13 +198,25 @@ export async function Footer() {
                 <span className="text-[13px] text-white/60">Mon–Fri, 9AM–5PM EST</span>
               </div>
             </div>
-            <div className="mt-4">
+            <div className="mt-4 flex flex-wrap gap-3 items-center">
               <Link
                 href="/#products"
                 className="inline-block bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] hover:shadow-[0_4px_16px_rgba(212,175,55,0.4)] text-black font-heading text-[12px] font-bold tracking-[0.08em] uppercase px-5 py-2.5 rounded-full transition-all"
               >
                 Order Now
               </Link>
+              {/* Price-match conversion path (2026-08-19 lead-capture/
+                  conversion engine, section 19) -- feeds the same
+                  LeadCapture/admin-CRM pipeline as every other inquiry
+                  type, never a disconnected inbox. */}
+              <LeadCaptureTrigger
+                interestType="PRICE_MATCH_REQUEST"
+                modalTitle="Found a lower price?"
+                modalDescription="Tell us what you found and where — we'll review it and follow up about a price match."
+                showMessageField
+                triggerLabel="Request a Price Match"
+                triggerClassName="text-[12px] font-heading font-bold text-white/50 hover:text-[#D4AF37] underline underline-offset-2 transition-colors"
+              />
             </div>
           </div>
         </div>
