@@ -156,6 +156,9 @@ function AddExpenseForm({ products, onDone, prefill }: { products: { id: string;
   const [productId, setProductId] = useState('')
   const [receiptUrl, setReceiptUrl] = useState('')
   const [notes, setNotes] = useState('')
+  const [recurring, setRecurring] = useState(false)
+  const [taxYear, setTaxYear] = useState('')
+  const [reconciliationStatus, setReconciliationStatus] = useState('UNRECONCILED')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -171,6 +174,7 @@ function AddExpenseForm({ products, onDone, prefill }: { products: { id: string;
           date, vendor: vendor || null, description, amount: Number(amount), category, subcategory: subcategory || null,
           paymentMethod: paymentMethod || null, businessPurpose: businessPurpose || null, taxTreatment,
           productId: productId || null, invoiceId: invoiceId || null, receiptUrl: receiptUrl || null, notes: notes || null,
+          recurring, taxYear: taxYear ? Number(taxYear) : null, reconciliationStatus,
         }),
       })
       if (!res.ok) {
@@ -216,6 +220,14 @@ function AddExpenseForm({ products, onDone, prefill }: { products: { id: string;
       </label>
       <label className="block"><span className={labelCls}>Receipt URL</span><input value={receiptUrl} onChange={(e) => setReceiptUrl(e.target.value)} placeholder="https://…" className={inputCls} /></label>
       <label className="block"><span className={labelCls}>Invoice ID</span><input value={invoiceId} onChange={(e) => setInvoiceId(e.target.value)} placeholder="optional" className={inputCls} /></label>
+      <label className="block"><span className={labelCls}>Tax Year</span><input type="number" value={taxYear} onChange={(e) => setTaxYear(e.target.value)} placeholder={`defaults to date's year`} className={inputCls} /></label>
+      <label className="block"><span className={labelCls}>Reconciliation Status</span>
+        <select value={reconciliationStatus} onChange={(e) => setReconciliationStatus(e.target.value)} className={inputCls}>
+          <option value="UNRECONCILED" className={selectOption}>Unreconciled</option>
+          <option value="RECONCILED" className={selectOption}>Reconciled</option>
+        </select>
+      </label>
+      <label className="flex items-center gap-2 mt-6"><input type="checkbox" checked={recurring} onChange={(e) => setRecurring(e.target.checked)} /><span className={labelCls}>Recurring expense</span></label>
       <label className="block md:col-span-3"><span className={labelCls}>Business Purpose</span><input value={businessPurpose} onChange={(e) => setBusinessPurpose(e.target.value)} className={inputCls} /></label>
       <label className="block md:col-span-3"><span className={labelCls}>Notes</span><textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className={inputCls} /></label>
       <div className="md:col-span-3 flex items-center gap-3">
@@ -628,7 +640,7 @@ export function FinanceView({
         {tab === 'EXPENSES' && (
           <div className={`${card} overflow-x-auto`}>
             <table className="w-full text-[13px]">
-              <thead><tr className="border-b border-white/10">{['Date', 'Vendor', 'Description', 'Category', 'Amount', 'Treatment', 'Invoice #'].map((h) => (
+              <thead><tr className="border-b border-white/10">{['Date', 'Vendor', 'Description', 'Category', 'Amount', 'Treatment', 'Tax Year', 'Reconciled', 'Recurring', 'Invoice #'].map((h) => (
                 <th key={h} className="text-left font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 px-4 py-3 whitespace-nowrap">{h}</th>
               ))}</tr></thead>
               <tbody>
@@ -640,6 +652,9 @@ export function FinanceView({
                     <td className="px-4 py-3 text-white/60 whitespace-nowrap">{CATEGORY_LABEL[e.category]}</td>
                     <td className="px-4 py-3 whitespace-nowrap text-white font-semibold">{money(e.amount)}</td>
                     <td className="px-4 py-3 whitespace-nowrap text-white/50 text-[12px]">{TREATMENT_LABEL[e.taxTreatment]}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-white/50">{e.taxYear ?? new Date(e.date).getFullYear()}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-white/50 text-[12px]">{e.reconciliationStatus === 'RECONCILED' ? 'Reconciled' : 'Unreconciled'}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-white/50 text-[12px]">{e.recurring ? 'Yes' : '—'}</td>
                     <td className="px-4 py-3 whitespace-nowrap text-white/50">{e.invoiceId ?? '—'}</td>
                   </tr>
                 ))}

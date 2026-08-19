@@ -2780,6 +2780,26 @@ model FinanceExpense {
   notes        String?
   taxTreatment FinanceAccountingTreatment @default(NEEDS_ACCOUNTANT_REVIEW)
 
+  // Added 2026-08-18 Finance/Tax P0 verification pass -- three fields the
+  // spec's expense-ledger checklist named explicitly that the original
+  // 2026-08-12 model didn't carry. All additive/defaulted so no backfill
+  // is needed or attempted on existing rows.
+  //   - recurring: a plain marker the admin sets, never inferred from
+  //     pattern-matching past expenses (that's a P1 automation feature,
+  //     not something to fake today).
+  //   - taxYear: nullable and NOT auto-derived from `date` -- most
+  //     expenses' tax year is simply the calendar year of `date`, but a
+  //     December expense an accountant allocates to the next filing year
+  //     is a real, legitimate exception; leaving it unset (null) means
+  //     "use date's year," never a fabricated guess.
+  //   - reconciliationStatus: distinct from taxTreatment (an accounting
+  //     classification) -- this tracks whether the expense has been
+  //     checked against a bank/card statement, feeding the Monthly
+  //     Close's "expenses entered"/"bank reconciled" checklist.
+  recurring            Boolean                    @default(false)
+  taxYear              Int?
+  reconciliationStatus ExpenseReconciliationStatus @default(UNRECONCILED)
+
   // Single receipt/evidence reference (a pasted URL, not an uploaded file --
   // this repo has no file-storage integration today; see
   // docs/PendingOwnerActions.md for the real-upload gap). Nullable: most
@@ -2833,6 +2853,14 @@ enum FinanceAccountingTreatment {
   ASSET_CAPITAL_EXPENSE
   CHARITABLE_SEPARATE_TREATMENT
   NEEDS_ACCOUNTANT_REVIEW
+}
+
+// 2026-08-18 Finance/Tax P0 verification pass -- has an admin actually
+// checked this expense against a bank/card statement, independent of its
+// FinanceAccountingTreatment classification.
+enum ExpenseReconciliationStatus {
+  UNRECONCILED
+  RECONCILED
 }
 
 // Stock purchases intended for resale, tracked separately from

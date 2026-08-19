@@ -64,9 +64,9 @@ export async function assembleFinanceExport(range: DateRange): Promise<FinanceEx
 
   const expenseSheet: FinanceSheet = {
     name: 'Expense Ledger',
-    headers: ['Date', 'Vendor', 'Description', 'Category', 'Subcategory', 'Amount', 'Payment Method', 'Tax Treatment', 'Invoice #', 'Order #', 'Notes'],
-    rows: expenses.map((e) => [fmtDate(e.date), e.vendor ?? '', e.description, e.category, e.subcategory ?? '', money(e.amount), e.paymentMethod ?? '', e.taxTreatment, e.invoiceId ?? '', e.orderId ?? '', e.notes ?? '']),
-    colWidths: [12, 20, 32, 26, 18, 10, 16, 22, 14, 14, 30],
+    headers: ['Date', 'Vendor', 'Description', 'Category', 'Subcategory', 'Amount', 'Payment Method', 'Tax Treatment', 'Tax Year', 'Reconciliation Status', 'Recurring', 'Invoice #', 'Order #', 'Notes'],
+    rows: expenses.map((e) => [fmtDate(e.date), e.vendor ?? '', e.description, e.category, e.subcategory ?? '', money(e.amount), e.paymentMethod ?? '', e.taxTreatment, e.taxYear ?? new Date(e.date).getFullYear(), e.reconciliationStatus, e.recurring ? 'Yes' : 'No', e.invoiceId ?? '', e.orderId ?? '', e.notes ?? '']),
+    colWidths: [12, 20, 32, 26, 18, 10, 16, 22, 10, 18, 10, 14, 14, 30],
   }
 
   const shippingExpenses = expenses.filter((e) => e.category === 'SHIPPING_POSTAGE')

@@ -29,6 +29,9 @@ const createSchema = z.object({
   taxTreatment: financeAccountingTreatment.optional(),
   receiptUrl: z.string().url().nullable().optional(),
   receiptFilename: z.string().nullable().optional(),
+  recurring: z.boolean().optional(),
+  taxYear: z.number().int().min(2000).max(2100).nullable().optional(),
+  reconciliationStatus: z.enum(['UNRECONCILED', 'RECONCILED']).optional(),
 })
 
 export async function GET(req: NextRequest) {

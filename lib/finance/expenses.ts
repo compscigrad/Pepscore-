@@ -4,7 +4,7 @@
 // split (lib/adminInventory.ts, lib/invoices.ts).
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
-import type { FinanceExpense, FinanceExpenseCategory, FinanceAccountingTreatment } from '@prisma/client'
+import type { FinanceExpense, FinanceExpenseCategory, FinanceAccountingTreatment, ExpenseReconciliationStatus } from '@prisma/client'
 import { getTestDataExpenseExclusion } from './testDataExclusion'
 
 export interface CreateExpenseInput {
@@ -25,6 +25,9 @@ export interface CreateExpenseInput {
   receiptUrl?: string | null
   receiptFilename?: string | null
   providerReference?: string | null
+  recurring?: boolean
+  taxYear?: number | null
+  reconciliationStatus?: ExpenseReconciliationStatus
 }
 
 export async function createExpense(input: CreateExpenseInput, actorId: string): Promise<FinanceExpense> {
