@@ -2,8 +2,11 @@
 // Admin notification bell — polls for unread notifications every ~20s
 // (no websocket/pub-sub infra in this project, see docs/Decisions.md),
 // shows an unread badge, and lets the admin jump straight to the draft
-// invoice a submission created. Rendered globally via app/admin/layout.tsx
-// so it's present on every admin page without each page wiring it in.
+// invoice a submission created. Rendered inside AdminNav.tsx's own flex
+// row (not independently `fixed` positioned) so it's present on every
+// admin page without each page wiring it in, and can never visually
+// collide with the nav's own right-aligned "Storefront" link the way an
+// independently viewport-pinned element did before (2026-08-19 fix).
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatTimeElapsed } from '@/lib/formatTimeElapsed'
@@ -68,7 +71,7 @@ export function NotificationBell() {
   }
 
   return (
-    <div className="fixed top-4 right-4 z-50">
+    <div className="relative z-50">
       <button
         onClick={() => setOpen((o) => !o)}
         className="relative w-11 h-11 rounded-full bg-black border border-gold/20 shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex items-center justify-center hover:border-gold/40 transition-colors"

@@ -150,30 +150,32 @@ export function PaymentSettingsForm({ initialSettings, providerStatus, analytics
               </div>
             </div>
 
-            <table className="w-full text-[13px] mb-6">
-              <thead>
-                <tr className={`border-b ${divider}`}>
-                  {['Method', 'Provider', 'Count', 'Total', 'Fees', 'Avg Fee', 'Net'].map((h) => (
-                    <th key={h} className={`text-left font-heading text-[11px] font-bold tracking-[0.06em] uppercase ${mutedText} px-2 py-2`}>
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {analytics.byMethod.map((m) => (
-                  <tr key={`${m.provider}-${m.methodType}`} className={`border-b ${divider}`}>
-                    <td className="px-2 py-2 text-white">{METHOD_LABEL[m.methodType] ?? m.methodType}</td>
-                    <td className="px-2 py-2 text-white/60">{m.provider}</td>
-                    <td className="px-2 py-2 text-white/60">{m.count}</td>
-                    <td className="px-2 py-2 text-white/60">{fmt(m.totalAmount)}</td>
-                    <td className="px-2 py-2 text-white/60">{fmt(m.totalFees)}</td>
-                    <td className="px-2 py-2 text-white/60">{fmt(m.averageFee)}</td>
-                    <td className="px-2 py-2 text-white">{fmt(m.netRevenue)}</td>
+            <div className="overflow-x-auto mb-6">
+              <table className="w-full text-[13px]">
+                <thead>
+                  <tr className={`border-b ${divider}`}>
+                    {['Method', 'Provider', 'Count', 'Total', 'Fees', 'Avg Fee', 'Net'].map((h) => (
+                      <th key={h} className={`text-left font-heading text-[11px] font-bold tracking-[0.06em] uppercase ${mutedText} px-2 py-2 whitespace-nowrap`}>
+                        {h}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {analytics.byMethod.map((m) => (
+                    <tr key={`${m.provider}-${m.methodType}`} className={`border-b ${divider}`}>
+                      <td className="px-2 py-2 text-white whitespace-nowrap">{METHOD_LABEL[m.methodType] ?? m.methodType}</td>
+                      <td className="px-2 py-2 text-white/60 whitespace-nowrap">{m.provider}</td>
+                      <td className="px-2 py-2 text-white/60 whitespace-nowrap">{m.count}</td>
+                      <td className="px-2 py-2 text-white/60 whitespace-nowrap">{fmt(m.totalAmount)}</td>
+                      <td className="px-2 py-2 text-white/60 whitespace-nowrap">{fmt(m.totalFees)}</td>
+                      <td className="px-2 py-2 text-white/60 whitespace-nowrap">{fmt(m.averageFee)}</td>
+                      <td className="px-2 py-2 text-white whitespace-nowrap">{fmt(m.netRevenue)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
             {analytics.achVsCard && (
               <div className="rounded-xl border border-gold/20 bg-gold/5 p-4">

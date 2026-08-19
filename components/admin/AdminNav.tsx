@@ -12,6 +12,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { NotificationBell } from '@/components/admin/NotificationBell'
 
 interface NavItem {
   label: string
@@ -121,10 +122,11 @@ export function AdminNav() {
         {NAV.map((group) => (
           <GroupMenu key={group.label} group={group} active={group.items.some((i) => pathname === i.href || (i.href !== '/admin' && pathname.startsWith(i.href)))} />
         ))}
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-4">
           <Link href="/" className="font-heading text-[12px] font-bold tracking-[0.06em] uppercase text-white/40 hover:text-white whitespace-nowrap">
             ← Storefront
           </Link>
+          <NotificationBell />
         </div>
       </div>
     </nav>

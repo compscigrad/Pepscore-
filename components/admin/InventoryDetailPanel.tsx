@@ -465,7 +465,7 @@ export function InventoryDetailPanel({ product, availableUnits, completeCasesAva
 
       {pricingPreview && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className={`${card} p-6 max-w-lg w-full`}>
+          <div className={`${card} p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto`}>
             <h3 className={`${sectionHeading} mb-1`}>Review Price Update</h3>
             <p className={`text-[13px] ${mutedText} mb-4`}>
               {product.name} <span className="text-white">{product.size}</span>
