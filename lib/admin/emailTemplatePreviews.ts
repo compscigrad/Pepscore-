@@ -54,6 +54,7 @@ import {
   buildContactInquiryAcknowledgementHtml,
 } from '@/emails/ContactInquiry'
 import { firstOrderOfferCodeSubject, buildFirstOrderOfferCodeHtml } from '@/emails/FirstOrderOfferCode'
+import { firstOrderOfferReminderSubject, buildFirstOrderOfferReminderHtml } from '@/emails/FirstOrderOfferReminder'
 import { intakeLinkRequestSubject, buildIntakeLinkRequestHtml } from '@/emails/IntakeLinkRequest'
 import { invoiceIssuedSubject, invoiceRevisedSubject, buildInvoiceIssuedHtml } from '@/emails/InvoiceIssued'
 import { shipmentUpdateSubject, buildInvoiceShipmentUpdateHtml } from '@/emails/InvoiceShipmentUpdate'
@@ -385,6 +386,29 @@ function build(): EmailTemplatePreview[] {
         discountValue: 10,
         code: 'WELCOME10',
         expiresAt: new Date('2026-09-15T00:00:00Z'),
+      }),
+    },
+    {
+      key: 'first-order-offer-reminder',
+      label: 'First Order Offer Reminder (Nurture)',
+      category: 'Promotions',
+      subject: firstOrderOfferReminderSubject({
+        firstName: 'Jordan',
+        publicTitle: 'Welcome Offer',
+        discountType: 'PERCENTAGE' as PromotionType,
+        discountValue: 10,
+        code: 'WELCOME10',
+        isFinalReminder: false,
+        customerId: 'sample-customer',
+      }),
+      html: buildFirstOrderOfferReminderHtml({
+        firstName: 'Jordan',
+        publicTitle: 'Welcome Offer',
+        discountType: 'PERCENTAGE' as PromotionType,
+        discountValue: 10,
+        code: 'WELCOME10',
+        isFinalReminder: false,
+        customerId: 'sample-customer',
       }),
     },
     {

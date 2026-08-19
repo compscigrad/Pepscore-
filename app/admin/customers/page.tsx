@@ -120,9 +120,14 @@ export default async function AdminCustomersPage({ searchParams }: PageProps) {
           title="Customers & Leads"
           subtitle={`${total} record${total === 1 ? '' : 's'}`}
           actions={
-            <Link href="/admin" className="text-[12px] font-heading font-bold text-gold hover:text-gold-dark uppercase tracking-[0.06em]">
-              ← Admin Dashboard
-            </Link>
+            <>
+              <Link href="/admin/customers/portal-invite" className="text-[12px] font-heading font-bold text-gold hover:text-gold-dark uppercase tracking-[0.06em]">
+                Bulk Portal Invite →
+              </Link>
+              <Link href="/admin" className="text-[12px] font-heading font-bold text-gold hover:text-gold-dark uppercase tracking-[0.06em]">
+                ← Admin Dashboard
+              </Link>
+            </>
           }
         />
 

@@ -38,6 +38,7 @@ const NAV: NavGroup[] = [
     label: 'Customers',
     items: [
       { label: 'Customers & Leads', href: '/admin/customers' },
+      { label: 'Bulk Portal Invite', href: '/admin/customers/portal-invite' },
       { label: 'Portal Adoption', href: '/admin/portal-rollout' },
       { label: 'Identity Review', href: '/admin/identity-review' },
       { label: 'Intake Queue', href: '/admin/intake-queue' },
