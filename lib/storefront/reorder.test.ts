@@ -138,4 +138,24 @@ describe('resolveReorderLine', () => {
     expect(result.status).toBe('RESOLVED')
     expect(result.status === 'RESOLVED' && result.sellUnit).toBe('INDIVIDUAL_VIAL')
   })
+
+  describe('preferredPrice (Price Match sprint) -- never blindly copies a stale historical price', () => {
+    it('applies an active preferred price when it is lower than the current catalog price', () => {
+      const result = resolveReorderLine({ productId: 'p1', sellUnit: 'CASE_STANDARD', quantity: 1 }, product(), { preferredPrice: 300 })
+      expect(result.status).toBe('RESOLVED')
+      expect(result.status === 'RESOLVED' && result.unitPrice).toBe(300)
+    })
+
+    it('ignores a stale/higher preferredPrice -- always re-resolves to the current, better catalog price', () => {
+      const result = resolveReorderLine({ productId: 'p1', sellUnit: 'CASE_STANDARD', quantity: 1 }, product(), { preferredPrice: 500 })
+      expect(result.status).toBe('RESOLVED')
+      expect(result.status === 'RESOLVED' && result.unitPrice).toBe(370)
+    })
+
+    it('with no preferredPrice supplied, resolves to the plain current catalog price exactly as before', () => {
+      const result = resolveReorderLine({ productId: 'p1', sellUnit: 'CASE_STANDARD', quantity: 1 }, product())
+      expect(result.status).toBe('RESOLVED')
+      expect(result.status === 'RESOLVED' && result.unitPrice).toBe(370)
+    })
+  })
 })

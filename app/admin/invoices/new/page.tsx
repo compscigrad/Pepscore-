@@ -13,6 +13,7 @@ import { getCustomer } from '@/lib/customers'
 import { formatProductLabel } from '@/lib/invoice/format'
 import { getInvoiceLinePriceTier } from '@/lib/pricing/lineOverride'
 import { resolveReorderLine, REORDER_UNAVAILABLE_MESSAGE, type ReorderLineRequest } from '@/lib/storefront/reorder'
+import { resolveAllActivePreferredPricesRecordByCustomerId } from '@/lib/pricing/preferredPricing'
 import type { SellUnit } from '@/lib/pricing/sellUnits'
 import { InvoiceBuilder } from '@/components/invoices/InvoiceBuilder'
 import { makeKey } from '@/components/invoices/types'
@@ -67,12 +68,20 @@ export default async function NewInvoicePage({ searchParams }: PageProps) {
       : Promise.resolve([]),
   ])
 
+  // Price Match / Customer Preferred Pricing parity (2026-08-20 sprint) --
+  // resolved for both the InvoiceBuilder prop (a product picked manually
+  // after the page loads) and the reorder-line re-resolution loop below
+  // (never blindly copies a stale historical price -- the current active
+  // authorization, if any, is what gets applied).
+  const prefillCustomerPreferredPrices = await resolveAllActivePreferredPricesRecordByCustomerId(prefillCustomer?.id ?? null)
+
   const reorderProductMap = new Map(reorderProducts.map((p) => [p.id, p]))
   const initialItems: InvoiceItemDraft[] = []
   const skippedReorderMessages: string[] = []
   for (const request of reorderRequests) {
     const product = reorderProductMap.get(request.productId) ?? null
-    const resolved = resolveReorderLine(request, product, { adminContext: true })
+    const preferredPrice = product ? prefillCustomerPreferredPrices[`${product.id}:${request.sellUnit ?? 'CASE_STANDARD'}`] ?? null : null
+    const resolved = resolveReorderLine(request, product, { adminContext: true, preferredPrice })
     if (resolved.status !== 'RESOLVED') {
       const label = product ? formatProductLabel(product) : request.productId
       skippedReorderMessages.push(`${label}: ${REORDER_UNAVAILABLE_MESSAGE[resolved.reason]}`)
@@ -118,6 +127,7 @@ export default async function NewInvoicePage({ searchParams }: PageProps) {
           prefillCustomer={prefillCustomer}
           initialItems={initialItems.length > 0 ? initialItems : undefined}
           skippedReorderMessages={skippedReorderMessages}
+          prefillCustomerPreferredPrices={prefillCustomerPreferredPrices}
         />
       </div>
     </main>

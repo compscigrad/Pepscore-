@@ -71,3 +71,22 @@ export async function resolveActivePreferredPricesByClerkUserId(
 export function preferredPriceFor(map: Map<string, number>, productId: string, sellUnit: string): number | null {
   return map.get(lineKey(productId, sellUnit)) ?? null
 }
+
+// Admin-invoice parity variant -- returns every one of a customer's active
+// authorizations as a plain Record (not a Map, which can't cross the
+// server-to-client-component prop boundary), since the admin invoice
+// builder doesn't know in advance which products the admin will pick for a
+// brand-new invoice draft the way checkout/repeat-order call sites already
+// know their exact cart lines. Same isolation/expiry rules as
+// resolveActivePreferredPricesByCustomerId above.
+export async function resolveAllActivePreferredPricesRecordByCustomerId(customerId: string | null): Promise<Record<string, number>> {
+  const result: Record<string, number> = {}
+  if (!customerId) return result
+
+  const rows = await prisma.priceMatchAuthorization.findMany({
+    where: { customerId, status: 'ACTIVE', OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
+    select: { productId: true, sellUnit: true, authorizedPrice: true },
+  })
+  for (const row of rows) result[lineKey(row.productId, row.sellUnit)] = row.authorizedPrice
+  return result
+}

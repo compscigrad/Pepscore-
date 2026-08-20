@@ -56,6 +56,15 @@ export interface ResolveReorderLineOptions {
   // never set true from a customer-facing code path. Buy Again/Reorder All
   // always call this with no options, which stays gated exactly as before.
   adminContext?: boolean
+  // Price Match / Customer Preferred Pricing (2026-08-20 sprint) -- the
+  // caller's CURRENT active authorized price for this exact product +
+  // sellUnit, if any (never the price the historical order actually paid).
+  // Applied only when strictly lower than the freshly re-resolved catalog
+  // price, same "always the lower of the two" rule the canonical engine
+  // itself enforces -- a revoked/expired/superseded authorization is never
+  // silently carried forward into a reorder just because the caller once
+  // had one.
+  preferredPrice?: number | null
 }
 
 // `product` is null when the referenced Product row no longer exists at all
@@ -95,12 +104,14 @@ export function resolveReorderLine(
     return { status: 'UNAVAILABLE', productId: request.productId, requestedSellUnit: request.sellUnit, reason: 'sell_unit_no_longer_offered' }
   }
 
+  const unitPrice = options.preferredPrice != null && options.preferredPrice < option.price ? options.preferredPrice : option.price
+
   return {
     status: 'RESOLVED',
     productId: product.id,
     sellUnit: option.sellUnit,
     quantity: request.quantity,
-    unitPrice: option.price,
+    unitPrice,
     unitsPerSellUnit: option.unitsPerSellUnit,
     backordered: availability === 'BACKORDERED',
   }

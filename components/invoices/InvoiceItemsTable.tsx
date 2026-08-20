@@ -43,6 +43,18 @@ interface Props {
   // doesn't apply once the customer is Professional-eligible, even for a
   // line an admin deliberately left on CASE_STANDARD).
   proEligible: boolean
+  // Active Customer Preferred Pricing for this invoice's selected customer
+  // (2026-08-20 Price Match sprint) -- keyed `${productId}:${sellUnit}`,
+  // resolved server-side by the parent from real PriceMatchAuthorization
+  // rows (lib/pricing/preferredPricing.ts), never client-submitted. Plain
+  // Record, not a Map, since this crosses the server-to-client-component
+  // prop boundary. Omitted/empty for a brand-new invoice with no customer
+  // selected yet, or a customer with no active grants.
+  preferredPrices?: Record<string, number>
+}
+
+function preferredPriceKey(productId: string, sellUnit: string): string {
+  return `${productId}:${sellUnit}`
 }
 
 // Local, not imported from lib/invoices.ts's round2 -- that file pulls in
@@ -67,7 +79,7 @@ interface PriceCorrectionPrompt {
   authoritativePrice: number
 }
 
-export function InvoiceItemsTable({ items, onChange, products, onProductPriceUpdated, invoiceId, proEligible }: Props) {
+export function InvoiceItemsTable({ items, onChange, products, onProductPriceUpdated, invoiceId, proEligible, preferredPrices }: Props) {
   const [correctingItemId, setCorrectingItemId] = useState<string | null>(null)
   const [pricePrompt, setPricePrompt] = useState<PriceCorrectionPrompt | null>(null)
   const [pricePromptBusy, setPricePromptBusy] = useState(false)
@@ -104,7 +116,12 @@ export function InvoiceItemsTable({ items, onChange, products, onProductPriceUpd
         individualSalesEnabled: product.individualSalesEnabled,
         unitsPerCase: product.unitsPerCase,
       }
-      return { product: pricingProduct, sellUnit: it.sellUnit, quantity: it.quantity }
+      return {
+        product: pricingProduct,
+        sellUnit: it.sellUnit,
+        quantity: it.quantity,
+        preferredPrice: preferredPrices?.[preferredPriceKey(it.productId!, it.sellUnit ?? 'CASE_STANDARD')] ?? null,
+      }
     })
 
     // allowManualOverride: true -- this is the admin-composition context
@@ -191,11 +208,20 @@ export function InvoiceItemsTable({ items, onChange, products, onProductPriceUpd
         }, { adminContext: true }).find((o) => o.sellUnit === 'CASE_PRO')
       : undefined
 
+    // Preferred Price parity (Price Match sprint): CASE_PRO lines never
+    // pass through recomputeVolumePricing (it only touches CASE_STANDARD),
+    // so a matching active authorization -- if lower than the Professional
+    // price -- is applied here directly. Never higher than proOption.price,
+    // matching the canonical engine's own "always the lower of the two"
+    // rule for this same product/sellUnit.
+    const proPreferredPrice = proOption ? preferredPrices?.[preferredPriceKey(product.id, 'CASE_PRO')] : undefined
+    const proUnitPrice = proOption && proPreferredPrice != null && proPreferredPrice < proOption.price ? proPreferredPrice : proOption?.price
+
     const patch: Partial<InvoiceItemDraft> = proOption
       ? {
           productId: product.id,
           name: formatProductLabel(product),
-          unitPrice: proOption.price,
+          unitPrice: proUnitPrice!,
           sellUnit: 'CASE_PRO',
           unitsPerSellUnit: proOption.unitsPerSellUnit,
           priceTier: getInvoiceLinePriceTier('CASE_PRO'),

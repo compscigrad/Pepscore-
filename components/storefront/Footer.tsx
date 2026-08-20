@@ -205,18 +205,19 @@ export async function Footer() {
               >
                 Order Now
               </Link>
-              {/* Price-match conversion path (2026-08-19 lead-capture/
-                  conversion engine, section 19) -- feeds the same
-                  LeadCapture/admin-CRM pipeline as every other inquiry
-                  type, never a disconnected inbox. */}
-              <LeadCaptureTrigger
-                interestType="PRICE_MATCH_REQUEST"
-                modalTitle="Found a lower price?"
-                modalDescription="Tell us what you found and where — we'll review it and follow up about a price match."
-                showMessageField
-                triggerLabel="Request a Price Match"
-                triggerClassName="text-[12px] font-heading font-bold text-white/50 hover:text-[#D4AF37] underline underline-offset-2 transition-colors"
-              />
+              {/* Price Match Guarantee (2026-08-20 Price Match sprint) --
+                  a dedicated structured request page (product, competitor,
+                  delivered price, proof), not the generic lead-capture
+                  modal this link used before. Still creates a real
+                  LeadCapture row (interestType PRICE_MATCH_REQUEST) for
+                  admin-CRM visibility, plus the actual PriceMatchRequest
+                  review-queue record the modal never had. */}
+              <Link
+                href="/price-match"
+                className="text-[12px] font-heading font-bold text-white/50 hover:text-[#D4AF37] underline underline-offset-2 transition-colors"
+              >
+                Request a Price Match
+              </Link>
             </div>
           </div>
         </div>

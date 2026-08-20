@@ -10,6 +10,7 @@ import { prisma } from '@/lib/prisma'
 import { getInvoice } from '@/lib/invoices'
 import { listPromotions } from '@/lib/promotions'
 import { isSmsConfigured } from '@/lib/intake/delivery'
+import { resolveAllActivePreferredPricesRecordByCustomerId } from '@/lib/pricing/preferredPricing'
 import { InvoiceBuilder } from '@/components/invoices/InvoiceBuilder'
 import { InvoiceHeaderActions } from '@/components/invoices/InvoiceHeaderActions'
 import { StatusBadge } from '@/components/invoices/StatusBadge'
@@ -47,6 +48,10 @@ export default async function EditInvoicePage({ params }: PageProps) {
   const customerProEligible = invoice.customerId
     ? (await prisma.customer.findUnique({ where: { id: invoice.customerId }, select: { proEligible: true } }))?.proEligible ?? false
     : false
+
+  // Same edit-mode parity, for Price Match / Customer Preferred Pricing
+  // (2026-08-20 sprint) -- resolved alongside proEligible above.
+  const customerPreferredPrices = await resolveAllActivePreferredPricesRecordByCustomerId(invoice.customerId ?? null)
 
   return (
     <main className="min-h-screen bg-black p-8">
@@ -88,6 +93,7 @@ export default async function EditInvoicePage({ params }: PageProps) {
           promotions={promotions}
           smsConfigured={isSmsConfigured()}
           customerProEligible={customerProEligible}
+          customerPreferredPrices={customerPreferredPrices}
         />
       </div>
     </main>

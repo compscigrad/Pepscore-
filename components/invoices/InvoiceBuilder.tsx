@@ -76,6 +76,17 @@ interface Props {
   // include the customer relation. Closes the admin invoice edit-parity
   // gap: create-mode already had this via prefillCustomer.proEligible.
   customerProEligible?: boolean
+  // Active Customer Preferred Pricing (2026-08-20 Price Match sprint) —
+  // resolved server-side by the parent page from real
+  // PriceMatchAuthorization rows (lib/pricing/preferredPricing.ts), keyed
+  // `${productId}:${sellUnit}`. Two separate props (not folded into
+  // prefillCustomer/Customer) since preferred pricing lives in its own
+  // table, not a Customer column — edit-mode resolves it the same
+  // targeted-query way customerProEligible is resolved; create-mode
+  // resolves it whenever prefillCustomer is set (a brand-new, no-customer
+  // invoice has neither).
+  customerPreferredPrices?: Record<string, number>
+  prefillCustomerPreferredPrices?: Record<string, number>
 }
 
 function toDateInputValue(date: Date | string | null | undefined): string {
@@ -195,6 +206,8 @@ export function InvoiceBuilder({
   initialItems,
   skippedReorderMessages,
   customerProEligible,
+  customerPreferredPrices,
+  prefillCustomerPreferredPrices,
 }: Props) {
   const router = useRouter()
   const [draft, setDraft] = useState<InvoiceDraft>(() => {
@@ -455,6 +468,7 @@ export function InvoiceBuilder({
           // invoice's real linked customer). A manual/ad-hoc invoice with
           // no linked customer correctly defaults to false in both modes.
           proEligible={mode === 'edit' ? (customerProEligible ?? false) : (prefillCustomer?.proEligible ?? false)}
+          preferredPrices={mode === 'edit' ? customerPreferredPrices : prefillCustomerPreferredPrices}
         />
         <DiscountsSection
           discounts={draft.discounts}
