@@ -4,6 +4,7 @@
 // nothing here ever takes an id from the client.
 export const dynamic = 'force-dynamic'
 
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { auth, currentUser } from '@clerk/nextjs/server'
@@ -136,6 +137,42 @@ export default async function AccountPage({ searchParams }: Props) {
             </p>
           </div>
         </div>
+
+        {data.proEligible || data.activePreferredPricingCount > 0 || data.pendingPriceMatchCount > 0 || data.evaluationCreditAvailable > 0 ? (
+          <Section title="Pricing & Programs">
+            <div className="flex flex-wrap gap-2">
+              {data.proEligible ? (
+                <span className="inline-flex items-center rounded-full border border-gold/40 bg-gold/10 text-gold-light px-3 py-1.5 text-xs font-medium">
+                  Professional Access active
+                </span>
+              ) : null}
+              {data.activePreferredPricingCount > 0 ? (
+                <Link
+                  href="/account/profile"
+                  className="inline-flex items-center rounded-full border border-white/15 bg-white/5 text-white/80 hover:text-white hover:bg-white/10 px-3 py-1.5 text-xs font-medium transition-colors"
+                >
+                  {data.activePreferredPricingCount === 1 ? '1 preferred price active' : `${data.activePreferredPricingCount} preferred prices active`}
+                </Link>
+              ) : null}
+              {data.pendingPriceMatchCount > 0 ? (
+                <Link
+                  href="/account/price-match"
+                  className="inline-flex items-center rounded-full border border-amber-400/30 bg-amber-400/10 text-amber-300 hover:bg-amber-400/20 px-3 py-1.5 text-xs font-medium transition-colors"
+                >
+                  {data.pendingPriceMatchCount === 1 ? '1 price match under review' : `${data.pendingPriceMatchCount} price matches under review`}
+                </Link>
+              ) : null}
+              {data.evaluationCreditAvailable > 0 ? (
+                <Link
+                  href="/account/profile"
+                  className="inline-flex items-center rounded-full border border-gold/40 bg-gold/10 text-gold-light px-3 py-1.5 text-xs font-medium"
+                >
+                  {formatMoney(data.evaluationCreditAvailable)} evaluation credit available
+                </Link>
+              ) : null}
+            </div>
+          </Section>
+        ) : null}
 
         {data.activeTracking.length > 0 ? (
           <Section title="Active Tracking">

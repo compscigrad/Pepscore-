@@ -7,6 +7,8 @@
 import type { RefundStatus } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { isCustomerVisibleCategory } from '@/lib/notifications/routing'
+import { listCustomerPreferredPricing, listCustomerPriceMatchRequests } from '@/lib/priceMatch/requests'
+import { listCustomerSafeEvaluations } from '@/lib/professionalEvaluation/service'
 
 export interface DashboardInvoiceSummary {
   id: string
@@ -65,6 +67,10 @@ export interface PortalDashboardData {
   accountCredits: DashboardCreditSummary[]
   recentCommunications: DashboardCommunicationSummary[]
   requiredActions: string[]
+  proEligible: boolean
+  activePreferredPricingCount: number
+  pendingPriceMatchCount: number
+  evaluationCreditAvailable: number
 }
 
 const NON_TERMINAL_REFUND_STATUSES: RefundStatus[] = ['PENDING', 'AWAITING_MANUAL_PROCESSING', 'PROCESSING']
@@ -94,6 +100,10 @@ export async function getPortalDashboardData(customerId: string): Promise<Portal
     orderBy: { sentAt: 'desc' },
     take: 20, // over-fetch, then filter by visibility below, then trim to 5
   })
+  const customer = await prisma.customer.findUnique({ where: { id: customerId }, select: { proEligible: true } })
+  const preferredPricing = await listCustomerPreferredPricing(customerId)
+  const priceMatchRequests = await listCustomerPriceMatchRequests(customerId)
+  const evaluations = await listCustomerSafeEvaluations(customerId)
 
   const outstandingBalance = invoices.reduce((sum, inv) => sum + inv.balanceDue, 0)
 
@@ -154,6 +164,15 @@ export async function getPortalDashboardData(customerId: string): Promise<Portal
   })
   if (pendingArrangementDecision > 0) requiredActions.push('Your payment arrangement request is awaiting review.')
 
+  const moreInfoNeeded = priceMatchRequests.filter((r) => r.status === 'MORE_INFO_REQUESTED').length
+  if (moreInfoNeeded > 0) {
+    requiredActions.push(
+      moreInfoNeeded === 1
+        ? 'A price match request needs more information from you.'
+        : `${moreInfoNeeded} price match requests need more information from you.`
+    )
+  }
+
   return {
     outstandingBalance,
     recentInvoices,
@@ -163,5 +182,11 @@ export async function getPortalDashboardData(customerId: string): Promise<Portal
     accountCredits: accountCredits.map((c) => ({ id: c.id, amount: c.amount, remainingAmount: c.remainingAmount, reason: c.reason })),
     recentCommunications,
     requiredActions,
+    proEligible: customer?.proEligible ?? false,
+    activePreferredPricingCount: preferredPricing.filter((r) => r.status === 'ACTIVE').length,
+    pendingPriceMatchCount: priceMatchRequests.filter((r) => r.status === 'PENDING' || r.status === 'MORE_INFO_REQUESTED').length,
+    evaluationCreditAvailable: evaluations
+      .filter((e) => e.creditStatus === 'AVAILABLE')
+      .reduce((sum, e) => sum + (e.creditAmount ?? 0), 0),
   }
 }

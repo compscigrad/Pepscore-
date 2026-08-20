@@ -267,3 +267,43 @@ export async function listCustomerProfessionalEvaluations(customerId: string) {
     orderBy: { createdAt: 'desc' },
   })
 }
+
+export interface CustomerSafeEvaluationRow {
+  id: string
+  productName: string
+  productSize: string
+  quantity: number
+  evaluationType: EvaluationType
+  amountPaid: number
+  creditAmount: number | null
+  creditExpiresAt: Date | null
+  creditStatus: 'NONE' | 'AVAILABLE' | 'REDEEMED' | 'EXPIRED' | 'CANCELLED'
+  createdAt: Date
+}
+
+// Customer-portal-safe view -- unlike listCustomerProfessionalEvaluations()
+// above (the Admin customer-profile widget's data source, which includes
+// `notes`, `issuedBy`, `pricingSource`, and other internal fields), this
+// selects only what a customer should ever see about their own evaluation
+// history: product/quantity/amount paid/credit status. Never internal
+// notes, the issuing admin's identity, the pricing-source snapshot, or the
+// inventory ledger link.
+export async function listCustomerSafeEvaluations(customerId: string): Promise<CustomerSafeEvaluationRow[]> {
+  const rows = await prisma.professionalEvaluation.findMany({
+    where: { customerId, status: 'ISSUED' },
+    include: { product: { select: { name: true, size: true } } },
+    orderBy: { createdAt: 'desc' },
+  })
+  return rows.map((row) => ({
+    id: row.id,
+    productName: row.product.name,
+    productSize: row.product.size,
+    quantity: row.quantity,
+    evaluationType: row.evaluationType,
+    amountPaid: row.amountPaid,
+    creditAmount: row.creditAmount,
+    creditExpiresAt: row.creditExpiresAt,
+    creditStatus: row.creditStatus,
+    createdAt: row.createdAt,
+  }))
+}

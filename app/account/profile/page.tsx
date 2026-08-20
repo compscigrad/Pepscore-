@@ -8,8 +8,10 @@ import { PortalStatusShell } from '@/components/account/PortalStatusShell'
 import { PortalProfileForm } from '@/components/account/PortalProfileForm'
 import { AccountSecuritySection } from '@/components/account/AccountSecuritySection'
 import { PreferredPricingSection } from '@/components/account/PreferredPricingSection'
+import { EvaluationCreditsSection } from '@/components/account/EvaluationCreditsSection'
 import { CloseAccountSection } from '@/components/account/CloseAccountSection'
 import { listCustomerPreferredPricing } from '@/lib/priceMatch/requests'
+import { listCustomerSafeEvaluations } from '@/lib/professionalEvaluation/service'
 
 export default async function ProfilePage() {
   const authState = await getPortalAuthState()
@@ -19,10 +21,11 @@ export default async function ProfilePage() {
   if (authState.state === 'DISABLED') return <PortalStatusShell heading="Access disabled" body="Contact us if you believe this is a mistake." />
 
   const { customer } = authState
-  const [clerkUser, accessSummary, preferredPricing] = await Promise.all([
+  const [clerkUser, accessSummary, preferredPricing, evaluations] = await Promise.all([
     currentUser(),
     getCustomerAccessSummary(customer.id),
     listCustomerPreferredPricing(customer.id),
+    listCustomerSafeEvaluations(customer.id),
   ])
   const primaryEmail = clerkUser?.primaryEmailAddress
 
@@ -40,6 +43,7 @@ export default async function ProfilePage() {
           preferredContactMethod={customer.preferredContactMethod}
         />
         <PreferredPricingSection rows={preferredPricing} />
+        <EvaluationCreditsSection rows={evaluations} />
         <AccountSecuritySection
           signedInEmail={primaryEmail?.emailAddress ?? null}
           emailVerified={primaryEmail?.verification?.status === 'verified'}

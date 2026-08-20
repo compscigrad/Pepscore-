@@ -321,6 +321,44 @@ export async function listCustomerPreferredPricing(customerId: string): Promise<
   }))
 }
 
+export interface CustomerPriceMatchRequestRow {
+  id: string
+  requestNumber: string
+  productName: string
+  productSize: string
+  sellUnit: InvoiceItemSellUnit
+  status: PriceMatchRequestStatus
+  createdAt: Date
+  moreInfoRequestNote: string | null
+}
+
+// Customer-portal-safe view of a customer's OWN price match requests --
+// requestNumber/product/variant/submitted date/status only. Deliberately
+// never includes competitorName/competitorUrl/proofUrl/proofNote/
+// reviewNotes/rejectionReason/ipAddress -- those are Admin-only (competitor
+// evidence, internal review reasoning, security metadata), per the same
+// privacy boundary listCustomerPreferredPricing() already draws.
+// moreInfoRequestNote is the one exception: it's written specifically to be
+// read back by the customer (the "what we need from you" text), so it's
+// customer-safe by design, unlike reviewNotes.
+export async function listCustomerPriceMatchRequests(customerId: string): Promise<CustomerPriceMatchRequestRow[]> {
+  const rows = await prisma.priceMatchRequest.findMany({
+    where: { customerId },
+    include: { product: { select: { name: true, size: true } } },
+    orderBy: { createdAt: 'desc' },
+  })
+  return rows.map((row) => ({
+    id: row.id,
+    requestNumber: row.requestNumber,
+    productName: row.product.name,
+    productSize: row.product.size,
+    sellUnit: row.sellUnit,
+    status: row.status,
+    createdAt: row.createdAt,
+    moreInfoRequestNote: row.status === 'MORE_INFO_REQUESTED' ? row.moreInfoRequestNote : null,
+  }))
+}
+
 // Count of PENDING + MORE_INFO_REQUESTED requests -- powers the admin
 // NotificationBell/Dashboard indicator (open items needing attention),
 // deliberately excluding MORE_INFO_REQUESTED from "urgent" framing at the

@@ -555,6 +555,28 @@ export const POLICIES: Policy[] = [
     sourceRef: 'lib/portal/accountClosure.ts (archiveClosedCustomer)',
     lastUpdated: '2026-08-20',
   },
+  {
+    id: 'owner-portal-rehearsal-sop',
+    name: 'Owner Customer-Portal Rehearsal — How To Walk Through It Safely',
+    category: 'CUSTOMER_ACCOUNTS_PORTAL',
+    currentRule:
+      'To see the portal exactly as a customer would, without touching any real customer\'s data: (1) Admin → Invoices → New Invoice, type a clearly fake name (e.g. "ZZ Test Rehearsal") and an email address you personally control into the customer fields, then click "Start Draft & Send Intake Request" -- this is the actual mechanism that creates a new Customer row (there is no separate stand-alone "new customer" form); it also creates a zero-item draft invoice, which is harmless and gets cleaned up in step 5. Do not actually send the intake request. (2) Admin → Customers → search for that name → open the customer → in the Portal Access section click "Invite to Portal" -- the invite email arrives at the address from step 1. (3) Open the invite link and sign in/sign up with that same test email -- this is now a completely ordinary customer portal session, no admin session or special access involved. (4) Walk the pages you want to verify (Dashboard, Orders, Invoices, Tracking, Price Match, Correspondence, Payment Methods, Profile) exactly as a customer would click through them. Submitting a real Price Match request or evaluation credit against this test customer is fine -- it is a real row, scoped exactly like any other customer\'s. (5) To finish, while still signed in as the test customer, use Profile → Close Account → type "CLOSE MY ACCOUNT" to confirm -- this both tests the closure flow itself and leaves the rehearsal customer in a closed, portal-access-disabled state rather than an open one. There is no Admin-side "permanently delete this customer" action (the only place a Customer row is ever hard-deleted today is internally, as the losing side of a Customer Merge), so the rehearsal customer and its zero-item draft invoice remain in the database afterward -- closed, clearly named, and harmless. Never reuse a real customer\'s account for this, and never look at another customer\'s data through Admin while pretending it is a rehearsal.',
+    businessRationale: 'The owner needs a fast, repeatable way to sanity-check the portal (mid-conversation with a real customer, or after a change) without risking exposure of a real customer\'s invoices, payment methods, or personal data, and without leaving ambiguously-named fake customers mixed into real customer lists.',
+    appliesTo: 'Owner/Admin manual QA of the customer portal',
+    ownerOverride: 'YES',
+    overrideNotes: 'This is a manual procedure, not a system-enforced feature -- there is no built-in "view portal as this customer" admin tool, and no self-service permanent-delete action for a Customer row. Follow the steps above exactly rather than signing in as or through a real customer\'s account.',
+    doNot: [
+      'Reuse a real customer\'s account or credentials for a rehearsal',
+      'Actually send the intake request created in step 1 -- it is only a mechanism to create the test customer row',
+      'Name a rehearsal customer anything that could be mistaken for a real one',
+      'Sign in to the admin session and a customer-test session in the same browser profile at the same time (the portal explicitly detects and blocks an admin session claiming to be a customer)',
+    ],
+    status: 'ACTIVE',
+    enforcement: 'OPERATIONAL_GUIDANCE',
+    relatedWorkflow: { label: 'Open Customers', href: '/admin/customers' },
+    sourceRef: 'app/api/admin/invoices/quick-intake/route.ts, components/admin/PortalAccessSection.tsx, components/account/CloseAccountSection.tsx',
+    lastUpdated: '2026-08-20',
+  },
 
   // ─── G. Direct Sales & Invoices (continued) ────────────────────────────
   {

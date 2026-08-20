@@ -1064,6 +1064,26 @@ Customer-initiated account closure (`Customer.accountClosedAt`, reusing `portalA
 
 ---
 
+## Phase 23: Customer Portal Maturity sprint resumed — Price Match + Evaluation Credits wired in, dashboard extended (2026-08-20)
+
+**Status: implemented and verified locally (build/typecheck/lint clean); not yet committed/deployed.** `PORTAL VISIBILITY GAP → CUSTOMER-SAFE QUERY FUNCTION → DEDICATED PAGE / PROFILE SECTION → DASHBOARD SUMMARY REUSE`.
+
+### Mini Case Study: Two Functions With The Same Name Problem, Solved The Same Way Twice
+
+**PROBLEM**: both Price Match and Professional Evaluation already had an Admin-facing list function (`listPriceMatchRequests()`, `listCustomerProfessionalEvaluations()`) that returns the full database row — competitor proof URLs and admin review notes in one case, the issuing admin's identity and internal notes in the other. Neither was safe to point a customer-portal page at directly.
+
+**WHAT ACTUALLY HAPPENED**: rather than filtering fields at the render layer (a pattern that silently breaks the day someone adds a new field to the Prisma model and forgets the portal component's destructuring list), a dedicated customer-safe query function was written for each — `listCustomerPriceMatchRequests()` and `listCustomerSafeEvaluations()` — following the exact precedent `listCustomerPreferredPricing()` had already set in the Price Match sprint (Decision #79): scope by `customerId` in the `where` clause, then `.map()` to an explicit, narrow return type that only names the fields a customer should ever see. The privacy boundary lives in the data layer, not in application-layer discipline.
+
+**PRODUCTION RESULT**: a new `/account/price-match` page and a new `EvaluationCreditsSection` on `/account/profile`, both reading only from the new customer-safe functions — and the dashboard's new summary counts (`activePreferredPricingCount`, `pendingPriceMatchCount`, `evaluationCreditAvailable`) compose the same three functions rather than running a fourth parallel query, so the dashboard pill counts can never drift from what the dedicated pages themselves show.
+
+### Production Result Summary
+
+Closed the two concretely-named gaps from Phase 22's own disclosure: no customer-facing Price Match status page, no customer-facing Evaluation Credit history. Both now exist, customer-safe by construction. Dashboard extended with Professional Access / Preferred Pricing / Price Match / Evaluation Credit summary pills and a new "more information needed" Action Needed entry for Price Match. Re-verified (not re-built) ownership scoping across every `[id]`-parameterized customer route, the Stripe-fee/COGS customer-safe boundary, and the direct-sale/storefront invoice unification — all confirmed already correct by direct code read, zero defects found. `tsc`/`eslint`/production build all clean; new route confirmed in the build manifest.
+
+**NOT completed this pass, disclosed honestly**: a full mobile/accessibility pass requiring an actual rendered browser session, N+1/performance profiling, a ghost/test-customer rehearsal walkthrough, and an Owner Portal Rehearsal SOP entry in the Policy Center remain open.
+
+---
+
 ## 16. Portfolio Summary
 
 Pepscore Lab is a production back-office platform — invoicing, payment arrangements, carrier-agnostic shipment tracking, a real fulfillment engine, CRM, pricing intelligence, reorder/repeat-purchase workflows, a centralized notification design system, storefront checkout with server-side promotion redemption, and a Customer Portal — built for a peptide-research-supplier business through owner-directed, AI-assisted engineering with Claude Code. The owner defined product vision, requirements, architecture direction, business rules, and QA/production-validation standards; implementation, testing, and bug discovery were carried out under that direction and recorded in a 65-entry engineering decision log spanning 170+ merged pull requests. The system reflects disciplined engineering practice throughout: provider abstractions reused across shipping and payments, derived-not-stored state to prevent drift, layered kill switches and fail-closed defaults on every real-money and real-communication path, shared concurrency-safety primitives (optimistic inventory locking, `FOR UPDATE` row locks) applied consistently rather than per-call-site, and an audit-before-building discipline that caught and fixed several genuine production bugs (a silently-dropped Stripe refund webhook, an unreserved storefront inventory path, a cron misconfiguration silently blocking every deploy, a 10x-under-reservation bug in the sell-unit-aware cart, a concurrent-reservation race on the last unit of stock, a portal-invite duplicate-send race) before they became customer-facing incidents. The operational core — invoicing, fulfillment, tracking, CRM, pricing, reorder, notifications, and now checkout/promotions — is production-validated and in active use; real payment activation, real bulk customer communication, and real postage remain deliberately held behind activation switches pending explicit business go-ahead, exactly as documented in the project's own payment-readiness report and `docs/PendingOwnerActions.md`.
