@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import { checkPriceDeviation, getPriceTierField, getInvoiceLinePriceTier } from './lineOverride'
 
-function product(overrides: Partial<Record<'activeStandardCasePrice' | 'activeSpaCasePrice' | 'activeBulkPrice' | 'activeIndividualVialPrice', number | null>> = {}) {
+function product(overrides: Partial<Record<'activeStandardCasePrice' | 'activeProCasePrice' | 'activeBulkPrice' | 'activeIndividualVialPrice', number | null>> = {}) {
   return {
     activeStandardCasePrice: 370,
-    activeSpaCasePrice: 261,
+    activeProCasePrice: 261,
     activeBulkPrice: 200,
     activeIndividualVialPrice: 49,
     ...overrides,
@@ -44,7 +44,7 @@ describe('checkPriceDeviation', () => {
 
   it.each([
     ['CASE_STANDARD', 'activeStandardCasePrice'],
-    ['CASE_SPA', 'activeSpaCasePrice'],
+    ['CASE_PRO', 'activeProCasePrice'],
     ['CASE_BULK', 'activeBulkPrice'],
     ['INDIVIDUAL_VIAL', 'activeIndividualVialPrice'],
   ] as const)('maps sell unit %s to product field %s', (sellUnit, field) => {
@@ -53,7 +53,7 @@ describe('checkPriceDeviation', () => {
 
   it.each([
     ['CASE_STANDARD', 'STANDARD'],
-    ['CASE_SPA', 'SPA'],
+    ['CASE_PRO', 'PRO'],
     ['CASE_BULK', 'BULK'],
     ['INDIVIDUAL_VIAL', 'INDIVIDUAL'],
   ] as const)('maps sell unit %s to invoice-line price tier %s', (sellUnit, tier) => {

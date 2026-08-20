@@ -9,6 +9,10 @@ import { lineItemTotal } from '@/lib/invoice/calculations'
 import { formatMoney, formatProductLabel } from '@/lib/invoice/format'
 import { getAvailableSellUnits } from '@/lib/pricing/sellUnits'
 import { checkPriceDeviation, getInvoiceLinePriceTier, type PriceTierField } from '@/lib/pricing/lineOverride'
+// Pure, DB-free (see canonicalPricing.ts's own header) -- safe to import
+// directly into this client component, same discipline as the local round2
+// below re: never pulling in lib/invoices.ts's Prisma-backed helpers.
+import { resolveCanonicalPricing, type PricingProduct } from '@/lib/pricing/canonicalPricing'
 import { makeKey } from './types'
 import { card, input, pillPrimary, pillOutline, pillSecondary, sectionHeading, mutedText } from './theme'
 import { SellUnitCorrectionDialog } from './SellUnitCorrectionDialog'
@@ -29,6 +33,16 @@ interface Props {
   // already exists in the database, never to a row still being composed
   // in a brand-new invoice draft that hasn't been saved yet.
   invoiceId?: string
+  // Whether the invoice's currently-selected customer has an active
+  // Professional Access entitlement (2026-08-19 Professional Access sprint,
+  // admin-parity requirement) -- resolved by the parent from the real
+  // Customer record, same as every other pricing surface. Drives two
+  // things here: picking a product with a Professional price defaults the
+  // line to CASE_PRO automatically (never manually remembered), and
+  // CASE_STANDARD lines never receive the standard volume ladder (it
+  // doesn't apply once the customer is Professional-eligible, even for a
+  // line an admin deliberately left on CASE_STANDARD).
+  proEligible: boolean
 }
 
 // Local, not imported from lib/invoices.ts's round2 -- that file pulls in
@@ -53,7 +67,7 @@ interface PriceCorrectionPrompt {
   authoritativePrice: number
 }
 
-export function InvoiceItemsTable({ items, onChange, products, onProductPriceUpdated, invoiceId }: Props) {
+export function InvoiceItemsTable({ items, onChange, products, onProductPriceUpdated, invoiceId, proEligible }: Props) {
   const [correctingItemId, setCorrectingItemId] = useState<string | null>(null)
   const [pricePrompt, setPricePrompt] = useState<PriceCorrectionPrompt | null>(null)
   const [pricePromptBusy, setPricePromptBusy] = useState(false)
@@ -61,6 +75,51 @@ export function InvoiceItemsTable({ items, onChange, products, onProductPriceUpd
 
   function updateItem(key: string, patch: Partial<InvoiceItemDraft>) {
     onChange(items.map((item) => (item.key === key ? { ...item, ...patch } : item)))
+  }
+
+  // Admin-parity automatic pricing (section 5) -- recomputes every
+  // CASE_STANDARD line's price from the canonical engine's volume ladder,
+  // aggregated across all such lines in this invoice, exactly like
+  // checkout does for the storefront. Deliberately skips any line the
+  // admin has explicitly manually overridden (manualPricingOverride) --
+  // that's the auditable, intentional escape hatch this sprint's spec
+  // requires preserving. Free-typed lines with no matched product are also
+  // untouched (nothing to look up a catalog price from). Called after any
+  // change that could shift the aggregate qualifying-case count: adding a
+  // line, changing a sell unit, or changing a quantity.
+  function recomputeVolumePricing(nextItems: InvoiceItemDraft[]): InvoiceItemDraft[] {
+    const standardLineKeys = nextItems
+      .filter((it) => it.sellUnit === 'CASE_STANDARD' && it.productId && !it.manualPricingOverride)
+      .map((it) => it.key)
+    if (standardLineKeys.length === 0) return nextItems
+
+    const requests = standardLineKeys.map((key) => {
+      const it = nextItems.find((i) => i.key === key)!
+      const product = products.find((p) => p.id === it.productId)!
+      const pricingProduct: PricingProduct = {
+        activeStandardCasePrice: product.activeStandardCasePrice,
+        activeProCasePrice: product.activeProCasePrice,
+        activeBulkPrice: product.activeBulkPrice,
+        activeIndividualVialPrice: product.activeIndividualVialPrice,
+        individualSalesEnabled: product.individualSalesEnabled,
+        unitsPerCase: product.unitsPerCase,
+      }
+      return { product: pricingProduct, sellUnit: it.sellUnit, quantity: it.quantity }
+    })
+
+    // allowManualOverride: true -- this is the admin-composition context
+    // (getAvailableSellUnits' own precedent); the volume ladder itself is
+    // computed the same way regardless, this only affects entitlement
+    // enforcement for CASE_PRO/INDIVIDUAL_VIAL, which never reach this
+    // function (it only ever touches CASE_STANDARD lines).
+    const resolved = resolveCanonicalPricing(requests, { proEligible: false, allowManualOverride: true })
+
+    const priceByKey = new Map(standardLineKeys.map((key, idx) => [key, resolved[idx]]))
+    return nextItems.map((it) => {
+      const r = priceByKey.get(it.key)
+      if (!r) return it
+      return { ...it, unitPrice: r.unitPrice }
+    })
   }
 
   function addItem() {
@@ -115,51 +174,98 @@ export function InvoiceItemsTable({ items, onChange, products, onProductPriceUpd
     // value, since real per-sale cost can differ (batch/lot) from the
     // catalog baseline.
     const defaultCostOfGoods = product.costOfGoods > 0 ? product.costOfGoods : null
-    // Reset sell-unit selection on every new product pick -- a previous
-    // row's Standard Case choice must never silently carry over onto a
-    // different product that may not even offer that sell unit.
-    updateItem(key, {
-      productId: product.id,
-      name: formatProductLabel(product),
-      unitPrice: product.price,
-      sellUnit: null,
-      unitsPerSellUnit: null,
-      priceTier: null,
-      skuSnapshot: null,
-      inventoryQuantityConsumed: null,
-      costOfGoods: defaultCostOfGoods,
-    })
+
+    // Admin parity (section 5): a Professional-eligible customer buying a
+    // product that has a Professional price defaults straight to CASE_PRO
+    // -- the admin never has to remember to pick it manually. Any other
+    // product (no Professional price, or a non-Professional customer)
+    // resets to no sell unit selected, exactly as before.
+    const proOption = proEligible && product.activeProCasePrice !== null
+      ? getAvailableSellUnits({
+          activeStandardCasePrice: product.activeStandardCasePrice,
+          activeProCasePrice: product.activeProCasePrice,
+          activeBulkPrice: product.activeBulkPrice,
+          activeIndividualVialPrice: product.activeIndividualVialPrice,
+          individualSalesEnabled: product.individualSalesEnabled,
+          unitsPerCase: product.unitsPerCase,
+        }, { adminContext: true }).find((o) => o.sellUnit === 'CASE_PRO')
+      : undefined
+
+    const patch: Partial<InvoiceItemDraft> = proOption
+      ? {
+          productId: product.id,
+          name: formatProductLabel(product),
+          unitPrice: proOption.price,
+          sellUnit: 'CASE_PRO',
+          unitsPerSellUnit: proOption.unitsPerSellUnit,
+          priceTier: getInvoiceLinePriceTier('CASE_PRO'),
+          skuSnapshot: product.sku,
+          inventoryQuantityConsumed: 1 * proOption.unitsPerSellUnit,
+          costOfGoods: product.costOfGoods > 0 ? round2(product.costOfGoods * proOption.unitsPerSellUnit) : null,
+        }
+      : {
+          // Reset sell-unit selection on every new product pick -- a
+          // previous row's Standard Case choice must never silently carry
+          // over onto a different product that may not even offer that
+          // sell unit.
+          productId: product.id,
+          name: formatProductLabel(product),
+          unitPrice: product.price,
+          sellUnit: null,
+          unitsPerSellUnit: null,
+          priceTier: null,
+          skuSnapshot: null,
+          inventoryQuantityConsumed: null,
+          costOfGoods: defaultCostOfGoods,
+        }
+
+    const next = items.map((it) => (it.key === key ? { ...it, ...patch } : it))
+    onChange(recomputeVolumePricing(next))
   }
 
   function pickSellUnit(key: string, item: InvoiceItemDraft, product: Product, sellUnitValue: string) {
     if (sellUnitValue === '') {
-      updateItem(key, { unitPrice: product.price, sellUnit: null, unitsPerSellUnit: null, priceTier: null, skuSnapshot: null, inventoryQuantityConsumed: null })
+      const next = items.map((it) => (it.key === key ? { ...it, unitPrice: product.price, sellUnit: null, unitsPerSellUnit: null, priceTier: null, skuSnapshot: null, inventoryQuantityConsumed: null } : it))
+      onChange(recomputeVolumePricing(next))
       return
     }
     const options = getAvailableSellUnits(product, { adminContext: true })
     const option = options.find((o) => o.sellUnit === sellUnitValue)
     if (!option) return
-    updateItem(key, {
-      unitPrice: option.price,
-      sellUnit: option.sellUnit,
-      unitsPerSellUnit: option.unitsPerSellUnit,
-      priceTier: getInvoiceLinePriceTier(option.sellUnit),
-      skuSnapshot: product.sku,
-      inventoryQuantityConsumed: item.quantity * option.unitsPerSellUnit,
-      // Per-line-quantity-unit, matching the same convention as the plain
-      // pickProduct() default above -- item.quantity here counts sell
-      // units (e.g. cases), not vials, so the per-vial Product.costOfGoods
-      // is scaled up to a per-case cost via unitsPerSellUnit, not by the
-      // vial count itself (Finance's own reader multiplies by
-      // item.quantity, i.e. case count, at read time).
-      costOfGoods: product.costOfGoods > 0 ? round2(product.costOfGoods * option.unitsPerSellUnit) : null,
-    })
+    const next = items.map((it) =>
+      it.key === key
+        ? {
+            ...it,
+            unitPrice: option.price,
+            sellUnit: option.sellUnit,
+            unitsPerSellUnit: option.unitsPerSellUnit,
+            priceTier: getInvoiceLinePriceTier(option.sellUnit),
+            skuSnapshot: product.sku,
+            inventoryQuantityConsumed: item.quantity * option.unitsPerSellUnit,
+            // Per-line-quantity-unit, matching the same convention as the
+            // plain pickProduct() default above -- item.quantity here
+            // counts sell units (e.g. cases), not vials, so the per-vial
+            // Product.costOfGoods is scaled up to a per-case cost via
+            // unitsPerSellUnit, not by the vial count itself (Finance's own
+            // reader multiplies by item.quantity, i.e. case count, at read
+            // time).
+            costOfGoods: product.costOfGoods > 0 ? round2(product.costOfGoods * option.unitsPerSellUnit) : null,
+            // A fresh manual sell-unit pick is itself an explicit admin
+            // choice, not a deviation -- clear any earlier manual price
+            // override so the volume ladder (or Professional price) applies
+            // cleanly to this now-different tier.
+            manualPricingOverride: false,
+          }
+        : it
+    )
+    onChange(recomputeVolumePricing(next))
   }
 
   function updateQuantity(key: string, item: InvoiceItemDraft, quantity: number) {
     const patch: Partial<InvoiceItemDraft> = { quantity }
     if (item.unitsPerSellUnit) patch.inventoryQuantityConsumed = quantity * item.unitsPerSellUnit
-    updateItem(key, patch)
+    const next = items.map((it) => (it.key === key ? { ...it, ...patch } : it))
+    onChange(recomputeVolumePricing(next))
   }
 
   // Checked on blur (not on every keystroke) so typing a price doesn't pop a
@@ -314,6 +420,12 @@ export function InvoiceItemsTable({ items, onChange, products, onProductPriceUpd
                     />
                     {item.manualPricingOverride && item.priceTier === 'MANUAL' && (
                       <p className="text-[10px] text-amber-300 mt-1">Manual override — this line only</p>
+                    )}
+                    {!item.manualPricingOverride && item.sellUnit === 'CASE_STANDARD' && matchedProduct?.activeStandardCasePrice != null && item.unitPrice < matchedProduct.activeStandardCasePrice && (
+                      <p className="text-[10px] text-emerald-300 mt-1">Volume discount applied automatically</p>
+                    )}
+                    {!item.manualPricingOverride && item.sellUnit === 'CASE_PRO' && (
+                      <p className="text-[10px] text-gold-light mt-1">Professional Access pricing</p>
                     )}
                   </td>
                   <td className="py-2 pr-2">

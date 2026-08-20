@@ -31,7 +31,7 @@ async function main() {
     select: {
       id: true, name: true, size: true,
       suggestedStandardCasePrice: true,
-      suggestedSpaCasePrice: true,
+      suggestedProCasePrice: true,
       suggestedIndividualVialPrice: true,
     },
     orderBy: [{ name: 'asc' }, { size: 'asc' }],
@@ -52,7 +52,7 @@ async function main() {
         p.id,
         {
           activeStandardCasePrice: p.suggestedStandardCasePrice,
-          activeSpaCasePrice: p.suggestedSpaCasePrice,
+          activeProCasePrice: p.suggestedProCasePrice,
           activeIndividualVialPrice: p.suggestedIndividualVialPrice,
         },
         { actorId: 'system-pricing-completion', source: 'CATALOG_SEED', reason: 'Pricing-policy correction (2026-08-07): promote formula-suggested pricing to active' }
@@ -66,7 +66,7 @@ async function main() {
           details: {
             reason: 'Pricing-policy correction (2026-08-07): no active product may show $0/null/pricing-on-request. Promoted formula-suggested pricing to active since no manual override or missing-cost block applies.',
             activeStandardCasePrice: p.suggestedStandardCasePrice,
-            activeSpaCasePrice: p.suggestedSpaCasePrice,
+            activeProCasePrice: p.suggestedProCasePrice,
             activeIndividualVialPrice: p.suggestedIndividualVialPrice,
           },
         },
@@ -75,7 +75,7 @@ async function main() {
     results.push({
       product: p.name, size: p.size, applied: !dryRun,
       activeStandardCasePrice: p.suggestedStandardCasePrice,
-      activeSpaCasePrice: p.suggestedSpaCasePrice,
+      activeProCasePrice: p.suggestedProCasePrice,
       activeIndividualVialPrice: p.suggestedIndividualVialPrice,
     })
   }

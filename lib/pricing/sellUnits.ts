@@ -12,7 +12,7 @@
 // this function at all (its own individualSalesEnabled check lives in
 // lib/storefront/pricing.ts, untouched), so adminContext has zero reach into
 // anything customer-facing regardless of who calls it with adminContext true.
-export type SellUnit = 'CASE_STANDARD' | 'CASE_SPA' | 'CASE_BULK' | 'INDIVIDUAL_VIAL'
+export type SellUnit = 'CASE_STANDARD' | 'CASE_PRO' | 'CASE_BULK' | 'INDIVIDUAL_VIAL'
 
 // Display label for a bare SellUnit value with no AvailableSellUnitOption at
 // hand (e.g. a cart line, which only stores the enum) -- deliberately a
@@ -23,16 +23,31 @@ export type SellUnit = 'CASE_STANDARD' | 'CASE_SPA' | 'CASE_BULK' | 'INDIVIDUAL_
 // here to avoid touching Decision #48's audit trail model.
 export const SELL_UNIT_DISPLAY_LABEL: Record<SellUnit, string> = {
   CASE_STANDARD: 'Standard Case',
-  CASE_SPA: 'SPA Case',
+  CASE_PRO: 'Professional Case',
   CASE_BULK: 'Bulk',
   // Customer/admin-facing label (2026-08-13: "Individual Vial" -> "Single
   // Vial") -- the SellUnit enum value itself (INDIVIDUAL_VIAL) is unchanged.
   INDIVIDUAL_VIAL: 'Single Vial',
 }
 
+// Canonical case quantity rule (2026-08-19 Professional Access sprint,
+// section 16): 10 vials per case unless a product explicitly overrides it
+// via Product.unitsPerCase. Only one product in the live catalog has an
+// explicit override today (Cerebrolysin, 6 vials) -- every other product
+// intentionally has unitsPerCase = null and falls back to this constant
+// rather than being backfilled to an explicit 10, since null here means
+// "uses the canonical default," never "unknown." Never hardcode the literal
+// 10 anywhere else; import this instead so the default only ever lives in
+// one place.
+export const CANONICAL_CASE_SIZE = 10
+
+export function resolveCaseSize(unitsPerCase: number | null | undefined): number {
+  return unitsPerCase ?? CANONICAL_CASE_SIZE
+}
+
 export interface SellUnitAvailabilityInput {
   activeStandardCasePrice: number | null
-  activeSpaCasePrice: number | null
+  activeProCasePrice: number | null
   activeBulkPrice: number | null
   activeIndividualVialPrice: number | null
   individualSalesEnabled: boolean
@@ -59,14 +74,14 @@ export interface GetAvailableSellUnitsOptions {
 }
 
 export function getAvailableSellUnits(product: SellUnitAvailabilityInput, options: GetAvailableSellUnitsOptions = {}): AvailableSellUnitOption[] {
-  const caseSize = product.unitsPerCase ?? 10
+  const caseSize = resolveCaseSize(product.unitsPerCase)
   const result: AvailableSellUnitOption[] = []
 
   if (product.activeStandardCasePrice !== null) {
     result.push({ sellUnit: 'CASE_STANDARD', label: 'Standard Case', price: product.activeStandardCasePrice, unitsPerSellUnit: caseSize, visibleToCustomers: true })
   }
-  if (product.activeSpaCasePrice !== null) {
-    result.push({ sellUnit: 'CASE_SPA', label: 'SPA Case', price: product.activeSpaCasePrice, unitsPerSellUnit: caseSize, visibleToCustomers: true })
+  if (product.activeProCasePrice !== null) {
+    result.push({ sellUnit: 'CASE_PRO', label: 'Professional Case', price: product.activeProCasePrice, unitsPerSellUnit: caseSize, visibleToCustomers: true })
   }
   if (product.activeBulkPrice !== null) {
     result.push({ sellUnit: 'CASE_BULK', label: 'Bulk', price: product.activeBulkPrice, unitsPerSellUnit: caseSize, visibleToCustomers: true })

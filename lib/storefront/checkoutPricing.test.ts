@@ -24,8 +24,8 @@ function product(overrides: Partial<Product> = {}): Product {
     unitsPerCase: 10,
     suggestedStandardCasePrice: null,
     activeStandardCasePrice: 370,
-    suggestedSpaCasePrice: null,
-    activeSpaCasePrice: 261,
+    suggestedProCasePrice: null,
+    activeProCasePrice: 261,
     suggestedBulkPrice: null,
     activeBulkPrice: 200,
     suggestedIndividualVialPrice: null,
@@ -64,7 +64,7 @@ describe('resolveCheckoutLine', () => {
   })
 
   it('resolves the real current price for a requested tier, never the client-sent price', () => {
-    const resolved = resolveCheckoutLine(product(), 'CASE_SPA')
+    const resolved = resolveCheckoutLine(product(), 'CASE_PRO')
     expect(resolved.unitPrice).toBe(261)
     expect(resolved.unitsPerSellUnit).toBe(10)
   })

@@ -5,7 +5,7 @@
 import type { Product } from '@prisma/client'
 import type { SellUnit } from './sellUnits'
 
-export type PriceTierField = 'activeStandardCasePrice' | 'activeSpaCasePrice' | 'activeBulkPrice' | 'activeIndividualVialPrice'
+export type PriceTierField = 'activeStandardCasePrice' | 'activeProCasePrice' | 'activeBulkPrice' | 'activeIndividualVialPrice'
 
 // The Product column that holds the authoritative price for a given sell
 // unit -- the field setActivePricing() would need to write to apply an
@@ -14,7 +14,7 @@ export type PriceTierField = 'activeStandardCasePrice' | 'activeSpaCasePrice' | 
 // payload builder use exactly the same mapping.
 const TIER_FIELD: Record<SellUnit, PriceTierField> = {
   CASE_STANDARD: 'activeStandardCasePrice',
-  CASE_SPA: 'activeSpaCasePrice',
+  CASE_PRO: 'activeProCasePrice',
   CASE_BULK: 'activeBulkPrice',
   INDIVIDUAL_VIAL: 'activeIndividualVialPrice',
 }
@@ -23,14 +23,14 @@ export function getPriceTierField(sellUnit: SellUnit): PriceTierField {
   return TIER_FIELD[sellUnit]
 }
 
-// STANDARD/SPA/BULK/INDIVIDUAL/MANUAL -- the InvoiceItem.priceTier value
+// STANDARD/PRO/BULK/INDIVIDUAL/MANUAL -- the InvoiceItem.priceTier value
 // that corresponds to a genuinely-catalog-matching price for a given sell
 // unit (as opposed to 'MANUAL', used only for a Use Once line-only override).
-export type InvoiceLinePriceTier = 'STANDARD' | 'SPA' | 'BULK' | 'INDIVIDUAL'
+export type InvoiceLinePriceTier = 'STANDARD' | 'PRO' | 'BULK' | 'INDIVIDUAL'
 
 const SELL_UNIT_TO_PRICE_TIER: Record<SellUnit, InvoiceLinePriceTier> = {
   CASE_STANDARD: 'STANDARD',
-  CASE_SPA: 'SPA',
+  CASE_PRO: 'PRO',
   CASE_BULK: 'BULK',
   INDIVIDUAL_VIAL: 'INDIVIDUAL',
 }

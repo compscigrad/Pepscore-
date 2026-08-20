@@ -11,7 +11,7 @@ const patchSchema = z.union([
   z.object({ supplierCaseCost: z.number().min(0) }),
   z.object({
     activeStandardCasePrice: z.number().min(0).nullable().optional(),
-    activeSpaCasePrice: z.number().min(0).nullable().optional(),
+    activeProCasePrice: z.number().min(0).nullable().optional(),
     activeBulkPrice: z.number().min(0).nullable().optional(),
     activeIndividualVialPrice: z.number().min(0).nullable().optional(),
     individualSalesEnabled: z.boolean().optional(),

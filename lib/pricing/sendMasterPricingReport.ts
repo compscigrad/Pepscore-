@@ -16,7 +16,7 @@ const CSV_PATH = 'docs/MasterPricingList-2026-08-12.csv'
 export async function sendMasterPricingReport(): Promise<{ sent: boolean; failureReason: string | null }> {
   const products = await prisma.product.findMany({
     where: { pricingStatus: 'ACTIVE' },
-    select: { name: true, size: true, activeStandardCasePrice: true, activeSpaCasePrice: true },
+    select: { name: true, size: true, activeStandardCasePrice: true, activeProCasePrice: true },
   })
   const reta = products.find((p) => p.name === 'Retatrutide' && p.size === '60mg')
 
@@ -27,7 +27,7 @@ export async function sendMasterPricingReport(): Promise<{ sent: boolean; failur
     totalActiveProducts: products.length,
     changedCount: products.filter((p) => p.activeStandardCasePrice != null).length,
     retatrutideStandard: reta?.activeStandardCasePrice ?? 0,
-    retatrutideSpa: reta?.activeSpaCasePrice ?? 0,
+    retatrutideSpa: reta?.activeProCasePrice ?? 0,
     retatrutideRatio: RETATRUTIDE_RATIO,
     topChanges: [], // the full diff lives in the attached CSV; email body is a summary only
   })

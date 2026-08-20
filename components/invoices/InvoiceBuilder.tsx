@@ -441,6 +441,13 @@ export function InvoiceBuilder({
             setProducts((prev) => prev.map((p) => (p.id === productId ? { ...p, [field]: newPrice } : p)))
           }
           invoiceId={invoice?.id}
+          // Admin parity (section 5) -- known limitation: only resolved for
+          // the "New Invoice from customer profile" flow (prefillCustomer)
+          // today, since InvoiceWithRelations doesn't currently include the
+          // linked Customer's proEligible when editing an existing invoice.
+          // A manual/ad-hoc invoice with no linked customer correctly
+          // defaults to false (no real Customer entitlement to apply).
+          proEligible={prefillCustomer?.proEligible ?? false}
         />
         <DiscountsSection
           discounts={draft.discounts}

@@ -24,7 +24,7 @@ export interface InventoryOverviewRow {
 // treats as null rather than silently falling back to the formula).
 function needsReview(p: Product): boolean {
   if (p.lastPricingReviewAt === null) return true
-  if (p.manualPricingOverride && p.activeStandardCasePrice === null && p.activeIndividualVialPrice === null && p.activeSpaCasePrice === null) return true
+  if (p.manualPricingOverride && p.activeStandardCasePrice === null && p.activeIndividualVialPrice === null && p.activeProCasePrice === null) return true
   return false
 }
 

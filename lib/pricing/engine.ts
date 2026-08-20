@@ -25,7 +25,7 @@ export const INDIVIDUAL_VIAL_MULTIPLIER = 1.0736196319018405
 
 export interface SuggestedPricing {
   suggestedStandardCasePrice: number
-  suggestedSpaCasePrice: number
+  suggestedProCasePrice: number
   suggestedIndividualVialPrice: number
 }
 
@@ -45,17 +45,17 @@ export function calculateSuggestedPricing(supplierCaseCost: number): SuggestedPr
     throw new Error('supplierCaseCost must be a non-negative finite number')
   }
   const suggestedStandardCasePrice = roundToTen(supplierCaseCost * STANDARD_CASE_MULTIPLIER)
-  let suggestedSpaCasePrice = roundToTen(suggestedStandardCasePrice * SPA_TO_STANDARD_RATIO)
+  let suggestedProCasePrice = roundToTen(suggestedStandardCasePrice * SPA_TO_STANDARD_RATIO)
   // Pricing invariant: SPA (a discounted case tier) must always be
   // strictly cheaper than Standard Case -- never silently produce a
   // contradictory pair, even at small supplier costs where rounding could
   // otherwise collide the two.
-  if (suggestedStandardCasePrice > 0 && suggestedSpaCasePrice >= suggestedStandardCasePrice) {
-    suggestedSpaCasePrice = suggestedStandardCasePrice - 10
+  if (suggestedStandardCasePrice > 0 && suggestedProCasePrice >= suggestedStandardCasePrice) {
+    suggestedProCasePrice = suggestedStandardCasePrice - 10
   }
   return {
     suggestedStandardCasePrice,
-    suggestedSpaCasePrice,
+    suggestedProCasePrice,
     suggestedIndividualVialPrice: roundToDollar(supplierCaseCost * INDIVIDUAL_VIAL_MULTIPLIER),
   }
 }
@@ -71,8 +71,8 @@ export interface ProductPricingSnapshot {
   manualPricingOverride: boolean
   suggestedStandardCasePrice: number | null
   activeStandardCasePrice: number | null
-  suggestedSpaCasePrice: number | null
-  activeSpaCasePrice: number | null
+  suggestedProCasePrice: number | null
+  activeProCasePrice: number | null
   suggestedIndividualVialPrice: number | null
   activeIndividualVialPrice: number | null
 }
@@ -115,7 +115,7 @@ export function calculateBulkTierPrices(storefrontCasePrice: number | null): Bul
 export function getEffectivePrice(product: ProductPricingSnapshot, tier: SellUnitTier): number | null {
   const fields: Record<SellUnitTier, { active: number | null; suggested: number | null }> = {
     STANDARD: { active: product.activeStandardCasePrice, suggested: product.suggestedStandardCasePrice },
-    SPA: { active: product.activeSpaCasePrice, suggested: product.suggestedSpaCasePrice },
+    SPA: { active: product.activeProCasePrice, suggested: product.suggestedProCasePrice },
     INDIVIDUAL: { active: product.activeIndividualVialPrice, suggested: product.suggestedIndividualVialPrice },
   }
   const { active, suggested } = fields[tier]

@@ -43,7 +43,7 @@ export async function recalculateSuggestedPricing(productId: string, supplierCas
     data: {
       supplierCaseCost,
       suggestedStandardCasePrice: suggested.suggestedStandardCasePrice,
-      suggestedSpaCasePrice: suggested.suggestedSpaCasePrice,
+      suggestedProCasePrice: suggested.suggestedProCasePrice,
       suggestedIndividualVialPrice: suggested.suggestedIndividualVialPrice,
     },
   })
@@ -51,7 +51,7 @@ export async function recalculateSuggestedPricing(productId: string, supplierCas
 
 export interface SetActivePricingInput {
   activeStandardCasePrice?: number | null
-  activeSpaCasePrice?: number | null
+  activeProCasePrice?: number | null
   activeBulkPrice?: number | null
   activeIndividualVialPrice?: number | null
   individualSalesEnabled?: boolean
@@ -92,9 +92,9 @@ export async function setActivePricing(productId: string, input: SetActivePricin
     // catches both "lowered Standard below an untouched SPA" and "raised
     // SPA above an untouched Standard." Throwing here rolls back the
     // whole transaction -- never a partially-written contradictory pair.
-    if (after.activeStandardCasePrice != null && after.activeSpaCasePrice != null && after.activeSpaCasePrice >= after.activeStandardCasePrice) {
-      const proposedSpaCasePrice = Math.min(after.activeSpaCasePrice, Math.round((after.activeStandardCasePrice * SPA_TO_STANDARD_RATIO) / 10) * 10)
-      throw new SpaPricingInvariantError(after.activeStandardCasePrice, after.activeSpaCasePrice, proposedSpaCasePrice)
+    if (after.activeStandardCasePrice != null && after.activeProCasePrice != null && after.activeProCasePrice >= after.activeStandardCasePrice) {
+      const proposedSpaCasePrice = Math.min(after.activeProCasePrice, Math.round((after.activeStandardCasePrice * SPA_TO_STANDARD_RATIO) / 10) * 10)
+      throw new SpaPricingInvariantError(after.activeStandardCasePrice, after.activeProCasePrice, proposedSpaCasePrice)
     }
 
     // Singles-requires-price invariant -- checked against the final
@@ -116,7 +116,7 @@ export interface SeedProductPricingInput {
   supplierCaseCost?: number | null
   unitsPerCase?: number | null
   activeStandardCasePrice?: number | null
-  activeSpaCasePrice?: number | null
+  activeProCasePrice?: number | null
   activeBulkPrice?: number | null
   activeIndividualVialPrice?: number | null
   individualSalesEnabled: boolean
@@ -136,7 +136,7 @@ export async function seedProductPricing(productId: string, input: SeedProductPr
     supplierCaseCost: input.supplierCaseCost,
     unitsPerCase: input.unitsPerCase,
     activeStandardCasePrice: input.activeStandardCasePrice,
-    activeSpaCasePrice: input.activeSpaCasePrice,
+    activeProCasePrice: input.activeProCasePrice,
     activeBulkPrice: input.activeBulkPrice,
     activeIndividualVialPrice: input.activeIndividualVialPrice,
     individualSalesEnabled: input.individualSalesEnabled,
@@ -148,7 +148,7 @@ export async function seedProductPricing(productId: string, input: SeedProductPr
   }
   if (suggested) {
     data.suggestedStandardCasePrice = suggested.suggestedStandardCasePrice
-    data.suggestedSpaCasePrice = suggested.suggestedSpaCasePrice
+    data.suggestedProCasePrice = suggested.suggestedProCasePrice
     data.suggestedIndividualVialPrice = suggested.suggestedIndividualVialPrice
   }
   return prisma.product.update({ where: { id: productId }, data })

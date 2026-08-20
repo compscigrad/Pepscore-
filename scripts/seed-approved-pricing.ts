@@ -28,7 +28,7 @@ async function main() {
         supplierCaseCost: 177, // RUO price table formula baseline
         unitsPerCase: 10,
         activeStandardCasePrice: 775,
-        activeSpaCasePrice: 700,
+        activeProCasePrice: 700,
         activeBulkPrice: null, // pending owner direction, per instruction
         activeIndividualVialPrice: 80,
         individualSalesEnabled: false,
@@ -61,7 +61,7 @@ async function main() {
         supplierCaseCost: null, // not a supplier-cost-formula product -- see reason below
         unitsPerCase: 10,
         activeStandardCasePrice: 395, // rounded from the formula-derived 392.50, see comment above
-        activeSpaCasePrice: 355,
+        activeProCasePrice: 355,
         activeBulkPrice: null,
         activeIndividualVialPrice: 45,
         individualSalesEnabled: false,
@@ -80,7 +80,7 @@ async function main() {
             formula: '(Tesamorelin 10mg active price / 2) + 5',
             derivedFrom: 'tesamorelin-10mg',
             activeStandardCasePrice: 392.5,
-            activeSpaCasePrice: 355,
+            activeProCasePrice: 355,
             activeIndividualVialPrice: 45,
           },
         },
@@ -133,7 +133,7 @@ async function main() {
         supplierCaseCost: 186,
         unitsPerCase: 10,
         activeStandardCasePrice: 725,
-        activeSpaCasePrice: 565,
+        activeProCasePrice: 565,
         activeBulkPrice: null,
         activeIndividualVialPrice: 89,
         individualSalesEnabled: true,

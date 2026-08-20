@@ -36,7 +36,7 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
 }
 
 const schema = z.object({
-  sellUnit: z.enum(['CASE_STANDARD', 'CASE_SPA', 'CASE_BULK', 'INDIVIDUAL_VIAL']),
+  sellUnit: z.enum(['CASE_STANDARD', 'CASE_PRO', 'CASE_BULK', 'INDIVIDUAL_VIAL']),
   unitsPerSellUnit: z.number().int().positive(),
   individualSalesOverride: z.boolean().optional(),
   priceBehavior: z.enum(['INVENTORY_ONLY', 'RECALCULATE_PRICING']),

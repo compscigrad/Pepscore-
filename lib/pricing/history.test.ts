@@ -24,8 +24,8 @@ function product(overrides: Partial<Product> = {}): Product {
     unitsPerCase: null,
     suggestedStandardCasePrice: null,
     activeStandardCasePrice: 370,
-    suggestedSpaCasePrice: null,
-    activeSpaCasePrice: 261,
+    suggestedProCasePrice: null,
+    activeProCasePrice: 261,
     suggestedBulkPrice: null,
     activeBulkPrice: 200,
     suggestedIndividualVialPrice: null,
@@ -75,8 +75,8 @@ describe('computePriceChangeRows', () => {
   })
 
   it('never records a row for tiers that did not change (Individual Vial change must not touch Standard/SPA/Bulk)', () => {
-    const before = product({ activeStandardCasePrice: 370, activeSpaCasePrice: 261, activeBulkPrice: 200, activeIndividualVialPrice: 49 })
-    const after = product({ activeStandardCasePrice: 370, activeSpaCasePrice: 261, activeBulkPrice: 200, activeIndividualVialPrice: 55 })
+    const before = product({ activeStandardCasePrice: 370, activeProCasePrice: 261, activeBulkPrice: 200, activeIndividualVialPrice: 49 })
+    const after = product({ activeStandardCasePrice: 370, activeProCasePrice: 261, activeBulkPrice: 200, activeIndividualVialPrice: 55 })
     const rows = computePriceChangeRows({ before, after, actorId: 'admin1', source: 'ADMIN_PRICING_PAGE' })
 
     expect(rows.map((r) => r.sellUnit)).toEqual(['INDIVIDUAL_VIAL'])
@@ -152,8 +152,8 @@ describe('computeTierDiffs', () => {
   })
 
   it('works against a partial (Pick) product shape, not just a full Product row -- the preview UI only has form-field values, not a full database row', () => {
-    const before = { activeStandardCasePrice: 370, activeSpaCasePrice: 261, activeBulkPrice: 200, activeIndividualVialPrice: 49 }
-    const after = { activeStandardCasePrice: 400, activeSpaCasePrice: 261, activeBulkPrice: 200, activeIndividualVialPrice: 49 }
+    const before = { activeStandardCasePrice: 370, activeProCasePrice: 261, activeBulkPrice: 200, activeIndividualVialPrice: 49 }
+    const after = { activeStandardCasePrice: 400, activeProCasePrice: 261, activeBulkPrice: 200, activeIndividualVialPrice: 49 }
     expect(computeTierDiffs(before, after)).toEqual([{ sellUnit: 'STANDARD_CASE', previousPrice: 370, newPrice: 400 }])
   })
 })

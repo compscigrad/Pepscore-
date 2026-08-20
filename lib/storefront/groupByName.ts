@@ -24,7 +24,7 @@ export const MERCHANDISING_LABEL: Record<Product['merchandisingStatus'], string 
   BEST_SELLER: 'Best Seller',
 }
 
-export function groupByName(rows: Product[], options: { spaEligible?: boolean } = {}): ProductCardProps[] {
+export function groupByName(rows: Product[], options: { proEligible?: boolean } = {}): ProductCardProps[] {
   const map = new Map<string, ProductCardProps>()
   for (const p of rows) {
     const price = getStorefrontPrice(p, options)
@@ -35,7 +35,7 @@ export function groupByName(rows: Product[], options: { spaEligible?: boolean } 
       standardCasePrice: price?.standardCasePrice ?? null,
       unitsPerCase: price?.unitsPerCase ?? null,
       individualVialPrice: price?.individualVialPrice ?? null,
-      spaCasePrice: price?.spaCasePrice ?? null,
+      proCasePrice: price?.proCasePrice ?? null,
       // Sell-unit-level fulfillment (2026-08-15) -- Standard Case and
       // Single Vial are independent physical-stock pools (e.g. Semaglutide
       // 30mg: vial Ready to Ship, case Produced to Order), so this is no

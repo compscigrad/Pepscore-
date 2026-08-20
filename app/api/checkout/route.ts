@@ -10,7 +10,13 @@ import { generateOrderNumber, generateInvoiceNumber } from '@/lib/orders'
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
 import { isStorefrontCheckoutEnabled, STOREFRONT_CHECKOUT_DISABLED_MESSAGE } from '@/lib/storefront/checkoutGate'
 import { getStorefrontAvailability, isPurchasable } from '@/lib/storefront/availability'
-import { resolveCheckoutLine, computeVialsToReserve } from '@/lib/storefront/checkoutPricing'
+import { computeVialsToReserve } from '@/lib/storefront/checkoutPricing'
+import { resolveProEligibleByClerkUserId } from '@/lib/storefront/professionalAccess'
+import {
+  resolveCanonicalPricing,
+  ProfessionalPricingUnauthorizedError,
+  PricingLineUnavailableError,
+} from '@/lib/pricing/canonicalPricing'
 import { SELL_UNIT_DISPLAY_LABEL } from '@/lib/pricing/sellUnits'
 import { reserveForOrderItemTx, releaseAllOrderReservationsTx } from '@/lib/inventory/orderReservations'
 import { getPaymentSettings } from '@/lib/payments/settings'
@@ -93,20 +99,33 @@ export async function POST(req: NextRequest) {
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
 
+    // P0 fix (2026-08-19 Professional Access audit): the authenticated
+    // customer's Professional entitlement is resolved here, server-side,
+    // from the real Customer row -- by Clerk userId only, never by email
+    // match (see resolveProEligibleByClerkUserId's own header for why).
+    // This is the ONLY source of truth resolveCanonicalPricing trusts for
+    // Professional pricing below; the client-submitted sellUnit can request
+    // CASE_PRO, but it can no longer ever *receive* it without this being
+    // true first.
+    const proEligible = await resolveProEligibleByClerkUserId(userId ?? null)
+
     // Resolve product records from DB to get authoritative prices
     const productIds = items.map(i => i.productId)
     const products = await prisma.product.findMany({ where: { id: { in: productIds } } })
     const productMap = new Map(products.map(p => [p.id, p]))
 
     // Build validated line items using DB prices (never trust client-side
-    // prices) -- authoritative per-sell-unit pricing (lib/storefront/
-    // checkoutPricing.ts), not the legacy Product.price field and not
+    // prices) -- authoritative canonical pricing (lib/pricing/
+    // canonicalPricing.ts), not the legacy Product.price field and not
     // whatever the client cart happened to snapshot. A product with no
     // approved active price for the requested tier, or one that's out of
     // stock/coming soon (lib/storefront/availability.ts), can't be checked
     // out at all -- the same rules ProductCard's "Add to Cart" gating
-    // already enforces client-side.
-    const lineItems = items.map(i => {
+    // already enforces client-side. Availability/archival checks stay
+    // per-item (they need each product's own record and error message);
+    // pricing is resolved for the whole cart at once so the standard
+    // volume-discount ladder sees every qualifying case across every line.
+    for (const i of items) {
       const product = productMap.get(i.productId)
       if (!product) throw new Error(`Product ${i.productId} not found`)
       // Archived (pricingStatus INACTIVE) products are already excluded
@@ -129,13 +148,34 @@ export async function POST(req: NextRequest) {
       if (!isPurchasable(getStorefrontAvailability(product, i.sellUnit === 'INDIVIDUAL_VIAL' ? 'INDIVIDUAL_VIAL' : 'CASE'))) {
         throw new Error(`${product.name} (${product.size}) is currently out of stock`)
       }
-      const resolved = resolveCheckoutLine(product, i.sellUnit)
+    }
+
+    let resolvedPricing
+    try {
+      resolvedPricing = resolveCanonicalPricing(
+        items.map((i) => ({ product: productMap.get(i.productId)!, sellUnit: i.sellUnit, quantity: i.quantity })),
+        { proEligible }
+      )
+    } catch (pricingErr) {
+      if (pricingErr instanceof ProfessionalPricingUnauthorizedError) {
+        return NextResponse.json({ error: 'This pricing tier requires an active Professional Access account.' }, { status: 403 })
+      }
+      if (pricingErr instanceof PricingLineUnavailableError) {
+        return NextResponse.json({ error: pricingErr.message }, { status: 400 })
+      }
+      throw pricingErr
+    }
+
+    const lineItems = items.map((i, idx) => {
+      const product = productMap.get(i.productId)!
+      const resolved = resolvedPricing[idx]
       return {
         ...i,
         sellUnit: resolved.sellUnit,
         unitsPerSellUnit: resolved.unitsPerSellUnit,
         unitPrice: resolved.unitPrice,
-        total: resolved.unitPrice * i.quantity,
+        total: resolved.lineTotal,
+        volumeDiscountRate: resolved.volumeDiscountRate,
         costOfGoods: product.costOfGoods * i.quantity,
       }
     })
@@ -386,12 +426,17 @@ export async function POST(req: NextRequest) {
     // Build Stripe line items -- includes the resolved sell-unit label
     // (e.g. "Individual Vial") so what the customer sees on Stripe's own
     // checkout page matches what they actually selected, not just the bare
-    // product/strength name every tier used to share.
+    // product/strength name every tier used to share. A standard-tier line
+    // that qualified for the automatic case-volume ladder also names the
+    // applied discount here (section 8) -- Stripe's own checkout page is
+    // the one surface every payment method (card, ACH, Cash App, PayPal)
+    // renders identically, so this is the most reliable place to make the
+    // discount visible regardless of payment method.
     const stripeLineItems = lineItems.map(i => ({
       price_data: {
         currency: 'usd',
         product_data: {
-          name: `${i.name} (${i.size}) — ${SELL_UNIT_DISPLAY_LABEL[i.sellUnit]}`,
+          name: `${i.name} (${i.size}) — ${SELL_UNIT_DISPLAY_LABEL[i.sellUnit]}${i.volumeDiscountRate > 0 ? ` (${Math.round(i.volumeDiscountRate * 100)}% volume savings applied)` : ''}`,
           description: 'For Research Use Only. Not for human use.',
         },
         unit_amount: Math.round(i.unitPrice * 100),

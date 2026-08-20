@@ -21,8 +21,8 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   const { id } = await params
-  const customer = await prisma.customer.findUniqueOrThrow({ where: { id }, select: { spaEligible: true } })
-  return NextResponse.json({ spaEligible: customer.spaEligible })
+  const customer = await prisma.customer.findUniqueOrThrow({ where: { id }, select: { proEligible: true } })
+  return NextResponse.json({ proEligible: customer.proEligible })
 }
 
 const patchSchema = z.object({
@@ -38,19 +38,19 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
 
   try {
     const { action, reason } = patchSchema.parse(await req.json())
-    const spaEligible = action === 'grant'
+    const proEligible = action === 'grant'
 
-    await prisma.customer.update({ where: { id }, data: { spaEligible } })
+    await prisma.customer.update({ where: { id }, data: { proEligible } })
     await recordCustomerActivity({
       customerId: id,
-      eventType: spaEligible ? 'SPA_ELIGIBILITY_GRANTED' : 'SPA_ELIGIBILITY_REVOKED',
+      eventType: proEligible ? 'SPA_ELIGIBILITY_GRANTED' : 'SPA_ELIGIBILITY_REVOKED',
       newValue: reason,
       source: 'MANUAL',
       userId: userId!,
     })
     await prisma.adminAuditLog.create({
       data: {
-        action: spaEligible ? 'GRANT_SPA_ELIGIBILITY' : 'REVOKE_SPA_ELIGIBILITY',
+        action: proEligible ? 'GRANT_SPA_ELIGIBILITY' : 'REVOKE_SPA_ELIGIBILITY',
         entity: 'Customer',
         entityId: id,
         adminId: userId!,
@@ -58,7 +58,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       },
     })
 
-    return NextResponse.json({ ok: true, spaEligible })
+    return NextResponse.json({ ok: true, proEligible })
   } catch (err: unknown) {
     if (err instanceof z.ZodError) return NextResponse.json({ error: 'Validation failed', issues: err.issues }, { status: 400 })
     console.error('[admin/customers/:id/spa-eligibility PATCH]', err)

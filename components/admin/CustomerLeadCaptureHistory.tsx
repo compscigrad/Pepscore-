@@ -29,7 +29,7 @@ const INTEREST_TYPE_LABEL: Record<string, string> = {
   NOTIFY_WHEN_AVAILABLE: 'Notify When Available',
   OUT_OF_STOCK_INTEREST: 'Out of Stock Interest',
   PRICING_REVIEW_INTEREST: 'Pricing Review Interest',
-  SPA_WHOLESALE_INQUIRY: 'SPA / Wholesale Inquiry',
+  PROFESSIONAL_ACCESS_INQUIRY: 'SPA / Wholesale Inquiry',
   SINGLE_VIAL_SPECIAL_REQUEST: 'Single Vial — Special Request',
   FIRST_ORDER_OFFER: 'First-Order Offer',
 }

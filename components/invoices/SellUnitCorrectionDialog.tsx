@@ -35,7 +35,7 @@ interface CorrectionData {
     size: string
     individualSalesEnabled: boolean
     activeStandardCasePrice: number | null
-    activeSpaCasePrice: number | null
+    activeProCasePrice: number | null
     activeBulkPrice: number | null
     activeIndividualVialPrice: number | null
     unitsPerCase: number | null
@@ -47,14 +47,14 @@ interface CorrectionData {
 
 const SELL_UNIT_LABEL: Record<string, string> = {
   CASE_STANDARD: 'Standard Case',
-  CASE_SPA: 'SPA Case',
+  CASE_PRO: 'SPA Case',
   CASE_BULK: 'Bulk',
   INDIVIDUAL_VIAL: 'Single Vial',
 }
 
 function priceForSellUnit(product: CorrectionData['product'], sellUnit: string): number | null {
   if (sellUnit === 'CASE_STANDARD') return product.activeStandardCasePrice
-  if (sellUnit === 'CASE_SPA') return product.activeSpaCasePrice
+  if (sellUnit === 'CASE_PRO') return product.activeProCasePrice
   if (sellUnit === 'CASE_BULK') return product.activeBulkPrice
   if (sellUnit === 'INDIVIDUAL_VIAL') return product.activeIndividualVialPrice
   return null

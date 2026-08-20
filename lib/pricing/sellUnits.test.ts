@@ -5,7 +5,7 @@ describe('getAvailableSellUnits', () => {
   it('Tesamorelin 10mg: offers Standard and SPA case only, never Individual Vial, even though a hidden active individual price exists', () => {
     const tesamorelin = {
       activeStandardCasePrice: 775,
-      activeSpaCasePrice: 700,
+      activeProCasePrice: 700,
       activeBulkPrice: null,
       activeIndividualVialPrice: 80,
       individualSalesEnabled: false,
@@ -13,28 +13,28 @@ describe('getAvailableSellUnits', () => {
     }
     const options = getAvailableSellUnits(tesamorelin)
     const units = options.map((o) => o.sellUnit)
-    expect(units).toEqual(['CASE_STANDARD', 'CASE_SPA'])
+    expect(units).toEqual(['CASE_STANDARD', 'CASE_PRO'])
     expect(units).not.toContain('INDIVIDUAL_VIAL')
   })
 
   it('GLOW70: offers Standard, SPA, and Individual Vial (individual sales explicitly enabled)', () => {
     const glow70 = {
       activeStandardCasePrice: 725,
-      activeSpaCasePrice: 565,
+      activeProCasePrice: 565,
       activeBulkPrice: null,
       activeIndividualVialPrice: 89,
       individualSalesEnabled: true,
       unitsPerCase: 10,
     }
     const options = getAvailableSellUnits(glow70)
-    expect(options.map((o) => o.sellUnit)).toEqual(['CASE_STANDARD', 'CASE_SPA', 'INDIVIDUAL_VIAL'])
+    expect(options.map((o) => o.sellUnit)).toEqual(['CASE_STANDARD', 'CASE_PRO', 'INDIVIDUAL_VIAL'])
     expect(options.find((o) => o.sellUnit === 'INDIVIDUAL_VIAL')?.price).toBe(89)
   })
 
   it('never offers Individual Vial when individualSalesEnabled is true but no active individual price is set yet', () => {
     const options = getAvailableSellUnits({
       activeStandardCasePrice: 500,
-      activeSpaCasePrice: null,
+      activeProCasePrice: null,
       activeBulkPrice: null,
       activeIndividualVialPrice: null,
       individualSalesEnabled: true,
@@ -46,7 +46,7 @@ describe('getAvailableSellUnits', () => {
   it('a product with no active pricing at all offers zero sell units', () => {
     const options = getAvailableSellUnits({
       activeStandardCasePrice: null,
-      activeSpaCasePrice: null,
+      activeProCasePrice: null,
       activeBulkPrice: null,
       activeIndividualVialPrice: null,
       individualSalesEnabled: false,
@@ -58,7 +58,7 @@ describe('getAvailableSellUnits', () => {
   it('defaults unitsPerSellUnit to 10 for a case when unitsPerCase is not yet set', () => {
     const options = getAvailableSellUnits({
       activeStandardCasePrice: 500,
-      activeSpaCasePrice: null,
+      activeProCasePrice: null,
       activeBulkPrice: null,
       activeIndividualVialPrice: null,
       individualSalesEnabled: false,
@@ -70,7 +70,7 @@ describe('getAvailableSellUnits', () => {
   it('individual vial sell unit always consumes exactly 1 vial regardless of case size', () => {
     const options = getAvailableSellUnits({
       activeStandardCasePrice: null,
-      activeSpaCasePrice: null,
+      activeProCasePrice: null,
       activeBulkPrice: null,
       activeIndividualVialPrice: 89,
       individualSalesEnabled: true,
@@ -82,7 +82,7 @@ describe('getAvailableSellUnits', () => {
   it('flags every case/SPA/bulk option as visible to customers regardless of admin context', () => {
     const options = getAvailableSellUnits({
       activeStandardCasePrice: 500,
-      activeSpaCasePrice: 400,
+      activeProCasePrice: 400,
       activeBulkPrice: 300,
       activeIndividualVialPrice: null,
       individualSalesEnabled: false,
@@ -95,7 +95,7 @@ describe('getAvailableSellUnits', () => {
     it('Tesamorelin 10mg: without adminContext, Individual Vial stays hidden exactly as before (default behavior unchanged)', () => {
       const tesamorelin = {
         activeStandardCasePrice: 775,
-        activeSpaCasePrice: 700,
+        activeProCasePrice: 700,
         activeBulkPrice: null,
         activeIndividualVialPrice: 80,
         individualSalesEnabled: false,
@@ -108,7 +108,7 @@ describe('getAvailableSellUnits', () => {
     it('Tesamorelin 10mg: with adminContext, admin CAN select Individual Vial even though individualSalesEnabled is false', () => {
       const tesamorelin = {
         activeStandardCasePrice: 775,
-        activeSpaCasePrice: 700,
+        activeProCasePrice: 700,
         activeBulkPrice: null,
         activeIndividualVialPrice: 80,
         individualSalesEnabled: false,
@@ -124,7 +124,7 @@ describe('getAvailableSellUnits', () => {
       const options = getAvailableSellUnits(
         {
           activeStandardCasePrice: 775,
-          activeSpaCasePrice: 700,
+          activeProCasePrice: 700,
           activeBulkPrice: null,
           activeIndividualVialPrice: 80,
           individualSalesEnabled: false,
@@ -140,7 +140,7 @@ describe('getAvailableSellUnits', () => {
       const options = getAvailableSellUnits(
         {
           activeStandardCasePrice: 725,
-          activeSpaCasePrice: 565,
+          activeProCasePrice: 565,
           activeBulkPrice: null,
           activeIndividualVialPrice: 89,
           individualSalesEnabled: true,
@@ -156,7 +156,7 @@ describe('getAvailableSellUnits', () => {
       const options = getAvailableSellUnits(
         {
           activeStandardCasePrice: 500,
-          activeSpaCasePrice: null,
+          activeProCasePrice: null,
           activeBulkPrice: null,
           activeIndividualVialPrice: null,
           individualSalesEnabled: false,

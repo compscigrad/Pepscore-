@@ -8,7 +8,7 @@ import { prisma } from '@/lib/prisma'
 
 const TIER_FIELDS = [
   { field: 'activeStandardCasePrice', sellUnit: 'STANDARD_CASE' },
-  { field: 'activeSpaCasePrice', sellUnit: 'SPA_CASE' },
+  { field: 'activeProCasePrice', sellUnit: 'PRO_CASE' },
   { field: 'activeBulkPrice', sellUnit: 'BULK' },
   { field: 'activeIndividualVialPrice', sellUnit: 'INDIVIDUAL_VIAL' },
 ] as const

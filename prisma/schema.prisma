@@ -79,11 +79,23 @@ model Product {
   // introduced.
   sku                          String?              @unique
   supplierCaseCost             Float?
+  // Canonical case quantity is 10 vials when this is null (see
+  // lib/pricing/sellUnits.ts's CANONICAL_CASE_SIZE) -- only set explicitly
+  // when a product's real case size differs from the default (e.g.
+  // Cerebrolysin's 6-vial case). An explicit value always overrides the
+  // canonical default; never treat a set value as "unknown."
   unitsPerCase                 Int?
   suggestedStandardCasePrice   Float?
   activeStandardCasePrice      Float?
-  suggestedSpaCasePrice        Float?
-  activeSpaCasePrice           Float?
+  // 2026-08-19 SPA -> PRO rename (Professional Access sprint) -- renamed via
+  // a plain ALTER TABLE ... RENAME COLUMN (verified zero data movement,
+  // before/after sum+count match exactly, see docs/Decisions.md). Same
+  // physical values as the old activeSpaCasePrice/suggestedSpaCasePrice
+  // columns; only the name changed. These are the Professional Access case
+  // price -- product-specific, admin-set, never a universal percentage off
+  // Standard (see lib/pricing/canonicalPricing.ts).
+  suggestedProCasePrice        Float?
+  activeProCasePrice           Float?
   suggestedBulkPrice           Float?
   activeBulkPrice              Float?
   suggestedIndividualVialPrice Float?
@@ -224,7 +236,12 @@ model ProductPriceChange {
 
 enum PriceChangeSellUnit {
   STANDARD_CASE
+  // SPA_CASE is historical only (2 real ProductPriceChange audit rows from
+  // before the 2026-08-19 Professional Access rename) -- preserved rather
+  // than renamed since this is a real audit trail, not a display label; new
+  // writes use PRO_CASE below (additive ALTER TYPE ADD VALUE, not a rename).
   SPA_CASE
+  PRO_CASE
   BULK
   INDIVIDUAL_VIAL
 }
@@ -1020,14 +1037,18 @@ model InvoiceItem {
 
 enum InvoiceItemSellUnit {
   CASE_STANDARD
-  CASE_SPA
+  // Renamed from CASE_SPA 2026-08-19 (Professional Access sprint) via
+  // ALTER TYPE ... RENAME VALUE -- 0 InvoiceItem/OrderItem rows used the old
+  // value, so this was a pure label rename with no data to migrate.
+  CASE_PRO
   CASE_BULK
   INDIVIDUAL_VIAL
 }
 
 enum InvoiceItemPriceTier {
   STANDARD
-  SPA
+  // Renamed from SPA 2026-08-19, same rationale as CASE_PRO above.
+  PRO
   BULK
   INDIVIDUAL
   MANUAL
@@ -1968,13 +1989,19 @@ model Customer {
   // null) is the separate, more drastic action for "this link is wrong."
   portalAccessDisabled Boolean @default(false)
 
-  // Explicit SPA/wholesale pricing eligibility for the storefront (Phase 2B).
-  // Never inferred from email domain, geography, name, or purchase history
-  // -- only ever set by an admin action (lib/customers/spaEligibility.ts),
-  // audited via CustomerActivityLog (SPA_ELIGIBILITY_GRANTED/_REVOKED)
-  // rather than new dedicated columns, matching how every other admin
-  // action in this schema is already audited.
-  spaEligible Boolean @default(false)
+  // Explicit Professional Access pricing eligibility for the storefront
+  // (Phase 2B, renamed from spaEligible 2026-08-19 -- Professional Access
+  // sprint). Never inferred from email domain, geography, name, or purchase
+  // history -- only ever set by an admin action
+  // (lib/customers/professionalAccess.ts) via the approval queue or a
+  // pre-approved invite, audited via CustomerActivityLog
+  // (PROFESSIONAL_ACCESS_GRANTED/_REVOKED going forward -- 2 pre-rename rows
+  // still say SPA_ELIGIBILITY_GRANTED/_REVOKED and are left as historical
+  // record, not rewritten) rather than new dedicated columns, matching how
+  // every other admin action in this schema is already audited. Column
+  // renamed via ALTER TABLE ... RENAME COLUMN (zero data movement, 0 rows
+  // were true at rename time).
+  proEligible Boolean @default(false)
 
   // [Roadmap] Twilio A2P 10DLC readiness -- set only via an inbound STOP
   // (or START to reverse) reply on app/api/webhooks/twilio/route.ts, never
@@ -2033,6 +2060,8 @@ model Customer {
   leadCaptures         LeadCapture[]
   firstOrderOfferClaim FirstOrderOfferClaim?
   promotionCodes       PromotionCode[]
+  professionalAccessApplications ProfessionalAccessApplication[]
+  professionalAccessInvites      ProfessionalAccessInvite[]
 
   @@index([email])
   @@index([phone])
@@ -2119,7 +2148,11 @@ enum LeadInterestType {
   NOTIFY_WHEN_AVAILABLE
   OUT_OF_STOCK_INTEREST
   PRICING_REVIEW_INTEREST
-  SPA_WHOLESALE_INQUIRY
+  // Renamed from SPA_WHOLESALE_INQUIRY 2026-08-19 (Professional Access
+  // sprint) via ALTER TYPE ... RENAME VALUE -- 0 LeadCapture rows used the
+  // old value. This is the interest type the "Apply for Professional
+  // Access" CTA and the dedicated application page both submit under.
+  PROFESSIONAL_ACCESS_INQUIRY
   // Sell-unit-availability inquiry (2026-08-15 fulfillment/availability
   // sprint) -- a variant with Standard Case available but individual-vial
   // sales not directly enabled shows "Single Vial — Special Request"
@@ -2520,6 +2553,104 @@ enum PortalInviteChannel {
 enum PortalInviteSource {
   ADMIN
   AUTO_ROLLOUT
+}
+
+// ─── Professional Access (2026-08-19 Professional Access sprint) ──────────────
+// Replaces the old implicit "admin flips a boolean" SPA-eligibility grant
+// with a real, auditable application/review lifecycle. A LeadCapture
+// (interestType PROFESSIONAL_ACCESS_INQUIRY) can create one of these when a
+// visitor submits the storefront application; an admin-initiated invite
+// (ProfessionalAccessInvite below) can also lead to one when the recipient
+// completes the required verification steps. Either path ends the same way:
+// an admin action here is the ONLY thing that ever sets Customer.proEligible
+// -- never the mere existence of an application or a claimed invite.
+enum ProfessionalAccessStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  MORE_INFO_REQUESTED
+  REVOKED
+}
+
+model ProfessionalAccessApplication {
+  id         String    @id @default(cuid())
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
+  // Same find-or-create Customer resolution every other public intake form
+  // uses (lib/customers.ts's upsertCustomerFromIntake) -- a repeat
+  // application from the same email/phone links to the same Customer, never
+  // creates a duplicate.
+  contactName        String
+  businessName       String
+  businessEmail      String
+  phone               String?
+  website             String?
+  businessType        String?
+  businessAddress     Json?
+  jurisdiction        String?
+  // Free-text, e.g. an EIN or state registration number if the applicant
+  // volunteers it -- never required, never validated against a real
+  // registry (this environment has no such integration).
+  registrationInfo    String?
+  purposeDescription  String?
+  expectedVolume      String?
+  // Standing rule (Phase 4R-equivalent for this sprint): the application
+  // form never asks the applicant to claim or certify intended human use --
+  // this field only ever captures a business/research purpose description
+  // in the applicant's own words, exactly as submitted.
+
+  status       ProfessionalAccessStatus @default(PENDING)
+  reviewedBy   String?
+  reviewedAt   DateTime?
+  reviewNotes  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId])
+  @@index([status])
+  @@index([businessEmail])
+  @@index([createdAt])
+}
+
+enum ProfessionalInviteStatus {
+  PENDING
+  SENT
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+// Admin-initiated early-launch invitation path (distinct from the public
+// application above) -- mirrors CustomerPortalInvite's token-as-boundary
+// shape exactly (see lib/portalInvites.ts). preApproved=true is what lets an
+// admin pre-clear a known Professional customer so accepting the invite
+// grants access immediately without a separate application review; a
+// non-pre-approved invite (reserved for a future "invite someone to apply"
+// flow, not built this sprint) would still require going through the
+// application queue after acceptance.
+model ProfessionalAccessInvite {
+  id         String    @id @default(cuid())
+  email      String
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
+  token       String                   @unique
+  status      ProfessionalInviteStatus @default(PENDING)
+  preApproved Boolean                  @default(true)
+
+  expiresAt  DateTime
+  sentAt     DateTime?
+  acceptedAt DateTime?
+  revokedAt  DateTime?
+  revokedBy  String?
+
+  createdBy String
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([status])
 }
 
 // Every case where self-service account resolution (see

@@ -30,9 +30,9 @@ export interface ProductVariant {
   // never reach this component at all.
   individualVialPrice: number | null
   // Only ever set when the current visitor is an admin-granted SPA-eligible
-  // customer (lib/storefront/spaEligibility.ts) -- never shown to a public
+  // customer (lib/storefront/professionalAccess.ts) -- never shown to a public
   // or standard-eligibility visitor regardless of what's stored.
-  spaCasePrice: number | null
+  proCasePrice: number | null
   // Real inventory-derived state, never the exact physical count. Split by
   // sell unit (2026-08-15) -- Standard Case and Single Vial are independent
   // physical-stock pools (e.g. Semaglutide 30mg: vial Ready to Ship, case
@@ -314,10 +314,10 @@ export function ProductCard({ name, featured, category, description, imageUrl, b
               {/* SPA case price — only ever populated for an admin-granted
                   eligible signed-in customer, see lib/storefront/pricing.ts.
                   Standard Case pricing only; not offered for Individual Vial. */}
-              {v.spaCasePrice != null && effectiveSellUnit === 'CASE_STANDARD' && (
+              {v.proCasePrice != null && effectiveSellUnit === 'CASE_STANDARD' && (
                 <div className="bg-[#D4AF37]/8 border border-[#D4AF37]/25 rounded-lg p-2.5 flex items-center justify-between">
                   <p className="text-[10px] font-bold uppercase tracking-[0.06em] text-[#D4AF37]">SPA Price</p>
-                  <p className="font-heading text-[15px] font-bold text-[#D4AF37]">${v.spaCasePrice}</p>
+                  <p className="font-heading text-[15px] font-bold text-[#D4AF37]">${v.proCasePrice}</p>
                 </div>
               )}
 

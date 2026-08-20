@@ -100,7 +100,7 @@ export function InventoryDetailPanel({ product, availableUnits, completeCasesAva
 
   const [supplierCost, setSupplierCost] = useState(product.supplierCaseCost?.toString() ?? '')
   const [activeStandard, setActiveStandard] = useState(product.activeStandardCasePrice?.toString() ?? '')
-  const [activeSpa, setActiveSpa] = useState(product.activeSpaCasePrice?.toString() ?? '')
+  const [activeSpa, setActiveSpa] = useState(product.activeProCasePrice?.toString() ?? '')
   const [activeBulk, setActiveBulk] = useState(product.activeBulkPrice?.toString() ?? '')
   const [activeIndividual, setActiveIndividual] = useState(product.activeIndividualVialPrice?.toString() ?? '')
   const [individualSalesEnabled, setIndividualSalesEnabled] = useState(product.individualSalesEnabled)
@@ -198,7 +198,7 @@ export function InventoryDetailPanel({ product, availableUnits, completeCasesAva
   function buildPricingPayload(): Record<string, unknown> {
     return {
       activeStandardCasePrice: activeStandard === '' ? null : Number(activeStandard),
-      activeSpaCasePrice: activeSpa === '' ? null : Number(activeSpa),
+      activeProCasePrice: activeSpa === '' ? null : Number(activeSpa),
       activeBulkPrice: activeBulk === '' ? null : Number(activeBulk),
       activeIndividualVialPrice: activeIndividual === '' ? null : Number(activeIndividual),
       individualSalesEnabled,
@@ -232,7 +232,7 @@ export function InventoryDetailPanel({ product, availableUnits, completeCasesAva
     const diffs = computeTierDiffs(product, {
       ...product,
       activeStandardCasePrice: payload.activeStandardCasePrice as number | null,
-      activeSpaCasePrice: payload.activeSpaCasePrice as number | null,
+      activeProCasePrice: payload.activeProCasePrice as number | null,
       activeBulkPrice: payload.activeBulkPrice as number | null,
       activeIndividualVialPrice: payload.activeIndividualVialPrice as number | null,
     })
@@ -269,7 +269,7 @@ export function InventoryDetailPanel({ product, availableUnits, completeCasesAva
           </button>
         </div>
         <p className={`text-[11px] ${mutedText} -mt-2 mb-4`}>
-          Suggested: Standard {product.suggestedStandardCasePrice ?? '—'} · SPA {product.suggestedSpaCasePrice ?? '—'} · Single Vial {product.suggestedIndividualVialPrice ?? '—'}
+          Suggested: Standard {product.suggestedStandardCasePrice ?? '—'} · SPA {product.suggestedProCasePrice ?? '—'} · Single Vial {product.suggestedIndividualVialPrice ?? '—'}
         </p>
 
         <div className="grid grid-cols-2 gap-3 mb-3">

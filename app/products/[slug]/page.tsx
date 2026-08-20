@@ -12,7 +12,7 @@ import { ProductDetail, type FaqEntry } from '@/components/storefront/ProductDet
 import { getStorefrontPrice } from '@/lib/storefront/pricing'
 import { getStorefrontAvailability } from '@/lib/storefront/availability'
 import { resolveProductImage } from '@/lib/storefront/productImages'
-import { getCurrentCustomerSpaEligible } from '@/lib/storefront/spaEligibility'
+import { getCurrentCustomerProEligible } from '@/lib/storefront/professionalAccess'
 import { productSchema, productGroupSchema, breadcrumbSchema, faqSchema } from '@/lib/storefront/structuredData'
 
 export const revalidate = 60
@@ -81,7 +81,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
   const product = await getProduct(slug)
   if (!product) notFound()
 
-  const [siblings, relatedProductRows, spaEligible] = await Promise.all([
+  const [siblings, relatedProductRows, proEligible] = await Promise.all([
     prisma.product.findMany({
       where: { name: product.name, pricingStatus: { not: 'INACTIVE' }, slug: { not: product.slug } },
       select: { slug: true, size: true },
@@ -93,7 +93,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
           select: { slug: true, name: true, size: true },
         })
       : Promise.resolve([]),
-    getCurrentCustomerSpaEligible(),
+    getCurrentCustomerProEligible(),
   ])
 
   const imageUrl = resolveProductImage(product.name, product.imageUrl)
@@ -153,7 +153,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
         imageUrl={imageUrl}
         imageAlt={imageAlt}
         description={displayDescription}
-        price={getStorefrontPrice(product, { spaEligible })}
+        price={getStorefrontPrice(product, { proEligible })}
         caseAvailability={availability}
         individualVialAvailability={individualVialAvailability}
         availabilityMessageOverride={product.availabilityMessageOverride}

@@ -30,9 +30,9 @@ const lineItemSchema = z.object({
   // Inventory & Pricing MVP -- all optional so a free-typed line item (no
   // catalog product, or a catalog product with no configured sell units)
   // stays exactly as valid as it was before this sprint.
-  sellUnit: z.enum(['CASE_STANDARD', 'CASE_SPA', 'CASE_BULK', 'INDIVIDUAL_VIAL']).optional().nullable(),
+  sellUnit: z.enum(['CASE_STANDARD', 'CASE_PRO', 'CASE_BULK', 'INDIVIDUAL_VIAL']).optional().nullable(),
   unitsPerSellUnit: z.number().int().positive().optional().nullable(),
-  priceTier: z.enum(['STANDARD', 'SPA', 'BULK', 'INDIVIDUAL', 'MANUAL']).optional().nullable(),
+  priceTier: z.enum(['STANDARD', 'PRO', 'BULK', 'INDIVIDUAL', 'MANUAL']).optional().nullable(),
   skuSnapshot: z.string().optional().nullable(),
   manualPricingOverride: z.boolean().optional(),
   inventoryQuantityConsumed: z.number().int().nonnegative().optional().nullable(),

@@ -5,7 +5,13 @@
 // different.
 export const SELL_UNIT_LABEL: Record<string, string> = {
   STANDARD_CASE: 'Standard Case',
-  SPA_CASE: 'SPA Case',
+  PRO_CASE: 'Professional Case',
+  // Historical only -- 2 real ProductPriceChange rows predate the
+  // 2026-08-19 Professional Access rename and still say SPA_CASE (preserved,
+  // not rewritten). Kept here only so the Price Change History table
+  // renders a sensible label for those two old rows instead of the raw
+  // enum string; every new price change writes PRO_CASE above.
+  SPA_CASE: 'Professional Case',
   BULK: 'Bulk',
   // Value is the customer/admin-facing label (2026-08-13 terminology
   // update: "Individual Vial" -> "Single Vial"); the key stays

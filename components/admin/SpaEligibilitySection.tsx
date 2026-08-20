@@ -13,7 +13,7 @@ import { card, mutedText, sectionHeading, pillPrimary, pillOutline, input } from
 
 export function SpaEligibilitySection({ customerId }: { customerId: string }) {
   const router = useRouter()
-  const [spaEligible, setSpaEligible] = useState<boolean | null>(null)
+  const [proEligible, setSpaEligible] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [reason, setReason] = useState('')
@@ -21,7 +21,7 @@ export function SpaEligibilitySection({ customerId }: { customerId: string }) {
   const refresh = useCallback(async () => {
     try {
       const res = await fetch(`/api/admin/customers/${customerId}/spa-eligibility`)
-      if (res.ok) setSpaEligible((await res.json()).spaEligible)
+      if (res.ok) setSpaEligible((await res.json()).proEligible)
     } finally {
       setLoading(false)
     }
@@ -68,8 +68,8 @@ export function SpaEligibilitySection({ customerId }: { customerId: string }) {
 
       <p className="text-sm mb-4">
         Status:{' '}
-        <span className={spaEligible ? 'text-green-700 font-semibold' : 'text-gray-500 font-semibold'}>
-          {spaEligible ? 'Eligible for SPA pricing' : 'Standard pricing only'}
+        <span className={proEligible ? 'text-green-700 font-semibold' : 'text-gray-500 font-semibold'}>
+          {proEligible ? 'Eligible for SPA pricing' : 'Standard pricing only'}
         </span>
       </p>
 
@@ -81,7 +81,7 @@ export function SpaEligibilitySection({ customerId }: { customerId: string }) {
       />
 
       <div className="flex gap-2">
-        {!spaEligible ? (
+        {!proEligible ? (
           <button onClick={() => toggle('grant')} disabled={submitting} className={pillPrimary}>
             Grant SPA Eligibility
           </button>

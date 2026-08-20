@@ -10,7 +10,7 @@ export const LEAD_INTEREST_TYPES = [
   'NOTIFY_WHEN_AVAILABLE',
   'OUT_OF_STOCK_INTEREST',
   'PRICING_REVIEW_INTEREST',
-  'SPA_WHOLESALE_INQUIRY',
+  'PROFESSIONAL_ACCESS_INQUIRY',
   'SINGLE_VIAL_SPECIAL_REQUEST',
   // Price-match inquiry (2026-08-19 lead-capture/conversion engine,
   // section 19) -- "Found a lower price? Request a price match."
