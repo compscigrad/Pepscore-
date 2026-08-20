@@ -83,6 +83,18 @@ export type MessageCategory =
   // Admin-facing: a new application landed in the review queue -- same
   // "courtesy on top of the durably-recorded row" role LEAD_CAPTURED plays.
   | 'PROFESSIONAL_ACCESS_APPLICATION_ALERT'
+  // Price Match Guarantee / Customer Preferred Pricing (2026-08-20 sprint) --
+  // account/pricing-entitlement flow, so customer-facing sends route the
+  // same way Professional Access does (Pepscore Lab / admin@), not orders@
+  // or contact@. The admin alert intentionally routes to admin@pepscorelab.com
+  // directly too -- owner-locked decision: no separate pricematch@ alias.
+  | 'PRICE_MATCH_REQUEST_RECEIVED' // customer-facing: acknowledges submission
+  | 'PRICE_MATCH_MORE_INFO_REQUESTED' // customer-facing: admin asked for more detail
+  | 'PRICE_MATCH_APPROVED_ONE_TIME' // customer-facing: authorized for a single purchase
+  | 'PRICE_MATCH_APPROVED_PERSISTENT' // customer-facing: ongoing preferred price granted
+  | 'PRICE_MATCH_REJECTED' // customer-facing
+  | 'PRICE_MATCH_REVOKED' // customer-facing
+  | 'PRICE_MATCH_REQUEST_ALERT' // admin-facing: new request landed in the review queue
 
 interface RoutedSender {
   fromName: string
@@ -137,6 +149,14 @@ const ROUTING: Record<MessageCategory, RoutedSender> = {
   PROFESSIONAL_ACCESS_INVITE_REMINDER: { fromName: 'Pepscore Lab', replyTo: ADMIN_EMAIL },
   PROFESSIONAL_ACCESS_REVOKED: { fromName: 'Pepscore Lab', replyTo: ADMIN_EMAIL },
   PROFESSIONAL_ACCESS_APPLICATION_ALERT: { fromName: 'Pepscore', replyTo: CONTACT_EMAIL },
+
+  PRICE_MATCH_REQUEST_RECEIVED: { fromName: 'Pepscore Lab', replyTo: ADMIN_EMAIL },
+  PRICE_MATCH_MORE_INFO_REQUESTED: { fromName: 'Pepscore Lab', replyTo: ADMIN_EMAIL },
+  PRICE_MATCH_APPROVED_ONE_TIME: { fromName: 'Pepscore Lab', replyTo: ADMIN_EMAIL },
+  PRICE_MATCH_APPROVED_PERSISTENT: { fromName: 'Pepscore Lab', replyTo: ADMIN_EMAIL },
+  PRICE_MATCH_REJECTED: { fromName: 'Pepscore Lab', replyTo: ADMIN_EMAIL },
+  PRICE_MATCH_REVOKED: { fromName: 'Pepscore Lab', replyTo: ADMIN_EMAIL },
+  PRICE_MATCH_REQUEST_ALERT: { fromName: 'Pepscore Lab', replyTo: ADMIN_EMAIL },
 }
 
 export interface ResolvedSender {
@@ -194,6 +214,12 @@ const CUSTOMER_VISIBLE_CATEGORIES: ReadonlySet<MessageCategory> = new Set<Messag
   'PROFESSIONAL_ACCESS_INVITE',
   'PROFESSIONAL_ACCESS_INVITE_REMINDER',
   'PROFESSIONAL_ACCESS_REVOKED',
+  'PRICE_MATCH_REQUEST_RECEIVED',
+  'PRICE_MATCH_MORE_INFO_REQUESTED',
+  'PRICE_MATCH_APPROVED_ONE_TIME',
+  'PRICE_MATCH_APPROVED_PERSISTENT',
+  'PRICE_MATCH_REJECTED',
+  'PRICE_MATCH_REVOKED',
 ])
 
 export function isCustomerVisibleCategory(category: string): boolean {

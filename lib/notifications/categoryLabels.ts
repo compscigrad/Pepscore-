@@ -48,6 +48,13 @@ const CATEGORY_LABELS: Record<MessageCategory, string> = {
   PROFESSIONAL_ACCESS_INVITE_REMINDER: 'Professional Access',
   PROFESSIONAL_ACCESS_REVOKED: 'Professional Access',
   PROFESSIONAL_ACCESS_APPLICATION_ALERT: 'Professional Access',
+  PRICE_MATCH_REQUEST_RECEIVED: 'Price Match',
+  PRICE_MATCH_MORE_INFO_REQUESTED: 'Price Match',
+  PRICE_MATCH_APPROVED_ONE_TIME: 'Price Match',
+  PRICE_MATCH_APPROVED_PERSISTENT: 'Price Match',
+  PRICE_MATCH_REJECTED: 'Price Match',
+  PRICE_MATCH_REVOKED: 'Price Match',
+  PRICE_MATCH_REQUEST_ALERT: 'Price Match',
 }
 
 // Never falls back to the raw category string — a category this app somehow

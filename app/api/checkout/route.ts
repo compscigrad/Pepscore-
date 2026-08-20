@@ -11,7 +11,9 @@ import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
 import { isStorefrontCheckoutEnabled, STOREFRONT_CHECKOUT_DISABLED_MESSAGE } from '@/lib/storefront/checkoutGate'
 import { getStorefrontAvailability, isPurchasable } from '@/lib/storefront/availability'
 import { computeVialsToReserve } from '@/lib/storefront/checkoutPricing'
+import { resolveShippingCost } from '@/lib/storefront/shipping'
 import { resolveProEligibleByClerkUserId } from '@/lib/storefront/professionalAccess'
+import { resolveActivePreferredPricesByClerkUserId, preferredPriceFor } from '@/lib/pricing/preferredPricing'
 import {
   resolveCanonicalPricing,
   ProfessionalPricingUnauthorizedError,
@@ -114,6 +116,15 @@ export async function POST(req: NextRequest) {
     const products = await prisma.product.findMany({ where: { id: { in: productIds } } })
     const productMap = new Map(products.map(p => [p.id, p]))
 
+    // Price Match Guarantee / Customer Preferred Pricing (2026-08-20) --
+    // resolved the same way proEligible is above: server-side, by Clerk
+    // userId only, never by email. Guest checkout never receives a
+    // negotiated price, same restriction Professional pricing already has.
+    const preferredPrices = await resolveActivePreferredPricesByClerkUserId(
+      userId ?? null,
+      items.map((i) => ({ productId: i.productId, sellUnit: i.sellUnit ?? 'CASE_STANDARD' }))
+    )
+
     // Build validated line items using DB prices (never trust client-side
     // prices) -- authoritative canonical pricing (lib/pricing/
     // canonicalPricing.ts), not the legacy Product.price field and not
@@ -153,7 +164,12 @@ export async function POST(req: NextRequest) {
     let resolvedPricing
     try {
       resolvedPricing = resolveCanonicalPricing(
-        items.map((i) => ({ product: productMap.get(i.productId)!, sellUnit: i.sellUnit, quantity: i.quantity })),
+        items.map((i) => ({
+          product: productMap.get(i.productId)!,
+          sellUnit: i.sellUnit,
+          quantity: i.quantity,
+          preferredPrice: preferredPriceFor(preferredPrices, i.productId, i.sellUnit ?? 'CASE_STANDARD'),
+        })),
         { proEligible }
       )
     } catch (pricingErr) {
@@ -181,8 +197,7 @@ export async function POST(req: NextRequest) {
     })
 
     const subtotal = lineItems.reduce((s, i) => s + i.total, 0)
-    const freeShipping = subtotal >= 150
-    const shippingCost = freeShipping ? 0 : 0 // Shippo rates fetched post-checkout
+    const shippingCost = resolveShippingCost(subtotal)
 
     // Resolved once regardless of whether a promotion code was submitted --
     // an existing Customer/Lead match (by linked userId, else case-

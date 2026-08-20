@@ -1,5 +1,7 @@
 # Checkout Shipping — Options Document
 
+**RESOLVED 2026-08-20** (Price Match Guarantee sprint, owner decision): neither Option A nor Option B below — a flat rate. Orders under $150 are charged a flat **$15.95**; orders $150+ remain free, matching the homepage/cart copy that was already live. Implemented in `lib/storefront/shipping.ts` (`resolveShippingCost()`), wired into `app/api/checkout/route.ts`. Deliberately not Option B's dynamic Shippo rate lookup — the owner's explicit instruction was not to call Shippo (`getRates()`) merely to determine this rate; that function stays reserved for the admin's post-purchase label-buying flow. The `$0/$0` defect described below is fixed; the section is kept for historical context.
+
 ## Current behavior (confirmed by direct code read, `app/api/checkout/route.ts` lines 143-145)
 
 ```ts

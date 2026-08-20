@@ -88,9 +88,21 @@ export interface PricingLineRequest {
   product: PricingProduct
   sellUnit: SellUnit | null | undefined
   quantity: number
+  // Price Match Guarantee / Customer Preferred Pricing (2026-08-20) -- the
+  // exact authorized unit price for THIS line, MUST be resolved server-side
+  // by the caller from an ACTIVE PriceMatchAuthorization matching this exact
+  // customer + productId + sellUnit (see lib/pricing/preferredPricing.ts),
+  // never a client-submitted value -- the same discipline ctx.proEligible
+  // already requires. Omit/null when no such authorization exists for this
+  // line. An authorized price never stacks with the standard volume ladder
+  // or Professional pricing (it's the final price for that line, full
+  // stop), and never applies if it would cost the customer MORE than
+  // whatever this line would otherwise resolve to -- see
+  // resolveCanonicalPricing below, which always takes the lower of the two.
+  preferredPrice?: number | null
 }
 
-export type PricingSource = 'STANDARD' | 'STANDARD_VOLUME_DISCOUNT' | 'PROFESSIONAL' | 'BULK' | 'INDIVIDUAL'
+export type PricingSource = 'STANDARD' | 'STANDARD_VOLUME_DISCOUNT' | 'PROFESSIONAL' | 'BULK' | 'INDIVIDUAL' | 'PRICE_MATCH'
 
 export interface ResolvedPricingLine {
   sellUnit: SellUnit
@@ -180,16 +192,34 @@ export function resolveCanonicalPricing(requests: PricingLineRequest[], ctx: Pri
   const qualifyingCases = computeQualifyingCaseCount(step1)
   const rate = getVolumeDiscountRate(qualifyingCases)
 
-  return step1.map((line) => {
+  return step1.map((line, idx) => {
     const isStandard = line.sellUnit === 'CASE_STANDARD'
     const appliedRate = isStandard ? rate : 0
-    const unitPrice = round2(line.catalogUnitPrice * (1 - appliedRate))
+    const candidateUnitPrice = round2(line.catalogUnitPrice * (1 - appliedRate))
+
+    let unitPrice = candidateUnitPrice
+    let volumeDiscountRate = appliedRate
+    let pricingSource: PricingSource = isStandard && appliedRate > 0 ? 'STANDARD_VOLUME_DISCOUNT' : line.pricingSource
+
+    // Price Match / Preferred Pricing -- final precedence layer, never
+    // stacks with the volume ladder or Professional pricing, and only ever
+    // wins if it's strictly better than what this line already resolved to
+    // (the "never cost the customer more than current canonical pricing"
+    // protection: a stale authorization from before a catalog price drop
+    // simply never applies).
+    const preferred = requests[idx].preferredPrice
+    if (preferred != null && preferred < unitPrice) {
+      unitPrice = round2(preferred)
+      volumeDiscountRate = 0
+      pricingSource = 'PRICE_MATCH'
+    }
+
     return {
       ...line,
-      volumeDiscountRate: appliedRate,
+      volumeDiscountRate,
       unitPrice,
       lineTotal: round2(unitPrice * line.quantity),
-      pricingSource: isStandard && appliedRate > 0 ? 'STANDARD_VOLUME_DISCOUNT' : line.pricingSource,
+      pricingSource,
     }
   })
 }

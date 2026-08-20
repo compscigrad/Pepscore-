@@ -425,7 +425,10 @@ export default async function HomePage() {
               <h2 className="font-heading text-[clamp(26px,4vw,38px)] font-bold text-white mb-2">Research Peptides Rooted in Science</h2>
               <div className="w-11 h-[3px] bg-gradient-to-r from-[#F6D365] via-[#D4AF37] to-[#C99A20] mb-6 rounded-full" />
               <p className="text-[15px] text-white/65 leading-[1.8] mb-4">
-                Our mission is to make high-quality research compounds more accessible by pairing pharmaceutical-grade quality with highly competitive pricing. We are committed to offering exceptional value without compromising the standards of the products we supply, supported by a price-matching guarantee designed to help researchers obtain the compounds they need at a fair market price. Our products are produced through a certified pharmaceutical laboratory under rigorous manufacturing and quality-control standards. We focus on delivering reliable, consistently produced lyophilized compounds for research use only.
+                Our mission is to make high-quality research compounds more accessible by pairing pharmaceutical-grade quality with highly competitive pricing. We are committed to offering exceptional value without compromising the standards of the products we supply, supported by a price-matching guarantee designed to help researchers obtain the compounds they need at a fair market price.
+              </p>
+              <p className="text-[15px] text-white/65 leading-[1.8] mb-4">
+                Our products are produced through a certified pharmaceutical laboratory under rigorous manufacturing and quality-control standards. We focus on delivering reliable, consistently produced lyophilized compounds for research use only.
               </p>
               <p className="text-[15px] text-white/65 leading-[1.8] mb-6">
                 Our catalog spans the most studied peptide classes — from metabolic regulators like Semaglutide, Tirzepatide, and Retatrutide to longevity compounds like Epithalon and NAD+. Each product is manufactured under stringent quality-control standards and independently verified before it reaches you.

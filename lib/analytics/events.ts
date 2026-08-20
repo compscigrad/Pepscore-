@@ -52,6 +52,23 @@ export const AnalyticsEvent = {
   // conversion dashboard has real, queryable numbers.
   LEAD_POPUP_IMPRESSION: 'lead_popup_impression',
   LEAD_POPUP_DISMISSED: 'lead_popup_dismissed',
+  // Added 2026-08-20 (Price Match Guarantee / Customer Preferred Pricing
+  // sprint) -- funnel visibility from the public request form through
+  // admin review to actual redemption at checkout, and a customer-facing
+  // signal (PREFERRED_PRICE_APPLIED) distinct from PROMOTION_APPLIED since
+  // it's never a coupon code.
+  PRICE_MATCH_CTA_CLICKED: 'price_match_cta_clicked',
+  PRICE_MATCH_FORM_VIEWED: 'price_match_form_viewed',
+  PRICE_MATCH_REQUEST_SUBMITTED: 'price_match_request_submitted',
+  PRICE_MATCH_REQUEST_APPROVED: 'price_match_request_approved',
+  PRICE_MATCH_REQUEST_REJECTED: 'price_match_request_rejected',
+  PRICE_MATCH_REQUEST_MORE_INFO_REQUESTED: 'price_match_request_more_info_requested',
+  PREFERRED_PRICE_AUTHORIZATION_CREATED: 'preferred_price_authorization_created',
+  PREFERRED_PRICE_AUTHORIZATION_REVOKED: 'preferred_price_authorization_revoked',
+  PREFERRED_PRICE_AUTHORIZATION_EXPIRED: 'preferred_price_authorization_expired',
+  PREFERRED_PRICE_APPLIED: 'preferred_price_applied',
+  PREFERRED_PRICE_CLAIMED: 'preferred_price_claimed',
+  PRICE_MATCH_ADMIN_RESPONSE_TIME: 'price_match_admin_response_time',
 } as const
 
 export type AnalyticsEventName = (typeof AnalyticsEvent)[keyof typeof AnalyticsEvent]

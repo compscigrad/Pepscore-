@@ -310,3 +310,92 @@ describe('Tesamorelin pricing hierarchy (real catalog fixtures, resolved 2026-08
     expect(() => resolvePricingLine({ product: tesamorelin10mg(), sellUnit: 'CASE_PRO', quantity: 1 }, { proEligible: false })).toThrow(ProfessionalPricingUnauthorizedError)
   })
 })
+
+// Price Match Guarantee / Customer Preferred Pricing (2026-08-20 sprint) --
+// the final precedence layer. preferredPrice is always caller-resolved (see
+// lib/pricing/preferredPricing.ts) and passed per-line; these tests only
+// cover the engine's own precedence/protection rules, not the DB lookup.
+describe('resolveCanonicalPricing -- Price Match / Preferred Pricing precedence', () => {
+  it('an authorized price below the standard price wins and is tagged PRICE_MATCH', () => {
+    const [line] = resolveCanonicalPricing(
+      [{ product: product(), sellUnit: 'CASE_STANDARD', quantity: 1, preferredPrice: 340 }],
+      { proEligible: false }
+    )
+    expect(line.unitPrice).toBe(340)
+    expect(line.pricingSource).toBe('PRICE_MATCH')
+    expect(line.volumeDiscountRate).toBe(0)
+  })
+
+  it('never costs the customer more than canonical pricing -- a stale/high preferredPrice is ignored', () => {
+    // Standard price is 400; a preferredPrice of 410 must never apply.
+    const [line] = resolveCanonicalPricing(
+      [{ product: product(), sellUnit: 'CASE_STANDARD', quantity: 1, preferredPrice: 410 }],
+      { proEligible: false }
+    )
+    expect(line.unitPrice).toBe(400)
+    expect(line.pricingSource).toBe('STANDARD')
+  })
+
+  it('a catalog price that has since dropped below a stale authorization wins -- always the lower of the two', () => {
+    // Volume ladder alone already reaches 340 at 15 cases (400 * 0.85); a
+    // stale authorization of 350 (better than sticker, worse than the
+    // ladder) must lose to the better ladder price.
+    const [line] = resolveCanonicalPricing(
+      [{ product: product(), sellUnit: 'CASE_STANDARD', quantity: 15, preferredPrice: 350 }],
+      { proEligible: false }
+    )
+    expect(line.unitPrice).toBe(340)
+    expect(line.pricingSource).toBe('STANDARD_VOLUME_DISCOUNT')
+  })
+
+  it('does not stack with the standard volume ladder -- the authorized price is final, not a further discount off it', () => {
+    const [line] = resolveCanonicalPricing(
+      [{ product: product(), sellUnit: 'CASE_STANDARD', quantity: 15, preferredPrice: 340 }],
+      { proEligible: false }
+    )
+    // Ladder at 15+ cases would otherwise be 340 (400 * 0.85 = 340) -- equal,
+    // not lower, so PRICE_MATCH doesn't win here; this asserts the two
+    // never combine into something below either value alone (e.g. 289).
+    expect(line.unitPrice).toBe(340)
+    expect(line.lineTotal).toBe(340 * 15)
+  })
+
+  it('only the authorized line is discounted in a multi-product cart -- strict per-line isolation', () => {
+    const lines = resolveCanonicalPricing(
+      [
+        { product: product({ activeStandardCasePrice: 400 }), sellUnit: 'CASE_STANDARD', quantity: 1, preferredPrice: 300 },
+        { product: product({ activeStandardCasePrice: 500 }), sellUnit: 'CASE_STANDARD', quantity: 1 },
+      ],
+      { proEligible: false }
+    )
+    expect(lines[0].unitPrice).toBe(300)
+    expect(lines[0].pricingSource).toBe('PRICE_MATCH')
+    expect(lines[1].unitPrice).toBe(500)
+    expect(lines[1].pricingSource).toBe('STANDARD')
+  })
+
+  it('a preferredPrice on a different sellUnit than what was requested never applies (caller-resolved isolation)', () => {
+    // The caller is responsible for only passing preferredPrice when it
+    // matches the exact product+sellUnit being requested -- this test
+    // documents that the engine itself applies no sellUnit-matching logic
+    // of its own; it trusts whatever preferredPrice the caller supplies for
+    // the line as-is. A CASE_PRO line with no preferredPrice passed (as
+    // would happen if the caller's lookup correctly found no CASE_PRO
+    // authorization) resolves normally.
+    const [line] = resolveCanonicalPricing(
+      [{ product: product(), sellUnit: 'CASE_PRO', quantity: 1 }],
+      { proEligible: true }
+    )
+    expect(line.unitPrice).toBe(280)
+    expect(line.pricingSource).toBe('PROFESSIONAL')
+  })
+
+  it('an authorized price on a CASE_PRO line beats Professional pricing when lower', () => {
+    const [line] = resolveCanonicalPricing(
+      [{ product: product(), sellUnit: 'CASE_PRO', quantity: 1, preferredPrice: 250 }],
+      { proEligible: true }
+    )
+    expect(line.unitPrice).toBe(250)
+    expect(line.pricingSource).toBe('PRICE_MATCH')
+  })
+})

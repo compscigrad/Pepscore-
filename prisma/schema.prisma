@@ -117,11 +117,11 @@ model Product {
   // live caches recomputed by lib/inventory/* after every ledger write; the
   // InventoryLedgerEntry rows are the source of truth, same pattern as
   // Invoice.amountRefunded/InvoiceRefund.
-  inventoryTrackingEnabled Boolean                @default(false)
-  physicalStockOnHand      Int?
-  reservedUnits            Int                    @default(0)
-  lowStockThreshold        Int?
-  inventoryStatus          ProductInventoryStatus @default(TRACKING_DISABLED)
+  inventoryTrackingEnabled       Boolean                @default(false)
+  physicalStockOnHand            Int?
+  reservedUnits                  Int                    @default(0)
+  lowStockThreshold              Int?
+  inventoryStatus                ProductInventoryStatus @default(TRACKING_DISABLED)
   // Catalog/inventory-level backorder configuration (Phase 2B correction,
   // 2026-08-07) -- explicitly distinct from BackorderCondition, which
   // records a specific invoice line's fulfillment shortage after a sale.
@@ -138,7 +138,7 @@ model Product {
   // (db push has no "rename" -- only drop+add) for no real benefit; "case"
   // fulfillment is also this field's original, only meaning before
   // single-vial purchasing existed as a separate concept.
-  backorderEnabled         Boolean                @default(false)
+  backorderEnabled               Boolean                @default(false)
   // Same concept as backorderEnabled above, but for the SINGLE VIAL sell
   // unit specifically (2026-08-15 sell-unit-level fulfillment). A single
   // Product row can now represent, e.g., "Single Vial ready to ship,
@@ -148,7 +148,7 @@ model Product {
   // lib/storefront/pricing.ts); independent of it otherwise -- direct
   // single-vial eligibility and single-vial fulfillment status are two
   // separate admin decisions, never derived from each other.
-  individualVialBackorderEnabled Boolean          @default(false)
+  individualVialBackorderEnabled Boolean                @default(false)
 
   // ─── SEO / Content Management (Phase 2B item 6) ─────────────────────────
   // All admin-editable via the storefront content editor
@@ -172,8 +172,8 @@ model Product {
   faq                         Json?
   // Slugs of other products to show in a "Related Products" section --
   // distinct from the automatic same-name sibling-strength list.
-  relatedProductSlugs         String[] @default([])
-  featured                    Boolean  @default(false)
+  relatedProductSlugs         String[]            @default([])
+  featured                    Boolean             @default(false)
   // Product-family-level, not per-strength (2026-08-15) -- when the admin
   // sets this from Product Master it's written to every Product row sharing
   // this name in one call (see SET_MERCHANDISING_STATUS in
@@ -186,7 +186,7 @@ model Product {
   // Manual override, independent of the automatic completeness guard in
   // generateMetadata (a too-short/placeholder description forces noindex
   // regardless of this flag -- see app/products/[slug]/page.tsx).
-  noindex                     Boolean  @default(false)
+  noindex                     Boolean             @default(false)
   // Replaces the computed AVAILABILITY_LABEL text when set (e.g.
   // "Restocking mid-August" instead of the generic "Coming Soon") --
   // never changes the underlying availability state itself.
@@ -202,6 +202,10 @@ model Product {
   slugRedirects          ProductSlugRedirect[]
   priceChanges           ProductPriceChange[]
   inventoryPurchases     InventoryPurchase[]
+
+  // ─── Price Match Guarantee (2026-08-20) ─────────────────────────────────
+  priceMatchRequests       PriceMatchRequest[]
+  priceMatchAuthorizations PriceMatchAuthorization[]
 
   @@index([slug])
   @@index([inventoryStatus])
@@ -497,7 +501,7 @@ model Order {
   // Set at checkout creation (soft hold, PromotionCode.status stays ACTIVE
   // so an abandoned/failed order never permanently burns a one-time code),
   // only actually marked REDEEMED on real payment success.
-  appliedPromotionCodeId String?       @unique
+  appliedPromotionCodeId String?        @unique
   appliedPromotionCode   PromotionCode? @relation(fields: [appliedPromotionCodeId], references: [id])
 
   items                  OrderItem[]
@@ -784,6 +788,9 @@ model Invoice {
   // ─── Inventory & Pricing MVP ────────────────────────────────────────────
   inventoryLedgerEntries InventoryLedgerEntry[]
   inventoryReservations  InventoryReservation[]
+
+  // ─── Price Match Guarantee (2026-08-20) ─────────────────────────────────
+  priceMatchRedemptions PriceMatchAuthorization[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2048,20 +2055,22 @@ model Customer {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  invoices             Invoice[]
-  intakeLinks          IntakeLink[]
-  activityLog          CustomerActivityLog[]
-  notifications        Notification[]
-  accountCredits       CustomerAccountCredit[]
-  communications       Communication[]
-  portalInvites        CustomerPortalInvite[]
-  accessEvents         CustomerAccessEvent[]
-  identityReviewCases  CustomerIdentityReviewCase[]
-  leadCaptures         LeadCapture[]
-  firstOrderOfferClaim FirstOrderOfferClaim?
-  promotionCodes       PromotionCode[]
+  invoices                       Invoice[]
+  intakeLinks                    IntakeLink[]
+  activityLog                    CustomerActivityLog[]
+  notifications                  Notification[]
+  accountCredits                 CustomerAccountCredit[]
+  communications                 Communication[]
+  portalInvites                  CustomerPortalInvite[]
+  accessEvents                   CustomerAccessEvent[]
+  identityReviewCases            CustomerIdentityReviewCase[]
+  leadCaptures                   LeadCapture[]
+  firstOrderOfferClaim           FirstOrderOfferClaim?
+  promotionCodes                 PromotionCode[]
   professionalAccessApplications ProfessionalAccessApplication[]
   professionalAccessInvites      ProfessionalAccessInvite[]
+  priceMatchRequests             PriceMatchRequest[]
+  priceMatchAuthorizations       PriceMatchAuthorization[]
 
   @@index([email])
   @@index([phone])
@@ -2127,8 +2136,8 @@ model LeadCapture {
   // exactly which disclosure text a visitor agreed to and from where --
   // never used to infer consent that wasn't explicitly given, only to
   // evidence consent that was.
-  emailConsent      Boolean @default(false)
-  smsConsent        Boolean @default(false)
+  emailConsent       Boolean @default(false)
+  smsConsent         Boolean @default(false)
   consentTextVersion String?
   consentIp          String?
 
@@ -2246,8 +2255,8 @@ model FirstOrderOfferClaim {
   // existing rows in production at the time of this change, so no
   // backfill needed) rather than writing a misleading 0 for a
   // fixed-dollar campaign into a field literally named "percentage."
-  percentage Float?
-  consent    Boolean @default(false)
+  percentage   Float?
+  consent      Boolean @default(false)
   // Mirrors LeadCapture.emailConsent/smsConsent (same submission) for
   // query convenience on this row -- same duplication convention already
   // used for `consent` above, not a second source of truth (the linked
@@ -2381,7 +2390,7 @@ model PromotionCampaign {
   // (lib/promotions/campaigns.ts) -- generatePromotionCodeText() falls
   // back to the existing "FIRST-" prefix when unset, so every
   // pre-existing campaign keeps its current code shape unchanged.
-  promoPrefix String?
+  promoPrefix     String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2430,7 +2439,7 @@ model PromotionCode {
   // -- at most one Order can hold a given code at a time (the FK is
   // @unique on Order's side), so this is 0-or-1 in practice even though
   // Prisma models it as a list for the relation direction.
-  appliedToOrder Order?
+  appliedToOrder        Order?
 
   @@index([campaignId])
   @@index([customerId])
@@ -2584,26 +2593,26 @@ model ProfessionalAccessApplication {
   contactName        String
   businessName       String
   businessEmail      String
-  phone               String?
-  website             String?
-  businessType        String?
-  businessAddress     Json?
-  jurisdiction        String?
+  phone              String?
+  website            String?
+  businessType       String?
+  businessAddress    Json?
+  jurisdiction       String?
   // Free-text, e.g. an EIN or state registration number if the applicant
   // volunteers it -- never required, never validated against a real
   // registry (this environment has no such integration).
-  registrationInfo    String?
-  purposeDescription  String?
-  expectedVolume      String?
+  registrationInfo   String?
+  purposeDescription String?
+  expectedVolume     String?
   // Standing rule (Phase 4R-equivalent for this sprint): the application
   // form never asks the applicant to claim or certify intended human use --
   // this field only ever captures a business/research purpose description
   // in the applicant's own words, exactly as submitted.
 
-  status       ProfessionalAccessStatus @default(PENDING)
-  reviewedBy   String?
-  reviewedAt   DateTime?
-  reviewNotes  String?
+  status      ProfessionalAccessStatus @default(PENDING)
+  reviewedBy  String?
+  reviewedAt  DateTime?
+  reviewNotes String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2651,6 +2660,180 @@ model ProfessionalAccessInvite {
 
   @@index([email])
   @@index([status])
+}
+
+// ─── Price Match Guarantee + Customer Preferred Pricing (2026-08-20) ───────
+// Mission: customer finds a lower delivered price elsewhere -> submits a
+// structured request -> the request itself (this model, a real database
+// row) is the system of record -- never email. Approval creates a
+// PriceMatchAuthorization, the live grant the canonical pricing engine
+// (lib/pricing/canonicalPricing.ts) reads. Deliberately two models, not
+// one: a request never changes meaning after it's reviewed; an
+// authorization has its own independent lifecycle (redeemed/revoked/
+// expires) that can outlive the request by months under UNTIL_DATE/
+// UNTIL_REVOKED. Not a coupon system -- no stored percentage anywhere,
+// only ever an exact authorizedPrice (see PriceMatchAuthorization below).
+enum PriceMatchRequestStatus {
+  PENDING
+  MORE_INFO_REQUESTED
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+enum PriceMatchRejectionReason {
+  PRICE_ALREADY_COMPETITIVE
+  COMPETITOR_NOT_VERIFIABLE
+  PRODUCT_NOT_COMPARABLE
+  INSUFFICIENT_PROOF
+  OUTSIDE_POLICY
+  DUPLICATE_REQUEST
+  OTHER
+}
+
+model PriceMatchRequest {
+  id String @id @default(cuid())
+
+  // Same find-or-create Customer resolution every other public intake form
+  // uses (lib/customers.ts's upsertCustomerFromIntake) -- a guest
+  // submitter's request still links to a real Customer row by email/phone,
+  // matching ProfessionalAccessApplication's pattern above, so an approval
+  // has a real identity to bind the resulting authorization to.
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
+  contactName  String
+  contactEmail String
+  contactPhone String?
+
+  productId String
+  product   Product             @relation(fields: [productId], references: [id])
+  sellUnit  InvoiceItemSellUnit
+
+  // Delivered-price comparison basis (owner decision, Price Match sprint) --
+  // never sticker price alone. competitorPrice is the competitor's listed
+  // unit price; competitorShippingCost/competitorDeliveredPrice let the
+  // submitter (and the admin reviewer) show the actual delivered-cost math
+  // rather than asserting one opaque number.
+  competitorName           String
+  competitorUrl            String?
+  competitorPrice          Float
+  competitorShippingCost   Float?
+  competitorDeliveredPrice Float
+
+  // Proof is a URL/text reference only. This codebase has no file/image
+  // upload infrastructure anywhere (confirmed by audit) -- the one existing
+  // precedent, FinanceExpense.receiptUrl/receiptFilename, is the same
+  // paste-a-URL pattern. Real image upload is a genuine owner/external-
+  // storage dependency, flagged in docs/PendingOwnerActions.md, not built
+  // here.
+  proofUrl  String?
+  proofNote String?
+
+  customerNote String?
+
+  status              PriceMatchRequestStatus    @default(PENDING)
+  rejectionReason     PriceMatchRejectionReason?
+  reviewedBy          String?
+  reviewedAt          DateTime?
+  // Internal-only -- never surfaced to the customer (see
+  // PriceMatchAuthorization's own privacy note, same rule applies here for
+  // rejected/more-info requests read back through any customer-facing API).
+  reviewNotes         String?
+  moreInfoRequestedAt DateTime?
+  moreInfoRequestNote String?
+
+  ipAddress String?
+
+  authorization PriceMatchAuthorization?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId])
+  @@index([productId])
+  @@index([status])
+  @@index([contactEmail])
+  @@index([createdAt])
+}
+
+enum PriceMatchAuthorizationType {
+  ONE_PURCHASE
+  UNTIL_DATE
+  UNTIL_REVOKED
+}
+
+enum PriceMatchAuthorizationStatus {
+  ACTIVE
+  REDEEMED
+  EXPIRED
+  REVOKED
+}
+
+// The persistent "Customer Preferred Pricing" grant -- created exactly once
+// per approval. This, not PriceMatchRequest, is what
+// lib/pricing/canonicalPricing.ts actually resolves against at checkout/
+// invoice time. code doubles as the guest-claim-to-account-linking token,
+// the same trust boundary CustomerPortalInvite.token already established
+// (lib/portalInvites.ts) -- generated via crypto.randomBytes, never
+// sequential or derived from the request id, so it can't be guessed or
+// shared to grant someone else's negotiated price.
+model PriceMatchAuthorization {
+  id String @id @default(cuid())
+
+  code String @unique
+
+  sourceRequestId String            @unique
+  sourceRequest   PriceMatchRequest @relation(fields: [sourceRequestId], references: [id])
+
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  productId String
+  product   Product             @relation(fields: [productId], references: [id])
+  sellUnit  InvoiceItemSellUnit
+
+  // Exact price, never a percentage or discount rate -- canonicalPricing.ts
+  // compares this directly against whatever Standard/Volume/Professional
+  // pricing would otherwise resolve to for the same line and always
+  // returns the lower of the two, so a stale authorization can never cost
+  // the customer more than ordinary canonical pricing even after a later
+  // catalog price drop.
+  authorizedPrice Float
+
+  authorizationType PriceMatchAuthorizationType
+  // Only meaningful when authorizationType is UNTIL_DATE.
+  expiresAt         DateTime?
+
+  status PriceMatchAuthorizationStatus @default(ACTIVE)
+
+  // Set the moment this authorization is actually applied to a real
+  // line item -- distinct from approval time. ONE_PURCHASE transitions
+  // straight to REDEEMED status on this write; UNTIL_DATE/UNTIL_REVOKED
+  // stay ACTIVE and can redeem repeatedly, so this always reflects the
+  // most recent redemption, not a running count.
+  redeemedAt        DateTime?
+  redeemedInvoiceId String?
+  redeemedInvoice   Invoice?  @relation(fields: [redeemedInvoiceId], references: [id])
+
+  revokedBy    String?
+  revokedAt    DateTime?
+  revokeReason String?
+
+  // Clerk userId of whoever actually claimed/redeemed under this code, once
+  // a guest submission is linked to a real signed-in account -- distinct
+  // from customerId (the Customer row resolved at request time, which may
+  // predate any account at all).
+  claimedByUserId String?
+  claimedAt       DateTime?
+
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId, productId, sellUnit, status])
+  @@index([status])
+  @@index([expiresAt])
 }
 
 // Every case where self-service account resolution (see
@@ -3065,10 +3248,10 @@ model FinanceExpense {
   // record never requires editing that record's own model to add a
   // back-relation array. Any of these may be set; none are required (a
   // software subscription has none of them).
-  orderId   String?
-  invoiceId String?
+  orderId    String?
+  invoiceId  String?
   shipmentId String?
-  productId String?
+  productId  String?
 
   notes        String?
   taxTreatment FinanceAccountingTreatment @default(NEEDS_ACCOUNTANT_REVIEW)
@@ -3089,7 +3272,7 @@ model FinanceExpense {
   //     classification) -- this tracks whether the expense has been
   //     checked against a bank/card statement, feeding the Monthly
   //     Close's "expenses entered"/"bank reconciled" checklist.
-  recurring            Boolean                    @default(false)
+  recurring            Boolean                     @default(false)
   taxYear              Int?
   reconciliationStatus ExpenseReconciliationStatus @default(UNRECONCILED)
 
@@ -3170,15 +3353,15 @@ model InventoryPurchase {
   productId String
   product   Product @relation(fields: [productId], references: [id])
 
-  supplier      String?
-  sku           String?
-  quantity      Int
-  caseQuantity  Int?
-  unitCost      Float
-  totalCost     Float
-  receiptUrl    String?
-  invoiceRef    String?
-  receivedAt    DateTime
+  supplier     String?
+  sku          String?
+  quantity     Int
+  caseQuantity Int?
+  unitCost     Float
+  totalCost    Float
+  receiptUrl   String?
+  invoiceRef   String?
+  receivedAt   DateTime
 
   // The InventoryLedgerEntry (eventType ADD_STOCK) this purchase's physical
   // units were recorded against, if the admin created both in the same
@@ -3294,8 +3477,8 @@ model FulfillmentSettings {
 model FulfillmentAlert {
   id String @id @default(cuid())
 
-  invoiceId String
-  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoiceId  String
+  invoice    Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   // Set for shipment-scoped alert types (AWAITING_CARRIER_SCAN,
   // STALLED_NO_MOVEMENT, CARRIER_EXCEPTION) -- null for invoice-scoped ones
   // (NO_LABEL, INVENTORY_CONFLICT, REFUNDED_AFTER_SHIPMENT), which have no
@@ -3308,10 +3491,10 @@ model FulfillmentAlert {
   status    FulfillmentAlertStatus @default(OPEN)
   message   String
 
-  createdAt     DateTime  @default(now())
-  lastCheckedAt DateTime  @default(now())
-  resolvedAt    DateTime?
-  resolvedBy    String?
+  createdAt      DateTime  @default(now())
+  lastCheckedAt  DateTime  @default(now())
+  resolvedAt     DateTime?
+  resolvedBy     String?
   resolutionNote String?
 
   // One open alert per (invoice, type) at a time -- reconcileFulfillmentAlerts()
@@ -3577,11 +3760,11 @@ enum ProductEngagementEventType {
 // equity or a real expense" is a schema-level fact, not a runtime
 // category check that a report could get wrong.
 model OwnerTransaction {
-  id          String               @id @default(cuid())
-  type        OwnerTransactionType
-  amount      Float
-  date        DateTime
-  description String
+  id              String               @id @default(cuid())
+  type            OwnerTransactionType
+  amount          Float
+  date            DateTime
+  description     String
   // Plain string, matching FinanceExpense's own receiptUrl/providerReference
   // convention -- a bank transfer reference, check number, or receipt link.
   sourceReference String?
@@ -3621,7 +3804,7 @@ model BusinessTaxProfile {
 
   taxYearType TaxYearType @default(CALENDAR_YEAR)
 
-  entityType BusinessEntityType @default(UNKNOWN)
+  entityType               BusinessEntityType @default(UNKNOWN)
   // Free text, not a fixed enum -- federal tax classification wording
   // (disregarded entity, partnership, S-corp election specifics, etc.)
   // varies enough by actual CPA-prepared filing that a hardcoded enum
