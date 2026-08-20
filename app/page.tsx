@@ -9,7 +9,6 @@ import { Footer } from '@/components/storefront/Footer'
 import { ContactSection } from '@/components/storefront/ContactSection'
 import { ProductCard, type ProductCardProps } from '@/components/storefront/ProductCard'
 import { CartSidebar } from '@/components/storefront/CartSidebar'
-import { LeadCaptureTrigger } from '@/components/storefront/LeadCaptureTrigger'
 import { CatalogDirectory } from '@/components/storefront/CatalogDirectory'
 import { HomeSearchBar } from '@/components/storefront/HomeSearchBar'
 import { ScientificBackground } from '@/components/storefront/ScientificBackground'
@@ -253,9 +252,11 @@ export default async function HomePage() {
             </div>
             {/* Accurate owner-specified case-quantity discount schedule --
                 off the Standard Case price, not individual-vial pricing.
-                Informational/marketing copy today; not yet an automatic
-                checkout-applied discount (see docs/PendingOwnerActions.md
-                if real enforcement is wanted). */}
+                2026-08-19 Professional Access sprint: this is now the real,
+                automatic, server-side-enforced ladder
+                (lib/pricing/canonicalPricing.ts), not marketing copy --
+                every qualifying case across the whole cart counts toward
+                it, applied at checkout with no coupon code. */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
               {[
                 { range: '3–4 cases', save: 'Save 5%', featured: false },
@@ -316,16 +317,23 @@ export default async function HomePage() {
                 </div>
               ))}
             </div>
-            <p className="text-center text-[12px] text-white/40 mb-10 -mt-4">Discount applies off the Standard Case price. Contact us to arrange bulk-quantity orders.</p>
+            <p className="text-center text-[12px] text-white/40 mb-10 -mt-4">Discount applies automatically off the Standard Case price at checkout — no code required.</p>
             <div className="text-center">
-              <LeadCaptureTrigger
-                interestType="PROFESSIONAL_ACCESS_INQUIRY"
-                modalTitle="Inquire About Wholesale Orders"
-                modalDescription="Tell us about your research volume needs and a member of our team will follow up with SPA/wholesale pricing."
-                showMessageField
-                triggerLabel="Inquire About Wholesale Orders"
-                triggerClassName="inline-block bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] text-black font-heading text-[13px] font-bold tracking-[0.08em] uppercase px-8 py-4 rounded-full transition-all hover:-translate-y-0.5 hover:shadow-[0_10px_32px_rgba(212,175,55,0.45)]"
-              />
+              {/* Replaces the old "Inquire About Wholesale Orders" modal CTA
+                  (2026-08-19 Professional Access sprint, section 9) -- a
+                  real business-verification application belongs on its own
+                  page, not a small popup. The underlying LeadCapture
+                  architecture (interestType PROFESSIONAL_ACCESS_INQUIRY)
+                  is preserved and extended, not deleted -- the application
+                  page itself submits into the same pipeline, still visible
+                  in Admin CRM, still triggering the same admin notification. */}
+              <Link
+                href="/professional-access/apply"
+                className="inline-block bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] text-black font-heading text-[13px] font-bold tracking-[0.08em] uppercase px-8 py-4 rounded-full transition-all hover:-translate-y-0.5 hover:shadow-[0_10px_32px_rgba(212,175,55,0.45)]"
+              >
+                Apply for Professional Access
+              </Link>
+              <p className="text-[12px] text-white/40 mt-3 max-w-[440px] mx-auto">Preferred case pricing for verified businesses and qualified research organizations.</p>
             </div>
           </div>
         </section>
@@ -366,8 +374,11 @@ export default async function HomePage() {
                 // No CTA in this card by design (2026-08-12) -- a nested
                 // LeadCaptureTrigger here caused a scroll glitch, and the
                 // Bulk section above already carries the homepage's one
-                // wholesale-inquiry CTA; this card stays informational.
-                { icon:'🤝', title:'Wholesale Partnerships', body:'Tiered wholesale pricing, dedicated account management, and priority fulfillment for volume buyers.' },
+                // Professional Access CTA; this card stays informational.
+                // Renamed from "Wholesale Partnerships" 2026-08-19
+                // (Professional Access sprint) -- same card, terminology
+                // aligned with the rest of the storefront.
+                { icon:'🤝', title:'Professional Access', body:'Preferred case pricing, dedicated account management, and priority fulfillment for verified businesses and research organizations.' },
               ].map(f => (
                 // Dark Bronze card surface (2026-08-15 metallic-card
                 // selection, owner-approved preview) -- replaces the prior

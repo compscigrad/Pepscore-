@@ -40,6 +40,14 @@ const CATEGORY_LABELS: Record<MessageCategory, string> = {
   ADMIN_INTAKE_ALERT: 'Account Update',
   ADMIN_DELIVERY_FAILURE_ALERT: 'Account Update',
   ADMIN_PRICING_REPORT: 'Pricing Report',
+  PROFESSIONAL_ACCESS_APPLICATION_RECEIVED: 'Professional Access',
+  PROFESSIONAL_ACCESS_MORE_INFO_REQUESTED: 'Professional Access',
+  PROFESSIONAL_ACCESS_APPROVED: 'Professional Access',
+  PROFESSIONAL_ACCESS_REJECTED: 'Professional Access',
+  PROFESSIONAL_ACCESS_INVITE: 'Professional Access',
+  PROFESSIONAL_ACCESS_INVITE_REMINDER: 'Professional Access',
+  PROFESSIONAL_ACCESS_REVOKED: 'Professional Access',
+  PROFESSIONAL_ACCESS_APPLICATION_ALERT: 'Professional Access',
 }
 
 // Never falls back to the raw category string — a category this app somehow

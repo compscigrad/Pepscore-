@@ -29,9 +29,12 @@ export interface ProductVariant {
   // a stored individual price with sales disabled (e.g. Tesamorelin) must
   // never reach this component at all.
   individualVialPrice: number | null
-  // Only ever set when the current visitor is an admin-granted SPA-eligible
-  // customer (lib/storefront/professionalAccess.ts) -- never shown to a public
-  // or standard-eligibility visitor regardless of what's stored.
+  // Only ever set when the current visitor is an admin-granted
+  // Professional-eligible customer (lib/storefront/professionalAccess.ts)
+  // -- never shown to a public or standard-eligibility visitor regardless
+  // of what's stored. Non-null here is what switches this card into the
+  // Professional purchasing experience (section 7) -- see professionalMode
+  // below.
   proCasePrice: number | null
   // Real inventory-derived state, never the exact physical count. Split by
   // sell unit (2026-08-15) -- Standard Case and Single Vial are independent
@@ -76,13 +79,23 @@ export function ProductCard({ name, featured, category, description, imageUrl, b
   const { addItem, openCart } = useCartStore()
 
   const v = variants[selectedIdx]
-  const canSelectIndividualVial = v.individualVialPrice != null
-  const effectiveSellUnit: SellUnit = canSelectIndividualVial ? sellUnit : 'CASE_STANDARD'
+  // Professional purchasing experience (section 7) -- true only when THIS
+  // visitor is Professional-eligible AND this specific product/strength has
+  // a Professional price. Replaces Standard Case and Individual Vial as
+  // selectable options entirely rather than adding a third competing
+  // choice; a Professional customer viewing a product with no Professional
+  // price still sees the normal Standard/Individual experience below for
+  // that one product (the documented fallback).
+  const professionalMode = v.proCasePrice != null
+  const canSelectIndividualVial = !professionalMode && v.individualVialPrice != null
+  const effectiveSellUnit: SellUnit = professionalMode ? 'CASE_PRO' : canSelectIndividualVial ? sellUnit : 'CASE_STANDARD'
   // Fulfillment state for the sell unit actually selected right now
   // (2026-08-15) -- must stay reactive as the customer toggles Standard
   // Case / Single Vial, never a single value fixed to the variant.
+  // Professional Case shares the same physical case stock pool as Standard
+  // Case (only the price/label differ), so it reads caseAvailability too.
   const availability = effectiveSellUnit === 'INDIVIDUAL_VIAL' ? v.individualVialAvailability : v.caseAvailability
-  const activePrice = effectiveSellUnit === 'INDIVIDUAL_VIAL' ? v.individualVialPrice : v.standardCasePrice
+  const activePrice = professionalMode ? v.proCasePrice : effectiveSellUnit === 'INDIVIDUAL_VIAL' ? v.individualVialPrice : v.standardCasePrice
   const hasPrice = activePrice != null
   const canPurchase = hasPrice && isPurchasable(availability)
 
@@ -104,7 +117,7 @@ export function ProductCard({ name, featured, category, description, imageUrl, b
       sellUnit: effectiveSellUnit,
       unitsPerSellUnit: effectiveSellUnit === 'INDIVIDUAL_VIAL' ? 1 : v.unitsPerCase,
     })
-    toast.success(`${name} ${v.size} (${effectiveSellUnit === 'INDIVIDUAL_VIAL' ? 'Single Vial' : 'Standard Case'}) added to cart`)
+    toast.success(`${name} ${v.size} (${professionalMode ? 'Professional Case' : effectiveSellUnit === 'INDIVIDUAL_VIAL' ? 'Single Vial' : 'Standard Case'}) added to cart`)
     openCart()
   }
 
@@ -251,17 +264,16 @@ export function ProductCard({ name, featured, category, description, imageUrl, b
 
           {hasPrice ? (
             <>
-              {/* Sell-unit selector — a real, purchasable choice, not just a
-                  reference number. Only rendered when this variant's
-                  individual-vial price is publicly enabled
-                  (lib/storefront/pricing.ts already withholds it entirely
-                  for a stored-but-disabled price). When it isn't enabled but
-                  Standard Case is available, a compact Special Request
-                  inquiry replaces the toggle instead of showing nothing
-                  (2026-08-15 fulfillment/availability sprint) -- sell-unit
-                  availability is a purchasing-format decision independent
-                  of Ready to Ship / Produced to Order above. */}
-              {canSelectIndividualVial ? (
+              {professionalMode ? (
+                <p className="text-[9px] font-bold uppercase tracking-[0.08em] text-[#7A2E17] bg-black/10 border border-black/15 rounded-full px-2.5 py-1 w-fit">
+                  Professional Access
+                </p>
+              ) : canSelectIndividualVial ? (
+                /* Sell-unit selector — a real, purchasable choice, not just a
+                    reference number. Only rendered when this variant's
+                    individual-vial price is publicly enabled
+                    (lib/storefront/pricing.ts already withholds it entirely
+                    for a stored-but-disabled price). */
                 <div className="flex gap-1.5">
                   {(['CASE_STANDARD', 'INDIVIDUAL_VIAL'] as const).map((unit) => (
                     <button
@@ -278,6 +290,12 @@ export function ProductCard({ name, featured, category, description, imageUrl, b
                   ))}
                 </div>
               ) : (
+                // When it isn't enabled but Standard Case is available, a
+                // compact Special Request inquiry replaces the toggle
+                // instead of showing nothing (2026-08-15 fulfillment/
+                // availability sprint). Never shown in Professional mode --
+                // Professional accounts don't purchase Individual Vial at
+                // all (section 7), so there's nothing to special-request.
                 <LeadCaptureTrigger
                   interestType="SINGLE_VIAL_SPECIAL_REQUEST"
                   productSlug={v.slug}
@@ -292,32 +310,39 @@ export function ProductCard({ name, featured, category, description, imageUrl, b
               )}
 
               {/* Selected-unit price */}
-              {/* Non-interactive price display -- background/text darkened
-                  for contrast against the now-light champagne-bronze card;
-                  not a button, so this is a contrast adjustment, not a
-                  button-color change. */}
-              <div className="bg-black/15 border border-black/20 rounded-lg p-3 flex items-center justify-between">
-                <div>
-                  <p className="text-[9px] font-bold text-[#241C10]/55 uppercase tracking-[0.07em] mb-0.5">
-                    {effectiveSellUnit === 'INDIVIDUAL_VIAL' ? 'Single Vial' : v.unitsPerCase ? `Case of ${v.unitsPerCase}` : 'Standard Case'}
-                  </p>
-                  <p className="font-heading text-[18px] font-extrabold text-[#241C10]">${activePrice}</p>
-                </div>
-                {canSelectIndividualVial && effectiveSellUnit === 'CASE_STANDARD' && (
-                  <div className="text-right">
-                    <p className="text-[9px] font-bold text-[#241C10]/55 uppercase tracking-[0.07em] mb-0.5">Per Vial</p>
-                    <p className="font-heading text-[14px] font-bold text-[#7A2E17]">${v.individualVialPrice}</p>
+              {professionalMode ? (
+                // Professional Access pricing reads as an account
+                // entitlement, not a coupon (section 7) -- Standard struck
+                // through, Professional prominent, no competing selectable
+                // options shown.
+                <div className="bg-[#D4AF37]/10 border border-[#D4AF37]/35 rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="text-[9px] font-bold text-[#241C10]/55 uppercase tracking-[0.07em]">
+                      {v.unitsPerCase ? `Professional Case of ${v.unitsPerCase}` : 'Professional Case'}
+                    </p>
+                    <span className="text-[11px] font-heading font-bold text-[#241C10]/40 line-through">${v.standardCasePrice}</span>
                   </div>
-                )}
-              </div>
-
-              {/* SPA case price — only ever populated for an admin-granted
-                  eligible signed-in customer, see lib/storefront/pricing.ts.
-                  Standard Case pricing only; not offered for Individual Vial. */}
-              {v.proCasePrice != null && effectiveSellUnit === 'CASE_STANDARD' && (
-                <div className="bg-[#D4AF37]/8 border border-[#D4AF37]/25 rounded-lg p-2.5 flex items-center justify-between">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.06em] text-[#D4AF37]">SPA Price</p>
-                  <p className="font-heading text-[15px] font-bold text-[#D4AF37]">${v.proCasePrice}</p>
+                  <p className="font-heading text-[20px] font-extrabold text-[#7A2E17]">${activePrice}</p>
+                  <p className="text-[9px] text-[#241C10]/50 mt-1">Ships in approximately 2 weeks — produced to order for Professional accounts.</p>
+                </div>
+              ) : (
+                // Non-interactive price display -- background/text darkened
+                // for contrast against the now-light champagne-bronze card;
+                // not a button, so this is a contrast adjustment, not a
+                // button-color change.
+                <div className="bg-black/15 border border-black/20 rounded-lg p-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-[9px] font-bold text-[#241C10]/55 uppercase tracking-[0.07em] mb-0.5">
+                      {effectiveSellUnit === 'INDIVIDUAL_VIAL' ? 'Single Vial' : v.unitsPerCase ? `Case of ${v.unitsPerCase}` : 'Standard Case'}
+                    </p>
+                    <p className="font-heading text-[18px] font-extrabold text-[#241C10]">${activePrice}</p>
+                  </div>
+                  {canSelectIndividualVial && effectiveSellUnit === 'CASE_STANDARD' && (
+                    <div className="text-right">
+                      <p className="text-[9px] font-bold text-[#241C10]/55 uppercase tracking-[0.07em] mb-0.5">Per Vial</p>
+                      <p className="font-heading text-[14px] font-bold text-[#7A2E17]">${v.individualVialPrice}</p>
+                    </div>
+                  )}
                 </div>
               )}
 

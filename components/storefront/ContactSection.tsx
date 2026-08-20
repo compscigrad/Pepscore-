@@ -1,11 +1,15 @@
-// Real contact/wholesale-inquiry form — replaces the old `#contact` anchor
+// Real contact/general-inquiry form — replaces the old `#contact` anchor
 // that scrolled to a static, non-clickable email address in the footer with
 // zero submission mechanism. Posts to app/api/contact/route.ts, which
 // routes through the centralized email system (lib/notifications/log.ts)
-// already used everywhere else in this app.
+// already used everywhere else in this app. Professional/wholesale pricing
+// inquiries are redirected to the dedicated Professional Access application
+// (2026-08-19 Professional Access sprint, section 9) rather than competing
+// with this generic form for the same intent.
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { ScientificBackground } from './ScientificBackground'
 
 type Status = 'idle' | 'submitting' | 'success' | 'error'
@@ -61,7 +65,8 @@ export function ContactSection() {
           <span className="font-heading text-[11px] font-bold tracking-[0.15em] uppercase text-[#D4AF37] mb-3 block">Get In Touch</span>
           <h2 className="font-heading text-[clamp(26px,4vw,38px)] font-bold text-white mb-3">Contact Us</h2>
           <p className="text-[16px] font-light text-white/55 max-w-[480px] mx-auto leading-[1.7]">
-            Questions, wholesale pricing, or a custom research quote — send us a message and our team will follow up.
+            Questions or a custom research quote — send us a message and our team will follow up. Looking for Professional Access pricing?{' '}
+            <Link href="/professional-access/apply" className="text-[#D4AF37] hover:underline">Apply here</Link> instead for the fastest review.
           </p>
           <div className="w-11 h-[3px] bg-gradient-to-r from-[#F6D365] via-[#D4AF37] to-[#C99A20] mx-auto mt-3.5 rounded-full" />
         </div>

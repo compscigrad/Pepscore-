@@ -70,6 +70,19 @@ export type MessageCategory =
   // never customer-visible. Routes through admin@, not orders@, since this
   // is a business/pricing decision record, not an order-fulfillment alert.
   | 'ADMIN_PRICING_REPORT'
+  // Professional Access (2026-08-19 Professional Access sprint) -- an
+  // account-entitlement flow, so customer-facing sends route the same way
+  // PORTAL_INVITE does (Pepscore Lab / admin@), not orders@ or contact@.
+  | 'PROFESSIONAL_ACCESS_APPLICATION_RECEIVED' // customer-facing: acknowledges submission
+  | 'PROFESSIONAL_ACCESS_MORE_INFO_REQUESTED' // customer-facing: admin asked for more detail
+  | 'PROFESSIONAL_ACCESS_APPROVED' // customer-facing
+  | 'PROFESSIONAL_ACCESS_REJECTED' // customer-facing
+  | 'PROFESSIONAL_ACCESS_INVITE' // customer-facing: admin-initiated early-launch invite
+  | 'PROFESSIONAL_ACCESS_INVITE_REMINDER' // customer-facing
+  | 'PROFESSIONAL_ACCESS_REVOKED' // customer-facing
+  // Admin-facing: a new application landed in the review queue -- same
+  // "courtesy on top of the durably-recorded row" role LEAD_CAPTURED plays.
+  | 'PROFESSIONAL_ACCESS_APPLICATION_ALERT'
 
 interface RoutedSender {
   fromName: string
@@ -115,6 +128,15 @@ const ROUTING: Record<MessageCategory, RoutedSender> = {
   ADMIN_INTAKE_ALERT: { fromName: 'Pepscore Orders', replyTo: ORDERS_EMAIL },
   ADMIN_DELIVERY_FAILURE_ALERT: { fromName: 'Pepscore Orders', replyTo: ORDERS_EMAIL },
   ADMIN_PRICING_REPORT: { fromName: 'Pepscore Lab', replyTo: ADMIN_EMAIL },
+
+  PROFESSIONAL_ACCESS_APPLICATION_RECEIVED: { fromName: 'Pepscore Lab', replyTo: ADMIN_EMAIL },
+  PROFESSIONAL_ACCESS_MORE_INFO_REQUESTED: { fromName: 'Pepscore Lab', replyTo: ADMIN_EMAIL },
+  PROFESSIONAL_ACCESS_APPROVED: { fromName: 'Pepscore Lab', replyTo: ADMIN_EMAIL },
+  PROFESSIONAL_ACCESS_REJECTED: { fromName: 'Pepscore Lab', replyTo: ADMIN_EMAIL },
+  PROFESSIONAL_ACCESS_INVITE: { fromName: 'Pepscore Lab', replyTo: ADMIN_EMAIL },
+  PROFESSIONAL_ACCESS_INVITE_REMINDER: { fromName: 'Pepscore Lab', replyTo: ADMIN_EMAIL },
+  PROFESSIONAL_ACCESS_REVOKED: { fromName: 'Pepscore Lab', replyTo: ADMIN_EMAIL },
+  PROFESSIONAL_ACCESS_APPLICATION_ALERT: { fromName: 'Pepscore', replyTo: CONTACT_EMAIL },
 }
 
 export interface ResolvedSender {
@@ -165,6 +187,13 @@ const CUSTOMER_VISIBLE_CATEGORIES: ReadonlySet<MessageCategory> = new Set<Messag
   'SUPPORT_REQUEST_RECEIVED',
   'FIRST_ORDER_OFFER_CODE',
   'FIRST_ORDER_OFFER_REMINDER',
+  'PROFESSIONAL_ACCESS_APPLICATION_RECEIVED',
+  'PROFESSIONAL_ACCESS_MORE_INFO_REQUESTED',
+  'PROFESSIONAL_ACCESS_APPROVED',
+  'PROFESSIONAL_ACCESS_REJECTED',
+  'PROFESSIONAL_ACCESS_INVITE',
+  'PROFESSIONAL_ACCESS_INVITE_REMINDER',
+  'PROFESSIONAL_ACCESS_REVOKED',
 ])
 
 export function isCustomerVisibleCategory(category: string): boolean {

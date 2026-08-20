@@ -26,7 +26,7 @@ import { InvoiceArchiveButton } from '@/components/invoices/InvoiceArchiveButton
 import { card, mutedText, sectionHeading, pillPrimary } from '@/components/invoices/theme'
 import { PortalAccessSection } from '@/components/admin/PortalAccessSection'
 import { CustomerPortalStatusSection } from '@/components/admin/CustomerPortalStatusSection'
-import { SpaEligibilitySection } from '@/components/admin/SpaEligibilitySection'
+import { ProfessionalAccessSection } from '@/components/admin/ProfessionalAccessSection'
 import { computePortalAdoptionOverview } from '@/lib/portal/adoptionStatus'
 import { AccessHistorySection } from '@/components/admin/AccessHistorySection'
 import { LocalTimestamp } from '@/components/admin/LocalTimestamp'
@@ -431,7 +431,7 @@ export default async function CustomerProfilePage({ params, searchParams }: Page
 
         <PortalAccessSection customerId={customer.id} hasEmail={Boolean(customer.email)} />
 
-        <SpaEligibilitySection customerId={customer.id} />
+        <ProfessionalAccessSection customerId={customer.id} />
 
         {customer.userId ? <AccessHistorySection customerId={customer.id} /> : null}
 

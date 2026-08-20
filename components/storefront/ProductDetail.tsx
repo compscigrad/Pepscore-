@@ -106,14 +106,19 @@ export function ProductDetail({
   // as a stale selection on a case-only sibling.
   const [sellUnit, setSellUnit] = useState<SellUnit>('CASE_STANDARD')
 
-  const canSelectIndividualVial = price?.individualVialPrice != null
-  const effectiveSellUnit: SellUnit = canSelectIndividualVial ? sellUnit : 'CASE_STANDARD'
+  // Professional purchasing experience (section 7) -- same rule as
+  // ProductCard: true only when this visitor is Professional-eligible AND
+  // this exact product/strength has a Professional price.
+  const professionalMode = price?.proCasePrice != null
+  const canSelectIndividualVial = !professionalMode && price?.individualVialPrice != null
+  const effectiveSellUnit: SellUnit = professionalMode ? 'CASE_PRO' : canSelectIndividualVial ? sellUnit : 'CASE_STANDARD'
   // Fulfillment state for the sell unit actually selected right now
   // (2026-08-15) -- must stay reactive as the customer toggles Standard
   // Case / Single Vial, never a single value fixed to the variant. Same
-  // pattern as ProductCard.
+  // pattern as ProductCard. Professional Case shares Standard Case's
+  // physical stock pool, so it reads caseAvailability too.
   const availability = effectiveSellUnit === 'INDIVIDUAL_VIAL' ? individualVialAvailability : caseAvailability
-  const activePrice = price == null ? null : effectiveSellUnit === 'INDIVIDUAL_VIAL' ? price.individualVialPrice : price.standardCasePrice
+  const activePrice = price == null ? null : professionalMode ? price.proCasePrice : effectiveSellUnit === 'INDIVIDUAL_VIAL' ? price.individualVialPrice : price.standardCasePrice
   const canPurchase = activePrice != null && isPurchasable(availability)
 
   // Fired once per page load, not per render -- deliberately excludes
@@ -149,7 +154,7 @@ export function ProductDetail({
       sellUnit: effectiveSellUnit,
       unitsPerSellUnit: effectiveSellUnit === 'INDIVIDUAL_VIAL' ? 1 : price.unitsPerCase ?? 10,
     })
-    toast.success(`${name} ${size} (${effectiveSellUnit === 'INDIVIDUAL_VIAL' ? 'Single Vial' : 'Standard Case'}) added to cart`)
+    toast.success(`${name} ${size} (${professionalMode ? 'Professional Case' : effectiveSellUnit === 'INDIVIDUAL_VIAL' ? 'Single Vial' : 'Standard Case'}) added to cart`)
     openCart()
   }
 
@@ -217,15 +222,15 @@ export function ProductDetail({
           <div className="bg-white/[0.03] border border-[#D4AF37]/15 rounded-2xl p-6 mb-6">
             {price ? (
               <>
-                {/* Sell-unit selector -- only rendered when this exact
-                    variant's individual-vial price is publicly enabled
-                    (lib/storefront/pricing.ts withholds it entirely for a
-                    stored-but-disabled price), same gate ProductCard uses.
-                    When it isn't enabled but Standard Case is available, a
-                    compact Special Request inquiry replaces the toggle
-                    instead of showing nothing (2026-08-15 fulfillment/
-                    availability sprint) -- same parity as ProductCard. */}
-                {canSelectIndividualVial ? (
+                {professionalMode ? (
+                  <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#D4AF37] bg-white/[0.04] border border-[#D4AF37]/25 rounded-full px-3 py-1 mb-4 w-fit">
+                    Professional Access
+                  </p>
+                ) : canSelectIndividualVial ? (
+                  /* Sell-unit selector -- only rendered when this exact
+                      variant's individual-vial price is publicly enabled
+                      (lib/storefront/pricing.ts withholds it entirely for a
+                      stored-but-disabled price), same gate ProductCard uses. */
                   <div className="flex gap-2 mb-4">
                     {(['CASE_STANDARD', 'INDIVIDUAL_VIAL'] as const).map((unit) => (
                       <button
@@ -242,6 +247,11 @@ export function ProductDetail({
                     ))}
                   </div>
                 ) : (
+                  // When it isn't enabled but Standard Case is available, a
+                  // compact Special Request inquiry replaces the toggle
+                  // instead of showing nothing (2026-08-15 fulfillment/
+                  // availability sprint) -- same parity as ProductCard.
+                  // Never shown in Professional mode (section 7).
                   <div className="mb-4">
                     <LeadCaptureTrigger
                       interestType="SINGLE_VIAL_SPECIAL_REQUEST"
@@ -257,29 +267,35 @@ export function ProductDetail({
                   </div>
                 )}
 
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <p className="text-[10px] font-bold text-white/40 uppercase tracking-[0.07em] mb-1">
-                      {effectiveSellUnit === 'INDIVIDUAL_VIAL' ? 'Single Vial' : price.unitsPerCase ? `Standard Case — Case of ${price.unitsPerCase}` : 'Standard Case'}
-                    </p>
-                    <p className="font-heading text-[28px] font-extrabold text-white">${activePrice}</p>
-                  </div>
-                  {canSelectIndividualVial && effectiveSellUnit === 'CASE_STANDARD' && (
-                    <div className="text-right">
-                      <p className="text-[10px] font-bold text-white/40 uppercase tracking-[0.07em] mb-1">Per Vial</p>
-                      <p className="font-heading text-[20px] font-bold text-[#D4AF37]">${price.individualVialPrice}</p>
+                {professionalMode ? (
+                  // Professional Access pricing reads as an account
+                  // entitlement, not a coupon (section 7) -- Standard struck
+                  // through, Professional prominent, no competing selectable
+                  // options shown.
+                  <div className="bg-[#D4AF37]/10 border border-[#D4AF37]/35 rounded-xl p-4 mb-4">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <p className="text-[10px] font-bold text-white/40 uppercase tracking-[0.07em]">
+                        {price.unitsPerCase ? `Professional Case — Case of ${price.unitsPerCase}` : 'Professional Case'}
+                      </p>
+                      <span className="text-[13px] font-heading font-bold text-white/35 line-through">${price.standardCasePrice}</span>
                     </div>
-                  )}
-                </div>
-
-                {/* SPA case price — only ever populated for an admin-granted
-                    eligible signed-in customer, see lib/storefront/pricing.ts.
-                    Standard Case pricing only; not offered for Individual
-                    Vial, same as ProductCard. */}
-                {price.proCasePrice != null && effectiveSellUnit === 'CASE_STANDARD' && (
-                  <div className="bg-[#D4AF37]/8 border border-[#D4AF37]/25 rounded-lg p-3 flex items-center justify-between mb-4">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#D4AF37]">SPA Price</p>
-                    <p className="font-heading text-[18px] font-bold text-[#D4AF37]">${price.proCasePrice}</p>
+                    <p className="font-heading text-[32px] font-extrabold text-[#D4AF37]">${activePrice}</p>
+                    <p className="text-[11px] text-white/45 mt-1.5">Ships in approximately 2 weeks — produced to order for Professional accounts.</p>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <p className="text-[10px] font-bold text-white/40 uppercase tracking-[0.07em] mb-1">
+                        {effectiveSellUnit === 'INDIVIDUAL_VIAL' ? 'Single Vial' : price.unitsPerCase ? `Standard Case — Case of ${price.unitsPerCase}` : 'Standard Case'}
+                      </p>
+                      <p className="font-heading text-[28px] font-extrabold text-white">${activePrice}</p>
+                    </div>
+                    {canSelectIndividualVial && effectiveSellUnit === 'CASE_STANDARD' && (
+                      <div className="text-right">
+                        <p className="text-[10px] font-bold text-white/40 uppercase tracking-[0.07em] mb-1">Per Vial</p>
+                        <p className="font-heading text-[20px] font-bold text-[#D4AF37]">${price.individualVialPrice}</p>
+                      </div>
+                    )}
                   </div>
                 )}
 
