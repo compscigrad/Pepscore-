@@ -12,6 +12,21 @@ import type { ProductCardProps } from '@/components/storefront/ProductCard'
 import { getStorefrontPrice } from './pricing'
 import { getStorefrontAvailability } from './availability'
 import { resolveProductImage } from './productImages'
+import type { SellUnit } from '@/lib/pricing/sellUnits'
+
+const SELL_UNITS: SellUnit[] = ['CASE_STANDARD', 'CASE_PRO', 'CASE_BULK', 'INDIVIDUAL_VIAL']
+
+// Deliberately NOT imported from lib/pricing/preferredPricing.ts -- that
+// module also exports auth()-using, Clerk-server-only functions
+// (getCurrentCustomerAllPreferredPrices), and importing even one unrelated
+// named export from it pulls its entire dependency graph into any bundle
+// that imports THIS file, including the admin Product Master client
+// component (which imports groupByName.ts's MERCHANDISING_LABEL) -- broke
+// the production build with "'server-only' cannot be imported from a
+// Client Component module" until this one-line lookup was inlined instead.
+function preferredPriceFromRecord(record: Record<string, number>, productId: string, sellUnit: string): number | null {
+  return record[`${productId}:${sellUnit}`] ?? null
+}
 
 // Customer-facing copy for the admin-controlled merchandising status
 // (2026-08-15) -- the ONLY place this enum's display text is defined, so
@@ -24,10 +39,21 @@ export const MERCHANDISING_LABEL: Record<Product['merchandisingStatus'], string 
   BEST_SELLER: 'Best Seller',
 }
 
-export function groupByName(rows: Product[], options: { proEligible?: boolean } = {}): ProductCardProps[] {
+export function groupByName(rows: Product[], options: { proEligible?: boolean; preferredPrices?: Record<string, number> } = {}): ProductCardProps[] {
   const map = new Map<string, ProductCardProps>()
   for (const p of rows) {
     const price = getStorefrontPrice(p, options)
+    // Customer Preferred Pricing (Price Match sprint, 2026-08-20) -- checked
+    // per sell unit so ProductCard/ProductDetail can display it whichever
+    // tier the customer actually has it toggled to (Standard/Professional/
+    // Bulk/Individual Vial), never assumed to be Standard Case only.
+    const preferredPricesBySellUnit: Partial<Record<SellUnit, number>> = {}
+    if (options.preferredPrices) {
+      for (const unit of SELL_UNITS) {
+        const preferred = preferredPriceFromRecord(options.preferredPrices, p.id, unit)
+        if (preferred != null) preferredPricesBySellUnit[unit] = preferred
+      }
+    }
     const variant = {
       id: p.id,
       slug: p.slug,
@@ -36,6 +62,7 @@ export function groupByName(rows: Product[], options: { proEligible?: boolean } 
       unitsPerCase: price?.unitsPerCase ?? null,
       individualVialPrice: price?.individualVialPrice ?? null,
       proCasePrice: price?.proCasePrice ?? null,
+      preferredPricesBySellUnit,
       // Sell-unit-level fulfillment (2026-08-15) -- Standard Case and
       // Single Vial are independent physical-stock pools (e.g. Semaglutide
       // 30mg: vial Ready to Ship, case Produced to Order), so this is no

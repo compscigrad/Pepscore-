@@ -13,6 +13,8 @@ import { getStorefrontPrice } from '@/lib/storefront/pricing'
 import { getStorefrontAvailability } from '@/lib/storefront/availability'
 import { resolveProductImage } from '@/lib/storefront/productImages'
 import { getCurrentCustomerProEligible } from '@/lib/storefront/professionalAccess'
+import { getCurrentCustomerAllPreferredPrices, preferredPriceRecordFor } from '@/lib/pricing/preferredPricing'
+import type { SellUnit } from '@/lib/pricing/sellUnits'
 import { productSchema, productGroupSchema, breadcrumbSchema, faqSchema } from '@/lib/storefront/structuredData'
 
 export const revalidate = 60
@@ -81,7 +83,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
   const product = await getProduct(slug)
   if (!product) notFound()
 
-  const [siblings, relatedProductRows, proEligible] = await Promise.all([
+  const [siblings, relatedProductRows, proEligible, allPreferredPrices] = await Promise.all([
     prisma.product.findMany({
       where: { name: product.name, pricingStatus: { not: 'INACTIVE' }, slug: { not: product.slug } },
       select: { slug: true, size: true },
@@ -94,7 +96,17 @@ export default async function ProductDetailPage({ params }: PageProps) {
         })
       : Promise.resolve([]),
     getCurrentCustomerProEligible(),
+    getCurrentCustomerAllPreferredPrices(),
   ])
+
+  // Customer Preferred Pricing for this exact product, keyed by sell unit --
+  // same shape ProductDetail/ProductCard expect (Price Match sprint,
+  // 2026-08-20).
+  const preferredPricesBySellUnit: Partial<Record<SellUnit, number>> = {}
+  for (const unit of ['CASE_STANDARD', 'CASE_PRO', 'CASE_BULK', 'INDIVIDUAL_VIAL'] as const) {
+    const preferred = preferredPriceRecordFor(allPreferredPrices, product.id, unit)
+    if (preferred != null) preferredPricesBySellUnit[unit] = preferred
+  }
 
   const imageUrl = resolveProductImage(product.name, product.imageUrl)
   const imageAlt = product.imageAltText || `${product.name} ${product.size}`
@@ -161,6 +173,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
         relatedProducts={relatedProductRows}
         faq={faq}
         sku={product.sku}
+        preferredPricesBySellUnit={preferredPricesBySellUnit}
       />
       <Footer />
     </>

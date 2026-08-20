@@ -12,11 +12,26 @@ import { card, mutedText, sectionHeading, pillPrimary, pillOutline, pillSecondar
 
 type RequestStatus = 'PENDING' | 'MORE_INFO_REQUESTED' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN'
 type AuthorizationType = 'ONE_PURCHASE' | 'UNTIL_DATE' | 'UNTIL_REVOKED'
+type ProofDeliveryStatus = 'NONE' | 'SENT' | 'FAILED' | 'RECEIVED_EXTERNALLY'
 
 const REJECTION_REASONS = ['PRICE_ALREADY_COMPETITIVE', 'COMPETITOR_NOT_VERIFIABLE', 'PRODUCT_NOT_COMPARABLE', 'INSUFFICIENT_PROOF', 'OUTSIDE_POLICY', 'DUPLICATE_REQUEST', 'OTHER'] as const
 
+const PROOF_STATUS_LABEL: Record<ProofDeliveryStatus, string> = {
+  NONE: 'No supporting file provided',
+  SENT: 'Provided — delivered to Admin email',
+  FAILED: 'Proof email delivery failed',
+  RECEIVED_EXTERNALLY: 'Proof received externally',
+}
+const PROOF_STATUS_CLASS: Record<ProofDeliveryStatus, string> = {
+  NONE: 'text-white/40',
+  SENT: 'text-green-400',
+  FAILED: 'text-red-400',
+  RECEIVED_EXTERNALLY: 'text-blue-300',
+}
+
 interface RequestRow {
   id: string
+  requestNumber: string
   contactName: string
   contactEmail: string
   contactPhone: string | null
@@ -28,6 +43,10 @@ interface RequestRow {
   competitorDeliveredPrice: number
   proofUrl: string | null
   proofNote: string | null
+  proofProvided: boolean
+  proofFileName: string | null
+  proofFileSize: number | null
+  proofDeliveryStatus: ProofDeliveryStatus
   customerNote: string | null
   status: RequestStatus
   rejectionReason: string | null
@@ -206,6 +225,21 @@ export function PriceMatchQueue() {
     }
   }
 
+  async function markReceivedExternally(row: RequestRow) {
+    setBusyId(row.id)
+    try {
+      const res = await fetch(`/api/admin/price-match/${row.id}/proof-received-externally`, { method: 'PATCH' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed to update')
+      toast.success('Proof marked as received externally')
+      await load()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   return (
     <div className={`${card} p-6`}>
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
@@ -239,6 +273,7 @@ export function PriceMatchQueue() {
                 <div className="flex items-start justify-between flex-wrap gap-2 mb-2">
                   <div>
                     <p className="font-heading font-bold text-white">{row.product.name} ({row.product.size}) · {row.sellUnit.replace(/_/g, ' ')}</p>
+                    <p className="text-[11px] text-white/40 font-mono">{row.requestNumber}</p>
                     <p className="text-[13px] text-white/60">{row.contactName} · {row.contactEmail}{row.contactPhone ? ` · ${row.contactPhone}` : ''}</p>
                   </div>
                   <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide ${STATUS_BADGE[row.status]}`}>
@@ -250,8 +285,21 @@ export function PriceMatchQueue() {
                   <div><dt className="text-white/40">Competitor</dt><dd className="text-white/80">{row.competitorName}{row.competitorUrl ? ` (${row.competitorUrl})` : ''}</dd></div>
                   <div><dt className="text-white/40">Their delivered price</dt><dd className="text-white/80">${row.competitorDeliveredPrice.toFixed(2)}</dd></div>
                   <div><dt className="text-white/40">Our current price</dt><dd className="text-white/80">{currentPrice != null ? `$${currentPrice.toFixed(2)}` : 'n/a'}</dd></div>
-                  {row.proofUrl && (<div><dt className="text-white/40">Proof</dt><dd className="text-white/80">{row.proofUrl}</dd></div>)}
+                  {row.proofUrl && (<div><dt className="text-white/40">Proof link</dt><dd className="text-white/80">{row.proofUrl}</dd></div>)}
                 </dl>
+
+                <div className="flex items-center gap-2 mb-3 flex-wrap">
+                  <span className={`text-[12px] font-semibold ${PROOF_STATUS_CLASS[row.proofDeliveryStatus]}`}>
+                    PROOF — {PROOF_STATUS_LABEL[row.proofDeliveryStatus]}
+                    {row.proofFileName ? ` (${row.proofFileName}${row.proofFileSize ? `, ${Math.round(row.proofFileSize / 1024)}KB` : ''})` : ''}
+                  </span>
+                  {(row.proofDeliveryStatus === 'NONE' || row.proofDeliveryStatus === 'FAILED') && (
+                    <button onClick={() => markReceivedExternally(row)} disabled={busyId === row.id} className="text-[11px] text-[#D4AF37] hover:underline">
+                      Mark Received Externally
+                    </button>
+                  )}
+                </div>
+
                 {row.customerNote && <p className="text-[13px] text-white/70 mb-3 whitespace-pre-line">{row.customerNote}</p>}
                 {row.reviewNotes && <p className="text-[12px] text-white/40 mb-3">Review notes: {row.reviewNotes}</p>}
                 {row.authorization && (

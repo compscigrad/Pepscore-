@@ -59,6 +59,11 @@ export interface ProductDetailProps {
   relatedProducts: RelatedProduct[]
   faq: FaqEntry[]
   sku: string | null
+  // Customer Preferred Pricing (Price Match sprint, 2026-08-20) -- same
+  // shape and same display-guard rule as ProductCard.ProductVariant's
+  // preferredPricesBySellUnit. Purely informational; checkout independently
+  // re-validates and applies (or doesn't) the real authorization.
+  preferredPricesBySellUnit?: Partial<Record<SellUnit, number>>
 }
 
 // Integrated metallic frame (2026-08-17 black-frame reduction sprint,
@@ -87,6 +92,7 @@ export function ProductDetail({
   availabilityMessageOverride,
   relatedStrengths,
   relatedProducts,
+  preferredPricesBySellUnit,
   faq,
   sku,
 }: ProductDetailProps) {
@@ -120,6 +126,12 @@ export function ProductDetail({
   const availability = effectiveSellUnit === 'INDIVIDUAL_VIAL' ? individualVialAvailability : caseAvailability
   const activePrice = price == null ? null : professionalMode ? price.proCasePrice : effectiveSellUnit === 'INDIVIDUAL_VIAL' ? price.individualVialPrice : price.standardCasePrice
   const canPurchase = activePrice != null && isPurchasable(availability)
+  // Customer Preferred Pricing -- same display-guard rule as ProductCard
+  // (only shown when strictly better than the price already displayed).
+  // Purely informational; checkout independently re-resolves and applies
+  // the real authorization regardless of what this page shows.
+  const rawPreferredPrice = preferredPricesBySellUnit?.[effectiveSellUnit] ?? null
+  const preferredPrice = rawPreferredPrice != null && activePrice != null && rawPreferredPrice < activePrice ? rawPreferredPrice : null
 
   // Fired once per page load, not per render -- deliberately excludes
   // `category`/`availability` etc. from the dependency array since this
@@ -267,7 +279,22 @@ export function ProductDetail({
                   </div>
                 )}
 
-                {professionalMode ? (
+                {preferredPrice != null ? (
+                  // Customer Preferred Pricing -- final precedence, same
+                  // rule the canonical engine enforces server-side (never
+                  // stacks, only ever wins when strictly better). Whatever
+                  // price would otherwise show is struck through above it.
+                  <div className="bg-[#D4AF37]/10 border border-[#D4AF37]/35 rounded-xl p-4 mb-4">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <p className="text-[10px] font-bold text-white/40 uppercase tracking-[0.07em]">
+                        {professionalMode ? (price.unitsPerCase ? `Professional Case — Case of ${price.unitsPerCase}` : 'Professional Case') : effectiveSellUnit === 'INDIVIDUAL_VIAL' ? 'Single Vial' : price.unitsPerCase ? `Standard Case — Case of ${price.unitsPerCase}` : 'Standard Case'}
+                      </p>
+                      <span className="text-[13px] font-heading font-bold text-white/35 line-through">${activePrice}</span>
+                    </div>
+                    <p className="text-[10px] font-bold text-[#D4AF37] uppercase tracking-[0.07em] mb-1">Your Preferred Price</p>
+                    <p className="font-heading text-[32px] font-extrabold text-[#D4AF37]">${preferredPrice}</p>
+                  </div>
+                ) : professionalMode ? (
                   // Professional Access pricing reads as an account
                   // entitlement, not a coupon (section 7) -- Standard struck
                   // through, Professional prominent, no competing selectable

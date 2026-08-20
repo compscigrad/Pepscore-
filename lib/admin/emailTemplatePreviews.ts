@@ -92,6 +92,18 @@ import {
   professionalAccessMoreInfoRequestedSubject,
   buildProfessionalAccessMoreInfoRequestedHtml,
 } from '@/emails/ProfessionalAccess'
+import {
+  priceMatchRequestReceivedSubject,
+  buildPriceMatchRequestReceivedHtml,
+  priceMatchApprovedOneTimeSubject,
+  buildPriceMatchApprovedOneTimeHtml,
+  priceMatchApprovedPersistentSubject,
+  buildPriceMatchApprovedPersistentHtml,
+  priceMatchRejectedSubject,
+  buildPriceMatchRejectedHtml,
+  priceMatchRequestAlertSubject,
+  buildPriceMatchRequestAlertHtml,
+} from '@/emails/PriceMatch'
 
 export interface EmailTemplatePreview {
   key: string
@@ -599,6 +611,79 @@ function build(): EmailTemplatePreview[] {
         businessName: 'Rivera Research Group',
         reviewNotes: 'Could you confirm your organization\'s registered business address?',
       }),
+    },
+    // --- Price Match Guarantee (2026-08-20 sprint) --------------------------
+    // The admin alert preview demonstrates the requestNumber/deep-link/
+    // proof-attachment-indicator layout (section 12's explicit "so the owner
+    // can see request ID, summary, Admin deep-link, attachment indicator")
+    // -- this preview never attaches a real file and no real email sends.
+    {
+      key: 'price-match-request-alert-with-proof',
+      label: 'Price Match: New Request Alert (with proof attached)',
+      category: 'Price Match',
+      subject: priceMatchRequestAlertSubject({
+        requestNumber: 'PMR-202608-A7K3M',
+        contactName: 'Jordan Rivera',
+        contactEmail: 'jordan@example.com',
+        productName: 'Tesamorelin',
+        productSize: '10mg',
+        competitorName: 'Example Peptide Co.',
+        competitorDeliveredPrice: 598,
+        currentPrice: 625,
+        isNewCustomer: false,
+        submittedAt: new Date('2026-08-20T14:32:00Z'),
+        hasProofAttachment: true,
+        reviewUrl: `${SAMPLE_APP_URL}/admin/price-match/sample-request-id`,
+      }),
+      html: buildPriceMatchRequestAlertHtml({
+        requestNumber: 'PMR-202608-A7K3M',
+        contactName: 'Jordan Rivera',
+        contactEmail: 'jordan@example.com',
+        productName: 'Tesamorelin',
+        productSize: '10mg',
+        competitorName: 'Example Peptide Co.',
+        competitorDeliveredPrice: 598,
+        currentPrice: 625,
+        isNewCustomer: false,
+        submittedAt: new Date('2026-08-20T14:32:00Z'),
+        hasProofAttachment: true,
+        reviewUrl: `${SAMPLE_APP_URL}/admin/price-match/sample-request-id`,
+      }),
+    },
+    {
+      key: 'price-match-request-received',
+      label: 'Price Match: Request Received',
+      category: 'Price Match',
+      subject: priceMatchRequestReceivedSubject(),
+      html: buildPriceMatchRequestReceivedHtml({ contactName: 'Jordan', productName: 'Tesamorelin', productSize: '10mg' }),
+    },
+    {
+      key: 'price-match-approved-one-time',
+      label: 'Price Match: Approved (One-Time)',
+      category: 'Price Match',
+      subject: priceMatchApprovedOneTimeSubject(),
+      html: buildPriceMatchApprovedOneTimeHtml({ contactName: 'Jordan', productName: 'Tesamorelin', productSize: '10mg', authorizedPrice: 598, storefrontUrl: `${SAMPLE_APP_URL}/products/tesamorelin-10mg` }),
+    },
+    {
+      key: 'price-match-approved-persistent',
+      label: 'Price Match: Approved (Ongoing Preferred Price)',
+      category: 'Price Match',
+      subject: priceMatchApprovedPersistentSubject(),
+      html: buildPriceMatchApprovedPersistentHtml({
+        contactName: 'Jordan',
+        productName: 'Tesamorelin',
+        productSize: '10mg',
+        authorizedPrice: 598,
+        storefrontUrl: `${SAMPLE_APP_URL}/products/tesamorelin-10mg`,
+        expiresAt: null,
+      }),
+    },
+    {
+      key: 'price-match-rejected',
+      label: 'Price Match: Rejected',
+      category: 'Price Match',
+      subject: priceMatchRejectedSubject(),
+      html: buildPriceMatchRejectedHtml({ contactName: 'Jordan', productName: 'Tesamorelin', reviewNotes: 'Our current price is already lower than the delivered price found.' }),
     },
   ]
 }

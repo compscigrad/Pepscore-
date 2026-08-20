@@ -3,10 +3,31 @@
 // See lib/priceMatch/requests.ts for the Customer-linking + review-queue
 // logic; the database row this creates is the system of record, never the
 // admin alert email this also sends.
+//
+// Accepts multipart/form-data (not JSON) -- the form always posts a
+// FormData body, whether or not a proof file is attached, since a File can
+// only travel inside multipart. Text fields arrive as strings regardless of
+// their real type (numbers, the consent checkbox), so they're explicitly
+// coerced here before validation -- the zod schema itself still expects
+// real types, matching the JSON-based schema every other public intake
+// endpoint uses.
 import { NextRequest, NextResponse } from 'next/server'
 import { priceMatchRequestSchema, isHoneypotTripped } from '@/lib/priceMatch/validation'
-import { submitPriceMatchRequest, PriceMatchError } from '@/lib/priceMatch/requests'
+import { submitPriceMatchRequest, PriceMatchError, type SubmitPriceMatchRequestProofFile } from '@/lib/priceMatch/requests'
+import { validateProofFile, ProofFileValidationError } from '@/lib/priceMatch/proofUpload'
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
+
+function stringField(formData: FormData, key: string): string | undefined {
+  const value = formData.get(key)
+  return typeof value === 'string' && value.length > 0 ? value : undefined
+}
+
+function numberField(formData: FormData, key: string): number | undefined {
+  const raw = stringField(formData, key)
+  if (raw === undefined) return undefined
+  const n = Number(raw)
+  return Number.isFinite(n) ? n : NaN // NaN deliberately passed through so zod's .finite() rejects it with a real error, not a silent undefined
+}
 
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req)
@@ -15,8 +36,33 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Too many attempts — please wait a few minutes and try again.' }, { status: 429 })
   }
 
-  const body = await req.json().catch(() => null)
-  const parsed = priceMatchRequestSchema.safeParse(body)
+  const formData = await req.formData().catch(() => null)
+  if (!formData) {
+    return NextResponse.json({ error: 'Please check the form and try again.' }, { status: 400 })
+  }
+
+  const payload = {
+    contactName: stringField(formData, 'contactName'),
+    contactEmail: stringField(formData, 'contactEmail'),
+    contactPhone: stringField(formData, 'contactPhone'),
+    productId: stringField(formData, 'productId'),
+    sellUnit: stringField(formData, 'sellUnit'),
+    competitorName: stringField(formData, 'competitorName'),
+    competitorUrl: stringField(formData, 'competitorUrl'),
+    competitorPrice: numberField(formData, 'competitorPrice'),
+    competitorShippingCost: numberField(formData, 'competitorShippingCost'),
+    competitorDeliveredPrice: numberField(formData, 'competitorDeliveredPrice'),
+    proofUrl: stringField(formData, 'proofUrl'),
+    proofNote: stringField(formData, 'proofNote'),
+    customerNote: stringField(formData, 'customerNote'),
+    sourcePage: stringField(formData, 'sourcePage'),
+    referrer: stringField(formData, 'referrer') ?? null,
+    landingUrl: stringField(formData, 'landingUrl') ?? null,
+    consent: stringField(formData, 'consent') === 'true',
+    website2: stringField(formData, 'website2'),
+  }
+
+  const parsed = priceMatchRequestSchema.safeParse(payload)
   if (!parsed.success) {
     return NextResponse.json({ error: 'Please check the form and try again.', issues: parsed.error.issues }, { status: 400 })
   }
@@ -24,6 +70,26 @@ export async function POST(req: NextRequest) {
 
   if (isHoneypotTripped(data)) {
     return NextResponse.json({ ok: true })
+  }
+
+  // Proof file is entirely optional and never mutually exclusive with
+  // competitorUrl -- a submission may include either, both, or neither.
+  // Validated (real content-sniffed, size-capped) before the request is
+  // ever created; an invalid file rejects the whole submission with a
+  // clear message rather than silently dropping it and proceeding.
+  let proofFile: SubmitPriceMatchRequestProofFile | undefined
+  const uploaded = formData.get('proofFile')
+  if (uploaded instanceof File && uploaded.size > 0) {
+    try {
+      const buffer = Buffer.from(await uploaded.arrayBuffer())
+      const validated = validateProofFile(uploaded.name, uploaded.type, buffer)
+      proofFile = { fileName: validated.fileName, mimeType: validated.mimeType, buffer: validated.buffer }
+    } catch (err) {
+      if (err instanceof ProofFileValidationError) {
+        return NextResponse.json({ error: err.message }, { status: 400 })
+      }
+      throw err
+    }
   }
 
   try {
@@ -40,6 +106,7 @@ export async function POST(req: NextRequest) {
       competitorDeliveredPrice: data.competitorDeliveredPrice,
       proofUrl: data.proofUrl,
       proofNote: data.proofNote,
+      proofFile,
       customerNote: data.customerNote,
       sourcePage: data.sourcePage,
       referrer: data.referrer,

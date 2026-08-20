@@ -15,6 +15,7 @@ import { getAttribution } from '@/lib/storefront/attribution'
 import { trackEvent } from '@/lib/analytics/track'
 import { AnalyticsEvent } from '@/lib/analytics/events'
 import { SELL_UNIT_DISPLAY_LABEL, type SellUnit } from '@/lib/pricing/sellUnits'
+import { ALLOWED_PROOF_MIME_TYPES, MAX_PROOF_FILE_SIZE_BYTES } from '@/lib/priceMatch/proofUpload'
 
 type Status = 'idle' | 'submitting' | 'success' | 'error'
 
@@ -45,6 +46,10 @@ export function PriceMatchRequestForm({ products, initialProductId }: PriceMatch
   const [competitorPrice, setCompetitorPrice] = useState('')
   const [competitorShippingCost, setCompetitorShippingCost] = useState('')
   const [proofUrl, setProofUrl] = useState('')
+  // A competitor URL and an uploaded file are never mutually exclusive --
+  // a submission may include either, both, or neither.
+  const [proofFile, setProofFile] = useState<File | null>(null)
+  const [proofFileError, setProofFileError] = useState<string | null>(null)
   const [customerNote, setCustomerNote] = useState('')
   const [consent, setConsent] = useState(false)
   // Honeypot -- visually hidden, never seen by a real visitor.
@@ -63,6 +68,31 @@ export function PriceMatchRequestForm({ products, initialProductId }: PriceMatch
   const shipping = competitorShippingCost ? parseFloat(competitorShippingCost) : 0
   const deliveredPrice = Number.isFinite(price) ? Math.round((price + (Number.isFinite(shipping) ? shipping : 0)) * 100) / 100 : null
 
+  // Immediate client-side feedback only -- the server independently
+  // sniffs real file-signature bytes and enforces the same size cap
+  // regardless of what the browser reports here (never trusted alone).
+  function handleProofFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null
+    setProofFileError(null)
+    if (!file) {
+      setProofFile(null)
+      return
+    }
+    if (!ALLOWED_PROOF_MIME_TYPES.includes(file.type as (typeof ALLOWED_PROOF_MIME_TYPES)[number])) {
+      setProofFileError('Please upload a JPEG, PNG, WEBP image, or a PDF.')
+      e.target.value = ''
+      setProofFile(null)
+      return
+    }
+    if (file.size > MAX_PROOF_FILE_SIZE_BYTES) {
+      setProofFileError(`File is too large — please keep it under ${MAX_PROOF_FILE_SIZE_BYTES / (1024 * 1024)}MB.`)
+      e.target.value = ''
+      setProofFile(null)
+      return
+    }
+    setProofFile(file)
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (deliveredPrice === null) {
@@ -74,29 +104,27 @@ export function PriceMatchRequestForm({ products, initialProductId }: PriceMatch
     setErrorMessage(null)
     try {
       const attribution = getAttribution()
-      const res = await fetch('/api/price-match', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contactName,
-          contactEmail,
-          contactPhone: contactPhone || undefined,
-          productId,
-          sellUnit,
-          competitorName,
-          competitorUrl: competitorUrl || undefined,
-          competitorPrice: price,
-          competitorShippingCost: competitorShippingCost ? shipping : undefined,
-          competitorDeliveredPrice: deliveredPrice,
-          proofUrl: proofUrl || undefined,
-          customerNote: customerNote || undefined,
-          consent,
-          sourcePage: '/price-match',
-          referrer: attribution?.referrer ?? null,
-          landingUrl: attribution?.landingUrl ?? null,
-          website2,
-        }),
-      })
+      const formData = new FormData()
+      formData.set('contactName', contactName)
+      formData.set('contactEmail', contactEmail)
+      if (contactPhone) formData.set('contactPhone', contactPhone)
+      formData.set('productId', productId)
+      formData.set('sellUnit', sellUnit)
+      formData.set('competitorName', competitorName)
+      if (competitorUrl) formData.set('competitorUrl', competitorUrl)
+      formData.set('competitorPrice', String(price))
+      if (competitorShippingCost) formData.set('competitorShippingCost', String(shipping))
+      formData.set('competitorDeliveredPrice', String(deliveredPrice))
+      if (proofUrl) formData.set('proofUrl', proofUrl)
+      if (proofFile) formData.set('proofFile', proofFile)
+      if (customerNote) formData.set('customerNote', customerNote)
+      formData.set('consent', String(consent))
+      formData.set('sourcePage', '/price-match')
+      if (attribution?.referrer) formData.set('referrer', attribution.referrer)
+      if (attribution?.landingUrl) formData.set('landingUrl', attribution.landingUrl)
+      formData.set('website2', website2)
+
+      const res = await fetch('/api/price-match', { method: 'POST', body: formData })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Something went wrong. Please try again.')
       setStatus('success')
@@ -192,8 +220,27 @@ export function PriceMatchRequestForm({ products, initialProductId }: PriceMatch
             )}
 
             <div>
-              <label className={labelClass} htmlFor="proofUrl">Proof Link (screenshot, listing, etc.)</label>
+              <label className={labelClass} htmlFor="proofUrl">Additional Proof Link</label>
               <input id="proofUrl" value={proofUrl} onChange={(e) => setProofUrl(e.target.value)} className={inputClass} placeholder="https://" />
+              <p className="text-[11px] text-white/40 mt-1">A second link, if useful (e.g. a saved cart summary distinct from the competitor page above).</p>
+            </div>
+
+            <div>
+              <label className={labelClass} htmlFor="proofFileInput">
+                Supporting Proof <span className="normal-case font-normal text-white/40 tracking-normal">— optional, upload a screenshot, cart summary, quote, or other supporting evidence</span>
+              </label>
+              <input
+                id="proofFileInput"
+                type="file"
+                accept={ALLOWED_PROOF_MIME_TYPES.join(',')}
+                onChange={handleProofFileChange}
+                className="w-full text-[13px] text-white/70 file:mr-3 file:rounded-full file:border-0 file:bg-gradient-to-br file:from-[#F6D365] file:via-[#D4AF37] file:to-[#C99A20] file:px-4 file:py-2 file:text-[11px] file:font-heading file:font-bold file:uppercase file:tracking-[0.05em] file:text-black"
+              />
+              {proofFile && <p className="text-[11px] text-white/50 mt-1">{proofFile.name} ({Math.round(proofFile.size / 1024)}KB)</p>}
+              {proofFileError && <p className="text-[12px] text-red-400 mt-1">{proofFileError}</p>}
+              <p className="text-[11px] text-white/40 mt-1">
+                JPEG, PNG, WEBP, or PDF — up to {MAX_PROOF_FILE_SIZE_BYTES / (1024 * 1024)}MB. Sent securely with our internal review notification and not stored permanently.
+              </p>
             </div>
 
             <div>

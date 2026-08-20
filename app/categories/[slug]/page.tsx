@@ -16,6 +16,7 @@ import { ProductCard } from '@/components/storefront/ProductCard'
 import { getMerchandisingCategory, MERCHANDISING_TAXONOMY } from '@/lib/storefront/merchandisingTaxonomy'
 import { groupByName } from '@/lib/storefront/groupByName'
 import { getCurrentCustomerProEligible } from '@/lib/storefront/professionalAccess'
+import { getCurrentCustomerAllPreferredPrices } from '@/lib/pricing/preferredPricing'
 import { breadcrumbSchema } from '@/lib/storefront/structuredData'
 import { ScientificBackground } from '@/components/storefront/ScientificBackground'
 
@@ -45,19 +46,20 @@ export default async function CategoryDetailPage({ params }: PageProps) {
   const category = getMerchandisingCategory(slug)
   if (!category) notFound()
 
-  const [unorderedRows, proEligible] = await Promise.all([
+  const [unorderedRows, proEligible, preferredPrices] = await Promise.all([
     prisma.product.findMany({
       where: { name: { in: category.productNames }, pricingStatus: { not: 'INACTIVE' } },
       orderBy: { createdAt: 'asc' },
     }),
     getCurrentCustomerProEligible(),
+    getCurrentCustomerAllPreferredPrices(),
   ])
   // Sorted by the taxonomy's own productNames order (a deliberate
   // merchandising sequence, e.g. Ipamorelin -> CJC-Ipamorelin-without-DAC
   // -> the other CJC-1295 variants), not database creation order --
   // groupByName still applies its own featured-first rule on top of this.
   const rows = [...unorderedRows].sort((a, b) => category.productNames.indexOf(a.name) - category.productNames.indexOf(b.name))
-  const products = groupByName(rows, { proEligible })
+  const products = groupByName(rows, { proEligible, preferredPrices })
   const Icon = category.icon
   const jsonLd = breadcrumbSchema([
     { name: 'Home', url: '/' },

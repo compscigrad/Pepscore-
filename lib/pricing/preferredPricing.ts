@@ -11,6 +11,7 @@
 // query independently excludes any row past its expiresAt regardless of
 // whether that sweep has run yet -- an authorization is never honored past
 // its own expiry just because a cron hasn't caught up.
+import { auth } from '@clerk/nextjs/server'
 import { prisma } from '@/lib/prisma'
 
 export interface PreferredPriceLookup {
@@ -89,4 +90,23 @@ export async function resolveAllActivePreferredPricesRecordByCustomerId(customer
   })
   for (const row of rows) result[lineKey(row.productId, row.sellUnit)] = row.authorizedPrice
   return result
+}
+
+// Storefront browse-surface convenience wrapper (2026-08-20, mirrors
+// lib/storefront/professionalAccess.ts's getCurrentCustomerProEligible
+// exactly) -- for server components that haven't already called auth()
+// themselves (homepage, category pages, search, product detail). Read-only,
+// never creates a User/Customer row. Authenticated-only, by Clerk userId --
+// a guest visitor always gets an empty record, same restriction Professional
+// Access already has, for the same reason (never resolvable by email match).
+export async function getCurrentCustomerAllPreferredPrices(): Promise<Record<string, number>> {
+  const { userId: clerkUserId } = await auth()
+  if (!clerkUserId) return {}
+  const user = await prisma.user.findUnique({ where: { clerkId: clerkUserId }, select: { customer: { select: { id: true, portalAccessDisabled: true } } } })
+  if (!user?.customer || user.customer.portalAccessDisabled) return {}
+  return resolveAllActivePreferredPricesRecordByCustomerId(user.customer.id)
+}
+
+export function preferredPriceRecordFor(record: Record<string, number>, productId: string, sellUnit: string): number | null {
+  return record[lineKey(productId, sellUnit)] ?? null
 }

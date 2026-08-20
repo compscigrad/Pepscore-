@@ -21,6 +21,7 @@ import { sendCategorizedEmail } from '@/lib/notifications/log'
 import { trackServerEvent } from '@/lib/analytics/serverTrack'
 import { AnalyticsEvent } from '@/lib/analytics/events'
 import { ADMIN_EMAIL } from '@/lib/resend'
+import { generatePriceMatchRequestNumber } from './proofUpload'
 import {
   priceMatchRequestReceivedSubject,
   buildPriceMatchRequestReceivedHtml,
@@ -69,6 +70,12 @@ function currentActivePriceFor(product: Pick<Product, 'activeStandardCasePrice' 
   }
 }
 
+export interface SubmitPriceMatchRequestProofFile {
+  fileName: string
+  mimeType: string
+  buffer: Buffer
+}
+
 export interface SubmitPriceMatchRequestInput {
   contactName: string
   contactEmail: string
@@ -82,6 +89,11 @@ export interface SubmitPriceMatchRequestInput {
   competitorDeliveredPrice: number
   proofUrl?: string | null
   proofNote?: string | null
+  // Already validated (lib/priceMatch/proofUpload.ts's validateProofFile())
+  // by the API route before this is ever called -- this function trusts the
+  // buffer it's given. Competitor URL and an uploaded file are never
+  // mutually exclusive; a submission may include either, both, or neither.
+  proofFile?: SubmitPriceMatchRequestProofFile | null
   customerNote?: string | null
   sourcePage: string
   referrer?: string | null
@@ -115,25 +127,44 @@ export async function submitPriceMatchRequest(input: SubmitPriceMatchRequestInpu
     consent: input.consent,
   })
 
-  const request = await prisma.priceMatchRequest.create({
-    data: {
-      customerId: customer.id,
-      contactName: input.contactName,
-      contactEmail: input.contactEmail,
-      contactPhone: input.contactPhone ?? undefined,
-      productId: input.productId,
-      sellUnit: input.sellUnit,
-      competitorName: input.competitorName,
-      competitorUrl: input.competitorUrl ?? undefined,
-      competitorPrice: input.competitorPrice,
-      competitorShippingCost: input.competitorShippingCost ?? undefined,
-      competitorDeliveredPrice: input.competitorDeliveredPrice,
-      proofUrl: input.proofUrl ?? undefined,
-      proofNote: input.proofNote ?? undefined,
-      customerNote: input.customerNote ?? undefined,
-      ipAddress: input.ipAddress ?? undefined,
-    },
-  })
+  // DB-first, always -- the request row is fully committed (including
+  // whatever proof metadata is known) before any email is even attempted.
+  // A unique-constraint retry loop, not a single attempt: requestNumber's
+  // random suffix makes a collision astronomically unlikely, but this is
+  // cheap insurance rather than a hard assumption.
+  let request: PriceMatchRequest | null = null
+  for (let attempt = 0; attempt < 5 && !request; attempt++) {
+    try {
+      request = await prisma.priceMatchRequest.create({
+        data: {
+          requestNumber: generatePriceMatchRequestNumber(),
+          customerId: customer.id,
+          contactName: input.contactName,
+          contactEmail: input.contactEmail,
+          contactPhone: input.contactPhone ?? undefined,
+          productId: input.productId,
+          sellUnit: input.sellUnit,
+          competitorName: input.competitorName,
+          competitorUrl: input.competitorUrl ?? undefined,
+          competitorPrice: input.competitorPrice,
+          competitorShippingCost: input.competitorShippingCost ?? undefined,
+          competitorDeliveredPrice: input.competitorDeliveredPrice,
+          proofUrl: input.proofUrl ?? undefined,
+          proofNote: input.proofNote ?? undefined,
+          customerNote: input.customerNote ?? undefined,
+          ipAddress: input.ipAddress ?? undefined,
+          proofProvided: !!input.proofFile,
+          proofFileName: input.proofFile?.fileName ?? undefined,
+          proofMimeType: input.proofFile?.mimeType ?? undefined,
+          proofFileSize: input.proofFile?.buffer.length ?? undefined,
+        },
+      })
+    } catch (err) {
+      const isUniqueConflict = err instanceof Error && 'code' in err && (err as { code?: string }).code === 'P2002'
+      if (!isUniqueConflict || attempt === 4) throw err
+    }
+  }
+  if (!request) throw new PriceMatchError('Could not create a price match request after multiple attempts')
 
   await recordCustomerActivity({
     customerId: customer.id,
@@ -162,38 +193,55 @@ export async function submitPriceMatchRequest(input: SubmitPriceMatchRequestInpu
   // Admin alert -- immediate, always to admin@pepscorelab.com (owner-locked
   // decision: no separate pricematch@ alias). Includes our own current
   // price for the exact sell unit requested so the reviewer doesn't have to
-  // go look it up before deciding whether a match is even needed.
+  // go look it up before deciding whether a match is even needed, the
+  // customer-safe requestNumber, and a deep link straight to this record.
+  // If a proof file was submitted, it's attached directly to THIS email --
+  // Google Workspace becomes its durable copy; Pepscore never writes the
+  // bytes anywhere. The request row above already committed regardless of
+  // what happens next (DB-first-then-email rule) -- a send/attachment
+  // failure here only ever updates proofDeliveryStatus, never rolls back
+  // or deletes the request.
   const currentPrice = currentActivePriceFor(product, input.sellUnit)
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
-  await sendCategorizedEmail(
+  const reviewUrl = `${appUrl}/admin/price-match/${request.id}`
+  const alertProps = {
+    requestNumber: request.requestNumber,
+    contactName: input.contactName,
+    contactEmail: input.contactEmail,
+    productName: product.name,
+    productSize: product.size,
+    competitorName: input.competitorName,
+    competitorDeliveredPrice: input.competitorDeliveredPrice,
+    currentPrice,
+    isNewCustomer,
+    submittedAt: request.createdAt,
+    hasProofAttachment: !!input.proofFile,
+    reviewUrl,
+  }
+
+  const alertResult = await sendCategorizedEmail(
     {
       category: 'PRICE_MATCH_REQUEST_ALERT',
       to: ADMIN_EMAIL,
-      subject: priceMatchRequestAlertSubject({
-        contactName: input.contactName,
-        contactEmail: input.contactEmail,
-        productName: product.name,
-        productSize: product.size,
-        competitorName: input.competitorName,
-        competitorDeliveredPrice: input.competitorDeliveredPrice,
-        currentPrice,
-        isNewCustomer,
-        reviewUrl: `${appUrl}/admin/price-match/${request.id}`,
-      }),
-      html: buildPriceMatchRequestAlertHtml({
-        contactName: input.contactName,
-        contactEmail: input.contactEmail,
-        productName: product.name,
-        productSize: product.size,
-        competitorName: input.competitorName,
-        competitorDeliveredPrice: input.competitorDeliveredPrice,
-        currentPrice,
-        isNewCustomer,
-        reviewUrl: `${appUrl}/admin/price-match/${request.id}`,
-      }),
+      subject: priceMatchRequestAlertSubject(alertProps),
+      html: buildPriceMatchRequestAlertHtml(alertProps),
+      attachments: input.proofFile ? [{ filename: input.proofFile.fileName, content: input.proofFile.buffer }] : undefined,
     },
     { actorType: 'SYSTEM' }
   )
+
+  // Only meaningful when a proof file was actually submitted -- a request
+  // with no proof stays proofDeliveryStatus: NONE regardless of whether
+  // the (attachment-free) admin alert itself sent successfully.
+  if (input.proofFile) {
+    request = await prisma.priceMatchRequest.update({
+      where: { id: request.id },
+      data: {
+        proofDeliveryStatus: alertResult.sent ? 'SENT' : 'FAILED',
+        proofEmailMessageId: alertResult.providerMessageId ?? undefined,
+      },
+    })
+  }
 
   return request
 }
@@ -237,12 +285,70 @@ export async function getPriceMatchRequest(id: string) {
   })
 }
 
+export interface CustomerPreferredPricingRow {
+  id: string
+  productName: string
+  productSize: string
+  sellUnit: InvoiceItemSellUnit
+  authorizedPrice: number
+  authorizationType: PriceMatchAuthorizationType
+  status: 'ACTIVE' | 'REDEEMED' | 'EXPIRED' | 'REVOKED'
+  expiresAt: Date | null
+}
+
+// Customer-portal-safe view of a customer's OWN preferred pricing -- never
+// competitor proof, admin review notes, or any other customer's data (see
+// PriceMatchAuthorization's own privacy note). Includes REDEEMED (a
+// ONE_PURCHASE grant that was already used) alongside ACTIVE so the portal
+// can show accurate history, not just currently-usable grants; EXPIRED/
+// REVOKED are excluded entirely -- a customer never needs to see a grant
+// that no longer applies to them at all.
+export async function listCustomerPreferredPricing(customerId: string): Promise<CustomerPreferredPricingRow[]> {
+  const rows = await prisma.priceMatchAuthorization.findMany({
+    where: { customerId, status: { in: ['ACTIVE', 'REDEEMED'] } },
+    include: { product: { select: { name: true, size: true } } },
+    orderBy: { createdAt: 'desc' },
+  })
+  return rows.map((row) => ({
+    id: row.id,
+    productName: row.product.name,
+    productSize: row.product.size,
+    sellUnit: row.sellUnit,
+    authorizedPrice: row.authorizedPrice,
+    authorizationType: row.authorizationType,
+    status: row.status,
+    expiresAt: row.expiresAt,
+  }))
+}
+
 // Count of PENDING + MORE_INFO_REQUESTED requests -- powers the admin
 // NotificationBell/Dashboard indicator (open items needing attention),
 // deliberately excluding MORE_INFO_REQUESTED from "urgent" framing at the
 // call site's discretion, but still counted here as "not yet closed."
 export async function countOpenPriceMatchRequests(): Promise<number> {
   return prisma.priceMatchRequest.count({ where: { status: { in: ['PENDING', 'MORE_INFO_REQUESTED'] } } })
+}
+
+// Admin manual override for when proof was supplied through some other
+// legitimate channel -- an email reply to the acknowledgment, a follow-up
+// message -- after the original attachment attempt was FAILED (or no file
+// was ever submitted in the first place). Purely a record-keeping action;
+// it never re-triggers an email send or re-validates a file, since there is
+// no file for it to act on.
+export async function markPriceMatchProofReceivedExternally(id: string, adminId: string): Promise<PriceMatchRequest> {
+  const request = await prisma.priceMatchRequest.findUnique({ where: { id } })
+  if (!request) throw new PriceMatchError('Request not found')
+
+  const updated = await prisma.priceMatchRequest.update({
+    where: { id },
+    data: { proofDeliveryStatus: 'RECEIVED_EXTERNALLY', proofMarkedReceivedBy: adminId, proofMarkedReceivedAt: new Date() },
+  })
+
+  await prisma.adminAuditLog.create({
+    data: { action: 'PRICE_MATCH_PROOF_MARKED_RECEIVED_EXTERNALLY', entity: 'PriceMatchRequest', entityId: id, adminId },
+  })
+
+  return updated
 }
 
 function generateAuthorizationCode(): string {

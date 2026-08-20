@@ -11,6 +11,7 @@ import { ProductCard } from '@/components/storefront/ProductCard'
 import { searchProducts } from '@/lib/storefront/search'
 import { groupByName } from '@/lib/storefront/groupByName'
 import { getCurrentCustomerProEligible } from '@/lib/storefront/professionalAccess'
+import { getCurrentCustomerAllPreferredPrices } from '@/lib/pricing/preferredPricing'
 import { logSearchEvent } from '@/lib/analytics/searchEvents'
 
 export const metadata: Metadata = {
@@ -25,8 +26,12 @@ interface PageProps {
 export default async function SearchPage({ searchParams }: PageProps) {
   const { q } = await searchParams
   const query = (q ?? '').trim()
-  const [rows, proEligible] = await Promise.all([query ? searchProducts(query) : Promise.resolve([]), getCurrentCustomerProEligible()])
-  const products = groupByName(rows, { proEligible })
+  const [rows, proEligible, preferredPrices] = await Promise.all([
+    query ? searchProducts(query) : Promise.resolve([]),
+    getCurrentCustomerProEligible(),
+    getCurrentCustomerAllPreferredPrices(),
+  ])
+  const products = groupByName(rows, { proEligible, preferredPrices })
 
   // First-party search-event capture (AI-1.1) -- once per full-search page
   // view, not per keystroke, so the existing predictive combobox is

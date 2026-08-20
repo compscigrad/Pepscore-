@@ -7,6 +7,8 @@ import { getCustomerAccessSummary } from '@/lib/admin/accessHistory'
 import { PortalStatusShell } from '@/components/account/PortalStatusShell'
 import { PortalProfileForm } from '@/components/account/PortalProfileForm'
 import { AccountSecuritySection } from '@/components/account/AccountSecuritySection'
+import { PreferredPricingSection } from '@/components/account/PreferredPricingSection'
+import { listCustomerPreferredPricing } from '@/lib/priceMatch/requests'
 
 export default async function ProfilePage() {
   const authState = await getPortalAuthState()
@@ -15,7 +17,11 @@ export default async function ProfilePage() {
   if (authState.state === 'DISABLED') return <PortalStatusShell heading="Access disabled" body="Contact us if you believe this is a mistake." />
 
   const { customer } = authState
-  const [clerkUser, accessSummary] = await Promise.all([currentUser(), getCustomerAccessSummary(customer.id)])
+  const [clerkUser, accessSummary, preferredPricing] = await Promise.all([
+    currentUser(),
+    getCustomerAccessSummary(customer.id),
+    listCustomerPreferredPricing(customer.id),
+  ])
   const primaryEmail = clerkUser?.primaryEmailAddress
 
   return (
@@ -31,6 +37,7 @@ export default async function ProfilePage() {
           shippingAddress={customer.shippingAddress}
           preferredContactMethod={customer.preferredContactMethod}
         />
+        <PreferredPricingSection rows={preferredPricing} />
         <AccountSecuritySection
           signedInEmail={primaryEmail?.emailAddress ?? null}
           emailVerified={primaryEmail?.verification?.status === 'verified'}

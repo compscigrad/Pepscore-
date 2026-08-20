@@ -16,6 +16,7 @@ import { FirstOrderOfferModal } from '@/components/storefront/FirstOrderOfferMod
 import { groupByName } from '@/lib/storefront/groupByName'
 import { applyHomepagePriority } from '@/lib/storefront/homepagePriority'
 import { getCurrentCustomerProEligible } from '@/lib/storefront/professionalAccess'
+import { getCurrentCustomerAllPreferredPrices } from '@/lib/pricing/preferredPricing'
 import { getActiveFirstOrderOffer } from '@/lib/promotions/firstOrderOffer'
 import { getAcquisitionPopupSettings } from '@/lib/promotions/acquisitionPopupSettings'
 import { formatDiscountLabel } from '@/lib/promotions/format'
@@ -44,13 +45,14 @@ async function getProducts() {
 
 export default async function HomePage() {
   // Gracefully fall back to empty array if DB isn't configured yet
-  const [rawProducts, proEligible, offer, popupSettings] = await Promise.all([
+  const [rawProducts, proEligible, preferredPrices, offer, popupSettings] = await Promise.all([
     getProducts().catch(() => []),
     getCurrentCustomerProEligible(),
+    getCurrentCustomerAllPreferredPrices(),
     getActiveFirstOrderOffer(),
     getAcquisitionPopupSettings(),
   ])
-  const products = applyHomepagePriority(groupByName(rawProducts, { proEligible }))
+  const products = applyHomepagePriority(groupByName(rawProducts, { proEligible, preferredPrices }))
 
   // Auto-trigger only fires when BOTH the global popup switch AND this
   // specific campaign have opted in (section 23: an admin can turn the

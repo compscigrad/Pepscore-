@@ -159,8 +159,15 @@ export function buildPriceMatchRevokedHtml(props: RevokedProps): string {
 }
 
 // Admin-facing alert -- same "courtesy on top of the durably-recorded row"
-// role as LeadCaptured/PROFESSIONAL_ACCESS_APPLICATION_ALERT.
+// role as LeadCaptured/PROFESSIONAL_ACCESS_APPLICATION_ALERT. When a proof
+// file was submitted, it's attached directly to this exact email (see
+// lib/priceMatch/requests.ts) -- Google Workspace becomes the durable copy,
+// Pepscore never stores the bytes. hasProofAttachment only ever controls
+// this email's own "Proof attached" line, never whether the attachment
+// itself is included -- that's decided entirely by the caller passing
+// SendEmailInput.attachments or not.
 export interface PriceMatchRequestAlertProps {
+  requestNumber: string
   contactName: string
   contactEmail: string
   productName: string
@@ -169,20 +176,26 @@ export interface PriceMatchRequestAlertProps {
   competitorDeliveredPrice: number
   currentPrice: number | null
   isNewCustomer: boolean
+  submittedAt: Date
+  hasProofAttachment: boolean
   reviewUrl: string
 }
 
 export function priceMatchRequestAlertSubject(props: PriceMatchRequestAlertProps): string {
-  return `New Price Match Request — ${props.contactName} (${props.productName})`
+  return `New Price Match Request ${props.requestNumber} — ${props.contactName} (${props.productName})`
 }
 
 export function buildPriceMatchRequestAlertHtml(props: PriceMatchRequestAlertProps): string {
+  const submittedLabel = props.submittedAt.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })
   const detailsPanel = emailPanel(`
-    <p style="margin:0"><strong style="color:${EMAIL_COLORS.textPrimary}">Product:</strong> <span style="color:${EMAIL_COLORS.textSecondary}">${escapeHtml(props.productName)} (${escapeHtml(props.productSize)})</span></p>
+    <p style="margin:0"><strong style="color:${EMAIL_COLORS.textPrimary}">Request ID:</strong> <span style="color:${EMAIL_COLORS.textSecondary}">${escapeHtml(props.requestNumber)}</span></p>
+    <p style="margin:4px 0 0"><strong style="color:${EMAIL_COLORS.textPrimary}">Product:</strong> <span style="color:${EMAIL_COLORS.textSecondary}">${escapeHtml(props.productName)} (${escapeHtml(props.productSize)})</span></p>
     <p style="margin:4px 0 0"><strong style="color:${EMAIL_COLORS.textPrimary}">Competitor:</strong> <span style="color:${EMAIL_COLORS.textSecondary}">${escapeHtml(props.competitorName)}</span></p>
     <p style="margin:4px 0 0"><strong style="color:${EMAIL_COLORS.textPrimary}">Delivered price found:</strong> <span style="color:${EMAIL_COLORS.textSecondary}">$${props.competitorDeliveredPrice.toFixed(2)}</span></p>
     <p style="margin:4px 0 0"><strong style="color:${EMAIL_COLORS.textPrimary}">Our current price:</strong> <span style="color:${EMAIL_COLORS.textSecondary}">${props.currentPrice != null ? `$${props.currentPrice.toFixed(2)}` : 'n/a'}</span></p>
     <p style="margin:4px 0 0"><strong style="color:${EMAIL_COLORS.textPrimary}">Contact:</strong> <span style="color:${EMAIL_COLORS.textSecondary}">${escapeHtml(props.contactName)} (${escapeHtml(props.contactEmail)})</span></p>
+    <p style="margin:4px 0 0"><strong style="color:${EMAIL_COLORS.textPrimary}">Submitted:</strong> <span style="color:${EMAIL_COLORS.textSecondary}">${escapeHtml(submittedLabel)}</span></p>
+    <p style="margin:4px 0 0"><strong style="color:${EMAIL_COLORS.textPrimary}">Proof:</strong> <span style="color:${EMAIL_COLORS.textSecondary}">${props.hasProofAttachment ? 'Attached to this email' : 'None submitted'}</span></p>
   `)
 
   const bodyHtml = `
@@ -191,5 +204,5 @@ export function buildPriceMatchRequestAlertHtml(props: PriceMatchRequestAlertPro
     ${emailCta(props.reviewUrl, 'Review Request')}
   `
 
-  return buildEmailShell({ eyebrow: 'Admin Notification', bodyHtml, footerNote: 'Review and respond from the admin Price Match queue.' })
+  return buildEmailShell({ eyebrow: `Admin Notification — ${props.requestNumber}`, bodyHtml, footerNote: 'Review and respond from the admin Price Match queue.' })
 }

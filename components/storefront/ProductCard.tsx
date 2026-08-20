@@ -47,6 +47,15 @@ export interface ProductVariant {
   // AVAILABILITY_LABEL when set -- never changes the underlying
   // availability/purchasability itself.
   availabilityMessageOverride: string | null
+  // Customer Preferred Pricing (Price Match sprint, 2026-08-20) -- keyed by
+  // sell unit so it only ever displays for whichever tier is actually
+  // selected (never assumed Standard Case). Resolved server-side by the
+  // caller (lib/storefront/groupByName.ts) from a real, authenticated
+  // Customer's active PriceMatchAuthorization rows -- purely informational
+  // here; the canonical pricing engine independently re-validates and
+  // re-applies it (or doesn't) at checkout, so a stale/tampered client
+  // value displayed here can never itself change what gets charged.
+  preferredPricesBySellUnit?: Partial<Record<SellUnit, number>>
 }
 
 // Light Champagne (2026-08-15, final selection) -- picked over the
@@ -98,6 +107,15 @@ export function ProductCard({ name, featured, category, description, imageUrl, b
   const activePrice = professionalMode ? v.proCasePrice : effectiveSellUnit === 'INDIVIDUAL_VIAL' ? v.individualVialPrice : v.standardCasePrice
   const hasPrice = activePrice != null
   const canPurchase = hasPrice && isPurchasable(availability)
+  // Customer Preferred Pricing -- only ever shown when it's strictly better
+  // than what's already being displayed (the "never let it look like it
+  // could cost the customer more" display guard, mirroring the canonical
+  // engine's own always-the-lower-of-the-two rule). Never trusted for the
+  // actual charge -- see handleAdd(), which still adds activePrice to the
+  // cart; checkout re-resolves and applies the real authorized price
+  // server-side regardless of what this component displays.
+  const rawPreferredPrice = v.preferredPricesBySellUnit?.[effectiveSellUnit] ?? null
+  const preferredPrice = rawPreferredPrice != null && hasPrice && rawPreferredPrice < activePrice! ? rawPreferredPrice : null
 
   function selectSize(i: number) {
     setSelectedIdx(i)
@@ -310,7 +328,24 @@ export function ProductCard({ name, featured, category, description, imageUrl, b
               )}
 
               {/* Selected-unit price */}
-              {professionalMode ? (
+              {preferredPrice != null ? (
+                // Customer Preferred Pricing -- final precedence, same rule
+                // the canonical engine itself enforces (never stacks, always
+                // wins only when strictly better). Whatever price would
+                // otherwise show (Standard or Professional) is struck
+                // through above it, matching the Professional block's own
+                // visual language.
+                <div className="bg-[#D4AF37]/10 border border-[#D4AF37]/35 rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="text-[9px] font-bold text-[#241C10]/55 uppercase tracking-[0.07em]">
+                      {professionalMode ? (v.unitsPerCase ? `Professional Case of ${v.unitsPerCase}` : 'Professional Case') : effectiveSellUnit === 'INDIVIDUAL_VIAL' ? 'Single Vial' : v.unitsPerCase ? `Case of ${v.unitsPerCase}` : 'Standard Case'}
+                    </p>
+                    <span className="text-[11px] font-heading font-bold text-[#241C10]/40 line-through">${activePrice}</span>
+                  </div>
+                  <p className="text-[9px] font-bold text-[#7A2E17] uppercase tracking-[0.07em] mb-0.5">Your Preferred Price</p>
+                  <p className="font-heading text-[20px] font-extrabold text-[#7A2E17]">${preferredPrice}</p>
+                </div>
+              ) : professionalMode ? (
                 // Professional Access pricing reads as an account
                 // entitlement, not a coupon (section 7) -- Standard struck
                 // through, Professional prominent, no competing selectable

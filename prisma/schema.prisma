@@ -2691,8 +2691,34 @@ enum PriceMatchRejectionReason {
   OTHER
 }
 
+enum PriceMatchProofDeliveryStatus {
+  // No supporting file was submitted -- competitorUrl/proofUrl (if any)
+  // stand alone. The default, not a failure state.
+  NONE
+  // File was validated, attached to the admin alert email, and Resend
+  // reported a successful send.
+  SENT
+  // A file was submitted but the admin alert email attempt failed (Resend
+  // error, or any other send-path exception) -- see
+  // PriceMatchRequest.reviewNotes-adjacent admin UI for the retry/recovery
+  // action. The request row itself is never rolled back for this.
+  FAILED
+  // Admin manually recorded that proof was supplied through some other
+  // legitimate channel (an email reply, a follow-up message) after a FAILED
+  // or NONE outcome -- see markPriceMatchProofReceivedExternally().
+  RECEIVED_EXTERNALLY
+}
+
 model PriceMatchRequest {
   id String @id @default(cuid())
+
+  // Customer-safe, human-readable reference (PMR-YYYYMM-XXXXX, same
+  // random-suffix shape as lib/orders.ts's generateOrderNumber/
+  // generateInvoiceNumber) -- surfaced in the admin alert email, the admin
+  // review deep link, and anywhere this request is referenced back to the
+  // customer, so "my request" always has one unambiguous, typo-resistant
+  // identifier distinct from the internal cuid `id`.
+  requestNumber String @unique
 
   // Same find-or-create Customer resolution every other public intake form
   // uses (lib/customers.ts's upsertCustomerFromIntake) -- a guest
@@ -2721,14 +2747,31 @@ model PriceMatchRequest {
   competitorShippingCost   Float?
   competitorDeliveredPrice Float
 
-  // Proof is a URL/text reference only. This codebase has no file/image
-  // upload infrastructure anywhere (confirmed by audit) -- the one existing
-  // precedent, FinanceExpense.receiptUrl/receiptFilename, is the same
-  // paste-a-URL pattern. Real image upload is a genuine owner/external-
-  // storage dependency, flagged in docs/PendingOwnerActions.md, not built
-  // here.
+  // Proof supports BOTH a competitor URL/text note AND an uploaded file --
+  // never mutually exclusive. The uploaded file itself is never persisted
+  // here or anywhere in Pepscore: it's validated in-memory, attached
+  // directly to the admin alert email (Google Workspace/Resend become the
+  // durable copy), and discarded immediately after that send attempt
+  // (owner decision, 2026-08-20 -- no paid Blob/S3 storage dependency for
+  // this launch). Only safe, non-binary metadata about that transient file
+  // is kept, so an admin (or a future audit) can always see whether proof
+  // was submitted and what happened to it, without Pepscore ever holding
+  // the actual image/document.
   proofUrl  String?
   proofNote String?
+
+  proofProvided         Boolean                       @default(false)
+  proofFileName         String?
+  proofMimeType         String?
+  proofFileSize         Int?
+  proofDeliveryStatus   PriceMatchProofDeliveryStatus @default(NONE)
+  // Resend's own message id for the admin alert send that carried this
+  // attachment -- a reference into Communication/Resend's dashboard, never
+  // a way to re-fetch the file itself (Resend doesn't expose attachment
+  // content by message id after the fact either).
+  proofEmailMessageId   String?
+  proofMarkedReceivedBy String?
+  proofMarkedReceivedAt DateTime?
 
   customerNote String?
 
