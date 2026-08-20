@@ -100,10 +100,18 @@ export async function getPortalDashboardData(customerId: string): Promise<Portal
     orderBy: { sentAt: 'desc' },
     take: 20, // over-fetch, then filter by visibility below, then trim to 5
   })
-  const customer = await prisma.customer.findUnique({ where: { id: customerId }, select: { proEligible: true } })
-  const preferredPricing = await listCustomerPreferredPricing(customerId)
-  const priceMatchRequests = await listCustomerPriceMatchRequests(customerId)
-  const evaluations = await listCustomerSafeEvaluations(customerId)
+  // These five are mutually independent (none reads another's result), so
+  // unlike the three queries above they run concurrently rather than
+  // sequentially -- none of them carries the heterogeneous Prisma `include`
+  // shape the comment above warns about (each already has its own plain,
+  // pre-typed return shape), so Promise.all's tuple inference stays exact.
+  const [customer, preferredPricing, priceMatchRequests, evaluations, pendingArrangementDecision] = await Promise.all([
+    prisma.customer.findUnique({ where: { id: customerId }, select: { proEligible: true } }),
+    listCustomerPreferredPricing(customerId),
+    listCustomerPriceMatchRequests(customerId),
+    listCustomerSafeEvaluations(customerId),
+    prisma.paymentArrangement.count({ where: { invoice: { customerId }, status: 'REQUESTED' } }),
+  ])
 
   const outstandingBalance = invoices.reduce((sum, inv) => sum + inv.balanceDue, 0)
 
@@ -159,9 +167,6 @@ export async function getPortalDashboardData(customerId: string): Promise<Portal
     const unselected = invoices.some((inv) => inv.balanceDue > 0 && !inv.selectedPaymentMethod && !inv.paymentArrangement)
     if (unselected) requiredActions.push('Select a payment method for your open balance.')
   }
-  const pendingArrangementDecision = await prisma.paymentArrangement.count({
-    where: { invoice: { customerId }, status: 'REQUESTED' },
-  })
   if (pendingArrangementDecision > 0) requiredActions.push('Your payment arrangement request is awaiting review.')
 
   const moreInfoNeeded = priceMatchRequests.filter((r) => r.status === 'MORE_INFO_REQUESTED').length
