@@ -246,7 +246,7 @@ export default async function HomePage() {
           <div className="max-w-[1000px] mx-auto relative">
             <div className="text-center mb-11">
               <span className="font-heading text-[11px] font-bold tracking-[0.15em] uppercase text-[#D4AF37]/70 mb-3 block">Volume Savings</span>
-              <h2 className="font-heading text-[clamp(26px,4vw,38px)] font-bold text-white mb-3">Bulk Pricing for Researchers</h2>
+              <h2 className="font-heading text-[clamp(26px,4vw,38px)] font-bold text-white mb-3">Volume Case Savings</h2>
               <p className="text-[16px] font-light text-white/60 max-w-[540px] mx-auto">Scale your research without scaling your costs.</p>
               <div className="w-11 h-[3px] bg-gradient-to-r from-[#F6D365] via-[#D4AF37] to-[#C99A20] mx-auto mt-3.5 rounded-full" />
             </div>
@@ -317,24 +317,14 @@ export default async function HomePage() {
                 </div>
               ))}
             </div>
-            <p className="text-center text-[12px] text-white/40 mb-10 -mt-4">Discount applies automatically off the Standard Case price at checkout — no code required.</p>
-            <div className="text-center">
-              {/* Replaces the old "Inquire About Wholesale Orders" modal CTA
-                  (2026-08-19 Professional Access sprint, section 9) -- a
-                  real business-verification application belongs on its own
-                  page, not a small popup. The underlying LeadCapture
-                  architecture (interestType PROFESSIONAL_ACCESS_INQUIRY)
-                  is preserved and extended, not deleted -- the application
-                  page itself submits into the same pipeline, still visible
-                  in Admin CRM, still triggering the same admin notification. */}
-              <Link
-                href="/professional-access/apply"
-                className="inline-block bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] text-black font-heading text-[13px] font-bold tracking-[0.08em] uppercase px-8 py-4 rounded-full transition-all hover:-translate-y-0.5 hover:shadow-[0_10px_32px_rgba(212,175,55,0.45)]"
-              >
-                Apply for Professional Access
-              </Link>
-              <p className="text-[12px] text-white/40 mt-3 max-w-[440px] mx-auto">Preferred case pricing for verified businesses and qualified research organizations.</p>
-            </div>
+            {/* No CTA in this section by design (2026-08-20 homepage
+                consolidation pass) -- the single "Apply for Professional
+                Access" pathway lives in the gold closing block below,
+                consolidated from a duplicate copy that previously sat right
+                here. This section stays purely informational: the automatic
+                standard-customer ladder, nothing more, so the two pricing
+                stories (standard volume / Professional) don't compete. */}
+            <p className="text-center text-[12px] text-white/40">Discount applies automatically off the Standard Case price at checkout — no code required.</p>
           </div>
         </section>
 
@@ -459,21 +449,40 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* ── CTA Banner ───────────────────────────────────────────────────── */}
+        {/* ── CTA Banner — repurposed 2026-08-20 homepage consolidation
+             pass. The approved gold closing-block container (gradient,
+             spacing, typography, button treatment) is preserved exactly;
+             only the content changed. Old copy promised a "custom quote"
+             via contacting Pepscore directly -- outdated now that the real
+             pricing architecture is Standard (automatic ladder, see the
+             Volume Case Savings section above) vs. Professional (apply,
+             get approved, case pricing from case #1). This is now the
+             page's one, consolidated Professional Access CTA -- the
+             duplicate that previously sat directly under the volume cards
+             was removed rather than left competing with this one. ────── */}
         <section className="py-[72px] px-6 bg-gradient-to-br from-[#8A6B1A] via-[#D4AF37] to-[#E8C84A] text-center">
           <div className="max-w-[680px] mx-auto">
+            <span className="font-heading text-[11px] font-bold tracking-[0.15em] uppercase text-black/60 mb-3.5 block">Professional Access</span>
             <h2 className="font-heading text-[clamp(26px,4vw,40px)] font-extrabold text-black mb-3.5">
-              Ready to Elevate Your Research?
+              Preferred Pricing for Qualified Organizations
             </h2>
             <p className="text-[16px] text-black/70 mb-8 leading-[1.7]">
-              Join laboratories sourcing premium peptides from Pepscore Lab. Bulk pricing available — contact us for a custom quote tailored to your program.
+              Verified businesses and qualified research organizations can apply for preferred case pricing beginning with the first case.
             </p>
-            <Link
-              href="#products"
-              className="inline-block bg-black text-[#D4AF37] font-heading text-[13px] font-bold tracking-[0.08em] uppercase px-10 py-4 rounded-full hover:-translate-y-0.5 hover:shadow-lg transition-all"
-            >
-              Browse the Catalog
-            </Link>
+            <div className="flex gap-4 flex-wrap justify-center">
+              <Link
+                href="/professional-access/apply"
+                className="inline-block bg-black text-[#D4AF37] font-heading text-[13px] font-bold tracking-[0.08em] uppercase px-10 py-4 rounded-full hover:-translate-y-0.5 hover:shadow-lg transition-all"
+              >
+                Apply for Professional Access
+              </Link>
+              <Link
+                href="#products"
+                className="inline-block border border-black/30 text-black font-heading text-[13px] font-bold tracking-[0.08em] uppercase px-10 py-4 rounded-full hover:bg-black/10 hover:-translate-y-0.5 transition-all"
+              >
+                Browse Catalog
+              </Link>
+            </div>
           </div>
         </section>
 
