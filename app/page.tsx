@@ -472,7 +472,7 @@ export default async function HomePage() {
               Preferred Pricing for Qualified Organizations
             </h2>
             <p className="text-[16px] text-black/70 mb-8 leading-[1.7]">
-              Verified businesses and qualified research organizations can apply for preferred case pricing beginning with the first case.
+              Verified businesses and qualified research organizations may apply for Professional Access, offering preferred case pricing designed for ongoing and higher-volume research needs.
             </p>
             <div className="flex gap-4 flex-wrap justify-center">
               <Link
