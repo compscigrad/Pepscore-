@@ -107,8 +107,11 @@ export default async function HomePage() {
                 <span className="bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] bg-clip-text text-transparent">Peptides</span> for<br />
                 Serious Research
               </h1>
+              <p className="text-[17px] font-light text-white/60 leading-[1.7] mb-4 max-w-[480px]">
+                Pepscore Lab supplies pharmaceutical-grade research peptides manufactured to exacting quality standards for research use only and independently verified by third-party laboratories to ≥98% purity.
+              </p>
               <p className="text-[17px] font-light text-white/60 leading-[1.7] mb-9 max-w-[480px]">
-                Pepscore Lab supplies pharmaceutical-grade research peptides manufactured to exacting quality standards for research use only and independently verified by third-party laboratories to ≥98% purity. Our catalog spans the compound classes serious research programs rely on — from metabolic regulators to longevity and cognitive research peptides — with an emphasis on lot-to-lot consistency and responsive researcher support.
+                Our catalog spans the compound classes serious research programs rely on — from metabolic regulators to longevity and cognitive research peptides — with an emphasis on lot-to-lot consistency and responsive researcher support.
               </p>
               <div className="flex gap-4 flex-wrap">
                 <Link
