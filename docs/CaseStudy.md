@@ -940,6 +940,14 @@ The RBAC migration's admin-authorization foundation was reused immediately: **ad
 
 **PRODUCTION RESULT**: verified directly in the production database (before/after query showing the exact old→new values), tied together with the Finance rehearsal above (one of the two rehearsal invoices uses the freshly-corrected Tesamorelin 5mg Professional price, so the price correction and the Finance pipeline were verified in the same pass rather than as two disconnected changes). `docs/PendingOwnerActions.md` #27 moved to Resolved.
 
+### Addendum: Homepage Pricing-Story Consolidation (2026-08-20)
+
+A small, deliberately scoped follow-up once the Professional Access architecture was live: the homepage's gold closing block still read "Ready to Elevate Your Research? ... contact us for a custom quote tailored to your program" — copy written before Professional Access existed, that implied special pricing required contacting the business directly. With a real, self-service application pathway now live, that copy was actively misleading.
+
+**Fix, not redesign**: the approved gold block (gradient, spacing, typography, button treatment) was left completely untouched as a visual container — only its content changed, to "Professional Access / Preferred Pricing for Qualified Organizations," with the page's one consolidated "Apply for Professional Access" CTA plus a secondary "Browse Catalog" action. The near-duplicate CTA that had sat directly beneath the Volume Case Savings cards (added during the original Professional Access sprint, before this consolidated placement existed) was removed rather than left competing with it — one primary CTA pathway instead of two. The volume-savings section itself was renamed from "Bulk Pricing for Researchers" to "Volume Case Savings" for the same reason: less wholesale-adjacent framing, more accurate to what the section actually is.
+
+No pricing logic, canonical engine, or entitlement logic was touched. Live-verified on production: the gold block renders correctly with both CTAs, and the Volume Case Savings section now ends cleanly at its footnote with no orphaned CTA beneath it.
+
 ---
 
 ## 16. Portfolio Summary
