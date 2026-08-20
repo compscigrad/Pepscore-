@@ -71,6 +71,10 @@ const NAV: NavGroup[] = [
     ],
   },
   {
+    label: 'Policies',
+    items: [{ label: 'Policies & Operations', href: '/admin/policies' }],
+  },
+  {
     label: 'Settings',
     items: [
       { label: 'Invoice Settings', href: '/admin/settings/invoices' },
