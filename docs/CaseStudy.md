@@ -1038,6 +1038,32 @@ Production result: 25 policies across 14 categories, a Quick Reference view, cat
 
 ---
 
+## Phase 22: Customer Account Closure + Balance Carry-Forward / Returns Audit (2026-08-20)
+
+**Status: merged to `master`, deployed to production.** `CUSTOMER AUTONOMY → IMMEDIATE ACCOUNT CLOSURE → IDENTITY VS. BUSINESS-RECORD SEPARATION → FINANCIAL RETENTION → POST-CLOSURE ADMIN OPERATIONS`, alongside `TRANSACTION → FULFILLMENT BOUNDARY → CANCELLATION/RETURN/REFUND EXCEPTION MODEL`.
+
+### Mini Case Study: A New Union Member, Enforced by the Compiler, Not by Memory
+
+**PROBLEM**: adding a `CLOSED` state to the portal's `PortalAuthState` type is the kind of change that's easy to get half-right — add the new state, handle it in the one page you're thinking about, and silently leave every *other* page one bad click away from crashing when it destructures a `.customer` that no longer exists on that branch.
+
+**WHAT ACTUALLY HAPPENED**: `npx tsc` found it immediately — 9 separate `app/account/*` pages failed to compile the moment `CLOSED` was added, each with the identical error: `Property 'customer' does not exist on type '{ state: "CLOSED"; }'`. Every one of those pages had to add the same explicit early-return before the codebase would compile again. This is the same category of catch as the `groupByName.ts` client-bundle leak earlier in this project's history (Decision #80) and the evaluation-credit transaction-rollback bug (Decision #82) — not a new kind of lesson, but the same one recurring: the automated gates (`tsc`, a real rehearsal, a real production build) keep finding real defects a careful read-through alone would very plausibly have missed under this much cumulative feature surface.
+
+### Mini Case Study: Auditing Before Building — Balance Carry-Forward Already Existed
+
+**PROBLEM**: the owner asked for a "Balance Carry-Forward" capability, framed as something they knew existed but didn't remember how to operate.
+
+**WHAT THE AUDIT FOUND**: a complete, already-correct `BalanceTransfer` ledger system (`lib/balanceTransfers.ts`), built in an earlier phase of this project and never revisited since. Tracing it end-to-end — rather than assuming it needed to be built — confirmed it already satisfies every constraint the appendix asked for: the transferred amount moves (source balance down, destination total up, by the exact same figure) rather than duplicating as a second sale; it's fully reversible with a real safety check (a reversal is blocked if the destination has already collected more payment than would remain); every transfer is logged on both invoices; the destination customer gets a real notification email. Nothing needed to be built. What was missing was documentation — a plain-English, click-by-click procedure grounded in the real UI (`components/invoices/BalanceTransferSection.tsx`), not an imagined one.
+
+**PRODUCTION RESULT**: the full procedure now lives in Admin → Policies & Operations under Direct Sales & Invoices, written from the actual component's actual click path, not from memory of what it might do.
+
+### Production Result Summary
+
+Customer-initiated account closure (`Customer.accountClosedAt`, reusing `portalAccessDisabled` as the real access gate), gated only by a real $0-balance check reusing the portal dashboard's own canonical balance calculation — never a second one, never an Admin approval step. Branded customer confirmation, informational (not approval-seeking) Admin alert, best-effort Clerk session revocation, non-destructive Admin archiving. Balance Carry-Forward and Returns/Cancellations/Refunds audited and documented as real Policy Center entries describing already-correct, already-shipped behavior. Scheduled Reorders documented as a read-only future-capability assessment, explicitly not activated. A real security spot-check across every customer-facing account API route found zero cross-customer authorization defects. 5-scenario rehearsal against real Postgres, full suite 1596/1596.
+
+**NOT completed this pass, disclosed honestly**: the full 41-section Customer Portal Maturity audit (dashboard redesign, complete mobile pass, accessibility pass, full lifecycle parity matrix) remains open — this phase closed the most concretely-specified new feature (Account Closure) and the audit-and-document deliverables the appendix itself framed as investigation rather than new builds, not the entire portal-wide UX audit.
+
+---
+
 ## 16. Portfolio Summary
 
 Pepscore Lab is a production back-office platform — invoicing, payment arrangements, carrier-agnostic shipment tracking, a real fulfillment engine, CRM, pricing intelligence, reorder/repeat-purchase workflows, a centralized notification design system, storefront checkout with server-side promotion redemption, and a Customer Portal — built for a peptide-research-supplier business through owner-directed, AI-assisted engineering with Claude Code. The owner defined product vision, requirements, architecture direction, business rules, and QA/production-validation standards; implementation, testing, and bug discovery were carried out under that direction and recorded in a 65-entry engineering decision log spanning 170+ merged pull requests. The system reflects disciplined engineering practice throughout: provider abstractions reused across shipping and payments, derived-not-stored state to prevent drift, layered kill switches and fail-closed defaults on every real-money and real-communication path, shared concurrency-safety primitives (optimistic inventory locking, `FOR UPDATE` row locks) applied consistently rather than per-call-site, and an audit-before-building discipline that caught and fixed several genuine production bugs (a silently-dropped Stripe refund webhook, an unreserved storefront inventory path, a cron misconfiguration silently blocking every deploy, a 10x-under-reservation bug in the sell-unit-aware cart, a concurrent-reservation race on the last unit of stock, a portal-invite duplicate-send race) before they became customer-facing incidents. The operational core — invoicing, fulfillment, tracking, CRM, pricing, reorder, notifications, and now checkout/promotions — is production-validated and in active use; real payment activation, real bulk customer communication, and real postage remain deliberately held behind activation switches pending explicit business go-ahead, exactly as documented in the project's own payment-readiness report and `docs/PendingOwnerActions.md`.

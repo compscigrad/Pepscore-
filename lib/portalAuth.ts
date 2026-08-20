@@ -78,6 +78,7 @@ export async function getPortalCustomer(): Promise<Customer | null> {
 export type PortalAuthState =
   | { state: 'UNAUTHENTICATED' }
   | { state: 'NOT_LINKED' }
+  | { state: 'CLOSED' }
   | { state: 'DISABLED' }
   | { state: 'AUTHORIZED'; customer: Customer }
 
@@ -97,6 +98,11 @@ export async function getPortalAuthState(): Promise<PortalAuthState> {
 
   const customer = await prisma.customer.findFirst({ where: { userId } })
   if (!customer) return { state: 'NOT_LINKED' }
+  // Checked before the generic DISABLED branch -- a self-initiated closure
+  // always also sets portalAccessDisabled=true (the real access gate), but
+  // deserves its own honest message rather than the admin-dispute-flavored
+  // "contact us if you believe this is a mistake."
+  if (customer.accountClosedAt) return { state: 'CLOSED' }
   if (customer.portalAccessDisabled) return { state: 'DISABLED' }
   return { state: 'AUTHORIZED', customer }
 }

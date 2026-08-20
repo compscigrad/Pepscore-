@@ -26,6 +26,7 @@ interface PageProps {
     consent?: string
     campaign?: string
     portalStatus?: string
+    accountClosed?: string
     sortBy?: string
     page?: string
   }>
@@ -103,6 +104,7 @@ export default async function AdminCustomersPage({ searchParams }: PageProps) {
     hasConsent: sp.consent === 'yes' ? true : sp.consent === 'no' ? false : undefined,
     campaign: sp.campaign || undefined,
     customerIds: portalStatusCustomerIds,
+    accountClosed: sp.accountClosed === 'yes' ? true : sp.accountClosed === 'no' ? false : undefined,
     sortBy: (sp.sortBy as ListCustomersParams['sortBy']) || 'newest',
     page,
     limit,
@@ -111,7 +113,7 @@ export default async function AdminCustomersPage({ searchParams }: PageProps) {
   const { customers, total } = await listCustomers(params)
   const totalPages = Math.max(1, Math.ceil(total / limit))
 
-  const baseQuery = { search: sp.search, status: sp.status, leadStatus: sp.leadStatus, interestType: sp.interestType, consent: sp.consent, campaign: sp.campaign, portalStatus: sp.portalStatus, sortBy: sp.sortBy }
+  const baseQuery = { search: sp.search, status: sp.status, leadStatus: sp.leadStatus, interestType: sp.interestType, consent: sp.consent, campaign: sp.campaign, portalStatus: sp.portalStatus, accountClosed: sp.accountClosed, sortBy: sp.sortBy }
 
   return (
     <main className="min-h-screen bg-black p-6 md:p-8">
@@ -141,7 +143,7 @@ export default async function AdminCustomersPage({ searchParams }: PageProps) {
 
         {/* Filters -- a plain GET form so the whole view stays URL-driven,
             bookmarkable, and needs no client JS for the common case. */}
-        <form className="bg-white/[0.03] border border-gold/10 rounded-[18px] p-5 mb-6 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 items-end">
+        <form className="bg-white/[0.03] border border-gold/10 rounded-[18px] p-5 mb-6 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 items-end">
           <div className="col-span-2 md:col-span-2">
             <label className="block text-[11px] font-heading font-bold uppercase tracking-wide text-white/50 mb-1.5">Search</label>
             <input
@@ -185,6 +187,14 @@ export default async function AdminCustomersPage({ searchParams }: PageProps) {
             <select name="portalStatus" defaultValue={sp.portalStatus ?? ''} className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-[13px] text-white focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold/30">
               <option value="" className="bg-white text-dark">All</option>
               {PORTAL_ADOPTION_STATUS_VALUES.map((s) => <option key={s} value={s} className="bg-white text-dark">{PORTAL_ADOPTION_STATUS_LABEL[s]}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-[11px] font-heading font-bold uppercase tracking-wide text-white/50 mb-1.5">Account</label>
+            <select name="accountClosed" defaultValue={sp.accountClosed ?? ''} className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-[13px] text-white focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold/30">
+              <option value="" className="bg-white text-dark">All</option>
+              <option value="no" className="bg-white text-dark">Active only</option>
+              <option value="yes" className="bg-white text-dark">Closed only</option>
             </select>
           </div>
           <div>
@@ -236,6 +246,11 @@ export default async function AdminCustomersPage({ searchParams }: PageProps) {
                         <Link href={`/admin/customers/${c.id}`} className="font-semibold text-white hover:text-gold-dark hover:underline">
                           {c.firstName} {c.lastName}
                         </Link>
+                        {c.accountClosedAt && (
+                          <span className="ml-2 text-[10px] font-heading font-bold uppercase tracking-[0.06em] px-2 py-0.5 rounded-full bg-red-500/15 text-red-300">
+                            {c.accountArchivedAt ? 'Archived' : 'Closed'}
+                          </span>
+                        )}
                         {c.company ? <p className="text-white/45 text-xs">{c.company}</p> : null}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">

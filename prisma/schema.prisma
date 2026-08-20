@@ -2025,6 +2025,29 @@ model Customer {
   // null) is the separate, more drastic action for "this link is wrong."
   portalAccessDisabled Boolean @default(false)
 
+  // ─── Customer-Initiated Account Closure (2026-08-20) ────────────────────
+  // Distinct from portalAccessDisabled's existing admin-kill-switch
+  // semantics (a security/dispute action) -- closure is the customer's own
+  // self-service action, requires no admin approval, and still flips
+  // portalAccessDisabled=true as its actual enforcement mechanism (the one
+  // real gate every portal page/route already checks via
+  // lib/portalAuth.ts). accountClosedAt is what lets the auth-state
+  // resolver show a "your account is closed" message instead of the
+  // generic admin-disabled one. Never set together with a later
+  // reactivation without also clearing accountClosedAt -- this codebase has
+  // no self-closed-account reactivation flow (a closed customer who wants
+  // back in contacts Pepscore, the same as any other access issue).
+  accountClosedAt     DateTime?
+  accountClosedReason String?
+
+  // Internal Admin housekeeping lifecycle, applied only to an
+  // already-closed customer once its operational matters (open orders,
+  // balances, fulfillment) are resolved -- purely a "reduce clutter in
+  // active views" marker, never a second access gate and never destructive
+  // (no data is deleted or hidden from historical queries).
+  accountArchivedAt DateTime?
+  accountArchivedBy String?
+
   // Explicit Professional Access pricing eligibility for the storefront
   // (Phase 2B, renamed from spaEligible 2026-08-19 -- Professional Access
   // sprint). Never inferred from email domain, geography, name, or purchase

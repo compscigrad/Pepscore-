@@ -95,6 +95,12 @@ export type MessageCategory =
   | 'PRICE_MATCH_REJECTED' // customer-facing
   | 'PRICE_MATCH_REVOKED' // customer-facing
   | 'PRICE_MATCH_REQUEST_ALERT' // admin-facing: new request landed in the review queue
+  // Customer-Initiated Account Closure (2026-08-20) -- closure confirmation
+  // is transactional (never gated by marketing opt-out); the admin alert is
+  // informational, not an approval request (closure never requires Admin
+  // approval).
+  | 'ACCOUNT_CLOSED' // customer-facing: confirms their own closure request completed
+  | 'ACCOUNT_CLOSURE_ALERT' // admin-facing: a customer closed their account
 
 interface RoutedSender {
   fromName: string
@@ -157,6 +163,9 @@ const ROUTING: Record<MessageCategory, RoutedSender> = {
   PRICE_MATCH_REJECTED: { fromName: 'Pepscore Lab', replyTo: ADMIN_EMAIL },
   PRICE_MATCH_REVOKED: { fromName: 'Pepscore Lab', replyTo: ADMIN_EMAIL },
   PRICE_MATCH_REQUEST_ALERT: { fromName: 'Pepscore Lab', replyTo: ADMIN_EMAIL },
+
+  ACCOUNT_CLOSED: { fromName: 'Pepscore Lab', replyTo: ADMIN_EMAIL },
+  ACCOUNT_CLOSURE_ALERT: { fromName: 'Pepscore Lab', replyTo: ADMIN_EMAIL },
 }
 
 export interface ResolvedSender {
@@ -220,6 +229,7 @@ const CUSTOMER_VISIBLE_CATEGORIES: ReadonlySet<MessageCategory> = new Set<Messag
   'PRICE_MATCH_APPROVED_PERSISTENT',
   'PRICE_MATCH_REJECTED',
   'PRICE_MATCH_REVOKED',
+  'ACCOUNT_CLOSED',
 ])
 
 export function isCustomerVisibleCategory(category: string): boolean {

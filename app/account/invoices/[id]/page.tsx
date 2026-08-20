@@ -26,6 +26,7 @@ export default async function InvoiceDetailPage({ params }: PageProps) {
   const authState = await getPortalAuthState()
   if (authState.state === 'UNAUTHENTICATED') redirect('/sign-in')
   if (authState.state === 'NOT_LINKED') return <PortalStatusShell heading="No account found" body="Contact us to get set up." />
+  if (authState.state === 'CLOSED') return <PortalStatusShell heading="Account closed" body="This account was closed. If this was accidental or you need assistance, contact us." />
   if (authState.state === 'DISABLED') return <PortalStatusShell heading="Access disabled" body="Contact us if you believe this is a mistake." />
 
   const { id } = await params

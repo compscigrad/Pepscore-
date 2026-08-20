@@ -55,6 +55,8 @@ const CATEGORY_LABELS: Record<MessageCategory, string> = {
   PRICE_MATCH_REJECTED: 'Price Match',
   PRICE_MATCH_REVOKED: 'Price Match',
   PRICE_MATCH_REQUEST_ALERT: 'Price Match',
+  ACCOUNT_CLOSED: 'Account Update',
+  ACCOUNT_CLOSURE_ALERT: 'Account Update',
 }
 
 // Never falls back to the raw category string — a category this app somehow

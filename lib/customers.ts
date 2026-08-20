@@ -47,13 +47,17 @@ export interface ListCustomersParams {
   // computePortalAdoptionOverview() in lib/portal/adoptionStatus.ts) rather
   // than baking portal-specific logic into this CRM-focused query builder.
   customerIds?: string[]
+  // Post-Closure admin housekeeping filter (2026-08-20) -- true shows only
+  // self-closed accounts, false excludes them, undefined (the default)
+  // applies no filter either way.
+  accountClosed?: boolean
   page?: number
   limit?: number
   sortBy?: 'newest' | 'oldest' | 'name'
 }
 
 export async function listCustomers(params: ListCustomersParams = {}) {
-  const { search, status, leadStatus, interestType, hasConsent, campaign, customerIds, page = 1, limit = 25, sortBy = 'newest' } = params
+  const { search, status, leadStatus, interestType, hasConsent, campaign, customerIds, accountClosed, page = 1, limit = 25, sortBy = 'newest' } = params
 
   const leadCaptureFilters: Prisma.LeadCaptureWhereInput[] = []
   if (interestType) leadCaptureFilters.push({ interestType })
@@ -91,6 +95,8 @@ export async function listCustomers(params: ListCustomersParams = {}) {
     ...(status ? { status } : {}),
     ...(leadStatus ? { leadStatus } : {}),
     ...(customerIds ? { id: { in: customerIds } } : {}),
+    ...(accountClosed === true ? { accountClosedAt: { not: null } } : {}),
+    ...(accountClosed === false ? { accountClosedAt: null } : {}),
     // AND across filter *kinds*, but each kind only needs to match *some*
     // one LeadCapture row -- e.g. a customer who once submitted a
     // consent=true PRODUCT_INTEREST lead and separately a consent=false

@@ -81,6 +81,14 @@ export default async function AccountPage({ searchParams }: Props) {
       />
     )
   }
+  if (authState.state === 'CLOSED') {
+    return (
+      <PortalStatusShell
+        heading="Account closed"
+        body="This account was closed. If this was accidental or you need assistance, contact us."
+      />
+    )
+  }
   if (authState.state === 'DISABLED') {
     return (
       <PortalStatusShell

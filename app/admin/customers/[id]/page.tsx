@@ -152,6 +152,11 @@ export default async function CustomerProfilePage({ params, searchParams }: Page
             <>
               <StatusBadge status={customer.status} variant="customer" />
               <LeadStatusBadge status={customer.leadStatus as LeadStatusValue} />
+              {customer.accountClosedAt && (
+                <span className="text-[10px] font-heading font-bold uppercase tracking-[0.06em] px-2.5 py-1 rounded-full bg-red-500/15 text-red-300">
+                  {customer.accountArchivedAt ? `Archived ${customer.accountArchivedAt.toLocaleDateString()}` : `Closed ${customer.accountClosedAt.toLocaleDateString()}`}
+                </span>
+              )}
             </>
           }
           actions={
