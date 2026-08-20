@@ -61,6 +61,10 @@ export interface SetActivePricingInput {
   unitsPerCase?: number | null
   sku?: string | null
   pricingStatus?: 'ACTIVE' | 'INACTIVE'
+  evaluationEligible?: boolean
+  evaluationMethod?: 'PAID_ONLY' | 'COMPLIMENTARY_ALLOWED' | 'BOTH' | null
+  evaluationCreditEligible?: boolean
+  evaluationCreditValidityDays?: number | null
 }
 
 export interface SetActivePricingContext {

@@ -996,6 +996,36 @@ Two follow-up items closed the same day, at explicit owner direction.
 
 ---
 
+## Phase 20: Professional Sample & Evaluation Program (2026-08-20)
+
+**Status: merged to `master`, deployed to production.** `PROFESSIONAL ACCOUNT → SKU ELIGIBILITY → EVALUATION UNIT → CANONICAL CASE-PRICE DERIVATION → INVENTORY → OPTIONAL PURCHASE CREDIT → COMPLETE FUTURE CASE → FINANCE → AUDIT HISTORY`.
+
+### Mini Case Study: A Free Sample Is Not the Same Thing as a Discount, Architecturally
+
+**PROBLEM**: the owner's specification drew a sharp line most sample programs blur — a complimentary evaluation unit's *economic value* must still be recorded (never fabricated as $0 across the board), but its *cash value* must never be recorded as revenue, and it must never automatically spawn a second, stacked benefit (a future-purchase credit) just because the first one was free.
+
+**HOW THE SCHEMA ENFORCES IT, NOT JUST THE UI**: `ProfessionalEvaluation.amountPaid` is `0` for a `COMPLIMENTARY` evaluation, but `evaluationUnitPrice` (the real derived economic value) is always populated regardless of type — so a future report can answer "how much sample value have we given this account" without ever double-counting it as revenue. `issueProfessionalEvaluation()` throws outright if a caller requests `creditEligible: true` on a `COMPLIMENTARY` evaluation, rather than silently ignoring the flag — a rejected request is a clearer signal than a silently-dropped one.
+
+**PRODUCTION RESULT**: verified directly in rehearsal, not asserted — a `COMPLIMENTARY` issuance produced `amountPaid: 0`, `issuanceInvoiceId: null` (no fabricated $0 "sale" anywhere in Finance), and a positive `evaluationUnitPrice`; a follow-up attempt to request `creditEligible: true` on that same complimentary path was rejected with `ProfessionalEvaluationError` before anything was written.
+
+### Mini Case Study: The Rehearsal Caught a Transaction-Rollback Bug Before Production Would Have
+
+**PROBLEM**: an evaluation credit past its `creditExpiresAt` needs to both reject the redemption attempt AND record that the credit is now `EXPIRED`, so a second glance at the record doesn't require re-deriving "well, is *today* past the expiry date" by hand.
+
+**WHAT ACTUALLY HAPPENED**: the first implementation did both inside the same Prisma interactive transaction — check expiry, write `creditStatus: 'EXPIRED'`, then `throw` the rejection. The rehearsal's own assertion (`statusFlippedToExpired`) came back `false` on the first run. The reason: a Prisma interactive transaction that throws rolls back every write made inside it, including the very `EXPIRED` write the code had just made a moment earlier — the reader would see a redemption correctly rejected, but the record still silently claiming `AVAILABLE`.
+
+**FIX**: moved the expiry check-and-flip to its own step, committed *before* the redemption transaction even begins, so the flip survives regardless of what the (separate) redemption attempt does next.
+
+**PRODUCTION RESULT**: re-run confirmed `statusFlippedToExpired: true`. This is the same category of catch documented earlier in this case study (the `groupByName.ts` client-bundle leak) — a specific, real defect a rehearsal or build step caught, not a hypothetical risk described in the abstract.
+
+### Production Result Summary
+
+SKU-level evaluation eligibility (`Product.evaluationEligible`/`evaluationMethod`/`evaluationCreditEligible`/`evaluationCreditValidityDays`) added to the existing Inventory Detail Panel; `resolveEvaluationUnitPrice()` derives the per-unit price from the customer's own real, current canonical case price (Standard/Professional/Preferred-Price-aware) divided by the product's real case size (never hardcoded to 10 — a synthetic 6-vial-case test pins this directly); a paid evaluation creates a real `Invoice` through the exact `createInvoice()` every admin sale already uses; a complimentary one never does; inventory is decremented through the same ledger every other physical-stock change goes through, tagged with a new `EVALUATION_ISSUANCE` event type; credit redemption applies as a real `InvoiceDiscount` — a price adjustment, never a reduction in a later case's physical quantity, with wrong-customer/wrong-product/expired/already-redeemed all independently rejected and independently rehearsal-verified. 9 unit tests, an 8-scenario rehearsal, full suite 1585/1585.
+
+**DEFERRED, not built this pass**: the customer-facing "Request Evaluation" storefront UX (explicitly deprioritized by the spec itself in favor of completing the Admin-issuance side first); a one-click "Apply Credit" button inside the admin invoice builder (the redemption API is real and tested; today it's callable, not yet clickable); a quick-glance evaluation-eligibility indicator in Product Master's dense table/mobile-card rows (only the fuller Inventory Detail Panel exposes it so far).
+
+---
+
 ## 16. Portfolio Summary
 
 Pepscore Lab is a production back-office platform — invoicing, payment arrangements, carrier-agnostic shipment tracking, a real fulfillment engine, CRM, pricing intelligence, reorder/repeat-purchase workflows, a centralized notification design system, storefront checkout with server-side promotion redemption, and a Customer Portal — built for a peptide-research-supplier business through owner-directed, AI-assisted engineering with Claude Code. The owner defined product vision, requirements, architecture direction, business rules, and QA/production-validation standards; implementation, testing, and bug discovery were carried out under that direction and recorded in a 65-entry engineering decision log spanning 170+ merged pull requests. The system reflects disciplined engineering practice throughout: provider abstractions reused across shipping and payments, derived-not-stored state to prevent drift, layered kill switches and fail-closed defaults on every real-money and real-communication path, shared concurrency-safety primitives (optimistic inventory locking, `FOR UPDATE` row locks) applied consistently rather than per-call-site, and an audit-before-building discipline that caught and fixed several genuine production bugs (a silently-dropped Stripe refund webhook, an unreserved storefront inventory path, a cron misconfiguration silently blocking every deploy, a 10x-under-reservation bug in the sell-unit-aware cart, a concurrent-reservation race on the last unit of stock, a portal-invite duplicate-send race) before they became customer-facing incidents. The operational core — invoicing, fulfillment, tracking, CRM, pricing, reorder, notifications, and now checkout/promotions — is production-validated and in active use; real payment activation, real bulk customer communication, and real postage remain deliberately held behind activation switches pending explicit business go-ahead, exactly as documented in the project's own payment-readiness report and `docs/PendingOwnerActions.md`.

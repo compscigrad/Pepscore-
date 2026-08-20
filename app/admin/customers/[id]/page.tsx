@@ -27,6 +27,7 @@ import { card, mutedText, sectionHeading, pillPrimary } from '@/components/invoi
 import { PortalAccessSection } from '@/components/admin/PortalAccessSection'
 import { CustomerPortalStatusSection } from '@/components/admin/CustomerPortalStatusSection'
 import { ProfessionalAccessSection } from '@/components/admin/ProfessionalAccessSection'
+import { ProfessionalEvaluationSection } from '@/components/admin/ProfessionalEvaluationSection'
 import { computePortalAdoptionOverview } from '@/lib/portal/adoptionStatus'
 import { AccessHistorySection } from '@/components/admin/AccessHistorySection'
 import { LocalTimestamp } from '@/components/admin/LocalTimestamp'
@@ -432,6 +433,8 @@ export default async function CustomerProfilePage({ params, searchParams }: Page
         <PortalAccessSection customerId={customer.id} hasEmail={Boolean(customer.email)} />
 
         <ProfessionalAccessSection customerId={customer.id} />
+
+        <ProfessionalEvaluationSection customerId={customer.id} />
 
         {customer.userId ? <AccessHistorySection customerId={customer.id} /> : null}
 

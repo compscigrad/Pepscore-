@@ -104,6 +104,10 @@ export function InventoryDetailPanel({ product, availableUnits, completeCasesAva
   const [activeBulk, setActiveBulk] = useState(product.activeBulkPrice?.toString() ?? '')
   const [activeIndividual, setActiveIndividual] = useState(product.activeIndividualVialPrice?.toString() ?? '')
   const [individualSalesEnabled, setIndividualSalesEnabled] = useState(product.individualSalesEnabled)
+  const [evaluationEligible, setEvaluationEligible] = useState(product.evaluationEligible)
+  const [evaluationMethod, setEvaluationMethod] = useState(product.evaluationMethod ?? 'PAID_ONLY')
+  const [evaluationCreditEligible, setEvaluationCreditEligible] = useState(product.evaluationCreditEligible)
+  const [evaluationCreditValidityDays, setEvaluationCreditValidityDays] = useState(product.evaluationCreditValidityDays?.toString() ?? '')
   const [manualOverride, setManualOverride] = useState(product.manualPricingOverride)
   const [overrideReason, setOverrideReason] = useState(product.pricingOverrideReason ?? '')
   const [sku, setSku] = useState(product.sku ?? '')
@@ -205,6 +209,10 @@ export function InventoryDetailPanel({ product, availableUnits, completeCasesAva
       manualPricingOverride: manualOverride,
       pricingOverrideReason: overrideReason || null,
       sku: sku || null,
+      evaluationEligible,
+      evaluationMethod: evaluationEligible ? evaluationMethod : null,
+      evaluationCreditEligible,
+      evaluationCreditValidityDays: evaluationCreditValidityDays === '' ? null : Number(evaluationCreditValidityDays),
     }
   }
 
@@ -299,6 +307,29 @@ export function InventoryDetailPanel({ product, availableUnits, completeCasesAva
           <input type="checkbox" checked={manualOverride} onChange={(e) => setManualOverride(e.target.checked)} />
           Manual pricing override
         </label>
+
+        <label className="flex items-center gap-2 text-[13px] text-white mb-2">
+          <input type="checkbox" checked={evaluationEligible} onChange={(e) => setEvaluationEligible(e.target.checked)} />
+          Evaluation eligible (Professional Sample &amp; Evaluation Program)
+        </label>
+        {evaluationEligible && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3 pl-6">
+            <Field label="Evaluation Method">
+              <select className={inputCls} value={evaluationMethod} onChange={(e) => setEvaluationMethod(e.target.value as typeof evaluationMethod)}>
+                <option value="PAID_ONLY">Paid only</option>
+                <option value="COMPLIMENTARY_ALLOWED">Complimentary allowed</option>
+                <option value="BOTH">Both</option>
+              </select>
+            </Field>
+            <Field label="Credit Validity (days)">
+              <input className={inputCls} type="number" min="1" value={evaluationCreditValidityDays} onChange={(e) => setEvaluationCreditValidityDays(e.target.value)} placeholder="Default (30)" />
+            </Field>
+            <label className="flex items-center gap-2 text-[13px] text-white sm:col-span-2">
+              <input type="checkbox" checked={evaluationCreditEligible} onChange={(e) => setEvaluationCreditEligible(e.target.checked)} />
+              Eligible for purchase credit toward a later full-case order
+            </label>
+          </div>
+        )}
 
         <Field label="Override Reason">
           <input className={inputCls} value={overrideReason} onChange={(e) => setOverrideReason(e.target.value)} placeholder="Why this deviates from the formula" />

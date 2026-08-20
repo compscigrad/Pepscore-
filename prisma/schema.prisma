@@ -150,6 +150,20 @@ model Product {
   // separate admin decisions, never derived from each other.
   individualVialBackorderEnabled Boolean                @default(false)
 
+  // ─── Professional Sample & Evaluation Program (2026-08-20) ─────────────
+  // Evaluation availability is opt-in per product -- Professional Access
+  // itself never entitles an account to a free/discounted sample (see
+  // ProfessionalEvaluation below). Admin explicitly enables a SKU before
+  // any evaluation unit can be issued for it.
+  evaluationEligible           Boolean           @default(false)
+  evaluationMethod             EvaluationMethod?
+  evaluationCreditEligible     Boolean           @default(false)
+  // Null = falls back to the canonical global default
+  // (EVALUATION_CREDIT_DEFAULT_VALIDITY_DAYS, lib/professionalEvaluation/
+  // pricing.ts) -- never hardcoded per call site, so the one number only
+  // ever lives in one place unless a specific product needs to override it.
+  evaluationCreditValidityDays Int?
+
   // ─── SEO / Content Management (Phase 2B item 6) ─────────────────────────
   // All admin-editable via the storefront content editor
   // (components/admin/ProductContentSection.tsx) -- none of this requires a
@@ -206,6 +220,9 @@ model Product {
   // ─── Price Match Guarantee (2026-08-20) ─────────────────────────────────
   priceMatchRequests       PriceMatchRequest[]
   priceMatchAuthorizations PriceMatchAuthorization[]
+
+  // ─── Professional Sample & Evaluation Program (2026-08-20) ─────────────
+  professionalEvaluations ProfessionalEvaluation[]
 
   @@index([slug])
   @@index([inventoryStatus])
@@ -358,6 +375,11 @@ enum InventoryEventType {
   FULFILLMENT_DEDUCTION
   BACKORDER_ALLOCATION
   REVERSAL
+  // Professional Sample & Evaluation Program (2026-08-20) -- a distinct
+  // event type rather than reusing MANUAL_DECREASE, so the ledger itself
+  // (not just the ProfessionalEvaluation record) makes it unambiguous why a
+  // unit left inventory.
+  EVALUATION_ISSUANCE
 }
 
 enum InventoryActorType {
@@ -791,6 +813,13 @@ model Invoice {
 
   // ─── Price Match Guarantee (2026-08-20) ─────────────────────────────────
   priceMatchRedemptions PriceMatchAuthorization[]
+
+  // ─── Professional Sample & Evaluation Program (2026-08-20) ─────────────
+  // Two distinct relations -- a PAID evaluation's own real Invoice, and
+  // (separately, possibly a different invoice entirely) whichever later
+  // full-case invoice redeemed this evaluation's credit.
+  evaluationIssuances         ProfessionalEvaluation[] @relation("EvaluationIssuanceInvoice")
+  evaluationCreditRedemptions ProfessionalEvaluation[] @relation("EvaluationCreditRedemptionInvoice")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2071,6 +2100,7 @@ model Customer {
   professionalAccessInvites      ProfessionalAccessInvite[]
   priceMatchRequests             PriceMatchRequest[]
   priceMatchAuthorizations       PriceMatchAuthorization[]
+  professionalEvaluations        ProfessionalEvaluation[]
 
   @@index([email])
   @@index([phone])
@@ -2877,6 +2907,122 @@ model PriceMatchAuthorization {
   @@index([customerId, productId, sellUnit, status])
   @@index([status])
   @@index([expiresAt])
+}
+
+// ─── Professional Sample & Evaluation Program (2026-08-20) ─────────────────
+// Explicit business rule (see lib/professionalEvaluation/pricing.ts's header
+// for the full rationale): Professional Access is a case-only purchasing
+// relationship and does NOT by itself entitle an account to a free or
+// discounted sample. An evaluation unit is always: owner/Admin-approved,
+// SKU-specific (Product.evaluationEligible), quantity-controlled, and
+// inventory-tracked through the same canonical ledger every other physical-
+// stock change uses (lib/inventory/ledger.ts). Default method is PAID, not
+// a giveaway -- the evaluation unit price is always derived from the
+// customer's own currently-applicable case price (never a second,
+// disconnected pricing engine), divided by the product's real canonical
+// case quantity (never hardcoded to 10).
+enum EvaluationMethod {
+  PAID_ONLY
+  COMPLIMENTARY_ALLOWED
+  BOTH
+}
+
+enum EvaluationType {
+  PAID
+  COMPLIMENTARY
+}
+
+// Which of the customer's currently-applicable case prices the evaluation
+// unit price was derived from -- snapshotted at issuance time so a later
+// catalog/entitlement change never rewrites history.
+enum EvaluationPricingSource {
+  STANDARD
+  PROFESSIONAL
+  PREFERRED_PRICE
+  PRICE_MATCH
+}
+
+enum EvaluationCreditStatus {
+  // No credit was ever offered for this evaluation (creditEligible=false at
+  // issuance, or the product isn't evaluationCreditEligible at all).
+  NONE
+  AVAILABLE
+  REDEEMED
+  EXPIRED
+  CANCELLED
+}
+
+enum EvaluationStatus {
+  ISSUED
+  CANCELLED
+}
+
+model ProfessionalEvaluation {
+  id String @id @default(cuid())
+
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  quantity Int @default(1)
+
+  // Snapshot of exactly how the evaluation unit price was calculated --
+  // never recomputed later, so a subsequent catalog price change or
+  // authorization revocation can never silently rewrite this record's
+  // history. See lib/professionalEvaluation/pricing.ts's
+  // resolveEvaluationUnitPrice() for the one real calculation this
+  // snapshots.
+  pricingSource         EvaluationPricingSource
+  applicableCasePrice   Float
+  canonicalCaseQuantity Int
+  evaluationUnitPrice   Float
+
+  evaluationType EvaluationType
+  // 0 for COMPLIMENTARY, quantity * evaluationUnitPrice for PAID -- the
+  // economic value (evaluationUnitPrice) is preserved either way; only
+  // amountPaid reflects what was actually charged.
+  amountPaid     Float
+
+  // Only ever set for a PAID evaluation -- the real Invoice created through
+  // the exact same createInvoice() every other admin-composed sale uses, so
+  // Finance/COGS/audit-trail parity comes for free rather than being
+  // rebuilt. A COMPLIMENTARY evaluation never creates an Invoice at all
+  // (never fabricates revenue on a $0 "sale").
+  issuanceInvoiceId String?
+  issuanceInvoice   Invoice? @relation("EvaluationIssuanceInvoice", fields: [issuanceInvoiceId], references: [id])
+
+  // Set only when Product.evaluationCreditEligible was true AND the issuing
+  // admin explicitly opted this evaluation into credit eligibility --
+  // COMPLIMENTARY evaluations never auto-generate a credit (section 10's
+  // explicit rule); a free sample plus an automatic additional discount
+  // would be an unintended stacked benefit.
+  creditEligible          Boolean                @default(false)
+  creditAmount            Float?
+  creditExpiresAt         DateTime?
+  creditStatus            EvaluationCreditStatus @default(NONE)
+  creditRedeemedAt        DateTime?
+  creditRedeemedInvoiceId String?
+  creditRedeemedInvoice   Invoice?               @relation("EvaluationCreditRedemptionInvoice", fields: [creditRedeemedInvoiceId], references: [id])
+
+  // Set only when inventory was actually decremented (the product is
+  // inventory-tracked and initialized) -- null is expected and normal for a
+  // non-tracked product, matching every other inventory-aware write path in
+  // this codebase.
+  inventoryLedgerEntryId String?
+
+  status   EvaluationStatus @default(ISSUED)
+  issuedBy String
+  notes    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId, productId])
+  @@index([creditStatus])
+  @@index([status])
+  @@index([createdAt])
 }
 
 // Every case where self-service account resolution (see

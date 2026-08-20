@@ -21,6 +21,15 @@ const patchSchema = z.union([
     unitsPerCase: z.number().int().positive().nullable().optional(),
     sku: z.string().nullable().optional(),
     pricingStatus: z.enum(['ACTIVE', 'INACTIVE']).optional(),
+    // Professional Sample & Evaluation Program (2026-08-20) -- not pricing
+    // fields per se, but this is the same "admin explicit decision about
+    // this product" write path every other Product Master toggle already
+    // uses; setActivePricing() spreads its input straight into the Product
+    // update with no invariant that touches these.
+    evaluationEligible: z.boolean().optional(),
+    evaluationMethod: z.enum(['PAID_ONLY', 'COMPLIMENTARY_ALLOWED', 'BOTH']).nullable().optional(),
+    evaluationCreditEligible: z.boolean().optional(),
+    evaluationCreditValidityDays: z.number().int().positive().nullable().optional(),
     // Defaults to the admin pricing page's own source so every existing
     // caller (which never sends this field) is unaffected -- an invoice
     // line's "Update Product Price" choice (Phase 3B item 3) is the one
