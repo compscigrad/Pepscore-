@@ -21,6 +21,9 @@ import { STOREFRONT_BACKORDER_CREDIT_AMOUNT, STOREFRONT_BACKORDER_MINIMUM_ORDER_
 import { getStripeClient } from '@/lib/stripe-client'
 import { trackEvent } from '@/lib/analytics/track'
 import { AnalyticsEvent } from '@/lib/analytics/events'
+import { VolumePricingSummary } from '@/components/storefront/VolumePricingSummary'
+import { useProfessionalAccessStatus } from '@/components/storefront/useProfessionalAccessStatus'
+import { computeVolumePricingPreview } from '@/lib/storefront/volumePricingPreview'
 
 const fieldInput =
   'w-full border border-white/15 bg-white/[0.04] rounded-lg px-4 py-3 text-[14px] text-white placeholder:text-white/35 focus:outline-none focus:border-[#D4AF37]/50 transition-colors'
@@ -48,6 +51,13 @@ export function CheckoutForm() {
   const router = useRouter()
   const { items, total } = useCartStore()
   const cartTotal = total()
+  const proEligible = useProfessionalAccessStatus()
+  // Preview only, same discipline as promoDiscountAmount below -- checkout
+  // always re-resolves the authoritative amount server-side via
+  // lib/pricing/canonicalPricing.ts and never trusts this client-side
+  // estimate. Never applied for a Professional-eligible visitor (the
+  // ladder doesn't apply to them at all).
+  const volumePreview = proEligible === false ? computeVolumePricingPreview(items) : null
   const hasBackorderedItem = items.some((i) => i.backordered)
   // Storefront-side hint only -- the authoritative eligibility check happens
   // server-side against the real invoice once one exists (lib/invoice/
@@ -182,7 +192,7 @@ export function CheckoutForm() {
     setPromoError(null)
   }
 
-  const estimatedTotal = Math.max(0, cartTotal - promoDiscountAmount)
+  const estimatedTotal = Math.max(0, cartTotal - (volumePreview?.discountAmount ?? 0) - promoDiscountAmount)
 
   async function handleRuoConfirm() {
     setIsLoading(true)
@@ -380,6 +390,7 @@ export function CheckoutForm() {
                   <div className="flex justify-between text-[13px] text-white/50">
                     <span>Subtotal</span><span>${cartTotal.toFixed(2)}</span>
                   </div>
+                  <VolumePricingSummary items={items} proEligible={proEligible} variant="full" />
                   {promoDiscountAmount > 0 && (
                     <div className="flex justify-between text-[13px] text-[#D4AF37]">
                       <span>{promoCampaignTitle ?? 'Promotion'} ({appliedCode})</span>

@@ -70,6 +70,12 @@ interface Props {
   // discontinued, or gone out of stock since the customer page rendered) --
   // surfaced so the admin knows something was silently left off the draft.
   skippedReorderMessages?: string[]
+  // Edit-mode only (2026-08-19 Professional Access Closure Pass) — the
+  // linked customer's real Professional entitlement, resolved server-side
+  // by app/admin/invoices/[id]/page.tsx since InvoiceWithRelations doesn't
+  // include the customer relation. Closes the admin invoice edit-parity
+  // gap: create-mode already had this via prefillCustomer.proEligible.
+  customerProEligible?: boolean
 }
 
 function toDateInputValue(date: Date | string | null | undefined): string {
@@ -188,6 +194,7 @@ export function InvoiceBuilder({
   prefillCustomer,
   initialItems,
   skippedReorderMessages,
+  customerProEligible,
 }: Props) {
   const router = useRouter()
   const [draft, setDraft] = useState<InvoiceDraft>(() => {
@@ -441,13 +448,13 @@ export function InvoiceBuilder({
             setProducts((prev) => prev.map((p) => (p.id === productId ? { ...p, [field]: newPrice } : p)))
           }
           invoiceId={invoice?.id}
-          // Admin parity (section 5) -- known limitation: only resolved for
-          // the "New Invoice from customer profile" flow (prefillCustomer)
-          // today, since InvoiceWithRelations doesn't currently include the
-          // linked Customer's proEligible when editing an existing invoice.
-          // A manual/ad-hoc invoice with no linked customer correctly
-          // defaults to false (no real Customer entitlement to apply).
-          proEligible={prefillCustomer?.proEligible ?? false}
+          // Admin parity (section 5), edit-mode gap closed 2026-08-19 --
+          // create-mode resolves via prefillCustomer (customer profile ->
+          // New Invoice), edit-mode resolves via customerProEligible
+          // (server-fetched by app/admin/invoices/[id]/page.tsx from the
+          // invoice's real linked customer). A manual/ad-hoc invoice with
+          // no linked customer correctly defaults to false in both modes.
+          proEligible={mode === 'edit' ? (customerProEligible ?? false) : (prefillCustomer?.proEligible ?? false)}
         />
         <DiscountsSection
           discounts={draft.discounts}

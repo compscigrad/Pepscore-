@@ -28,13 +28,20 @@ async function main() {
         supplierCaseCost: 177, // RUO price table formula baseline
         unitsPerCase: 10,
         activeStandardCasePrice: 775,
-        activeProCasePrice: 700,
+        // 2026-08-19 update (Professional Access Closure Pass, owner-
+        // approved): $700 -> $625, resolving the pricing-hierarchy conflict
+        // flagged in docs/PendingOwnerActions.md #27 (the old $700 was only
+        // 9.68% off Standard, worse than the 15+ standard-volume tier's
+        // $658.75). This seed value is kept in sync with the live
+        // production value so a future re-run of this one-off script never
+        // regresses the price back to the old, superseded $700.
+        activeProCasePrice: 625,
         activeBulkPrice: null, // pending owner direction, per instruction
         activeIndividualVialPrice: 80,
         individualSalesEnabled: false,
         manualPricingOverride: true,
-        pricingOverrideReason: 'Manual competitive-market override (2026-08-06) — supersedes the formula-suggested case price ($1,425/$1,004). Individual vial price stored for database completeness only; sales disabled until admin explicitly enables.',
-        pricingNotes: 'Not currently sold by individual vial — only Standard and SPA case.',
+        pricingOverrideReason: 'Manual competitive-market override (2026-08-06) — supersedes the formula-suggested case price ($1,425/$1,004). Individual vial price stored for database completeness only; sales disabled until admin explicitly enables. Professional price corrected 2026-08-19 (owner-approved) from $700 to $625 -- see docs/PendingOwnerActions.md #27 (resolved) and docs/Decisions.md.',
+        pricingNotes: 'Not currently sold by individual vial — only Standard and Professional case.',
         sku: null,
       })
     }
@@ -61,13 +68,18 @@ async function main() {
         supplierCaseCost: null, // not a supplier-cost-formula product -- see reason below
         unitsPerCase: 10,
         activeStandardCasePrice: 395, // rounded from the formula-derived 392.50, see comment above
-        activeProCasePrice: 355,
+        // 2026-08-19 update (Professional Access Closure Pass, owner-
+        // approved): $355 -> $320, same resolution as the 10mg row above
+        // (docs/PendingOwnerActions.md #27) -- no longer derived from the
+        // 10mg formula since the owner approved this and the 10mg price
+        // independently rather than re-deriving one from the other.
+        activeProCasePrice: 320,
         activeBulkPrice: null,
         activeIndividualVialPrice: 45,
         individualSalesEnabled: false,
         manualPricingOverride: true,
-        pricingOverrideReason: 'Derived from approved Tesamorelin 10mg competitive pricing (2026-08-06). Formula: (10mg active price / 2) + $5 -- SPA (700/2)+5=355, Individual (80/2)+5=45 kept as formula-derived. Standard case rounded from the formula-derived $392.50 to the cleaner commercial price of $395 per explicit owner instruction. Individual vial price stored for database completeness only; sales disabled until admin explicitly enables.',
-        pricingNotes: 'Not currently sold by individual vial — only Standard and SPA case. Pricing intentionally derived (Standard commercially rounded), not independently formula-calculated or guessed.',
+        pricingOverrideReason: 'Derived from approved Tesamorelin 10mg competitive pricing (2026-08-06). Formula: (10mg active price / 2) + $5 -- Individual (80/2)+5=45 kept as formula-derived. Standard case rounded from the formula-derived $392.50 to the cleaner commercial price of $395 per explicit owner instruction. Individual vial price stored for database completeness only; sales disabled until admin explicitly enables. Professional price corrected 2026-08-19 (owner-approved) from $355 to $320, independently of the original derivation formula -- see docs/PendingOwnerActions.md #27 (resolved) and docs/Decisions.md.',
+        pricingNotes: 'Not currently sold by individual vial — only Standard and Professional case. Pricing intentionally derived (Standard commercially rounded), not independently formula-calculated or guessed.',
         sku: null,
       })
       await prisma.adminAuditLog.create({
@@ -77,10 +89,10 @@ async function main() {
           entityId: tesamorelin5mg.id,
           adminId: 'system-pricing-seed',
           details: {
-            formula: '(Tesamorelin 10mg active price / 2) + 5',
+            formula: '(Tesamorelin 10mg active price / 2) + 5 (Professional price later owner-corrected independently, 2026-08-19)',
             derivedFrom: 'tesamorelin-10mg',
             activeStandardCasePrice: 392.5,
-            activeProCasePrice: 355,
+            activeProCasePrice: 320,
             activeIndividualVialPrice: 45,
           },
         },

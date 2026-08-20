@@ -82,6 +82,16 @@ import {
   buildAccountCreditIssuedHtml,
 } from '@/emails/RefundNotice'
 import { buildTrackingUpdateHtml } from '@/emails/TrackingUpdate'
+import {
+  professionalAccessApplicationReceivedSubject,
+  buildProfessionalAccessApplicationReceivedHtml,
+  professionalAccessInviteSubject,
+  buildProfessionalAccessInviteHtml,
+  professionalAccessApprovedSubject,
+  buildProfessionalAccessApprovedHtml,
+  professionalAccessMoreInfoRequestedSubject,
+  buildProfessionalAccessMoreInfoRequestedHtml,
+} from '@/emails/ProfessionalAccess'
 
 export interface EmailTemplatePreview {
   key: string
@@ -547,6 +557,47 @@ function build(): EmailTemplatePreview[] {
         company: undefined,
         inquiryType: 'General',
         message: 'Do you offer wholesale pricing?',
+      }),
+    },
+    // --- Professional Access (2026-08-19 Professional Access sprint) -------
+    // Representative previews for the 4 states named explicitly in the
+    // Closure Pass; the other 3 (rejected/invite reminder/revoked) reuse the
+    // exact same buildEmailShell primitive and are lower-priority for a
+    // first pass, per "at minimum make representative previews available."
+    {
+      key: 'professional-access-application-received',
+      label: 'Professional Access: Application Received',
+      category: 'Professional Access',
+      subject: professionalAccessApplicationReceivedSubject(),
+      html: buildProfessionalAccessApplicationReceivedHtml({ contactName: 'Jordan', businessName: 'Rivera Research Group' }),
+    },
+    {
+      key: 'professional-access-invite',
+      label: 'Professional Access: Invitation',
+      category: 'Professional Access',
+      subject: professionalAccessInviteSubject(),
+      html: buildProfessionalAccessInviteHtml({
+        recipientName: 'Jordan',
+        claimUrl: `${SAMPLE_APP_URL}/professional-access/invite/sample-token`,
+        expiresAt: new Date('2026-09-02T00:00:00Z'),
+      }),
+    },
+    {
+      key: 'professional-access-approved',
+      label: 'Professional Access: Approved',
+      category: 'Professional Access',
+      subject: professionalAccessApprovedSubject(),
+      html: buildProfessionalAccessApprovedHtml({ contactName: 'Jordan', businessName: 'Rivera Research Group', storefrontUrl: SAMPLE_APP_URL }),
+    },
+    {
+      key: 'professional-access-more-info-requested',
+      label: 'Professional Access: More Information Requested',
+      category: 'Professional Access',
+      subject: professionalAccessMoreInfoRequestedSubject(),
+      html: buildProfessionalAccessMoreInfoRequestedHtml({
+        contactName: 'Jordan',
+        businessName: 'Rivera Research Group',
+        reviewNotes: 'Could you confirm your organization\'s registered business address?',
       }),
     },
   ]

@@ -916,6 +916,32 @@ The RBAC migration's admin-authorization foundation was reused immediately: **ad
 
 ---
 
+## Phase 18: Professional Access Closure Pass (2026-08-19)
+
+**Status: merged to `master`, deployed to production, live-verified.** Closed every residual named in Phase 17's own final report — this phase is the difference between "the engine calculates the right number" and "the customer and the accountant can both see it."
+
+### Mini Case Study: Proving a Test Invoice Actually Doesn't Count, Not Just Asserting It
+
+**PROBLEM**: verifying the pricing engine end-to-end through Finance required creating a real invoice exercising both the standard volume ladder and Professional pricing — but with an explicit "no real payment" constraint. The naive approach (mark a scratch invoice `isTestData: true`, eyeball the dashboard) would have been an assumption, not a proof.
+
+**WHAT ACTUALLY HAPPENED**: the two rehearsal invoices came back with `status: 'PENDING'`, not `'ISSUED'`, despite being created with `status: 'ISSUED'` and real, correctly-discounted prices. Tracing `lib/invoice/status.ts`'s `deriveInvoiceWorkflowStatus()` found this is correct, pre-existing, already-documented business logic: an invoice only becomes literally `'ISSUED'` in the database once its balance reaches $0 — `PENDING` is the automatic overlay for "issued but still owed." `RECOGNIZED_REVENUE_STATUSES` (`lib/finance/reports.ts`) deliberately excludes `PENDING`. This meant the rehearsal invoices — correctly, expectedly — never appeared in any revenue-recognition report, exactly like any real unpaid invoice wouldn't either.
+
+**WHY THIS WAS THE RIGHT OUTCOME, NOT A BUG TO WORK AROUND**: fabricating a payment to force `ISSUED` status would have both violated the explicit "no real payment" instruction and misrepresented what the rehearsal was actually testing. Instead, verification was split honestly: invoice-level price/discount/COGS snapshots (which `getInvoiceProfitability()` reads regardless of payment status) were verified exact-to-the-cent against the canonical engine's own output; the `isTestData` flag's real exclusion mechanism was confirmed by direct source-code read (four separate `isTestData: false` filters across `reports.ts`) rather than a live aggregate that would have required fabricating a payment to demonstrate; and the whole Finance pipeline (`getFinanceDashboardMetrics`/`getProfitLossReport`/`assembleFinanceExport`) was confirmed to run cleanly — no crash, no NaN, no silent double-count — with the rehearsal rows physically present in the production database.
+
+**PRODUCTION RESULT**: both rehearsal invoices archived per the exact pre-existing "11 Rehearsal invoices" convention (`Invoice.isTestData`'s own schema comment) — `isTestData: true` + `archivedAt` set, never deleted. 11 new tests, full suite 1523/1523 passing.
+
+### Mini Case Study: A Price Correction That Went Through the Real Write Path
+
+**PROBLEM**: the owner resolved the Tesamorelin pricing-hierarchy conflict the audit found (Professional $700/$355 were too close to Standard, worse than the 15% volume tier) with exact replacement figures ($625/$320).
+
+**WHAT WAS DELIBERATELY AVOIDED**: a raw `UPDATE` statement. `lib/pricing/service.ts`'s `setActivePricing()` is the one function every other admin pricing edit in this codebase already goes through — it records a `ProductPriceChange` audit row automatically and enforces the SPA/Professional-below-Standard invariant. Using it here meant the correction is indistinguishable, in the audit trail, from any other admin-made pricing edit — not a special, undocumented backdoor change.
+
+**THE QUIET SECOND FIX**: the one-off `scripts/seed-approved-pricing.ts` (which originally seeded Tesamorelin's pricing back in 2026-08-06) still hardcoded the old $700/$355 values. Left alone, a future re-run of that script — an environment rebuild, a disaster-recovery reseed — would have silently regressed the price back to the values the owner just corrected. Updated in the same pass, with a comment explaining why.
+
+**PRODUCTION RESULT**: verified directly in the production database (before/after query showing the exact old→new values), tied together with the Finance rehearsal above (one of the two rehearsal invoices uses the freshly-corrected Tesamorelin 5mg Professional price, so the price correction and the Finance pipeline were verified in the same pass rather than as two disconnected changes). `docs/PendingOwnerActions.md` #27 moved to Resolved.
+
+---
+
 ## 16. Portfolio Summary
 
 Pepscore Lab is a production back-office platform — invoicing, payment arrangements, carrier-agnostic shipment tracking, a real fulfillment engine, CRM, pricing intelligence, reorder/repeat-purchase workflows, a centralized notification design system, storefront checkout with server-side promotion redemption, and a Customer Portal — built for a peptide-research-supplier business through owner-directed, AI-assisted engineering with Claude Code. The owner defined product vision, requirements, architecture direction, business rules, and QA/production-validation standards; implementation, testing, and bug discovery were carried out under that direction and recorded in a 65-entry engineering decision log spanning 170+ merged pull requests. The system reflects disciplined engineering practice throughout: provider abstractions reused across shipping and payments, derived-not-stored state to prevent drift, layered kill switches and fail-closed defaults on every real-money and real-communication path, shared concurrency-safety primitives (optimistic inventory locking, `FOR UPDATE` row locks) applied consistently rather than per-call-site, and an audit-before-building discipline that caught and fixed several genuine production bugs (a silently-dropped Stripe refund webhook, an unreserved storefront inventory path, a cron misconfiguration silently blocking every deploy, a 10x-under-reservation bug in the sell-unit-aware cart, a concurrent-reservation race on the last unit of stock, a portal-invite duplicate-send race) before they became customer-facing incidents. The operational core — invoicing, fulfillment, tracking, CRM, pricing, reorder, notifications, and now checkout/promotions — is production-validated and in active use; real payment activation, real bulk customer communication, and real postage remain deliberately held behind activation switches pending explicit business go-ahead, exactly as documented in the project's own payment-readiness report and `docs/PendingOwnerActions.md`.

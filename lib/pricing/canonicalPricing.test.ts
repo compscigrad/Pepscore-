@@ -247,3 +247,66 @@ describe('resolveCanonicalPricing -- end-to-end scenarios', () => {
     ).toThrow(ProfessionalPricingUnauthorizedError)
   })
 })
+
+// Real catalog fixtures, not synthetic round numbers -- covers the specific
+// pricing-hierarchy conflict the pre-sprint audit found and the owner
+// resolved 2026-08-19 (docs/PendingOwnerActions.md #27, docs/Decisions.md).
+// Professional was corrected from $700/$355 to $625/$320 specifically so it
+// stays cheaper than the 15+ standard-volume tier -- these tests pin that
+// real, current production pricing so a future catalog edit that regresses
+// it is caught immediately, not just documented in a memo.
+describe('Tesamorelin pricing hierarchy (real catalog fixtures, resolved 2026-08-19)', () => {
+  function tesamorelin5mg(): PricingProduct {
+    return { activeStandardCasePrice: 395, activeProCasePrice: 320, activeBulkPrice: null, activeIndividualVialPrice: 45, individualSalesEnabled: false, unitsPerCase: 10 }
+  }
+  function tesamorelin10mg(): PricingProduct {
+    return { activeStandardCasePrice: 775, activeProCasePrice: 625, activeBulkPrice: null, activeIndividualVialPrice: 80, individualSalesEnabled: false, unitsPerCase: 10 }
+  }
+
+  it('5mg: Standard $395, 15+ standard-volume tier $335.75, Professional $320', () => {
+    const [standard1] = resolveCanonicalPricing([{ product: tesamorelin5mg(), sellUnit: 'CASE_STANDARD', quantity: 1 }], { proEligible: false })
+    expect(standard1.unitPrice).toBe(395)
+    const [standard15] = resolveCanonicalPricing([{ product: tesamorelin5mg(), sellUnit: 'CASE_STANDARD', quantity: 15 }], { proEligible: false })
+    expect(standard15.unitPrice).toBe(335.75)
+    const [pro] = resolveCanonicalPricing([{ product: tesamorelin5mg(), sellUnit: 'CASE_PRO', quantity: 1 }], { proEligible: true })
+    expect(pro.unitPrice).toBe(320)
+    expect(pro.unitPrice).toBeLessThan(standard15.unitPrice)
+  })
+
+  it('10mg: Standard $775, 15+ standard-volume tier $658.75, Professional $625', () => {
+    const [standard1] = resolveCanonicalPricing([{ product: tesamorelin10mg(), sellUnit: 'CASE_STANDARD', quantity: 1 }], { proEligible: false })
+    expect(standard1.unitPrice).toBe(775)
+    const [standard15] = resolveCanonicalPricing([{ product: tesamorelin10mg(), sellUnit: 'CASE_STANDARD', quantity: 15 }], { proEligible: false })
+    expect(standard15.unitPrice).toBe(658.75)
+    const [pro] = resolveCanonicalPricing([{ product: tesamorelin10mg(), sellUnit: 'CASE_PRO', quantity: 1 }], { proEligible: true })
+    expect(pro.unitPrice).toBe(625)
+    expect(pro.unitPrice).toBeLessThan(standard15.unitPrice)
+  })
+
+  it('Professional pricing wins over the standard volume ladder at every case count, both strengths', () => {
+    for (const product of [tesamorelin5mg(), tesamorelin10mg()]) {
+      for (const quantity of [1, 3, 5, 10, 15, 50]) {
+        const [line] = resolveCanonicalPricing([{ product, sellUnit: 'CASE_PRO', quantity }], { proEligible: true })
+        expect(line.unitPrice).toBe(product.activeProCasePrice)
+        expect(line.volumeDiscountRate).toBe(0)
+      }
+    }
+  })
+
+  it('standard volume discounts never stack onto Professional pricing even in a mixed cart', () => {
+    const lines = resolveCanonicalPricing(
+      [
+        { product: tesamorelin10mg(), sellUnit: 'CASE_PRO', quantity: 15 },
+        { product: tesamorelin5mg(), sellUnit: 'CASE_STANDARD', quantity: 15 },
+      ],
+      { proEligible: true }
+    )
+    expect(lines[0].unitPrice).toBe(625) // Professional, untouched by the 15+ standard tier
+    expect(lines[1].unitPrice).toBe(335.75) // Standard line still correctly gets the ladder
+  })
+
+  it('unauthorized customers cannot obtain either Tesamorelin Professional price', () => {
+    expect(() => resolvePricingLine({ product: tesamorelin5mg(), sellUnit: 'CASE_PRO', quantity: 1 }, { proEligible: false })).toThrow(ProfessionalPricingUnauthorizedError)
+    expect(() => resolvePricingLine({ product: tesamorelin10mg(), sellUnit: 'CASE_PRO', quantity: 1 }, { proEligible: false })).toThrow(ProfessionalPricingUnauthorizedError)
+  })
+})

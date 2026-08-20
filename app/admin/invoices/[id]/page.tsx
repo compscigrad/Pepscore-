@@ -36,6 +36,18 @@ export default async function EditInvoicePage({ params }: PageProps) {
 
   if (!invoice) notFound()
 
+  // Admin invoice edit parity (2026-08-19 Professional Access Closure Pass)
+  // -- resolves the linked customer's real entitlement so InvoiceItemsTable
+  // can auto-default/auto-recompute Professional pricing when editing an
+  // already-open invoice, not just when creating a brand-new one from a
+  // customer profile. A plain, cheap scalar-only lookup -- deliberately not
+  // folded into InvoiceWithRelations' shared include, which every other
+  // invoice-fetching call site (lists, PDFs, exports) also uses and has no
+  // need for this one field.
+  const customerProEligible = invoice.customerId
+    ? (await prisma.customer.findUnique({ where: { id: invoice.customerId }, select: { proEligible: true } }))?.proEligible ?? false
+    : false
+
   return (
     <main className="min-h-screen bg-black p-8">
       <div className="max-w-[1400px] mx-auto">
@@ -75,6 +87,7 @@ export default async function EditInvoicePage({ params }: PageProps) {
           products={products}
           promotions={promotions}
           smsConfigured={isSmsConfigured()}
+          customerProEligible={customerProEligible}
         />
       </div>
     </main>

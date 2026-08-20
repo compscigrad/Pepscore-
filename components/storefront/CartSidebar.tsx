@@ -10,10 +10,13 @@ import { BackorderIndicator } from './BackorderIndicator'
 import { BackorderLegend } from './BackorderLegend'
 import { STOREFRONT_BACKORDER_CREDIT_AMOUNT, STOREFRONT_BACKORDER_MINIMUM_ORDER_TOTAL } from '@/lib/storefront/backorderPolicy'
 import { SELL_UNIT_DISPLAY_LABEL } from '@/lib/pricing/sellUnits'
+import { VolumePricingSummary } from './VolumePricingSummary'
+import { useProfessionalAccessStatus } from './useProfessionalAccessStatus'
 
 export function CartSidebar() {
   const { items, isOpen, closeCart, removeItem, updateQuantity, total } = useCartStore()
   const router = useRouter()
+  const proEligible = useProfessionalAccessStatus()
 
   const cartTotal = total()
   const hasBackorderedItem = items.some((item) => item.backordered)
@@ -119,6 +122,9 @@ export function CartSidebar() {
             <p className="text-[11px] text-white/45 mb-3 leading-relaxed">
               Shipping and taxes calculated at checkout. Free shipping on orders over $150.
             </p>
+            <div className="mb-3">
+              <VolumePricingSummary items={items} proEligible={proEligible} variant="compact" />
+            </div>
             {hasBackorderedItem && (
               <div className="mb-3 space-y-1.5">
                 <BackorderLegend />

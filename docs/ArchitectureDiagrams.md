@@ -362,6 +362,43 @@ flowchart TD
 
 ---
 
+## 12. Professional Access / Canonical Pricing Engine
+
+Grounded in: `lib/pricing/canonicalPricing.ts`, `lib/storefront/professionalAccess.ts`, `lib/professionalAccess/applications.ts`, `lib/professionalAccess/invites.ts`, `app/api/checkout/route.ts`, `components/invoices/InvoiceItemsTable.tsx`, `prisma/schema.prisma` (`Customer.proEligible`, `ProfessionalAccessApplication`, `ProfessionalAccessInvite`). New 2026-08-19 (Professional Access sprint + Closure Pass) -- replaces the old SPA architecture documented as diagram history in `docs/Decisions.md` #75; the audit that preceded this sprint found the storefront's volume ladder was marketing copy only and the SPA tier had no server-side authorization boundary. This is the fix.
+
+```mermaid
+flowchart TD
+    subgraph Standard["Standard customer -- automatic volume pricing"]
+      CART["Cart / checkout / admin invoice\n(any number of CASE_STANDARD lines,\nany product)"] --> AGG["computeQualifyingCaseCount()\n(sums quantity across every\nCASE_STANDARD line, cross-product --\nnever counts CASE_PRO/BULK/\nINDIVIDUAL_VIAL toward the ladder)"]
+      AGG --> TIER["getVolumeDiscountRate()\n1-2: 0% . 3-4: 5% . 5-9: 8%\n10-14: 10% . 15+: 15%\n(locked, never a coupon code)"]
+      TIER --> STDPRICE["Final unit price = catalog price\n(1 - rate), applied uniformly to\nevery qualifying line"]
+    end
+
+    subgraph Professional["Verified Professional customer -- server-side entitlement"]
+      REQ["Client requests CASE_PRO\n(sellUnit is only ever a REQUEST,\nnever trusted as authorization)"] --> RESOLVE["resolveProEligibleByClerkUserId()\n(Clerk userId ONLY -- never an\nemail match, unlike the general\ncustomer-matching convention\nused for promo codes/guest invoices)"]
+      RESOLVE -->|proEligible: false| REJECT["ProfessionalPricingUnauthorizedError\nthrown BEFORE any price is computed\n-- nothing to leak"]
+      RESOLVE -->|proEligible: true| PROPRICE["Professional Case price\n(product-specific, owner-set --\nnever a universal % off Standard)\nfrom case #1, never stacked\nwith the standard ladder"]
+      PROPRICE --> CASEONLY["Case-only experience:\nStandard Case + Individual Vial\nremoved as competing options,\nStandard struck through,\n~2-week fulfillment noted"]
+    end
+
+    ENGINE["resolveCanonicalPricing()\n(lib/pricing/canonicalPricing.ts --\nthe ONE pricing truth: checkout,\nadmin invoices, and the cart/checkout\nUX preview all read this, never a\nsecond independent calculation)"]
+    Standard --> ENGINE
+    Professional --> ENGINE
+    ENGINE --> SNAPSHOT["Invoice/Order price snapshot\n(unitPrice stored once at\ncreation -- never silently\nrecomputed on an already-\nfinalized transaction)"]
+    SNAPSHOT --> FINANCE["Finance Center / P&L / Export\n(isTestData:false filters every\nrevenue-relevant query -- a\nrehearsal transaction never\npollutes a real report)"]
+
+    subgraph Application["Professional Application -> Admin Verification -> Invitation -> Entitlement"]
+      APPLY["/professional-access/apply\n(dedicated page -- extends,\nnot replaces, LeadCapture)"] --> LEAD["captureLead() + ProfessionalAccessApplication\n(PENDING) -- same CRM pipeline\nevery other inquiry uses"]
+      LEAD --> REVIEW["Admin review queue\n(/admin/professional-access) --\nAPPROVED / REJECTED /\nMORE_INFO_REQUESTED / REVOKED"]
+      REVIEW -->|approve| GRANT["Customer.proEligible = true\n(the ONLY thing that ever\nauthorizes Professional pricing)"]
+      ADMININV["Admin: early-launch invite\n(ProfessionalAccessInvite --\nmirrors CustomerPortalInvite's\ntoken-as-boundary shape)"] --> CLAIM["Clerk-verified-email claim\n(/professional-access/invite/[token])"]
+      CLAIM --> GRANT
+      GRANT --> RESOLVE
+    end
+```
+
+---
+
 ## Maintaining this document
 
 Each diagram cites the real files it was drawn from — when those files change materially, update the diagram in the same sprint, per the standing rule in `docs/CaseStudy.md`'s "Continuous Update Rule." Do not add a node or edge without first confirming it against the cited source; a diagram that looks plausible but wasn't checked against real code is worse than no diagram.
