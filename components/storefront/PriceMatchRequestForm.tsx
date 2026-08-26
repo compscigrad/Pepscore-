@@ -33,12 +33,22 @@ export interface PriceMatchProductOption {
 export interface PriceMatchRequestFormProps {
   products: PriceMatchProductOption[]
   initialProductId?: string
+  // Signed-in customer's known contact info, when available -- prefilled
+  // but always editable, never silently trusted as-is (2026-08-26
+  // appendix). A guest visitor gets all undefined and sees blank fields,
+  // exactly like before this prop existed.
+  initialContactName?: string
+  initialContactEmail?: string
+  initialContactPhone?: string
 }
 
-export function PriceMatchRequestForm({ products, initialProductId }: PriceMatchRequestFormProps) {
-  const [contactName, setContactName] = useState('')
-  const [contactEmail, setContactEmail] = useState('')
-  const [contactPhone, setContactPhone] = useState('')
+type PreferredContact = 'EMAIL' | 'PHONE'
+
+export function PriceMatchRequestForm({ products, initialProductId, initialContactName, initialContactEmail, initialContactPhone }: PriceMatchRequestFormProps) {
+  const [contactName, setContactName] = useState(initialContactName ?? '')
+  const [contactEmail, setContactEmail] = useState(initialContactEmail ?? '')
+  const [contactPhone, setContactPhone] = useState(initialContactPhone ?? '')
+  const [preferredContactMethod, setPreferredContactMethod] = useState<PreferredContact>('EMAIL')
   const [productId, setProductId] = useState(initialProductId ?? products[0]?.id ?? '')
   const [sellUnit, setSellUnit] = useState<SellUnit>('CASE_STANDARD')
   const [competitorName, setCompetitorName] = useState('')
@@ -100,6 +110,11 @@ export function PriceMatchRequestForm({ products, initialProductId }: PriceMatch
       setErrorMessage('Enter the competitor’s listed price.')
       return
     }
+    if (preferredContactMethod === 'PHONE' && !contactPhone.trim()) {
+      setStatus('error')
+      setErrorMessage('Enter a phone number so we can reach you — or switch your preferred contact method to email.')
+      return
+    }
     setStatus('submitting')
     setErrorMessage(null)
     try {
@@ -108,6 +123,7 @@ export function PriceMatchRequestForm({ products, initialProductId }: PriceMatch
       formData.set('contactName', contactName)
       formData.set('contactEmail', contactEmail)
       if (contactPhone) formData.set('contactPhone', contactPhone)
+      formData.set('preferredContactMethod', preferredContactMethod)
       formData.set('productId', productId)
       formData.set('sellUnit', sellUnit)
       formData.set('competitorName', competitorName)
@@ -152,7 +168,7 @@ export function PriceMatchRequestForm({ products, initialProductId }: PriceMatch
           <div className="bg-[#D4AF37]/10 border border-[#D4AF37]/30 rounded-2xl p-8 text-center">
             <p className="font-heading text-[16px] font-bold text-white mb-1.5">Request received</p>
             <p className="text-[14px] text-white/60">
-              Thanks — we review every request by hand and will follow up by email shortly.
+              Your Price Match Request has been received. A member of the Pepscore Lab team reviews every request by hand and will get back to you as soon as possible.
             </p>
           </div>
         ) : (
@@ -172,8 +188,15 @@ export function PriceMatchRequestForm({ products, initialProductId }: PriceMatch
                 <input id="contactEmail" type="email" required value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} className={inputClass} />
               </div>
               <div>
-                <label className={labelClass} htmlFor="contactPhone">Phone</label>
-                <input id="contactPhone" type="tel" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} className={inputClass} />
+                <label className={labelClass} htmlFor="contactPhone">Phone{preferredContactMethod === 'PHONE' ? ' *' : ''}</label>
+                <input
+                  id="contactPhone"
+                  type="tel"
+                  required={preferredContactMethod === 'PHONE'}
+                  value={contactPhone}
+                  onChange={(e) => setContactPhone(e.target.value)}
+                  className={inputClass}
+                />
               </div>
               <div>
                 <label className={labelClass} htmlFor="sellUnit">Purchase Type *</label>
@@ -183,6 +206,31 @@ export function PriceMatchRequestForm({ products, initialProductId }: PriceMatch
                   ))}
                 </select>
               </div>
+            </div>
+
+            <div>
+              <label className={labelClass} htmlFor="preferredContactMethod">Preferred Contact Method *</label>
+              <select
+                id="preferredContactMethod"
+                required
+                value={preferredContactMethod}
+                onChange={(e) => setPreferredContactMethod(e.target.value as PreferredContact)}
+                className={inputClass}
+              >
+                <option value="EMAIL">Email</option>
+                <option value="PHONE">Phone</option>
+              </select>
+              {preferredContactMethod === 'EMAIL' ? (
+                <p className="text-[12px] text-white/50 mt-1.5">
+                  We&apos;ll reach out at <span className="text-white">{contactEmail || 'the email address above'}</span>.
+                </p>
+              ) : (
+                <p className="text-[12px] text-white/50 mt-1.5">
+                  We&apos;ll call/text{' '}
+                  <span className="text-white">{contactPhone || 'the phone number above'}</span> — double-check it&apos;s
+                  correct above before submitting.
+                </p>
+              )}
             </div>
 
             <div>

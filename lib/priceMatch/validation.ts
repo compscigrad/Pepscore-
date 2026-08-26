@@ -14,6 +14,9 @@ export const priceMatchRequestSchema = z.object({
   contactName: z.string().trim().min(1, 'Name is required').max(200),
   contactEmail: z.string().trim().toLowerCase().email('Enter a valid email address').max(320),
   contactPhone: z.string().trim().max(40).optional(),
+  // Only EMAIL/PHONE are ever offered here (never SMS) -- reuses
+  // Customer.preferredContactMethod's existing enum values.
+  preferredContactMethod: z.enum(['EMAIL', 'PHONE']),
 
   productId: z.string().trim().min(1, 'Select a product'),
   sellUnit: z.enum(SELL_UNITS),
@@ -34,6 +37,9 @@ export const priceMatchRequestSchema = z.object({
   consent: z.boolean().refine((v) => v === true, { message: 'You must agree to be contacted about this request' }),
   // Honeypot -- real visitors never see this field.
   website2: z.string().optional(),
+}).refine((data) => data.preferredContactMethod !== 'PHONE' || !!data.contactPhone, {
+  message: 'Enter a phone number to be contacted by phone',
+  path: ['contactPhone'],
 })
 
 export type PriceMatchRequestSubmission = z.infer<typeof priceMatchRequestSchema>

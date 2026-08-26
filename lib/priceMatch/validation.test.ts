@@ -5,6 +5,7 @@ function basePayload(overrides: Record<string, unknown> = {}) {
   return {
     contactName: 'Jane Smith',
     contactEmail: 'jane@example.com',
+    preferredContactMethod: 'EMAIL',
     productId: 'prod_1',
     sellUnit: 'CASE_STANDARD',
     competitorName: 'Acme Peptides',
@@ -49,6 +50,22 @@ describe('priceMatchRequestSchema', () => {
 
   it('does not require phone, competitorUrl, proof, or customerNote', () => {
     const result = priceMatchRequestSchema.safeParse(basePayload())
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects a missing preferredContactMethod', () => {
+    const { preferredContactMethod: _omit, ...rest } = basePayload()
+    const result = priceMatchRequestSchema.safeParse(rest)
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects preferredContactMethod: PHONE with no contactPhone', () => {
+    const result = priceMatchRequestSchema.safeParse(basePayload({ preferredContactMethod: 'PHONE' }))
+    expect(result.success).toBe(false)
+  })
+
+  it('accepts preferredContactMethod: PHONE when contactPhone is provided', () => {
+    const result = priceMatchRequestSchema.safeParse(basePayload({ preferredContactMethod: 'PHONE', contactPhone: '2025550148' }))
     expect(result.success).toBe(true)
   })
 })

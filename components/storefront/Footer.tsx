@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { LeadCaptureTrigger } from './LeadCaptureTrigger'
 import { FirstOrderOfferModal } from './FirstOrderOfferModal'
 import { ScientificBackground } from './ScientificBackground'
-import { BrandLockup } from './BrandLockup'
+import { FooterLogoScrollTop } from './FooterLogoScrollTop'
 import { getActiveFirstOrderOffer } from '@/lib/promotions/firstOrderOffer'
 import { formatDiscountLabel } from '@/lib/promotions/format'
 
@@ -93,7 +93,7 @@ export async function Footer() {
             from the small inline wordmark the brand column used to carry
             (removed below so this doesn't read as two competing logos). */}
         <div className="flex flex-col items-center text-center pb-11 border-b border-[#D4AF37]/15">
-          <BrandLockup size="footerLarge" />
+          <FooterLogoScrollTop />
           {/* max-w widens at lg+ (2026-08-14) -- below lg this is
               unchanged from before (560px, which doesn't even bind until
               the viewport itself exceeds it) so mobile/tablet composition

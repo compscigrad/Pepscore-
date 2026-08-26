@@ -279,8 +279,12 @@ export function ShipmentsSection({ invoiceId, shipments, onTrackingUpdated }: Pr
       const res = await fetch(`/api/admin/invoices/${invoiceId}/shipments/rates?${params}`)
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Failed to fetch rates')
-      setRates(data.rates ?? [])
-      if ((data.rates ?? []).length === 0) toast('No rates returned for this package', { icon: 'ℹ️' })
+      // Cheapest first (2026-08-26 appendix) -- purely a display/scan-order
+      // aid, same as sorting any comparison list; selection stays 100%
+      // manual (the radio button below), never auto-picked or auto-purchased.
+      const sorted: ShippoRateOption[] = (data.rates ?? []).slice().sort((a: ShippoRateOption, b: ShippoRateOption) => parseFloat(a.amount) - parseFloat(b.amount))
+      setRates(sorted)
+      if (sorted.length === 0) toast('No rates returned for this package', { icon: 'ℹ️' })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to fetch rates')
     } finally {
@@ -679,7 +683,7 @@ export function ShipmentsSection({ invoiceId, shipments, onTrackingUpdated }: Pr
 
         {rates.length > 0 ? (
           <div className="space-y-2">
-            {rates.map((rate) => (
+            {rates.map((rate, i) => (
               <label
                 key={rate.object_id}
                 className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm cursor-pointer ${
@@ -695,6 +699,15 @@ export function ShipmentsSection({ invoiceId, shipments, onTrackingUpdated }: Pr
                   />
                   {rate.provider} — {rate.servicelevel.name}
                   <span className={mutedText}>({rate.estimated_days}d)</span>
+                  {/* Lowest-priced eligible rate, list already sorted
+                      ascending above -- purely informational, never
+                      auto-selected; the admin still clicks a rate and then
+                      Purchase Label explicitly. */}
+                  {i === 0 && (
+                    <span className="text-[10px] font-bold uppercase tracking-wide text-emerald-300 bg-emerald-900/20 border border-emerald-700/30 rounded-full px-2 py-0.5">
+                      Best Value
+                    </span>
+                  )}
                 </span>
                 <span className="font-heading font-bold text-gold-light">{formatMoney(parseFloat(rate.amount))}</span>
               </label>

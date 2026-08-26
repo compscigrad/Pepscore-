@@ -2828,6 +2828,15 @@ model PriceMatchRequest {
 
   customerNote String?
 
+  // Which of contactEmail/contactPhone the customer wants Pepscore to
+  // actually use when following up on this specific request -- reuses the
+  // existing Customer.preferredContactMethod enum rather than a new one,
+  // even though the form only ever offers EMAIL/PHONE (never SMS) for this
+  // one-off request context. Defaulted (not nullable) so existing rows from
+  // before this field existed remain valid without a backfill; every new
+  // submission always sets it explicitly.
+  preferredContactMethod PreferredContactMethod @default(EMAIL)
+
   status              PriceMatchRequestStatus    @default(PENDING)
   rejectionReason     PriceMatchRejectionReason?
   reviewedBy          String?

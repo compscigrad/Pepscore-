@@ -35,6 +35,7 @@ interface RequestRow {
   contactName: string
   contactEmail: string
   contactPhone: string | null
+  preferredContactMethod: 'EMAIL' | 'PHONE' | 'SMS'
   sellUnit: string
   competitorName: string
   competitorUrl: string | null
@@ -275,6 +276,13 @@ export function PriceMatchQueue() {
                     <p className="font-heading font-bold text-white">{row.product.name} ({row.product.size}) · {row.sellUnit.replace(/_/g, ' ')}</p>
                     <p className="text-[11px] text-white/40 font-mono">{row.requestNumber}</p>
                     <p className="text-[13px] text-white/60">{row.contactName} · {row.contactEmail}{row.contactPhone ? ` · ${row.contactPhone}` : ''}</p>
+                    <p className="text-[11px] mt-0.5">
+                      <span className="text-white/40">Preferred Contact: </span>
+                      <span className="font-bold uppercase tracking-wide text-gold">{row.preferredContactMethod}</span>{' '}
+                      <span className="text-white/70">
+                        {row.preferredContactMethod === 'PHONE' ? (row.contactPhone ?? 'no phone on file') : row.contactEmail}
+                      </span>
+                    </p>
                   </div>
                   <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide ${STATUS_BADGE[row.status]}`}>
                     {row.status.replace(/_/g, ' ')}

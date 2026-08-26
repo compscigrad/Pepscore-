@@ -8,7 +8,7 @@ import { useCartStore } from '@/lib/cart-store'
 import { SingleVialImage } from './SingleVialImage'
 import { BackorderIndicator } from './BackorderIndicator'
 import { LeadCaptureTrigger } from './LeadCaptureTrigger'
-import { isPurchasable, AVAILABILITY_LABEL, AVAILABILITY_BADGE_CLASS, type StorefrontAvailability } from '@/lib/storefront/availability'
+import { isPurchasable, AVAILABILITY_LABEL, type StorefrontAvailability } from '@/lib/storefront/availability'
 import { categoriesForProductName } from '@/lib/storefront/merchandisingTaxonomy'
 import type { SellUnit } from '@/lib/pricing/sellUnits'
 import { trackEvent } from '@/lib/analytics/track'
@@ -56,6 +56,31 @@ export interface ProductVariant {
   // re-applies it (or doesn't) at checkout, so a stale/tampered client
   // value displayed here can never itself change what gets charged.
   preferredPricesBySellUnit?: Partial<Record<SellUnit, number>>
+}
+
+// Availability badge, light-surface variant (2026-08-26 contrast fix) --
+// AVAILABILITY_BADGE_CLASS (lib/storefront/availability.ts) is shared with
+// ProductDetail, which still sits on a bg-black surface where light text
+// (text-emerald-300, text-white/50) on a near-black/[5%] tint reads fine.
+// This card's own surface is the light Champagne Bronze gradient below, so
+// that same light-on-near-black styling becomes light-on-near-white --
+// text-emerald-300's AVAILABLE state and the translucent white/5+white/50
+// OUT_OF_STOCK/COMING_SOON states both washed out to near-invisible. Rather
+// than touch the shared constant (and risk the opposite regression on
+// ProductDetail's dark background), this card uses its own local, inverted-
+// luminance map for the same five states -- same semantic color family per
+// state, dark text/tinted-light chip instead of light text/near-black chip,
+// matching the dark-text-on-light-chip convention this card's own price/
+// pricing-unavailable blocks already established elsewhere below (#241C10,
+// black/15, black/20). BACKORDERED is untouched -- its background is a
+// solid, opaque brown (#6B4526), not a translucent overlay, so the card
+// surface never shows through it regardless of which surface it's on.
+const CARD_AVAILABILITY_BADGE_CLASS: Record<StorefrontAvailability, string> = {
+  AVAILABLE: 'bg-emerald-900/10 text-emerald-900 border border-emerald-900/25',
+  LIMITED: 'bg-amber-900/10 text-amber-900 border border-amber-900/30',
+  BACKORDERED: 'bg-[#6B4526] text-[#F6D365] border-2 border-[#D4AF37]',
+  OUT_OF_STOCK: 'bg-black/15 text-[#241C10]/70 border border-black/20',
+  COMING_SOON: 'bg-black/15 text-[#241C10]/70 border border-black/20',
 }
 
 // Light Champagne (2026-08-15, final selection) -- picked over the
@@ -276,7 +301,7 @@ export function ProductCard({ name, featured, category, description, imageUrl, b
               (Produced to Order / Limited / Out of Stock / Coming Soon),
               never silence. AVAILABILITY_BADGE_CLASS/AVAILABILITY_LABEL
               both carry an AVAILABLE entry now (lib/storefront/availability.ts). */}
-          <div className={`inline-flex w-fit items-center rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.07em] ${AVAILABILITY_BADGE_CLASS[availability]}`}>
+          <div className={`inline-flex w-fit items-center rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.07em] ${CARD_AVAILABILITY_BADGE_CLASS[availability]}`}>
             {v.availabilityMessageOverride || AVAILABILITY_LABEL[availability]}
           </div>
 
@@ -300,7 +325,15 @@ export function ProductCard({ name, featured, category, description, imageUrl, b
                       className={`flex-1 px-2 py-1.5 rounded-lg text-[10px] font-heading font-bold tracking-[0.04em] uppercase transition-all ${
                         effectiveSellUnit === unit
                           ? 'bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] text-black'
-                          : 'border border-[#D4AF37]/25 text-white/60 hover:border-[#D4AF37] hover:text-[#D4AF37]'
+                          // Unselected pill contrast fix (2026-08-26) --
+                          // text-white/60 on a transparent interior read
+                          // straight through to this card's own light
+                          // Champagne Bronze surface (near-white in its
+                          // lighter bands), washing the label out. Dark text
+                          // matches the same convention already used for
+                          // this card's other unselected/secondary controls
+                          // (e.g. the size-pill selector above).
+                          : 'border border-[#D4AF37]/40 text-[#241C10]/70 hover:border-[#D4AF37] hover:text-[#7A2E17]'
                       }`}
                     >
                       {unit === 'CASE_STANDARD' ? 'Standard Case' : 'Single Vial'}
@@ -387,7 +420,13 @@ export function ProductCard({ name, featured, category, description, imageUrl, b
               <button
                 onClick={handleAdd}
                 disabled={!canPurchase}
-                className="bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] hover:shadow-[0_4px_16px_rgba(212,175,55,0.4)] text-black font-heading text-[11px] font-bold tracking-[0.05em] uppercase w-full py-2.5 rounded-full transition-all hover:scale-[1.02] disabled:bg-white/10 disabled:bg-none disabled:text-white/40 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:shadow-none"
+                // Disabled-state contrast fix (2026-08-26) -- disabled:bg-
+                // white/10 + disabled:text-white/40 read fine against a
+                // dark card surface but wash out to near-invisible against
+                // this card's own light Champagne Bronze background. Dark
+                // chip + dark text matches every other secondary/disabled
+                // element already fixed elsewhere on this card.
+                className="bg-gradient-to-br from-[#F6D365] via-[#D4AF37] to-[#C99A20] hover:shadow-[0_4px_16px_rgba(212,175,55,0.4)] text-black font-heading text-[11px] font-bold tracking-[0.05em] uppercase w-full py-2.5 rounded-full transition-all hover:scale-[1.02] disabled:bg-black/15 disabled:bg-none disabled:text-[#241C10]/50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:shadow-none"
               >
                 {canPurchase ? `Add to Cart${variants.length > 1 ? ` · ${v.size}` : ''}` : v.availabilityMessageOverride || AVAILABILITY_LABEL[availability]}
               </button>

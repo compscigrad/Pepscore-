@@ -1110,6 +1110,32 @@ Replaced all 64 (now 66) approved family images used by `lib/storefront/productI
 
 ---
 
+## Phase 25: Storefront UX polish, Price Match preferred contact, ProductCard contrast fixes, Shippo capability audit (2026-08-26)
+
+**Status: implemented, tested (rehearsed against real Postgres), locally verified clean; not yet committed/deployed.** `LIGHT-CARD REDESIGN → STALE DARK-SURFACE STYLING → CONTRAST DEFECT → LOCAL OVERRIDE, NOT A SHARED-CONSTANT REWRITE`.
+
+### Mini Case Study: A Card Redesign That Left Two Colors Behind
+
+**PROBLEM**: `ProductCard`'s surface was redesigned from flat black to a light "Champagne Bronze" gradient back on 2026-08-15 — the redesign's own code comments show real care taken to fix contrast on several elements it touched. But `AVAILABILITY_BADGE_CLASS` lives in a file shared with `ProductDetail` (which stayed dark), and the sell-unit toggle button's unselected state was never on that redesign's list. Both kept their original light-text-on-dark styling.
+
+**WHAT ACTUALLY HAPPENED**: `text-emerald-300` (the "Ready to Ship" badge) and `text-white/60` (the unselected "Single Vial" toggle) both read perfectly fine against black — and both wash out to barely visible against the same card's own now-light background. The fix wasn't editing the shared constant (which would have broken `ProductDetail`, still correctly dark) — it was a `ProductCard`-local override map, matching the dark-text-on-light-chip convention the 2026-08-15 redesign had already established for everything else on this specific card.
+
+### Mini Case Study: A Height Cap That Existed on One Page But Not Its Sibling
+
+**PROBLEM**: the owner reported a shadow obscuring the left side of Product Cards on mobile category pages. The homepage renders the same `ProductCard` grid with no such issue.
+
+**WHAT ACTUALLY HAPPENED**: the homepage's product-grid section wraps its decorative background in a height-capped, `overflow-hidden` div — its own comment explains this was done deliberately "so card readability is never affected." The category page (`app/categories/[slug]/page.tsx`) renders the equivalent decorative background (a `fadeLeft` gradient plus a radial gold glow) directly on `absolute inset-0`, with no such cap — so both extend the section's full height, behind the entire product grid, not just the heading above it. A fixed-pixel-size radial ellipse (800×400px) covers proportionally far more of a narrow mobile viewport than a wide desktop one, which is exactly why this reads as worse on mobile without actually being mobile-specific code. Fixed by applying the homepage's own already-correct pattern to the category page.
+
+**HONEST LIMITATION**: this session's browser automation could not produce a true mobile-viewport screenshot to visually confirm the fix — `resize_window` reported success while screenshots kept rendering at desktop width. The fix is grounded in a specific, code-read root cause, not guesswork, but a real-device check is still owed.
+
+### Production Result Summary
+
+Footer logo now scrolls the current page to top (not a navigate-home Link, unlike the navbar). Price Match's existing success UI/email reworded for clarity, no duplicate email created. `PriceMatchRequest.preferredContactMethod` (reuses the existing `Customer.preferredContactMethod` enum) is now required on the public form, prefilled from a signed-in customer's account, surfaced in the Admin queue and the existing admin alert email. Two real ProductCard contrast defects and one real category-page layout defect fixed at their root cause, not papered over. Shippo audit: real multi-carrier rate-shopping and real USPS QR/Label-Broker purchasing are both already fully built and Admin-UI-wired — confirmed by direct code read, not assumed — correctly gated behind the pre-existing purchasing kill-switch pending Trust & Safety review; the one real gap (no "cheapest rate" visual cue) closed with a sort + badge, zero auto-purchase logic. `tsc`/`eslint`/`vitest` (1600/1600)/production build all clean; a real end-to-end Postgres rehearsal of the new preferred-contact field passed and cleaned up after itself.
+
+**NOT completed this pass, disclosed honestly**: true mobile-viewport visual verification (browser tooling limitation, see above). Shippo purchasing itself remains owner-dependent on completing Trust & Safety review — not attempted, not claimed as done.
+
+---
+
 ## 16. Portfolio Summary
 
 Pepscore Lab is a production back-office platform — invoicing, payment arrangements, carrier-agnostic shipment tracking, a real fulfillment engine, CRM, pricing intelligence, reorder/repeat-purchase workflows, a centralized notification design system, storefront checkout with server-side promotion redemption, and a Customer Portal — built for a peptide-research-supplier business through owner-directed, AI-assisted engineering with Claude Code. The owner defined product vision, requirements, architecture direction, business rules, and QA/production-validation standards; implementation, testing, and bug discovery were carried out under that direction and recorded in a 65-entry engineering decision log spanning 170+ merged pull requests. The system reflects disciplined engineering practice throughout: provider abstractions reused across shipping and payments, derived-not-stored state to prevent drift, layered kill switches and fail-closed defaults on every real-money and real-communication path, shared concurrency-safety primitives (optimistic inventory locking, `FOR UPDATE` row locks) applied consistently rather than per-call-site, and an audit-before-building discipline that caught and fixed several genuine production bugs (a silently-dropped Stripe refund webhook, an unreserved storefront inventory path, a cron misconfiguration silently blocking every deploy, a 10x-under-reservation bug in the sell-unit-aware cart, a concurrent-reservation race on the last unit of stock, a portal-invite duplicate-send race) before they became customer-facing incidents. The operational core — invoicing, fulfillment, tracking, CRM, pricing, reorder, notifications, and now checkout/promotions — is production-validated and in active use; real payment activation, real bulk customer communication, and real postage remain deliberately held behind activation switches pending explicit business go-ahead, exactly as documented in the project's own payment-readiness report and `docs/PendingOwnerActions.md`.

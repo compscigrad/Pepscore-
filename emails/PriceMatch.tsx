@@ -21,8 +21,8 @@ export function buildPriceMatchRequestReceivedHtml(props: RequestReceivedProps):
   const bodyHtml = `
     <h2 style="font-size:19px;color:${EMAIL_COLORS.textPrimary};margin:0 0 14px">Hi ${escapeHtml(props.contactName)},</h2>
     <p style="font-size:14px;line-height:1.7;color:${EMAIL_COLORS.textSecondary}">
-      Thanks for submitting a price match request for ${escapeHtml(props.productName)} (${escapeHtml(props.productSize)}). Our
-      team reviews every request by hand and will follow up by email once it's been reviewed.
+      Your price match request for ${escapeHtml(props.productName)} (${escapeHtml(props.productSize)}) has been received.
+      A member of the Pepscore Lab team reviews every request by hand and will get back to you as soon as possible.
     </p>
     <p style="font-size:13px;line-height:1.7;color:${EMAIL_COLORS.textMuted}">
       Price matches are reviewed against the total delivered price (item + shipping) from a verifiable source, and are
@@ -170,6 +170,8 @@ export interface PriceMatchRequestAlertProps {
   requestNumber: string
   contactName: string
   contactEmail: string
+  contactPhone: string | null
+  preferredContactMethod: 'EMAIL' | 'PHONE'
   productName: string
   productSize: string
   competitorName: string
@@ -194,6 +196,7 @@ export function buildPriceMatchRequestAlertHtml(props: PriceMatchRequestAlertPro
     <p style="margin:4px 0 0"><strong style="color:${EMAIL_COLORS.textPrimary}">Delivered price found:</strong> <span style="color:${EMAIL_COLORS.textSecondary}">$${props.competitorDeliveredPrice.toFixed(2)}</span></p>
     <p style="margin:4px 0 0"><strong style="color:${EMAIL_COLORS.textPrimary}">Our current price:</strong> <span style="color:${EMAIL_COLORS.textSecondary}">${props.currentPrice != null ? `$${props.currentPrice.toFixed(2)}` : 'n/a'}</span></p>
     <p style="margin:4px 0 0"><strong style="color:${EMAIL_COLORS.textPrimary}">Contact:</strong> <span style="color:${EMAIL_COLORS.textSecondary}">${escapeHtml(props.contactName)} (${escapeHtml(props.contactEmail)})</span></p>
+    <p style="margin:4px 0 0"><strong style="color:${EMAIL_COLORS.textPrimary}">Preferred Contact:</strong> <span style="color:${EMAIL_COLORS.textSecondary}">${props.preferredContactMethod} — ${escapeHtml(props.preferredContactMethod === 'PHONE' ? (props.contactPhone ?? 'no phone on file') : props.contactEmail)}</span></p>
     <p style="margin:4px 0 0"><strong style="color:${EMAIL_COLORS.textPrimary}">Submitted:</strong> <span style="color:${EMAIL_COLORS.textSecondary}">${escapeHtml(submittedLabel)}</span></p>
     <p style="margin:4px 0 0"><strong style="color:${EMAIL_COLORS.textPrimary}">Proof:</strong> <span style="color:${EMAIL_COLORS.textSecondary}">${props.hasProofAttachment ? 'Attached to this email' : 'None submitted'}</span></p>
   `)

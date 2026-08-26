@@ -80,6 +80,10 @@ export interface SubmitPriceMatchRequestInput {
   contactName: string
   contactEmail: string
   contactPhone?: string | null
+  // Only 'EMAIL' | 'PHONE' -- narrower than Customer.preferredContactMethod's
+  // full Prisma enum (which also has 'SMS', never offered by this form).
+  // A narrower value always satisfies the wider column type on write.
+  preferredContactMethod: 'EMAIL' | 'PHONE'
   productId: string
   sellUnit: InvoiceItemSellUnit
   competitorName: string
@@ -142,6 +146,7 @@ export async function submitPriceMatchRequest(input: SubmitPriceMatchRequestInpu
           contactName: input.contactName,
           contactEmail: input.contactEmail,
           contactPhone: input.contactPhone ?? undefined,
+          preferredContactMethod: input.preferredContactMethod,
           productId: input.productId,
           sellUnit: input.sellUnit,
           competitorName: input.competitorName,
@@ -208,6 +213,8 @@ export async function submitPriceMatchRequest(input: SubmitPriceMatchRequestInpu
     requestNumber: request.requestNumber,
     contactName: input.contactName,
     contactEmail: input.contactEmail,
+    contactPhone: input.contactPhone ?? null,
+    preferredContactMethod: input.preferredContactMethod,
     productName: product.name,
     productSize: product.size,
     competitorName: input.competitorName,

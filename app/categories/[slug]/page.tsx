@@ -84,11 +84,26 @@ export default async function CategoryDetailPage({ params }: PageProps) {
         </div>
 
         <div className="relative overflow-hidden py-10 px-6">
-          <ScientificBackground intensity="subtle" position="object-right" fadeLeft />
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{ background: 'radial-gradient(ellipse 800px 400px at 10% 0%, rgba(212,175,55,0.08) 0%, transparent 70%)' }}
-          />
+          {/* Confined to the heading band only (2026-08-26 mobile fix) --
+              both this ScientificBackground's fadeLeft gradient and the
+              radial glow below used to sit on absolute inset-0/absolute
+              inset-0 respectively, stretching the full height of this
+              section -- including the entire product grid beneath the
+              heading, not just behind it. A card's own opaque background
+              can't show a decorative layer behind it, but the page's own
+              left margin/gutter alongside the grid could, and the fixed
+              800x400px radial ellipse covers proportionally far more of a
+              narrow mobile viewport than a wide desktop one. Matches the
+              homepage's own already-correct pattern for its equivalent
+              product-grid section (app/page.tsx's "#products" section):
+              height-capped, overflow-hidden, ends before the grid starts. */}
+          <div className="absolute inset-x-0 top-0 h-[300px] overflow-hidden pointer-events-none">
+            <ScientificBackground intensity="subtle" position="object-right" fadeLeft />
+            <div
+              className="absolute inset-0"
+              style={{ background: 'radial-gradient(ellipse 800px 400px at 10% 0%, rgba(212,175,55,0.08) 0%, transparent 70%)' }}
+            />
+          </div>
           <div className="max-w-[1200px] mx-auto relative">
             <div className="flex items-center gap-4 mb-3">
               <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#D4AF37]/15 to-[#D4AF37]/5 border border-[#D4AF37]/25 flex items-center justify-center text-[#D4AF37] flex-shrink-0">

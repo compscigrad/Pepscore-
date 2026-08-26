@@ -233,6 +233,21 @@ export const POLICIES: Policy[] = [
     sourceRef: 'lib/pricing/preferredPricing.ts, canonicalPricing.test.ts isolation tests',
     lastUpdated: '2026-08-20',
   },
+  {
+    id: 'price-match-preferred-contact-method',
+    name: 'Every Price Match Request Records a Preferred Contact Method',
+    category: 'PRICE_MATCH_PREFERRED_PRICING',
+    currentRule: 'The public Price Match form requires the customer to choose Email or Phone as their preferred contact method before submitting -- defaults to Email, but the customer can switch to Phone, in which case a phone number becomes required and the form shows exactly what will be used ("We\'ll call/text [number]") so nothing is silently assumed from a possibly-stale stored value. This choice is saved on the request and shown directly in the Admin Price Match queue and in the new-request admin alert email, so a reviewer always knows how to follow up without having to guess or default to email.',
+    businessRationale: 'A customer who says "call me" and never gets a call is a worse experience than the request itself being slow -- this makes the contact preference impossible to miss when reviewing a request.',
+    appliesTo: 'Every Price Match request, public form and Admin queue',
+    ownerOverride: 'NO',
+    doNot: ['Default to email and ignore a customer who asked for a phone call', 'Assume a stored phone number is current without giving the customer a chance to confirm/edit it at submission time'],
+    status: 'ACTIVE',
+    enforcement: 'SYSTEM_ENFORCED',
+    relatedWorkflow: { label: 'Open Price Match Queue', href: '/admin/price-match' },
+    sourceRef: 'prisma/schema.prisma (PriceMatchRequest.preferredContactMethod), components/storefront/PriceMatchRequestForm.tsx, components/admin/PriceMatchQueue.tsx',
+    lastUpdated: '2026-08-26',
+  },
 
   // ─── D. Samples & Evaluation Units ─────────────────────────────────────
   {
