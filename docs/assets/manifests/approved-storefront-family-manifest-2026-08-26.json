@@ -1,0 +1,789 @@
+{
+  "generatedAt": "2026-08-26T04:47:51.961Z",
+  "batchName": "CLEAN PROFESSIONAL V2",
+  "sourceZips": [
+    "Pepscore_66_3D_Family_Images_APPROVED.zip (complete 66-family library)",
+    "Pepscore_3D_Storefront_ACTIVE_50_CLEAN_PROFESSIONAL_V2.zip (50-active subset + bundled variant-mapping JSON, used only as a starting reference -- activeStorefront flags in this manifest are computed fresh from the live Product table, not copied from that JSON, because 2 discrepancies were found: HGH and SLU-PP-332 are flagged activeStorefront:true in the source JSON but are pricingStatus:INACTIVE in the live database)"
+  ],
+  "canonicalLiveAssetFolder": "C:\\Users\\micha\\Pepscore Lab Live",
+  "appImageDirectory": "/images/products/families/",
+  "previousBatchRelocatedTo": "/images/products/families-superseded-2026-08-17-approved-corrected/",
+  "totalFamilyImageFiles": 65,
+  "totalProductRows": 120,
+  "totalDistinctProductNames": 68,
+  "records": [
+    {
+      "appPath": "/images/products/families/5-Amino-1MQ.png",
+      "productNames": [
+        "5-Amino-1MQ"
+      ],
+      "variantSlugs": [
+        "5-amino-1mq-10mg",
+        "5-amino-1mq-50mg",
+        "5-amino-1mq-5mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/AOD 9604.png",
+      "productNames": [
+        "AOD 9604"
+      ],
+      "variantSlugs": [
+        "aod-9604-5mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/Ara-290.png",
+      "productNames": [
+        "Ara-290"
+      ],
+      "variantSlugs": [
+        "ara-290-10mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/B12.png",
+      "productNames": [
+        "B12 1mg/ml"
+      ],
+      "variantSlugs": [
+        "b12-10ml"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/BAC Water.png",
+      "productNames": [
+        "BAC Water"
+      ],
+      "variantSlugs": [
+        "bac-water-10ml",
+        "bac-water-3ml"
+      ],
+      "activeStorefront": false,
+      "status": "ARCHIVED"
+    },
+    {
+      "appPath": "/images/products/families/Botulinum Toxin Type A.png",
+      "productNames": [
+        "Botulinum Toxin Type A"
+      ],
+      "variantSlugs": [
+        "botulinum-toxin-100mg"
+      ],
+      "activeStorefront": false,
+      "status": "ARCHIVED"
+    },
+    {
+      "appPath": "/images/products/families/BPC 157 and TB500.png",
+      "productNames": [
+        "BPC10 + TB10",
+        "BPC5 + TB5"
+      ],
+      "variantSlugs": [
+        "bpc10-tb10-20mg",
+        "bpc5-tb5-10mg"
+      ],
+      "activeStorefront": false,
+      "status": "ARCHIVED"
+    },
+    {
+      "appPath": "/images/products/families/BPC 157.png",
+      "productNames": [
+        "BPC 157"
+      ],
+      "variantSlugs": [
+        "bpc-157-10mg",
+        "bpc-157-5mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/Cagrilintide and Semaglutide.png",
+      "productNames": [
+        "Cagrilintide 2.5mg + Semaglutide 2.5mg",
+        "Cagrilintide 5mg + Semaglutide 5mg"
+      ],
+      "variantSlugs": [
+        "cagri-sema-2-5mg",
+        "cagri-sema-5mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/Cagrilintide.png",
+      "productNames": [
+        "Cagrilintide"
+      ],
+      "variantSlugs": [
+        "cagrilintide-10mg",
+        "cagrilintide-5mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/Cerebrolysin.png",
+      "productNames": [
+        "Cerebrolysin (6 vials)"
+      ],
+      "variantSlugs": [
+        "cerebrolysin-60mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/CJC-1295 and Ipamorelin.png",
+      "productNames": [
+        "CJC-1295 without DAC 5mg + Ipamorelin 5mg"
+      ],
+      "variantSlugs": [
+        "cjc1295-ipa-10mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/CJC-1295 No DAC.png",
+      "productNames": [
+        "CJC-1295 No DAC"
+      ],
+      "variantSlugs": [
+        "cjc1295-no-dac-10mg",
+        "cjc1295-no-dac-5mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/CJC-1295 With DAC.png",
+      "productNames": [
+        "CJC-1295 With DAC"
+      ],
+      "variantSlugs": [
+        "cjc1295-with-dac-2mg",
+        "cjc1295-with-dac-5mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/Dermorphin.png",
+      "productNames": [
+        "Dermorphin"
+      ],
+      "variantSlugs": [
+        "dermorphin-5mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/DSIP.png",
+      "productNames": [
+        "DSIP"
+      ],
+      "variantSlugs": [
+        "dsip-15mg",
+        "dsip-5mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/Epithalon.png",
+      "productNames": [
+        "Epithalon"
+      ],
+      "variantSlugs": [
+        "epithalon-10mg",
+        "epithalon-50mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/EPO.png",
+      "productNames": [
+        "EPO 3000IU"
+      ],
+      "variantSlugs": [
+        "epo-3000iu"
+      ],
+      "activeStorefront": false,
+      "status": "ARCHIVED"
+    },
+    {
+      "appPath": "/images/products/families/G610.png",
+      "productNames": [
+        "G610"
+      ],
+      "variantSlugs": [
+        "g610-10mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/GA = AA Water.png",
+      "productNames": [
+        "GA = AA Water"
+      ],
+      "variantSlugs": [
+        "ga-water-3ml"
+      ],
+      "activeStorefront": false,
+      "status": "ARCHIVED"
+    },
+    {
+      "appPath": "/images/products/families/GHK-Cu.png",
+      "productNames": [
+        "GHK-Cu"
+      ],
+      "variantSlugs": [
+        "ghk-cu-100mg",
+        "ghk-cu-50mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/GHRP-6 Acetate.png",
+      "productNames": [
+        "GHRP-6 Acetate"
+      ],
+      "variantSlugs": [
+        "ghrp-6-5mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/GLOW50.png",
+      "productNames": [
+        "GLOW50"
+      ],
+      "variantSlugs": [
+        "glow50-50mg"
+      ],
+      "activeStorefront": false,
+      "status": "ARCHIVED"
+    },
+    {
+      "appPath": "/images/products/families/GLOW70.png",
+      "productNames": [
+        "BPC 10mg + GHK-Cu 50mg + TB500 10mg",
+        "GLOW70"
+      ],
+      "variantSlugs": [
+        "bpc-ghk-tb-70mg",
+        "glow70-70mg"
+      ],
+      "activeStorefront": "MIXED",
+      "status": "MIXED_ACTIVE_AND_ARCHIVED"
+    },
+    {
+      "appPath": "/images/products/families/Glutathione.png",
+      "productNames": [
+        "Glutathione"
+      ],
+      "variantSlugs": [
+        "glutathione-1200mg",
+        "glutathione-1500mg",
+        "glutathione-600mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/HCG.png",
+      "productNames": [
+        "HCG"
+      ],
+      "variantSlugs": [
+        "hcg-10000iu",
+        "hcg-5000iu"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/HGH.png",
+      "productNames": [
+        "HGH"
+      ],
+      "variantSlugs": [
+        "hgh-10iu",
+        "hgh-15iu",
+        "hgh-24iu"
+      ],
+      "activeStorefront": false,
+      "status": "ARCHIVED"
+    },
+    {
+      "appPath": "/images/products/families/HMG.png",
+      "productNames": [
+        "HMG"
+      ],
+      "variantSlugs": [
+        "hmg-75iu"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/Humanin.png",
+      "productNames": [
+        "Humanin"
+      ],
+      "variantSlugs": [
+        "humanin-10mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/IGF-DES.png",
+      "productNames": [
+        "IGF-DES"
+      ],
+      "variantSlugs": [
+        "igf-des-2mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/IGF-ILR3.png",
+      "productNames": [
+        "IGF-ILR3"
+      ],
+      "variantSlugs": [
+        "igf-ilr3-0-1mg",
+        "igf-ilr3-1mg"
+      ],
+      "activeStorefront": false,
+      "status": "ARCHIVED"
+    },
+    {
+      "appPath": "/images/products/families/Ipamorelin.png",
+      "productNames": [
+        "Ipamorelin"
+      ],
+      "variantSlugs": [
+        "ipamorelin-10mg",
+        "ipamorelin-5mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/KissPeptin-10.png",
+      "productNames": [
+        "KissPeptin-10"
+      ],
+      "variantSlugs": [
+        "kisspeptin-10-10mg",
+        "kisspeptin-10-5mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/KLOW.png",
+      "productNames": [
+        "KLOW"
+      ],
+      "variantSlugs": [
+        "klow-80mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/KPV (Lysine-Proline-Valine).png",
+      "productNames": [
+        "KPV (Lysine-Proline-Valine)"
+      ],
+      "variantSlugs": [
+        "kpv-10mg",
+        "kpv-5mg"
+      ],
+      "activeStorefront": false,
+      "status": "ARCHIVED"
+    },
+    {
+      "appPath": "/images/products/families/LC Custom Ingredients.png",
+      "productNames": [
+        "LC Custom Ingredients"
+      ],
+      "variantSlugs": [
+        "lc-custom"
+      ],
+      "activeStorefront": false,
+      "status": "ARCHIVED"
+    },
+    {
+      "appPath": "/images/products/families/LC120.png",
+      "productNames": [
+        "LC120"
+      ],
+      "variantSlugs": [
+        "lc120-10ml"
+      ],
+      "activeStorefront": false,
+      "status": "ARCHIVED"
+    },
+    {
+      "appPath": "/images/products/families/LC216.png",
+      "productNames": [
+        "LC216"
+      ],
+      "variantSlugs": [
+        "lc216-10ml"
+      ],
+      "activeStorefront": false,
+      "status": "ARCHIVED"
+    },
+    {
+      "appPath": "/images/products/families/Lemon Bottle.png",
+      "productNames": [
+        "Lemon Bottle"
+      ],
+      "variantSlugs": [
+        "lemon-bottle-10ml"
+      ],
+      "activeStorefront": false,
+      "status": "ARCHIVED"
+    },
+    {
+      "appPath": "/images/products/families/LL37.png",
+      "productNames": [
+        "LL37"
+      ],
+      "variantSlugs": [
+        "ll37-5mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/Mazdutide.png",
+      "productNames": [
+        "Mazdutide"
+      ],
+      "variantSlugs": [
+        "mazdutide-10mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/MOTS-c.png",
+      "productNames": [
+        "MOTS-c"
+      ],
+      "variantSlugs": [
+        "mots-c-10mg",
+        "mots-c-40mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/MT-2.png",
+      "productNames": [
+        "MT-2"
+      ],
+      "variantSlugs": [
+        "mt-2-10mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/MT1.png",
+      "productNames": [
+        "MT1"
+      ],
+      "variantSlugs": [
+        "mt1-5mg"
+      ],
+      "activeStorefront": false,
+      "status": "ARCHIVED"
+    },
+    {
+      "appPath": "/images/products/families/NAD+.png",
+      "productNames": [
+        "NAD+"
+      ],
+      "variantSlugs": [
+        "nad-plus-100mg",
+        "nad-plus-500mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/Oxytocin.png",
+      "productNames": [
+        "Oxytocin"
+      ],
+      "variantSlugs": [
+        "oxytocin-10mg",
+        "oxytocin-2mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/Pinealon.png",
+      "productNames": [
+        "Pinealon"
+      ],
+      "variantSlugs": [
+        "pinealon-10mg",
+        "pinealon-20mg",
+        "pinealon-5mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/PNC 27.png",
+      "productNames": [
+        "PNC 27"
+      ],
+      "variantSlugs": [
+        "pnc-27-10mg",
+        "pnc-27-5mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/PT-141.png",
+      "productNames": [
+        "PT-141"
+      ],
+      "variantSlugs": [
+        "pt-141-10mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/Retatrutide.png",
+      "productNames": [
+        "Retatrutide"
+      ],
+      "variantSlugs": [
+        "retatrutide-10mg",
+        "retatrutide-15mg",
+        "retatrutide-20mg",
+        "retatrutide-24mg",
+        "retatrutide-30mg",
+        "retatrutide-36mg",
+        "retatrutide-40mg",
+        "retatrutide-50mg",
+        "retatrutide-5mg",
+        "retatrutide-60mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/Selank.png",
+      "productNames": [
+        "Selank"
+      ],
+      "variantSlugs": [
+        "selank-11mg",
+        "selank-5mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/Semaglutide.png",
+      "productNames": [
+        "Semaglutide"
+      ],
+      "variantSlugs": [
+        "semaglutide-10mg",
+        "semaglutide-15mg",
+        "semaglutide-20mg",
+        "semaglutide-30mg",
+        "semaglutide-5mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/Semax.png",
+      "productNames": [
+        "Semax"
+      ],
+      "variantSlugs": [
+        "semax-11mg",
+        "semax-5mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/Sermorelin Acetate.png",
+      "productNames": [
+        "Sermorelin Acetate"
+      ],
+      "variantSlugs": [
+        "sermorelin-10mg",
+        "sermorelin-5mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/SLU-PP-332.png",
+      "productNames": [
+        "SLU-PP-332"
+      ],
+      "variantSlugs": [
+        "slu-pp-332-5mg"
+      ],
+      "activeStorefront": false,
+      "status": "ARCHIVED"
+    },
+    {
+      "appPath": "/images/products/families/Snap-8.png",
+      "productNames": [
+        "Snap-8"
+      ],
+      "variantSlugs": [
+        "snap-8-10mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/SS-31.png",
+      "productNames": [
+        "SS-31"
+      ],
+      "variantSlugs": [
+        "ss-31-10mg",
+        "ss-31-50mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/Survodutide.png",
+      "productNames": [
+        "Survodutide"
+      ],
+      "variantSlugs": [
+        "survodutide-10mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/TB500.png",
+      "productNames": [
+        "TB500"
+      ],
+      "variantSlugs": [
+        "tb500-10mg",
+        "tb500-5mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/Tesamorelin.png",
+      "productNames": [
+        "Tesamorelin"
+      ],
+      "variantSlugs": [
+        "tesamorelin-10mg",
+        "tesamorelin-5mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/Thymalin.png",
+      "productNames": [
+        "Thymalin"
+      ],
+      "variantSlugs": [
+        "thymalin-10mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/Thymosin Alpha-1.png",
+      "productNames": [
+        "Thymosin Alpha-1"
+      ],
+      "variantSlugs": [
+        "thymosin-alpha1-10mg",
+        "thymosin-alpha1-5mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/Tirzepatide.png",
+      "productNames": [
+        "Tirzepatide"
+      ],
+      "variantSlugs": [
+        "tirzepatide-10mg",
+        "tirzepatide-15mg",
+        "tirzepatide-20mg",
+        "tirzepatide-30mg",
+        "tirzepatide-40mg",
+        "tirzepatide-50mg",
+        "tirzepatide-5mg",
+        "tirzepatide-60mg"
+      ],
+      "activeStorefront": true,
+      "status": "ACTIVE"
+    },
+    {
+      "appPath": "/images/products/families/VIP10.png",
+      "productNames": [
+        "VIP10"
+      ],
+      "variantSlugs": [
+        "vip10-10mg"
+      ],
+      "activeStorefront": false,
+      "status": "ARCHIVED"
+    },
+    {
+      "appPath": "/images/products/families/VIP5.png",
+      "productNames": [
+        "VIP5"
+      ],
+      "variantSlugs": [
+        "vip5-5mg"
+      ],
+      "activeStorefront": false,
+      "status": "ARCHIVED"
+    }
+  ]
+}

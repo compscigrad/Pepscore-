@@ -7,44 +7,56 @@ export const PRODUCT_FALLBACK_IMAGE = '/images/products/default-single-vial.png'
 // detail pages) -- these are lineup/hero shots, not single-product photos.
 export const LINEUP_IMAGES = new Set(['/images/ALL.png', '/images/hero-vials.jpeg'])
 
-// Full product name -> FAMILY storefront image mapping (2026-08-17 approved
-// asset import). Source of truth: the two owner-approved packages
-// (Pepscore_Storefront_Family_Images_APPROVED_CORRECTED.zip,
-// Pepscore_Print_Labels_APPROVED_CORRECTED.zip) and their manifests,
-// preserved at docs/assets/manifests/approved-*. 64 approved family images
-// live at public/images/products/families/ -- sibling strengths of the
-// same family intentionally share one file (e.g. every Semaglutide row
-// below points at the same Semaglutide.png); this is photography at the
-// FAMILY level, never per-strength, and none of these images have mg/
-// strength text on them by design.
+// Full product name -> FAMILY storefront image mapping (2026-08-26 CLEAN
+// PROFESSIONAL V2 approved asset import, superseding the 2026-08-17 batch).
+// Source of truth: Pepscore_66_3D_Family_Images_APPROVED.zip (complete
+// 66-family library) and Pepscore_3D_Storefront_ACTIVE_50_CLEAN_PROFESSIONAL_V2.zip
+// (the 50-currently-active subset, bundled with a variant-mapping JSON),
+// preserved at the owner's canonical "Pepscore Lab Live" asset folder and
+// docs/assets/manifests/approved-storefront-family-manifest-2026-08-26.json.
+// 66 approved family images live at public/images/products/families/ -- the
+// prior 64-image batch was relocated, not deleted, to
+// public/images/products/families-superseded-2026-08-17-approved-corrected/.
+// Sibling strengths of the same family intentionally share one file (e.g.
+// every Semaglutide row below points at the same Semaglutide.png); this is
+// photography at the FAMILY level, never per-strength, and none of these
+// images have mg/strength text on them by design.
 //
-// Three names are NOT in this map, deliberately:
-//   - 'GLOW50' -- owner-excluded from the approved batch (archived,
-//     superseded by GLOW70). No replacement image exists. Falls through to
-//     its existing dbUrl/fallback rather than being given a new asset.
-//   - Nothing else is intentionally missing; every other one of the 68
-//     live distinct product names resolves to one of the 64 files below.
+// Every one of the 68 live distinct product names now resolves to one of
+// the 66 files below -- 'GLOW50' (previously unmapped; no replacement image
+// existed in the 2026-08-17 batch) now has a real approved image and was
+// added. HGH/SLU-PP-332/Botulinum Toxin Type A keep real image entries
+// despite being pricingStatus:INACTIVE today (verified directly against
+// the live Product table 2026-08-26) -- consistent with this map's existing
+// design: it is a pure name->image lookup, never itself a visibility gate,
+// so an archived product having a resolvable image here creates no
+// storefront-exposure risk (that gate is Product.pricingStatus, enforced
+// entirely elsewhere). NOTE: the approved batch's own bundled JSON flags
+// HGH and SLU-PP-332 as "activeStorefront: true" -- that is WRONG relative
+// to the live database and was NOT trusted; only the direct DB read above
+// was used to write this comment.
 //
-// GLOW70 canonicalization (owner-approved, final): the legacy DB record
-// named 'BPC 10mg + GHK-Cu 50mg + TB500 10mg' (archived, slug
-// bpc-ghk-tb-70mg) is the SAME physical blend as GLOW70, just recorded
-// under its old spelled-out name before the GLOW70 brand name existed.
-// Both entries below point at GLOW70.png -- there is no separate
-// 'BPC 157 + GHK-Cu + TB500' storefront image. The underlying database
-// records were NOT merged/deleted (see the asset-import migration report
-// for why: doing so automatically could affect pricing, orders, or
-// inventory history) -- this is an image-resolution-layer fix only.
+// GLOW70 canonicalization (owner-approved, final, carried forward
+// unchanged from the 2026-08-17 decision): the legacy DB record named
+// 'BPC 10mg + GHK-Cu 50mg + TB500 10mg' (archived, slug bpc-ghk-tb-70mg) is
+// the SAME physical blend as GLOW70, just recorded under its old
+// spelled-out name before the GLOW70 brand name existed. Both entries
+// below point at GLOW70.png. The new approved batch separately includes an
+// inactive "BPC 157 + GHK-Cu + TB500.png" family image -- deliberately NOT
+// used for this DB row, so as not to silently reopen a prior, reasoned,
+// owner-approved consolidation without an explicit new instruction to do
+// so. The underlying database records were NOT merged/deleted.
 //
 // Filenames use " and " rather than " + " as a join word (BPC 157 and
-// TB500.png, CJC-1295 and Ipamorelin.png, Cagrilintide and
-// Semaglutide.png) -- a real bug found 2026-08-17: next/image's
-// optimizer silently fails (naturalWidth 0, no console error) for a
-// static path containing " + " with spaces on both sides, even though
-// the raw static file serves fine at the same URL. 'NAD+.png' is
-// unaffected (no surrounding spaces around its '+'), confirming the
-// trigger is specifically a space-plus-space sequence, not the
-// character alone. Renamed the three affected files rather than trying
-// to patch encoding at every call site.
+// TB500.png, BPC 157 and GHK-Cu and TB500.png, CJC-1295 and
+// Ipamorelin.png, Cagrilintide and Semaglutide.png) -- a real bug found
+// 2026-08-17: next/image's optimizer silently fails (naturalWidth 0, no
+// console error) for a static path containing " + " with spaces on both
+// sides, even though the raw static file serves fine at the same URL.
+// 'NAD+.png' is unaffected (no surrounding spaces around its '+'),
+// confirming the trigger is specifically a space-plus-space sequence, not
+// the character alone. The 4 affected files in this new batch were renamed
+// on import rather than trying to patch encoding at every call site.
 export const PRODUCT_IMAGE_MAP: Record<string, string> = {
   '5-Amino-1MQ': '/images/products/families/5-Amino-1MQ.png',
   'AOD 9604': '/images/products/families/AOD 9604.png',
@@ -71,6 +83,7 @@ export const PRODUCT_IMAGE_MAP: Record<string, string> = {
   'GA = AA Water': '/images/products/families/GA = AA Water.png',
   'GHK-Cu': '/images/products/families/GHK-Cu.png',
   'GHRP-6 Acetate': '/images/products/families/GHRP-6 Acetate.png',
+  'GLOW50': '/images/products/families/GLOW50.png',
   'GLOW70': '/images/products/families/GLOW70.png',
   'Glutathione': '/images/products/families/Glutathione.png',
   'HCG': '/images/products/families/HCG.png',
