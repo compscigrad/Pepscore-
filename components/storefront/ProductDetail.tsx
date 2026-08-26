@@ -175,9 +175,21 @@ export function ProductDetail({
       {/* Corner watermark only -- product content (image, price, Add to
           Cart) must stay fully dominant here, so this is confined to a
           fixed-height region at the top rather than a full-bleed
-          treatment down the whole page. */}
+          treatment down the whole page. `fadeLeft` removed (2026-08-26) --
+          it painted a real black gradient specifically over the LEFT HALF
+          of this confined band (bg-gradient-to-r from-black via-black/40
+          to-transparent, see ScientificBackground.tsx), directly behind
+          the info column's category label/title/size text below, which --
+          unlike ProductCard -- has no opaque card/chip background of its
+          own to sit on top of (this page's text renders straight onto
+          `bg-black` above). `position="object-right"` already keeps the
+          DNA-art motif itself clear of that left-aligned text; fadeLeft
+          was actively working against that by darkening exactly the
+          region the text occupies. Removing it leaves the same subtle,
+          right-positioned watermark with nothing extra layered over the
+          text. */}
       <div className="absolute inset-x-0 top-0 h-[480px]">
-        <ScientificBackground intensity="subtle" position="object-right" fadeLeft />
+        <ScientificBackground intensity="subtle" position="object-right" />
       </div>
       {/* Breadcrumbs */}
       <div className="max-w-[1200px] mx-auto px-6 pt-6 pb-2 relative">

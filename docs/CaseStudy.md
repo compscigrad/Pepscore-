@@ -1142,6 +1142,14 @@ Footer logo now scrolls the current page to top (not a navigate-home Link, unlik
 
 **PRODUCTION RESULT**: a light backing chip behind the category+title text, reusing the gradient's own lightest color rather than a foreign one, using the same "chip behind text" technique the card already relies on elsewhere. The gradient itself — explicitly commented as owner-approved — was never touched.
 
+### Mini Case Study: Two Props on the Same Line, Fighting Each Other
+
+**PROBLEM**: a third report, this time from the *focused* Product Detail page reached by clicking into a product — a black fade over the category label and the start of the title. Two fixes already shipped for two different, real defects on two different surfaces; this needed to actually be the right surface this time.
+
+**WHAT ACTUALLY HAPPENED**: the file wasn't `ProductCard.tsx` at all, exactly as the owner said. `ProductDetail.tsx`'s decorative watermark was a single line: `<ScientificBackground intensity="subtle" position="object-right" fadeLeft />`. `position="object-right"` keeps the DNA-art motif clear of the left-aligned text below it — a deliberate, sensible choice. `fadeLeft`, on the same line, does something unrelated to that intent: it paints an actual black gradient over the left half of the confined region, directly behind text that — unlike `ProductCard` — has no card background of its own to sit on. Two props on one component call, each solving for something, working against each other.
+
+**PRODUCTION RESULT**: `fadeLeft` removed. Nothing added, nothing repositioned — the fix was recognizing the prop shouldn't have been there.
+
 ---
 
 ## 16. Portfolio Summary
