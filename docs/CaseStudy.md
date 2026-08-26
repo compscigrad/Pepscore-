@@ -1134,6 +1134,14 @@ Footer logo now scrolls the current page to top (not a navigate-home Link, unlik
 
 **NOT completed this pass, disclosed honestly**: true mobile-viewport visual verification (browser tooling limitation, see above). Shippo purchasing itself remains owner-dependent on completing Trust & Safety review — not attempted, not claimed as done.
 
+### Mini Case Study: The Second Report Was More Specific, So the Second Fix Had to Be Too
+
+**PROBLEM**: the owner reported the mobile shadow fix above didn't actually solve it, then described the real symptom with much more precision — only the category label and the start of the title, only on the left, only above the availability badge, only on mobile.
+
+**WHAT ACTUALLY HAPPENED**: that precision was the key. A quick grep confirmed `ProductCard.tsx` has zero responsive classes anywhere — the component is byte-identical CSS at every breakpoint, so any breakpoint-different symptom has to trace back to something that changes with the card's own rendered *width* (the homepage's fluid grid genuinely renders mobile's single-column cards wider than desktop's multi-column ones), not to an explicit mobile override. The card's own background gradient — a fixed-angle diagonal on an unsized box — is exactly that kind of width-sensitive property. A quantitative check of the CSS gradient math confirmed it, and the component's *own pre-existing comment* independently corroborated it: the category label's color was explicitly documented as tuned for "the lighter bands of the Champagne Bronze card surface" — an assumption a fixed-angle gradient on a variable-width box can't actually guarantee.
+
+**PRODUCTION RESULT**: a light backing chip behind the category+title text, reusing the gradient's own lightest color rather than a foreign one, using the same "chip behind text" technique the card already relies on elsewhere. The gradient itself — explicitly commented as owner-approved — was never touched.
+
 ---
 
 ## 16. Portfolio Summary

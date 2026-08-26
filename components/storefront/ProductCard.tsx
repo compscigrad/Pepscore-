@@ -239,24 +239,47 @@ export function ProductCard({ name, featured, category, description, imageUrl, b
             share a metallic background, so a cross-file JS import wasn't
             warranted for a single color decision). Product name, Add to
             Cart, and every other ProductCard element are untouched. */}
-        <Link
-          href={categoriesForProductName(name)[0] ? `/categories/${categoriesForProductName(name)[0].slug}` : '/categories'}
-          className="font-heading text-[10px] font-bold tracking-[0.12em] uppercase text-[#C99A20] mb-1 hover:underline hover:text-[#D4AF37] inline-block w-fit transition-colors"
-        >
-          {category}
-        </Link>
+        {/* Light backing chip behind category + title (2026-08-26 mobile
+            contrast fix) -- the comment above assumes this text always
+            sits on the LIGHTER bands of the CHAMPAGNE_BRONZE gradient, but
+            that gradient is a fixed-angle (155deg) diagonal on an unsized
+            box: its lit/dark bands fall at different pixel positions
+            depending on the card's own rendered WIDTH, which changes with
+            the grid's column count (mobile single-column cards render
+            noticeably wider than desktop's multi-column ones -- confirmed
+            by grepping this whole file for a responsive class: there are
+            none, so width is the only thing that differs between
+            breakpoints here). On a wide-enough card the text can land on
+            the gradient's darker early stops instead, exactly where the
+            category label and the start of the product title sit. Rather
+            than edit CHAMPAGNE_BRONZE itself (explicitly an owner-approved
+            gradient, per its own comment) or the approved product photo,
+            this reuses #F2E8D3 -- the gradient's own lightest stop, so the
+            chip reads as part of the same palette rather than a foreign
+            patch -- as a translucent backing, the same "chip behind text"
+            technique this card already uses elsewhere (the unselected size
+            pill, the Professional Access label) to guarantee contrast
+            independent of whatever's directly behind it. */}
+        <div className="bg-[#F2E8D3]/60 rounded-lg px-2 py-1.5 -mx-2 -mt-0.5 mb-2 w-fit">
+          <Link
+            href={categoriesForProductName(name)[0] ? `/categories/${categoriesForProductName(name)[0].slug}` : '/categories'}
+            className="font-heading text-[10px] font-bold tracking-[0.12em] uppercase text-[#C99A20] mb-1 hover:underline hover:text-[#D4AF37] inline-block w-fit transition-colors"
+          >
+            {category}
+          </Link>
 
-        {/* Product name + strength — the strength/unit label must always be
-            visible here regardless of variant count. Before this fix, a
-            single-strength product (most of the catalog -- MT-2,
-            Dermorphin, HMG, Cerebrolysin, KLOW, Botulinum Toxin, etc.)
-            never rendered its size anywhere on the card, because the size
-            pills below only render when variants.length > 1. */}
-        <Link href={`/products/${v.slug}`} className="flex items-center gap-2 mb-2 w-fit flex-wrap">
-          <h3 className="font-heading text-[17px] font-bold text-[#241C10] leading-tight hover:text-[#D4AF37] transition-colors">{name}</h3>
-          <span className="font-heading text-[11px] font-bold text-[#C99A20] tracking-[0.02em]">{v.size}</span>
-          {availability === 'BACKORDERED' && <BackorderIndicator />}
-        </Link>
+          {/* Product name + strength — the strength/unit label must always be
+              visible here regardless of variant count. Before this fix, a
+              single-strength product (most of the catalog -- MT-2,
+              Dermorphin, HMG, Cerebrolysin, KLOW, Botulinum Toxin, etc.)
+              never rendered its size anywhere on the card, because the size
+              pills below only render when variants.length > 1. */}
+          <Link href={`/products/${v.slug}`} className="flex items-center gap-2 w-fit flex-wrap">
+            <h3 className="font-heading text-[17px] font-bold text-[#241C10] leading-tight hover:text-[#D4AF37] transition-colors">{name}</h3>
+            <span className="font-heading text-[11px] font-bold text-[#C99A20] tracking-[0.02em]">{v.size}</span>
+            {availability === 'BACKORDERED' && <BackorderIndicator />}
+          </Link>
+        </div>
 
         {/* Description — flex-1 so it absorbs variable space, keeping bottom section aligned */}
         <p className="text-[12px] text-[#241C10]/70 leading-relaxed flex-1 mb-3">{description}</p>
