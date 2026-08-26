@@ -1150,6 +1150,14 @@ Footer logo now scrolls the current page to top (not a navigate-home Link, unlik
 
 **PRODUCTION RESULT**: `fadeLeft` removed. Nothing added, nothing repositioned — the fix was recognizing the prop shouldn't have been there.
 
+### Mini Case Study: A Photograph Beats a Fourth Round of Reading the Same File
+
+**PROBLEM**: even after removing `fadeLeft`, an owner-supplied phone screenshot showed the exact same artwork still visibly crossing the category label, title, and the "Produced to Order" pill — not faded, actually *on top of* the text, in a way flat code-reading hadn't fully explained.
+
+**WHAT ACTUALLY HAPPENED**: the screenshot itself contained the answer, sitting right next to the bug. The breadcrumb line directly above the affected content ("Home / Products / Semaglutide 30mg") rendered perfectly clean in the same photo — and that line's own container happened to already have `relative` positioning, while the content grid just below it, holding all the affected text, had none at all. That's not a coincidence a screenshot alone reveals, but it's the kind of side-by-side comparison that makes an otherwise easy-to-miss CSS fact obvious: an absolutely-positioned decorative layer always paints above a plain, unpositioned sibling, regardless of which one comes first in the markup. `fadeLeft`'s removal (the previous fix) had genuinely removed a real extra black gradient — it just hadn't touched the *base* watermark image, which was still stacking on top of the unprotected content the whole time.
+
+**PRODUCTION RESULT**: one `relative` added to the content grid — the same positioning its own breadcrumb sibling, and the equivalent containers on the homepage and category page, already had. Confirmed by grep that this was the only place in the codebase missing it.
+
 ---
 
 ## 16. Portfolio Summary

@@ -202,7 +202,21 @@ export function ProductDetail({
         </nav>
       </div>
 
-      <div className="max-w-[1200px] mx-auto px-6 py-10 grid grid-cols-1 lg:grid-cols-2 gap-14">
+      {/* `relative` (2026-08-26 stacking fix) -- without any position on this
+          element, it (and everything inside it: the image box, category
+          label, title, size, availability badge) was `position: static`,
+          which CSS always paints BELOW a `position: absolute` sibling
+          (the decorative watermark div above) regardless of DOM order --
+          removing `fadeLeft` from that watermark (prior fix) only removed
+          its extra black gradient; the base DNA-art image itself, still
+          absolutely positioned, kept painting on top of this entire
+          section's static content the whole time. The breadcrumb nav
+          immediately above already has `relative` (hence it always
+          rendered clean in every screenshot) -- this applies the same
+          fix to the actual content grid, which is why product metadata
+          specifically (not the breadcrumb) showed the artwork crossing
+          directly over it. */}
+      <div className="relative max-w-[1200px] mx-auto px-6 py-10 grid grid-cols-1 lg:grid-cols-2 gap-14">
         {/* Image -- 2026-08-17 reshaped toward the same ~1.9:1 wide/cinematic
             ratio as ProductCard's image box (owner request, matching the
             vialSample.png photography standard), replacing the prior fixed
