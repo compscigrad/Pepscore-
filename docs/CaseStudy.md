@@ -1066,7 +1066,7 @@ Customer-initiated account closure (`Customer.accountClosedAt`, reusing `portalA
 
 ## Phase 23: Customer Portal Maturity sprint resumed — Price Match + Evaluation Credits wired in, dashboard extended (2026-08-20)
 
-**Status: implemented and verified locally (build/typecheck/lint clean); not yet committed/deployed.** `PORTAL VISIBILITY GAP → CUSTOMER-SAFE QUERY FUNCTION → DEDICATED PAGE / PROFILE SECTION → DASHBOARD SUMMARY REUSE`.
+**Status: merged to `master`, deployed to production, deployment READY confirmed against the AOAI/pepscore Vercel project directly.** `PORTAL VISIBILITY GAP → CUSTOMER-SAFE QUERY FUNCTION → DEDICATED PAGE / PROFILE SECTION → DASHBOARD SUMMARY REUSE`.
 
 ### Mini Case Study: Two Functions With The Same Name Problem, Solved The Same Way Twice
 
@@ -1081,6 +1081,32 @@ Customer-initiated account closure (`Customer.accountClosedAt`, reusing `portalA
 Closed the two concretely-named gaps from Phase 22's own disclosure: no customer-facing Price Match status page, no customer-facing Evaluation Credit history. Both now exist, customer-safe by construction. Dashboard extended with Professional Access / Preferred Pricing / Price Match / Evaluation Credit summary pills and a new "more information needed" Action Needed entry for Price Match. Re-verified (not re-built) ownership scoping across every `[id]`-parameterized customer route, the Stripe-fee/COGS customer-safe boundary, and the direct-sale/storefront invoice unification — all confirmed already correct by direct code read, zero defects found. `tsc`/`eslint`/production build all clean; new route confirmed in the build manifest.
 
 **NOT completed this pass, disclosed honestly**: a full mobile/accessibility pass requiring an actual rendered browser session, N+1/performance profiling, a ghost/test-customer rehearsal walkthrough, and an Owner Portal Rehearsal SOP entry in the Policy Center remain open.
+
+---
+
+## Phase 24: Storefront images — CLEAN PROFESSIONAL V2 approved family-image remap (2026-08-26)
+
+**Status: merged to `master`, deployed to production.** `LEGACY IMAGE BATCH → OWNER-APPROVED REPLACEMENT BATCH → LIVE DATABASE AS GROUND TRUTH → NON-DESTRUCTIVE RELOCATION → CANONICAL LOCAL ASSET LIBRARY`.
+
+### Mini Case Study: The Approved Batch's Own Metadata Was Wrong, and the Database Caught It
+
+**PROBLEM**: the new approved image batch shipped with its own bundled `Pepscore_3D_Storefront_Mapping_120_Variants.json`, a machine-generated file claiming to know which product families are currently active on the storefront. It would have been faster to just trust it.
+
+**WHAT ACTUALLY HAPPENED**: cross-referencing that JSON's `activeStorefront` flags against a direct, live read of every real `Product` row found two real disagreements — the JSON claims HGH and SLU-PP-332 are `activeStorefront: true`; the live database says both are `pricingStatus: INACTIVE` (archived, per this project's own Decision #78). The JSON was generated from something other than the live database — possibly a snapshot, possibly a manual list — and had silently drifted. Neither product was reactivated. This is the same category of catch as Decision #80's client-bundle Prisma leak and Decision #82's transaction-rollback bug: an automated cross-check against real, current state caught something a plausible-looking artifact would have let through unquestioned.
+
+**PRODUCTION RESULT**: the new `STOREFRONT_IMAGE_MAP.json` manifest (both in the repo's `docs/assets/manifests/` and the owner's new canonical `Pepscore Lab Live` folder) is generated fresh from the live database and the real deployed code map — never copied from the incoming batch's own claims — with the discrepancy documented plainly so it's never silently repeated.
+
+### Mini Case Study: A Second Generation of "Legacy," Handled the Same Way as the First
+
+**PROBLEM**: the repo already had one generation of superseded product images sitting in a folder literally named `legacy/` from an even earlier photography batch. This sprint's job was to replace the *current* generation — the risk was overwriting it and losing the ability to compare or roll back.
+
+**WHAT ACTUALLY HAPPENED**: rather than overwriting `public/images/products/families/` in place, the entire prior 64-image batch was relocated (never deleted) to a clearly-dated sibling folder, `families-superseded-2026-08-17-approved-corrected/`, before the new 66-image batch was copied into the now-empty `families/`. Nothing was destroyed; a future comparison or rollback is a folder rename away.
+
+### Production Result Summary
+
+Replaced all 64 (now 66) approved family images used by `lib/storefront/productImages.ts`'s existing `PRODUCT_IMAGE_MAP` — the single, already-correct image-resolution mechanism both `ProductCard` and the product detail page already shared; nothing new was built. Every one of the 68 live distinct product names now resolves to a real image (previously 67 of 68 — `GLOW50` now has an approved image where none existed before). Verified against a live read of all 120 real product rows: zero missing files, zero case-sensitivity mismatches. Four filenames containing `" + "` were renamed to `" and "` to preserve a real, previously-discovered `next/image` rendering bug workaround. A new owner-facing canonical asset folder, `Pepscore Lab Live`, now holds the complete approved image library, the locked 2D print-label deliverables, a DB-verified manifest, and a `README_DO_NOT_DELETE.md` distinguishing production-critical files from safe-to-clean-up-later duplicates in Downloads. `tsc`/`eslint`/`vitest` (1597/1597)/production build all clean.
+
+**NOT completed this pass, disclosed honestly**: `Pepscore_2D_Label_System_LOCKED_REFERENCE.zip` (named in the original request) could not be located anywhere on the machine and was not fabricated. This commit adds roughly 300MB of new binary assets to the git repository on top of the already-relocated prior batch — consistent with existing practice (no CDN/blob storage is currently configured for product imagery) but a compounding cost worth the owner's awareness for future asset refreshes.
 
 ---
 
