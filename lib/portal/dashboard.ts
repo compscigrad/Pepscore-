@@ -113,7 +113,14 @@ export async function getPortalDashboardData(customerId: string): Promise<Portal
     prisma.paymentArrangement.count({ where: { invoice: { customerId }, status: 'REQUESTED' } }),
   ])
 
-  const outstandingBalance = invoices.reduce((sum, inv) => sum + inv.balanceDue, 0)
+  // Excludes CANCELLED/VOID invoices -- same rule as the admin-side
+  // aggregates (lib/invoices.ts's getInvoiceDashboardStats, and the
+  // admin customer-profile page's totalOutstanding): a cancelled Direct
+  // Sale's balanceDue column is preserved as-is for audit history but must
+  // never keep contributing to the customer-facing outstanding balance.
+  const outstandingBalance = invoices
+    .filter((inv) => inv.status !== 'CANCELLED' && inv.status !== 'VOID')
+    .reduce((sum, inv) => sum + inv.balanceDue, 0)
 
   const recentInvoices: DashboardInvoiceSummary[] = invoices.slice(0, 5).map((inv) => ({
     id: inv.id,

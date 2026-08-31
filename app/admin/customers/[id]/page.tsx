@@ -139,7 +139,15 @@ export default async function CustomerProfilePage({ params, searchParams }: Page
   const fullName = `${customer.firstName} ${customer.lastName}`.trim()
   const billingAddress = formatAddress(customer.billingAddress)
   const shippingAddress = formatAddress(customer.shippingAddress)
-  const totalOutstanding = customer.invoices.reduce((sum, inv) => sum + inv.balanceDue, 0)
+  // Excludes CANCELLED/VOID invoices -- a cancelled Direct Sale must never
+  // keep contributing to the customer's outstanding balance even though its
+  // balanceDue column isn't itself zeroed out (the row is preserved as-is
+  // for audit history). Matches the same exclusion already applied to the
+  // admin dashboard's outstandingBalance aggregate (lib/invoices.ts's
+  // getInvoiceDashboardStats).
+  const totalOutstanding = customer.invoices
+    .filter((inv) => inv.status !== 'CANCELLED' && inv.status !== 'VOID')
+    .reduce((sum, inv) => sum + inv.balanceDue, 0)
   const availableCredit = customer.accountCredits.reduce((sum, c) => sum + c.remainingAmount, 0)
 
   return (
