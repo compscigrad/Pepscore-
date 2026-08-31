@@ -74,10 +74,10 @@ function pickProductByLabel(product: Product) {
 }
 
 function getSellUnitSelect(): HTMLSelectElement {
-  const selects = screen.getAllByRole('combobox')
-  const select = selects.find((el) => within(el).queryByText(/Select sell unit/)) as HTMLSelectElement
-  if (!select) throw new Error('sell-unit <select> not found in rendered output')
-  return select
+  // Matched by its accessible name (the "Sell As" <label>), not the
+  // placeholder option's copy -- keeps this test decoupled from exact
+  // helper-text wording (2026-08-31 discoverability pass).
+  return screen.getByRole('combobox', { name: 'Sell As' }) as HTMLSelectElement
 }
 
 describe('Direct Sales individual vial selector -- rendered UI', () => {

@@ -14,7 +14,7 @@ import { checkPriceDeviation, getInvoiceLinePriceTier, type PriceTierField } fro
 // below re: never pulling in lib/invoices.ts's Prisma-backed helpers.
 import { resolveCanonicalPricing, type PricingProduct } from '@/lib/pricing/canonicalPricing'
 import { makeKey } from './types'
-import { card, input, pillPrimary, pillOutline, pillSecondary, sectionHeading, mutedText } from './theme'
+import { card, input, label as labelCls, pillPrimary, pillOutline, pillSecondary, sectionHeading, mutedText } from './theme'
 import { SellUnitCorrectionDialog } from './SellUnitCorrectionDialog'
 import type { InvoiceItemDraft, Product } from './types'
 
@@ -383,7 +383,7 @@ export function InvoiceItemsTable({ items, onChange, products, onProductPriceUpd
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left border-b border-white/10">
-                <th className="pb-2 font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50">Product</th>
+                <th className="pb-2 font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50">Product / Sell As</th>
                 <th className="pb-2 font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 w-20">Qty</th>
                 <th className="pb-2 font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 w-28">Unit Price</th>
                 <th className="pb-2 font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 w-28">Discount</th>
@@ -407,19 +407,23 @@ export function InvoiceItemsTable({ items, onChange, products, onProductPriceUpd
                       onChange={(e) => pickProduct(item.key, e.target.value)}
                     />
                     {sellUnitOptions.length > 0 && (
-                      <select
-                        className={`${input} mt-1`}
-                        value={item.sellUnit ?? ''}
-                        onChange={(e) => pickSellUnit(item.key, item, matchedProduct!, e.target.value)}
-                      >
-                        <option value="">Select sell unit…</option>
-                        {sellUnitOptions.map((o) => (
-                          <option key={o.sellUnit} value={o.sellUnit}>
-                            {o.label} — {formatMoney(o.price)}
-                            {!o.visibleToCustomers ? ' (not on storefront)' : ''}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="mt-2">
+                        <label htmlFor={`sell-as-${item.key}`} className={`${labelCls} mb-1`}>Sell As</label>
+                        <select
+                          id={`sell-as-${item.key}`}
+                          className={`${input} ${item.sellUnit ? '' : 'border-gold/40 ring-1 ring-gold/20'}`}
+                          value={item.sellUnit ?? ''}
+                          onChange={(e) => pickSellUnit(item.key, item, matchedProduct!, e.target.value)}
+                        >
+                          <option value="">Choose case, bulk, professional, or individual vial…</option>
+                          {sellUnitOptions.map((o) => (
+                            <option key={o.sellUnit} value={o.sellUnit}>
+                              {o.label} — {formatMoney(o.price)}
+                              {!o.visibleToCustomers ? ' (not on storefront)' : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     )}
                   </td>
                   <td className="py-2 pr-2">

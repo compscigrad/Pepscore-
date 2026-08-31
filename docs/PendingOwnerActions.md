@@ -6,6 +6,23 @@ This document indexes items already tracked in more detail elsewhere (`docs/Paym
 
 ---
 
+## Launch-readiness snapshot (2026-08-31 post-sprint)
+
+Everything below is a subset of the full table further down, regrouped by whether Pepscore LLC/EIN is actually the blocker — added because Twilio and Shippo both got asked "what can move today" in the same breath as "what's still stuck on the entity."
+
+**CAN DO NOW — no entity/EIN required:**
+- Twilio: purchase/port a phone number, set `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_PHONE_NUMBER` in Vercel, point the number's (or Messaging Service's) "A message comes in" webhook at `/api/webhooks/twilio`, and send one real test STOP/START from an owner-controlled phone (item #3, steps 2–4). All of this can happen on the Twilio account before the A2P Brand/Campaign is approved — it's account/number plumbing, not a use-case registration.
+- Review the Direct Sales "Sell As" flow in `/admin/invoices/new` — the sell-unit selector now has a labeled "Sell As" field, gold-highlighted while unselected, with inline helper copy ("Choose case, bulk, professional, or individual vial…") instead of a bare "Select sell unit…" placeholder, so Single Vial is visibly part of the same control as Standard Case/Bulk/Professional rather than something that reads as case-only. Confirm this reads clearly on your own screen.
+- Visually confirm the corrected product nomenclature: storefront shows "Cagrilintide/Semaglutide" and "CJC-1295/Ipamorelin w/o DAC" (not "+"), and NAD+ is unchanged, on both the live site and the physical label files in `Pepscore Lab Live`.
+- PayPal Dashboard enablement (item #2), legal/policy page review (item #9), RUO wording review (item #12), Clerk phone-MFA setup (item #11) — none of these depend on Pepscore LLC/EIN either; see their own rows below.
+
+**WAITING ON PEPSCORE LLC/EIN:**
+- Twilio A2P 10DLC Brand + Campaign registration itself (item #3, step 1) — requires the final legal business name/EIN/address. Explicitly must NOT be submitted under a temporary or incorrect identity to save time; wait for the real entity.
+- Any other provider verification that requires a legal business identity document (EIN letter, Articles of Organization, etc.) as part of its own review — Shippo's Trust & Safety business-registration review (item #4) falls here if/when their review asks for Articles of Organization specifically; current production shipping (Pirate Ship + manual tracking) is unaffected either way, so this is not urgent.
+- Stripe live activation (item #1) ultimately needs a real business entity behind the merchant account too, though the immediate blocker there is the compliance review, not a specific document.
+
+---
+
 ## Open items
 
 | # | Item | Area | Exact owner action required | Why it's owner-only | What's already done | Blocks launch or one feature? | Status |
