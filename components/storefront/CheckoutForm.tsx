@@ -95,6 +95,13 @@ export function CheckoutForm() {
   const [promoDiscountAmount, setPromoDiscountAmount] = useState(0)
   const [promoCampaignTitle, setPromoCampaignTitle] = useState<string | null>(null)
   const [promoError, setPromoError] = useState<string | null>(null)
+  // Birthday codes get their own visible breakdown (locked spec section B6)
+  // -- "Price Match Subtotal / Birthday 15% / Adjusted Merchandise Total"
+  // rather than the generic single discount line every other promo uses,
+  // since a customer needs to see WHY $340 and not just THAT it's $340.
+  const [promoIsBirthday, setPromoIsBirthday] = useState(false)
+  const [promoEligibleSubtotal, setPromoEligibleSubtotal] = useState(0)
+  const [promoPriceMatchApplied, setPromoPriceMatchApplied] = useState(false)
 
   if (items.length === 0) {
     return (
@@ -165,6 +172,7 @@ export function CheckoutForm() {
           email: form.email,
           cartSubtotal: cartTotal,
           cartProductSlugs: items.map((i) => i.slug),
+          items: items.map((i) => ({ productId: i.id, sellUnit: i.sellUnit, quantity: i.quantity })),
         }),
       })
       const data = await res.json()
@@ -175,6 +183,9 @@ export function CheckoutForm() {
       setAppliedCode(promoInput.trim().toUpperCase())
       setPromoDiscountAmount(data.discountAmount)
       setPromoCampaignTitle(data.campaignTitle ?? null)
+      setPromoIsBirthday(!!data.isBirthday)
+      setPromoEligibleSubtotal(data.eligibleMerchandiseSubtotal ?? 0)
+      setPromoPriceMatchApplied(!!data.priceMatchApplied)
       setPromoInput('')
       trackEvent(AnalyticsEvent.PROMOTION_APPLIED, { discountAmount: data.discountAmount })
       toast.success('Promo code applied')
@@ -190,6 +201,9 @@ export function CheckoutForm() {
     setPromoDiscountAmount(0)
     setPromoCampaignTitle(null)
     setPromoError(null)
+    setPromoIsBirthday(false)
+    setPromoEligibleSubtotal(0)
+    setPromoPriceMatchApplied(false)
   }
 
   const estimatedTotal = Math.max(0, cartTotal - (volumePreview?.discountAmount ?? 0) - promoDiscountAmount)
@@ -391,12 +405,27 @@ export function CheckoutForm() {
                     <span>Subtotal</span><span>${cartTotal.toFixed(2)}</span>
                   </div>
                   <VolumePricingSummary items={items} proEligible={proEligible} variant="full" />
-                  {promoDiscountAmount > 0 && (
+                  {promoDiscountAmount > 0 && promoIsBirthday ? (
+                    <>
+                      <div className="flex justify-between text-[13px] text-white/50">
+                        <span>{promoPriceMatchApplied ? 'Price Match Subtotal' : 'Eligible Merchandise'}</span>
+                        <span>${promoEligibleSubtotal.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-[13px] text-[#D4AF37]">
+                        <span>Birthday 15% ({appliedCode})</span>
+                        <span>−${promoDiscountAmount.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-[13px] text-white/70 font-semibold">
+                        <span>Adjusted Merchandise Total</span>
+                        <span>${(promoEligibleSubtotal - promoDiscountAmount).toFixed(2)}</span>
+                      </div>
+                    </>
+                  ) : promoDiscountAmount > 0 ? (
                     <div className="flex justify-between text-[13px] text-[#D4AF37]">
                       <span>{promoCampaignTitle ?? 'Promotion'} ({appliedCode})</span>
                       <span>−${promoDiscountAmount.toFixed(2)}</span>
                     </div>
-                  )}
+                  ) : null}
                   <div className="flex justify-between text-[13px] text-white/50">
                     <span>Shipping</span>
                     <span className="text-green-400 font-semibold">

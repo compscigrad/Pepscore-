@@ -23,6 +23,7 @@ import { SELL_UNIT_DISPLAY_LABEL } from '@/lib/pricing/sellUnits'
 import { reserveForOrderItemTx, releaseAllOrderReservationsTx } from '@/lib/inventory/orderReservations'
 import { getPaymentSettings } from '@/lib/payments/settings'
 import { resolveCustomerIdForCheckout, resolvePromotionCode, PROMOTION_CODE_INVALID_MESSAGE } from '@/lib/promotions/redemption'
+import { isBirthdayCodeFormat, resolveBirthdayCodeForCheckout } from '@/lib/pricing/birthdayPromotion'
 import { getInvoiceLinePriceTier } from '@/lib/pricing/lineOverride'
 import { applyBackorder } from '@/lib/backorders'
 import { recordRuoAcceptance } from '@/lib/compliance/ruo'
@@ -216,21 +217,36 @@ export async function POST(req: NextRequest) {
     // for the two-phase soft-hold/finalize design that keeps an abandoned
     // checkout from permanently burning a one-time code.
     let appliedPromotionCodeId: string | null = null
+    let appliedBirthdayCodeId: string | null = null
     let discountAmount = 0
     if (promotionCode) {
       if (!resolvedCustomerId) {
         return NextResponse.json({ error: PROMOTION_CODE_INVALID_MESSAGE.WRONG_CUSTOMER }, { status: 400 })
       }
-      const result = await resolvePromotionCode(promotionCode, {
-        customerId: resolvedCustomerId,
-        cartSubtotal: subtotal,
-        cartProductSlugs: products.map((p) => p.slug),
-      })
-      if (!result.valid) {
-        return NextResponse.json({ error: PROMOTION_CODE_INVALID_MESSAGE[result.reason] }, { status: 400 })
+      if (isBirthdayCodeFormat(promotionCode)) {
+        // Birthday's locked 15% resolves against `subtotal` above -- which
+        // is already Price Match/volume-ladder-adjusted by
+        // resolveCanonicalPricing (section B7's "resolve Price Match unit
+        // price FIRST, apply 15% to that subtotal SECOND" order of
+        // operations) -- never a separately recomputed raw total.
+        const result = await resolveBirthdayCodeForCheckout(promotionCode, resolvedCustomerId, subtotal)
+        if (!result.valid) {
+          return NextResponse.json({ error: result.message ?? "This promotion code isn't valid." }, { status: 400 })
+        }
+        appliedBirthdayCodeId = result.codeId!
+        discountAmount = result.discountAmount!
+      } else {
+        const result = await resolvePromotionCode(promotionCode, {
+          customerId: resolvedCustomerId,
+          cartSubtotal: subtotal,
+          cartProductSlugs: products.map((p) => p.slug),
+        })
+        if (!result.valid) {
+          return NextResponse.json({ error: PROMOTION_CODE_INVALID_MESSAGE[result.reason] }, { status: 400 })
+        }
+        appliedPromotionCodeId = result.code.id
+        discountAmount = result.discountAmount
       }
-      appliedPromotionCodeId = result.code.id
-      discountAmount = result.discountAmount
     }
 
     const total = subtotal + shippingCost - discountAmount
@@ -261,6 +277,7 @@ export async function POST(req: NextRequest) {
           discountAmount,
           total,
           appliedPromotionCodeId,
+          appliedBirthdayCodeId,
           items: {
             create: lineItems.map(i => ({
               productId: i.productId,

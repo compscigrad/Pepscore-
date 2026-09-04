@@ -33,6 +33,8 @@ function toAddress(value: unknown): Address {
   }
 }
 
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
 export interface PortalProfileFormProps {
   firstName: string
   lastName: string
@@ -41,6 +43,8 @@ export interface PortalProfileFormProps {
   billingAddress: unknown
   shippingAddress: unknown
   preferredContactMethod: string | null
+  birthdayMonth: number | null
+  birthdayDay: number | null
 }
 
 export function PortalProfileForm(props: PortalProfileFormProps) {
@@ -51,6 +55,8 @@ export function PortalProfileForm(props: PortalProfileFormProps) {
   const [shipping, setShipping] = useState<Address>(toAddress(props.shippingAddress))
   const [contactMethod, setContactMethod] = useState(props.preferredContactMethod ?? '')
   const [requestedEmail, setRequestedEmail] = useState('')
+  const [birthdayMonth, setBirthdayMonth] = useState<number | ''>(props.birthdayMonth ?? '')
+  const [birthdayDay, setBirthdayDay] = useState<number | ''>(props.birthdayDay ?? '')
   const [saving, setSaving] = useState(false)
 
   async function save(e: React.FormEvent) {
@@ -68,6 +74,8 @@ export function PortalProfileForm(props: PortalProfileFormProps) {
           shippingAddress: shipping,
           preferredContactMethod: contactMethod || null,
           requestedEmail: requestedEmail || undefined,
+          birthdayMonth: birthdayMonth === '' ? null : birthdayMonth,
+          birthdayDay: birthdayDay === '' ? null : birthdayDay,
         }),
       })
       const data = await res.json()
@@ -124,6 +132,42 @@ export function PortalProfileForm(props: PortalProfileFormProps) {
           <p className="text-white/40 text-xs mt-1.5">
             Email changes are reviewed by our team before taking effect — this keeps your account secure.
           </p>
+        </div>
+      </div>
+
+      <div className="bg-white/[0.03] border border-white/10 rounded-xl p-6 space-y-4">
+        <h2 className="font-heading text-[11px] font-bold tracking-[0.08em] uppercase text-white/50">Birthday</h2>
+        <p className="text-white/40 text-xs -mt-2">
+          Month and day only — used for your birthday reward, never for age or identity verification.
+        </p>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className={label} htmlFor="birthdayMonth">Month</label>
+            <select
+              id="birthdayMonth"
+              className={input}
+              value={birthdayMonth}
+              onChange={(e) => setBirthdayMonth(e.target.value === '' ? '' : Number(e.target.value))}
+            >
+              <option value="">Not set</option>
+              {MONTH_NAMES.map((name, i) => (
+                <option key={name} value={i + 1}>{name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className={label} htmlFor="birthdayDay">Day</label>
+            <input
+              id="birthdayDay"
+              type="number"
+              min={1}
+              max={31}
+              className={input}
+              placeholder="Day"
+              value={birthdayDay}
+              onChange={(e) => setBirthdayDay(e.target.value === '' ? '' : Number(e.target.value))}
+            />
+          </div>
         </div>
       </div>
 

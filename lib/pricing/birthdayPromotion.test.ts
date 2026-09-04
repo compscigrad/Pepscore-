@@ -5,6 +5,7 @@ import {
   applyBirthdayDiscount,
   validateBirthdayMonthDay,
   resolveBirthdayIssuanceDay,
+  isBirthdayCodeFormat,
   BIRTHDAY_DISCOUNT_PERCENT,
 } from './birthdayPromotion'
 
@@ -67,6 +68,27 @@ describe('validateBirthdayMonthDay', () => {
 
   it('rejects Feb 30', () => {
     expect(validateBirthdayMonthDay(2, 30)).not.toBeNull()
+  })
+})
+
+describe('isBirthdayCodeFormat', () => {
+  it('recognizes a real generated code regardless of case', () => {
+    expect(isBirthdayCodeFormat('BDAY-JS-4F9A2C')).toBe(true)
+    expect(isBirthdayCodeFormat('bday-js-4f9a2c')).toBe(true)
+  })
+
+  it('tolerates surrounding whitespace (matches how the checkout form trims input)', () => {
+    expect(isBirthdayCodeFormat('  BDAY-JS-4F9A2C  ')).toBe(true)
+  })
+
+  it('rejects a generic PromotionCode-style code', () => {
+    expect(isBirthdayCodeFormat('WELCOME10')).toBe(false)
+    expect(isBirthdayCodeFormat('FIRST10')).toBe(false)
+  })
+
+  it('rejects an empty or unrelated string', () => {
+    expect(isBirthdayCodeFormat('')).toBe(false)
+    expect(isBirthdayCodeFormat('HAPPYBDAY')).toBe(false)
   })
 })
 

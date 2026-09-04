@@ -526,6 +526,16 @@ model Order {
   appliedPromotionCodeId String?        @unique
   appliedPromotionCode   PromotionCode? @relation(fields: [appliedPromotionCodeId], references: [id])
 
+  // Same soft-hold/finalize discipline as appliedPromotionCodeId above, for
+  // a BirthdayPromotionCode instead -- a separate field (not the same FK)
+  // because a birthday code is a genuinely distinct model
+  // (lib/pricing/birthdayPromotion.ts's own header explains why it isn't
+  // just another PromotionCampaign). At most one of the two is ever set on
+  // a real order in this slice (checkout resolves whichever namespace the
+  // entered code belongs to, never both).
+  appliedBirthdayCodeId String?                 @unique
+  appliedBirthdayCode   BirthdayPromotionCode?  @relation(fields: [appliedBirthdayCodeId], references: [id])
+
   items                  OrderItem[]
   invoice                Invoice?
   shippingLabel          ShippingLabel?
@@ -2555,6 +2565,11 @@ model BirthdayPromotionCode {
   // code from the same cycle must never let automation issue a second one
   // for that same year).
   cycleYear Int
+
+  // Back-relation for Order.appliedBirthdayCodeId -- at most one Order can
+  // hold a given code at a time (the FK is @unique on Order's side), same
+  // 0-or-1-in-practice shape as PromotionCode.appliedToOrder.
+  appliedToOrder Order?
 
   @@unique([customerId, cycleYear])
   @@index([customerId])

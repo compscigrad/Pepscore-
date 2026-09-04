@@ -1,12 +1,18 @@
-// GET /api/cron/birthday-promotions -- meant to run daily; only actually
-// issues on the first day of a customer's birthday month (section 15/20 of
-// the spec this shipped under). Mirrors app/api/cron/first-order-offer-
-// reminders/route.ts's safety-gate shape (CRON_SECRET auth, an explicit
-// enable flag, per-customer error isolation, audit logging) rather than
-// inventing a second cron convention. NOT registered in vercel.json --
-// same standing precedent as every other new customer-facing send in this
-// codebase: built and safety-gated, requires the owner's explicit
-// scheduling decision before it runs for real (see docs/PendingOwnerActions.md).
+// GET /api/cron/birthday-promotions -- runs daily at 13:00 UTC (vercel.json)
+// but only actually issues on the first day of a customer's birthday month
+// (section 15/20 of the spec this shipped under). Mirrors app/api/cron/
+// first-order-offer-reminders/route.ts's safety-gate shape (CRON_SECRET
+// auth, an explicit enable flag, per-customer error isolation, audit
+// logging) rather than inventing a second cron convention.
+//
+// 2026-09-04 birthday-journey sprint (B10): registered in vercel.json so
+// Vercel invokes this daily -- the invocation itself is a safe no-op
+// (returns { skipped: true } immediately) until BIRTHDAY_PROMOTIONS_ENABLED
+// is explicitly set to 'true'. That flag, not the scheduling, is the real
+// "start sending real discount codes to real customers" decision -- setting
+// it is deliberately left as the one remaining owner action (see
+// docs/PendingOwnerActions.md) rather than something this sprint flips on
+// unilaterally.
 //
 // Professional Access accounts are never candidates at all (isCustomer
 // BirthdayEligible excludes them before a code is ever generated) -- not

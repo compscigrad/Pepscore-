@@ -13,6 +13,7 @@ import { prisma } from '@/lib/prisma'
 import { recordCustomerActivity } from '@/lib/customers'
 import { sendCategorizedEmail } from '@/lib/notifications/log'
 import { profileEmailChangeRequestedSubject, buildProfileEmailChangeRequestedHtml } from '@/emails/AdminBackorderAlerts'
+import { validateBirthdayMonthDay } from '@/lib/pricing/birthdayPromotion'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? ''
 
@@ -24,7 +25,16 @@ export interface UpdatePortalProfileInput {
   shippingAddress?: unknown
   preferredContactMethod?: 'SMS' | 'EMAIL' | 'PHONE' | null
   preferredPaymentMethod?: string | null
+  // Pepscore's own birthday-marketing profile (month/day only, never a
+  // year) -- entirely separate from Clerk age/identity verification, same
+  // low-risk "applies immediately" path as name/phone/address, never the
+  // requestEmailChange review path below. Both-or-neither: a half-entered
+  // birthday isn't a usable one.
+  birthdayMonth?: number | null
+  birthdayDay?: number | null
 }
+
+export class InvalidBirthdayError extends Error {}
 
 export function summarizeChanges(before: Record<string, unknown>, after: UpdatePortalProfileInput): string {
   const changed = Object.keys(after).filter((k) => JSON.stringify(before[k]) !== JSON.stringify((after as Record<string, unknown>)[k]))
@@ -34,6 +44,19 @@ export function summarizeChanges(before: Record<string, unknown>, after: UpdateP
 export async function updatePortalProfile(customerId: string, input: UpdatePortalProfileInput): Promise<void> {
   const before = await prisma.customer.findUniqueOrThrow({ where: { id: customerId } })
   const summary = summarizeChanges(before, input)
+
+  const birthdayTouched = input.birthdayMonth !== undefined || input.birthdayDay !== undefined
+  if (birthdayTouched) {
+    const month = input.birthdayMonth ?? null
+    const day = input.birthdayDay ?? null
+    if ((month === null) !== (day === null)) {
+      throw new InvalidBirthdayError('Enter both a birthday month and day, or leave both blank.')
+    }
+    if (month !== null && day !== null) {
+      const error = validateBirthdayMonthDay(month, day)
+      if (error) throw new InvalidBirthdayError(error)
+    }
+  }
 
   await prisma.customer.update({
     where: { id: customerId },
@@ -45,6 +68,8 @@ export async function updatePortalProfile(customerId: string, input: UpdatePorta
       shippingAddress: input.shippingAddress !== undefined ? (input.shippingAddress as never) : undefined,
       preferredContactMethod: input.preferredContactMethod !== undefined ? input.preferredContactMethod : undefined,
       preferredPaymentMethod: input.preferredPaymentMethod !== undefined ? (input.preferredPaymentMethod as never) : undefined,
+      birthdayMonth: input.birthdayMonth !== undefined ? input.birthdayMonth : undefined,
+      birthdayDay: input.birthdayDay !== undefined ? input.birthdayDay : undefined,
     },
   })
 

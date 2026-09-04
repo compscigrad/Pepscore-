@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getPortalCustomer } from '@/lib/portalAuth'
-import { updatePortalProfile, requestEmailChange } from '@/lib/portal/profile'
+import { updatePortalProfile, requestEmailChange, InvalidBirthdayError } from '@/lib/portal/profile'
 
 const addressSchema = z
   .object({
@@ -28,6 +28,8 @@ const patchSchema = z.object({
   preferredContactMethod: z.enum(['SMS', 'EMAIL', 'PHONE']).optional().nullable(),
   preferredPaymentMethod: z.string().optional().nullable(),
   requestedEmail: z.string().email().optional(),
+  birthdayMonth: z.number().int().min(1).max(12).optional().nullable(),
+  birthdayDay: z.number().int().min(1).max(31).optional().nullable(),
 })
 
 export async function PATCH(req: NextRequest) {
@@ -49,6 +51,9 @@ export async function PATCH(req: NextRequest) {
   } catch (err: unknown) {
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: 'Please check the form and try again.', issues: err.issues }, { status: 400 })
+    }
+    if (err instanceof InvalidBirthdayError) {
+      return NextResponse.json({ error: err.message }, { status: 400 })
     }
     console.error('[account/profile PATCH]', err)
     return NextResponse.json({ error: 'Failed to update profile.' }, { status: 500 })

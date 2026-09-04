@@ -10,7 +10,7 @@
 // after receiving, or that reached them through stale data/another path).
 import { prisma } from '@/lib/prisma'
 import { recordCustomerActivity } from '@/lib/customers'
-import type { Customer } from '@prisma/client'
+import type { Customer, Prisma } from '@prisma/client'
 
 export const BIRTHDAY_DISCOUNT_PERCENT = 15
 export const BIRTHDAY_CODE_VALIDITY_DAYS = 90
@@ -171,4 +171,101 @@ export async function markBirthdayCodeRedeemed(codeId: string, orderId: string |
     newValue: row.code,
     source: 'SYSTEM',
   })
+}
+
+// ─── Checkout integration ───────────────────────────────────────────────
+// Mirrors lib/promotions/redemption.ts's resolvePromotionCode/
+// applyPromotionCodeToOrderTx/finalizeRedemption exactly (same two-phase
+// soft-hold/finalize discipline, same reason this codebase never permanently
+// burns a one-time code on an abandoned checkout) -- a SEPARATE set of
+// functions rather than shoehorning this into resolvePromotionCode itself,
+// because a birthday code's discount is computed against the already-
+// Price-Match-resolved cart subtotal (section 17's locked order of
+// operations), never the raw pre-match subtotal a generic promo code
+// discounts against -- genuinely different math, not just a different table.
+
+// Every code this codebase generates for a customer to type in is
+// UPPERCASE (generateCode() above), so a leading "BDAY-" after
+// normalizing case is an unambiguous, cheap way for the checkout code
+// field to route to this resolver instead of the generic PromotionCode
+// one without querying both tables for every keystroke.
+export function isBirthdayCodeFormat(rawCode: string): boolean {
+  return rawCode.trim().toUpperCase().startsWith('BDAY-')
+}
+
+export interface BirthdayCheckoutResolution {
+  valid: boolean
+  reason?: BirthdayCodeInvalidReason
+  message?: string
+  codeId?: string
+  discountAmount?: number
+  label?: string
+}
+
+export type BirthdayCodeInvalidReason = 'INVALID_CODE' | 'WRONG_CUSTOMER' | 'ALREADY_USED' | 'REVOKED' | 'EXPIRED' | 'PROFESSIONAL_INELIGIBLE'
+
+export const BIRTHDAY_CODE_INVALID_MESSAGE: Record<BirthdayCodeInvalidReason, string> = {
+  INVALID_CODE: "This promotion code isn't valid.",
+  WRONG_CUSTOMER: "This code isn't valid for your account.",
+  ALREADY_USED: 'This birthday promotion has already been redeemed.',
+  REVOKED: 'This promotion code isn’t valid.',
+  EXPIRED: 'This promotion has expired.',
+  PROFESSIONAL_INELIGIBLE: 'Birthday promotions are not available with Professional pricing.',
+}
+
+// eligibleMerchandiseSubtotal MUST already reflect any resolved Price Match
+// unit prices for this cart (i.e. the real subtotal checkout is about to
+// charge before this code) -- see resolveBirthdayDiscountAmount's own
+// header for why the birthday percentage is never computed from a
+// standard, pre-match subtotal.
+export async function resolveBirthdayCodeForCheckout(
+  rawCode: string,
+  customerId: string,
+  eligibleMerchandiseSubtotal: number
+): Promise<BirthdayCheckoutResolution> {
+  const code = rawCode.trim().toUpperCase()
+  const row = await prisma.birthdayPromotionCode.findUnique({ where: { code } })
+  if (!row) return { valid: false, reason: 'INVALID_CODE', message: BIRTHDAY_CODE_INVALID_MESSAGE.INVALID_CODE }
+  if (row.customerId !== customerId) return { valid: false, reason: 'WRONG_CUSTOMER', message: BIRTHDAY_CODE_INVALID_MESSAGE.WRONG_CUSTOMER }
+  if (row.status === 'REDEEMED') return { valid: false, reason: 'ALREADY_USED', message: BIRTHDAY_CODE_INVALID_MESSAGE.ALREADY_USED }
+  if (row.status === 'REVOKED' || row.revokedAt) return { valid: false, reason: 'REVOKED', message: BIRTHDAY_CODE_INVALID_MESSAGE.REVOKED }
+  if (row.status === 'EXPIRED' || row.expiresAt < new Date()) return { valid: false, reason: 'EXPIRED', message: BIRTHDAY_CODE_INVALID_MESSAGE.EXPIRED }
+
+  const customer = await prisma.customer.findUniqueOrThrow({ where: { id: customerId }, select: { proEligible: true } })
+  if (customer.proEligible) {
+    return { valid: false, reason: 'PROFESSIONAL_INELIGIBLE', message: BIRTHDAY_CODE_INVALID_MESSAGE.PROFESSIONAL_INELIGIBLE }
+  }
+
+  return {
+    valid: true,
+    codeId: row.id,
+    discountAmount: resolveBirthdayDiscountAmount(eligibleMerchandiseSubtotal),
+    label: `Birthday ${row.discountPercent}%`,
+  }
+}
+
+// Soft-hold, inside the same transaction as Order creation -- never touches
+// PromotionCodeStatus yet.
+export async function applyBirthdayCodeToOrderTx(tx: Prisma.TransactionClient, orderId: string, birthdayCodeId: string): Promise<void> {
+  await tx.order.update({ where: { id: orderId }, data: { appliedBirthdayCodeId: birthdayCodeId } })
+}
+
+// The only place a BirthdayPromotionCode ever becomes REDEEMED through
+// checkout -- called from markOrderPaid() on real payment success.
+// Idempotent by conditional update (WHERE status = 'ACTIVE'), same
+// double-webhook/duplicate-tab protection as finalizeRedemption.
+export async function finalizeBirthdayRedemption(orderId: string): Promise<void> {
+  const order = await prisma.order.findUnique({ where: { id: orderId }, select: { appliedBirthdayCodeId: true } })
+  if (!order?.appliedBirthdayCodeId) return
+
+  const updated = await prisma.birthdayPromotionCode.updateMany({
+    where: { id: order.appliedBirthdayCodeId, status: 'ACTIVE' },
+    data: { status: 'REDEEMED', redeemedAt: new Date(), redeemedOrderId: orderId },
+  })
+  if (updated.count > 0) {
+    const row = await prisma.birthdayPromotionCode.findUnique({ where: { id: order.appliedBirthdayCodeId }, select: { customerId: true, code: true } })
+    if (row) {
+      await recordCustomerActivity({ customerId: row.customerId, eventType: 'BIRTHDAY_PROMOTION_REDEEMED', newValue: row.code, source: 'SYSTEM' })
+    }
+  }
 }

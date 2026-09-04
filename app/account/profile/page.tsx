@@ -41,6 +41,8 @@ export default async function ProfilePage() {
           billingAddress={customer.billingAddress}
           shippingAddress={customer.shippingAddress}
           preferredContactMethod={customer.preferredContactMethod}
+          birthdayMonth={customer.birthdayMonth}
+          birthdayDay={customer.birthdayDay}
         />
         <PreferredPricingSection rows={preferredPricing} />
         <EvaluationCreditsSection rows={evaluations} />

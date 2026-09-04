@@ -15,6 +15,7 @@ import { buildOrderConfirmationHtml } from '@/emails/OrderConfirmation'
 import { achPaymentProcessingSubject, buildAchPaymentProcessingHtml } from '@/emails/AchPaymentProcessing'
 import { fulfillAllOrderReservationsTx, releaseAllOrderReservationsTx } from '@/lib/inventory/orderReservations'
 import { finalizeRedemption } from '@/lib/promotions/redemption'
+import { finalizeBirthdayRedemption } from '@/lib/pricing/birthdayPromotion'
 import { trackServerEvent } from '@/lib/analytics/serverTrack'
 import { AnalyticsEvent } from '@/lib/analytics/events'
 import type { StorefrontPaymentMethodType, Order } from '@prisma/client'
@@ -77,6 +78,12 @@ export async function markOrderPaid(input: MarkOrderPaidInput): Promise<Order> {
   // Idempotent (see finalizeRedemption's own comment), so a redelivered
   // webhook that reaches this far again is still safe.
   await finalizeRedemption(order.id)
+
+  // Same idempotent finalize-on-payment step, for a soft-held birthday
+  // code instead of a generic PromotionCode -- see lib/pricing/
+  // birthdayPromotion.ts's checkout-integration header for why this is a
+  // parallel function rather than the same one.
+  await finalizeBirthdayRedemption(order.id)
 
   // Best-effort funnel event -- amount and payment method are transaction
   // facts, not customer-identifying values, so they're safe to record here.
