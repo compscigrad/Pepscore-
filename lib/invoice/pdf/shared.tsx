@@ -315,10 +315,20 @@ export function ItemsTable({ invoice }: { invoice: InvoiceWithRelations }) {
           <View style={styles.colProduct}>
             <Text style={styles.tableCell}>{item.name}</Text>
             {item.description ? <Text style={{ fontSize: 8, color: colors.g500 }}>{item.description}</Text> : null}
+            {item.lineDiscount > 0 ? (
+              <Text style={{ fontSize: 8, color: colors.g500 }}>-{formatMoney(item.lineDiscount)} discount applied</Text>
+            ) : null}
           </View>
           <Text style={[styles.tableCell, styles.colQty]}>{item.quantity}</Text>
           <Text style={[styles.tableCell, styles.colPrice]}>{formatMoney(item.unitPrice)}</Text>
-          <Text style={[styles.tableCell, styles.colTotal]}>{formatMoney(item.total)}</Text>
+          <View style={styles.colTotal}>
+            {item.lineDiscount > 0 ? (
+              <Text style={{ fontSize: 8, color: colors.g500, textDecoration: 'line-through' }}>
+                {formatMoney(item.quantity * item.unitPrice)}
+              </Text>
+            ) : null}
+            <Text style={styles.tableCell}>{formatMoney(item.total)}</Text>
+          </View>
         </View>
       ))}
     </View>

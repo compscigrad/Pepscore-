@@ -74,10 +74,20 @@ export function InvoicePreview({ draft, totals, invoiceNumber }: Props) {
           ) : (
             items.map((item) => (
               <tr key={item.key} className="border-b border-g100">
-                <td className="py-1.5 text-dark">{item.name || 'Untitled product'}</td>
+                <td className="py-1.5 text-dark">
+                  {item.name || 'Untitled product'}
+                  {item.lineDiscount > 0 && (
+                    <span className="block text-[10px] text-g500">-{formatMoney(item.lineDiscount)} discount applied</span>
+                  )}
+                </td>
                 <td className="py-1.5 text-center text-g700">{item.quantity}</td>
                 <td className="py-1.5 text-right text-g700">{formatMoney(item.unitPrice)}</td>
-                <td className="py-1.5 text-right text-dark">{formatMoney(lineItemTotal(item))}</td>
+                <td className="py-1.5 text-right text-dark">
+                  {item.lineDiscount > 0 && (
+                    <span className="block text-[10px] text-g500 line-through">{formatMoney(item.quantity * item.unitPrice)}</span>
+                  )}
+                  {formatMoney(lineItemTotal(item))}
+                </td>
               </tr>
             ))
           )}

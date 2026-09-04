@@ -18,38 +18,61 @@ export const addressSchema = z.object({
 // that already exists in the database, absent/null for a genuinely new row
 // -- see updateInvoice()'s upsert-by-id handling. Never trust it blindly:
 // the server only honors an id that actually belongs to this invoice.
-const lineItemSchema = z.object({
-  id: z.string().optional().nullable(),
-  productId: z.string().optional().nullable(),
-  name: z.string().min(1, 'Product name is required'),
-  description: z.string().optional(),
-  quantity: z.number().int().positive('Quantity must be at least 1'),
-  unitPrice: z.number().nonnegative('Price cannot be negative'),
-  lineDiscount: z.number().nonnegative().default(0),
-  sortOrder: z.number().int().default(0),
-  // Inventory & Pricing MVP -- all optional so a free-typed line item (no
-  // catalog product, or a catalog product with no configured sell units)
-  // stays exactly as valid as it was before this sprint.
-  sellUnit: z.enum(['CASE_STANDARD', 'CASE_PRO', 'CASE_BULK', 'INDIVIDUAL_VIAL']).optional().nullable(),
-  unitsPerSellUnit: z.number().int().positive().optional().nullable(),
-  priceTier: z.enum(['STANDARD', 'PRO', 'BULK', 'INDIVIDUAL', 'MANUAL']).optional().nullable(),
-  skuSnapshot: z.string().optional().nullable(),
-  manualPricingOverride: z.boolean().optional(),
-  inventoryQuantityConsumed: z.number().int().nonnegative().optional().nullable(),
-  // Finance COGS-coverage fix (2026-08-19) -- total (quantity-extended)
-  // cost of goods for this line. Nullable/optional so a free-typed line
-  // item or a product with no recorded cost stays exactly as valid as
-  // before this field existed.
-  costOfGoods: z.number().nonnegative().optional().nullable(),
-})
+const lineItemSchema = z
+  .object({
+    id: z.string().optional().nullable(),
+    productId: z.string().optional().nullable(),
+    name: z.string().min(1, 'Product name is required'),
+    description: z.string().optional(),
+    quantity: z.number().int().positive('Quantity must be at least 1'),
+    unitPrice: z.number().nonnegative('Price cannot be negative'),
+    lineDiscount: z.number().nonnegative().default(0),
+    sortOrder: z.number().int().default(0),
+    // Inventory & Pricing MVP -- all optional so a free-typed line item (no
+    // catalog product, or a catalog product with no configured sell units)
+    // stays exactly as valid as it was before this sprint.
+    sellUnit: z.enum(['CASE_STANDARD', 'CASE_PRO', 'CASE_BULK', 'INDIVIDUAL_VIAL']).optional().nullable(),
+    unitsPerSellUnit: z.number().int().positive().optional().nullable(),
+    priceTier: z.enum(['STANDARD', 'PRO', 'BULK', 'INDIVIDUAL', 'MANUAL']).optional().nullable(),
+    skuSnapshot: z.string().optional().nullable(),
+    manualPricingOverride: z.boolean().optional(),
+    inventoryQuantityConsumed: z.number().int().nonnegative().optional().nullable(),
+    // Finance COGS-coverage fix (2026-08-19) -- total (quantity-extended)
+    // cost of goods for this line. Nullable/optional so a free-typed line
+    // item or a product with no recorded cost stays exactly as valid as
+    // before this field existed.
+    costOfGoods: z.number().nonnegative().optional().nullable(),
+  })
+  // A line-item discount is a courtesy adjustment, never a path to a
+  // negative/credit line -- lineItemTotal() already clamps to $0, but
+  // rejecting an over-discount here catches a fat-fingered amount (e.g. an
+  // extra zero) before it silently zeroes out a line's real price.
+  .refine((item) => (item.lineDiscount ?? 0) <= item.quantity * item.unitPrice, {
+    message: 'Line discount cannot exceed the line’s own price (quantity × unit price)',
+    path: ['lineDiscount'],
+  })
 
-const discountSchema = z.object({
-  id: z.string().optional().nullable(),
-  promotionId: z.string().optional().nullable(),
-  label: z.string().min(1, 'Discount label is required'),
-  type: z.enum(['FIXED', 'PERCENTAGE']),
-  amount: z.number().nonnegative('Discount amount cannot be negative'),
-})
+const discountSchema = z
+  .object({
+    id: z.string().optional().nullable(),
+    promotionId: z.string().optional().nullable(),
+    // A custom (non-preset) discount is valid with no label typed -- the
+    // owner shouldn't have to name a one-off courtesy adjustment just to save
+    // the invoice. Blank/whitespace-only falls back to "Miscellaneous", which
+    // is what actually gets stored on the InvoiceDiscount row (not just
+    // displayed), so every later reader (PDF, portal, Finance) sees a real
+    // label without having to special-case an empty string itself.
+    label: z
+      .string()
+      .optional()
+      .transform((v) => (v && v.trim() !== '' ? v.trim() : 'Miscellaneous')),
+    type: z.enum(['FIXED', 'PERCENTAGE']),
+    amount: z.number().nonnegative('Discount amount cannot be negative'),
+  })
+  .refine((d) => d.type !== 'PERCENTAGE' || d.amount <= 100, {
+    message: 'A percentage discount cannot exceed 100%',
+    path: ['amount'],
+  })
 
 export const invoicePayloadSchema = z.object({
   orderId: z.string().optional().nullable(),

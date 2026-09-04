@@ -90,6 +90,53 @@ describe('invoicePayloadSchema', () => {
   it('rejects PENDING as a settable status (never admin-settable)', () => {
     expect(invoicePayloadSchema.safeParse({ ...base, status: 'PENDING' }).success).toBe(false)
   })
+
+  describe('custom discount label (2026-09-03: no longer required to save)', () => {
+    const withDiscount = (label?: string) => ({
+      ...base,
+      discounts: [{ label, type: 'FIXED' as const, amount: 25 }],
+    })
+
+    it('accepts a discount with no label at all, and stores "Miscellaneous"', () => {
+      const result = invoicePayloadSchema.safeParse(withDiscount(undefined))
+      expect(result.success).toBe(true)
+      expect(result.success && result.data.discounts[0].label).toBe('Miscellaneous')
+    })
+
+    it('accepts a blank/whitespace-only label, and stores "Miscellaneous"', () => {
+      const result = invoicePayloadSchema.safeParse(withDiscount('   '))
+      expect(result.success).toBe(true)
+      expect(result.success && result.data.discounts[0].label).toBe('Miscellaneous')
+    })
+
+    it('preserves an owner-provided label untouched (trimmed)', () => {
+      const result = invoicePayloadSchema.safeParse(withDiscount('  Courtesy Discount  '))
+      expect(result.success).toBe(true)
+      expect(result.success && result.data.discounts[0].label).toBe('Courtesy Discount')
+    })
+
+    it('still rejects a negative discount amount', () => {
+      expect(invoicePayloadSchema.safeParse({ ...base, discounts: [{ label: 'X', type: 'FIXED', amount: -5 }] }).success).toBe(false)
+    })
+
+    it('rejects a percentage discount over 100%', () => {
+      expect(invoicePayloadSchema.safeParse({ ...base, discounts: [{ label: 'X', type: 'PERCENTAGE', amount: 150 }] }).success).toBe(false)
+    })
+
+    it('accepts a percentage discount of exactly 100%', () => {
+      expect(invoicePayloadSchema.safeParse({ ...base, discounts: [{ label: 'X', type: 'PERCENTAGE', amount: 100 }] }).success).toBe(true)
+    })
+
+    it('rejects a line discount exceeding the line’s own price (quantity × unit price)', () => {
+      const overDiscounted = { ...base, items: [{ ...validItem, quantity: 1, unitPrice: 50, lineDiscount: 75 }] }
+      expect(invoicePayloadSchema.safeParse(overDiscounted).success).toBe(false)
+    })
+
+    it('accepts a line discount exactly equal to the line’s own price (zeroes the line, not negative)', () => {
+      const fullyDiscounted = { ...base, items: [{ ...validItem, quantity: 1, unitPrice: 50, lineDiscount: 50 }] }
+      expect(invoicePayloadSchema.safeParse(fullyDiscounted).success).toBe(true)
+    })
+  })
 })
 
 describe('paymentPayloadSchema', () => {

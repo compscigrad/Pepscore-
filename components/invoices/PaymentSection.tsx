@@ -114,7 +114,16 @@ export function PaymentSection({
           </div>
         )}
 
-        {balanceDue > 0 ? (
+        {total <= 0 ? (
+          // A $0 total (e.g. a fresh Quick Intake draft with no line items
+          // yet) is NOT the same fact as "paid in full" -- balanceDue is
+          // also <= 0 here, but that's because nothing has been priced onto
+          // this invoice yet, not because a real balance was settled.
+          // "Paid in full" must only ever describe a genuine amountPaid >=
+          // a genuine positive total (see deriveInvoicePaymentAmounts) --
+          // never merely "there's currently nothing to collect."
+          <p className="text-sm text-white/50">No balance due yet — add products to this invoice.</p>
+        ) : balanceDue > 0 ? (
           <form onSubmit={submit} className="flex flex-wrap items-end gap-3">
             <div className="flex-1 min-w-[100px]">
               <label className={labelClass} htmlFor="paymentAmount">

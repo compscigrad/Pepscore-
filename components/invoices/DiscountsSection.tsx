@@ -16,15 +16,58 @@ interface Props {
   onChange: (discounts: InvoiceDiscountDraft[]) => void
   promotions: Promotion[]
   onPromotionCreated: (promotion: Promotion) => void
+  // Local removal so a deleted/deactivated preset drops out of "Apply
+  // Promotion..." immediately, without a page reload -- same
+  // no-reload-mid-draft discipline as onPromotionCreated.
+  onPromotionRemoved?: (promotionId: string) => void
   itemsTotal: number
 }
 
-export function DiscountsSection({ discounts, onChange, promotions, onPromotionCreated, itemsTotal }: Props) {
+export function DiscountsSection({ discounts, onChange, promotions, onPromotionCreated, onPromotionRemoved, itemsTotal }: Props) {
   const [creatingPreset, setCreatingPreset] = useState(false)
   const [presetName, setPresetName] = useState('')
   const [presetType, setPresetType] = useState<'FIXED' | 'PERCENTAGE'>('FIXED')
   const [presetAmount, setPresetAmount] = useState('')
   const [savingPreset, setSavingPreset] = useState(false)
+  const [managingPresets, setManagingPresets] = useState(false)
+  const [removingPresetId, setRemovingPresetId] = useState<string | null>(null)
+
+  // Delete when it's genuinely safe (never used on any invoice); otherwise
+  // the API itself refuses with 409 and this falls back to deactivating --
+  // same PromotionInUseError/active precedent lib/promotions.ts already
+  // enforces, just surfaced right here instead of a separate admin screen
+  // so cleaning up an obsolete preset never requires leaving Direct Sales.
+  async function removePreset(promotionId: string, name: string) {
+    setRemovingPresetId(promotionId)
+    try {
+      const res = await fetch(`/api/admin/promotions/${promotionId}`, { method: 'DELETE' })
+      if (res.ok) {
+        toast.success(`Deleted "${name}"`)
+        onPromotionRemoved?.(promotionId)
+        return
+      }
+      const data = await res.json().catch(() => ({}))
+      if (res.status === 409) {
+        // In use on a real historical invoice -- deactivate instead. The
+        // InvoiceDiscount rows on those past invoices are independent
+        // snapshots (own label/type/amount), so this never touches them.
+        const patchRes = await fetch(`/api/admin/promotions/${promotionId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ active: false }),
+        })
+        if (!patchRes.ok) throw new Error('Failed to remove preset')
+        toast.success(`"${name}" was used on a past invoice, so it was deactivated instead of deleted — it won't show up for future invoices, and past invoices are unaffected.`)
+        onPromotionRemoved?.(promotionId)
+        return
+      }
+      throw new Error(data.error ?? 'Failed to remove preset')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to remove preset')
+    } finally {
+      setRemovingPresetId(null)
+    }
+  }
 
   function addPromotion(promotionId: string) {
     const promo = promotions.find((p) => p.id === promotionId)
@@ -125,8 +168,45 @@ export function DiscountsSection({ discounts, onChange, promotions, onPromotionC
           >
             + New Preset
           </button>
+          {promotions.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setManagingPresets((v) => !v)}
+              className={`${pillSecondary} px-4 py-1.5`}
+            >
+              Manage Presets
+            </button>
+          )}
         </div>
       </div>
+
+      {managingPresets && (
+        <div className="mb-4 p-3 rounded-lg bg-white/[0.03] border border-white/10 space-y-2">
+          <p className="text-[11px] text-white/50 mb-1">
+            Remove a saved preset you no longer want to offer. A preset already used on a past invoice is deactivated
+            instead of deleted — that invoice keeps its own record of what was applied either way.
+          </p>
+          {promotions.length === 0 ? (
+            <p className="text-sm text-white/50">No saved presets.</p>
+          ) : (
+            promotions.map((p) => (
+              <div key={p.id} className="flex items-center justify-between gap-3 text-sm">
+                <span className="text-white/80">
+                  {p.name} <span className="text-white/40">({p.type === 'PERCENTAGE' ? `${p.amount}%` : formatMoney(p.amount)})</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removePreset(p.id, p.name)}
+                  disabled={removingPresetId === p.id}
+                  className="text-red-400 text-[11px] font-bold uppercase tracking-wide hover:text-red-300 disabled:opacity-40"
+                >
+                  {removingPresetId === p.id ? 'Removing…' : 'Delete'}
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      )}
 
       {creatingPreset ? (
         <form onSubmit={savePreset} className="flex flex-wrap items-end gap-2 mb-4 p-3 rounded-lg bg-white/[0.03] border border-white/10">
@@ -191,7 +271,7 @@ export function DiscountsSection({ discounts, onChange, promotions, onPromotionC
             <div key={discount.key} className="flex items-center gap-2">
               <input
                 className={`${input} flex-1`}
-                placeholder="Label"
+                placeholder="Label (optional — defaults to “Miscellaneous”)"
                 value={discount.label}
                 onChange={(e) => updateDiscount(discount.key, { label: e.target.value })}
                 disabled={!!discount.promotionId}

@@ -475,6 +475,7 @@ export function InvoiceBuilder({
           onChange={(discounts) => setDraft((d) => ({ ...d, discounts }))}
           promotions={promotions}
           onPromotionCreated={(promotion) => setPromotions((prev) => [...prev, promotion])}
+          onPromotionRemoved={(promotionId) => setPromotions((prev) => prev.filter((p) => p.id !== promotionId))}
           itemsTotal={totals.itemsTotal}
         />
         <TotalsSummary totals={totals} shippingCost={draft.shipping.shippingCost} amountPaid={invoice?.amountPaid} />

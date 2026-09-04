@@ -467,6 +467,11 @@ export function InvoiceItemsTable({ items, onChange, products, onProductPriceUpd
                       value={item.lineDiscount}
                       onChange={(e) => updateItem(item.key, { lineDiscount: Number(e.target.value) })}
                     />
+                    {item.lineDiscount > 0 && (
+                      <p className="text-[10px] text-amber-300 mt-1">
+                        -{formatMoney(item.lineDiscount)} off {formatMoney(item.quantity * item.unitPrice)}
+                      </p>
+                    )}
                   </td>
                   <td className="py-2 pr-2">
                     <input
@@ -481,6 +486,11 @@ export function InvoiceItemsTable({ items, onChange, products, onProductPriceUpd
                     />
                   </td>
                   <td className="py-2 pr-2 text-right font-medium text-white whitespace-nowrap">
+                    {item.lineDiscount > 0 && (
+                      <span className="block text-[10px] text-white/40 line-through">
+                        {formatMoney(item.quantity * item.unitPrice)}
+                      </span>
+                    )}
                     {formatMoney(lineItemTotal(item))}
                   </td>
                   <td className="py-2 whitespace-nowrap text-right">
