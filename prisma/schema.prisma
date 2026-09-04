@@ -2072,6 +2072,19 @@ model Customer {
   // of a plain boolean with no redundant companion timestamp column.
   smsOptedOut Boolean @default(false)
 
+  // Pepscore's own birthday-marketing profile (2026-09-03) -- deliberately
+  // separate from Clerk's age/identity verification (lib/compliance/ruo.ts),
+  // which lives entirely in Clerk/ComplianceAcknowledgment and is never
+  // touched by this. Month/day only, no year -- a birthday promotion has no
+  // legitimate use for the customer's age or birth year, so none is
+  // collected here rather than inventing a fake one to satisfy a Date
+  // column. Both nullable (most existing customers won't have this filled
+  // in yet); both null means "not on file," never treated as a real date.
+  birthdayMonth Int? // 1-12, validated in lib/customers/birthday.ts
+  birthdayDay   Int? // 1-31, validated against birthdayMonth (Feb 29 allowed)
+
+  birthdayPromotionCodes BirthdayPromotionCode[]
+
   // Email-marketing equivalent of smsOptedOut above (2026-08-19 lead-
   // capture/conversion engine, section 25 -- consent/suppression center).
   // Set only via the unsubscribe endpoint (a real, evidenced opt-out
@@ -2495,6 +2508,55 @@ model PromotionCode {
   appliedToOrder        Order?
 
   @@index([campaignId])
+  @@index([customerId])
+}
+
+// Birthday promotion code (2026-09-03 customer lifecycle sprint) -- a
+// distinct, small model rather than overloading PromotionCode/
+// PromotionCampaign: this mechanic is recurring (once per birthday cycle,
+// not a one-time acquisition campaign), has no eligible-product/
+// firstOrderOnly campaign semantics, and explicitly stacks with Price
+// Match specifically (PromotionCampaign.stackingPolicy models a different,
+// general-purpose stacking question). Still resolved through the same
+// canonical pricing entry point every other discount goes through
+// (lib/pricing/canonicalPricing.ts) -- never checkout-only arithmetic.
+// Reuses PromotionCodeStatus (ACTIVE/REDEEMED/EXPIRED/REVOKED) -- identical
+// lifecycle, no reason for a second enum.
+model BirthdayPromotionCode {
+  id String @id @default(cuid())
+
+  code String @unique
+
+  customer   Customer @relation(fields: [customerId], references: [id])
+  customerId String
+
+  // Locked business rule (section 15/16 of the spec this shipped under) --
+  // always 15% off, never a different value. Stored anyway (not hardcoded
+  // at every read site) so a historical redemption's actual applied rate is
+  // never ambiguous if this business rule is ever revisited.
+  discountPercent Float @default(15)
+
+  status    PromotionCodeStatus @default(ACTIVE)
+  issuedAt  DateTime            @default(now())
+  // Locked: 90 days from issuance, set at creation time -- never recomputed
+  // later, so a code's validity window is a fixed fact from the moment it
+  // was generated.
+  expiresAt DateTime
+
+  redeemedAt      DateTime?
+  redeemedOrderId String?
+
+  revokedAt DateTime?
+  revokedBy String?
+
+  // Which birthday cycle this code was issued for -- the duplicate-
+  // issuance guard (one code per customer per birthday year) checks this,
+  // not just "does an ACTIVE code already exist" (a redeemed-and-expired
+  // code from the same cycle must never let automation issue a second one
+  // for that same year).
+  cycleYear Int
+
+  @@unique([customerId, cycleYear])
   @@index([customerId])
 }
 

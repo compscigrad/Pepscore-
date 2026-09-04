@@ -6,20 +6,34 @@ This document indexes items already tracked in more detail elsewhere (`docs/Paym
 
 ---
 
-## Launch-readiness snapshot (2026-08-31 post-sprint)
+## Launch-readiness snapshot (2026-09-03 post-sprint)
 
-Everything below is a subset of the full table further down, regrouped by whether Pepscore LLC/EIN is actually the blocker — added because Twilio and Shippo both got asked "what can move today" in the same breath as "what's still stuck on the entity."
+Classified per the owner's 5-bucket scheme. Superseded items from the 2026-08-31 pass have been folded in or resolved below rather than kept as a second stale list.
 
-**CAN DO NOW — no entity/EIN required:**
-- Twilio: purchase/port a phone number, set `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_PHONE_NUMBER` in Vercel, point the number's (or Messaging Service's) "A message comes in" webhook at `/api/webhooks/twilio`, and send one real test STOP/START from an owner-controlled phone (item #3, steps 2–4). All of this can happen on the Twilio account before the A2P Brand/Campaign is approved — it's account/number plumbing, not a use-case registration.
-- Review the Direct Sales "Sell As" flow in `/admin/invoices/new` — the sell-unit selector now has a labeled "Sell As" field, gold-highlighted while unselected, with inline helper copy ("Choose case, bulk, professional, or individual vial…") instead of a bare "Select sell unit…" placeholder, so Single Vial is visibly part of the same control as Standard Case/Bulk/Professional rather than something that reads as case-only. Confirm this reads clearly on your own screen.
-- Visually confirm the corrected product nomenclature: storefront shows "Cagrilintide/Semaglutide" and "CJC-1295/Ipamorelin w/o DAC" (not "+"), and NAD+ is unchanged, on both the live site and the physical label files in `Pepscore Lab Live`.
-- PayPal Dashboard enablement (item #2), legal/policy page review (item #9), RUO wording review (item #12), Clerk phone-MFA setup (item #11) — none of these depend on Pepscore LLC/EIN either; see their own rows below.
+**COMPLETED AUTONOMOUSLY THIS SPRINT (nothing to do — informational):**
+- Direct Sales: custom-discount label is no longer required to save (blank now stores "Miscellaneous"); line-item and invoice-level discounts now show original price / discount / final price explicitly in the admin editor, the live preview, and both PDFs; saved promotions can be deleted/deactivated directly from the Discounts panel without corrupting historical invoices; discount inputs now reject a >100% percentage and a line discount larger than the line itself.
+- Direct Sales: fixed a real bug where a fresh $0-total draft (e.g. Quick Intake) displayed "Paid in full." — now correctly shows a neutral "no balance due yet" state; genuine full payment still shows "Paid in full."
+- Customer lifecycle: true-delete (dependency-checked — invoices, orders, credits, saved payment methods, Price Match/Professional/redeemed-promotion history all block it) and Close/Archive (wired the existing-but-unused `archiveClosedCustomer`, added an admin-initiated `adminCloseCustomerAccount`) are both live on the customer profile page.
+- Portal eligibility: found and fixed the real root cause of "manually entered Direct Sales customers show Lead/Not Eligible" — the Quick Intake route built its invoice via a raw Prisma call that skipped the customer-status recompute every other invoice-creation path runs. Fixed going forward, and backfilled the 4 real customers already caught in that state (confirmed against the live database, not a blind mutation).
+- Birthday promotion engine: `Customer.birthdayMonth`/`birthdayDay` (no year), a dedicated `BirthdayPromotionCode` model, professional-exclusion-enforced generation/redemption, the locked Price-Match-then-15% math, a daily cron route (`/api/cron/birthday-promotions`, not yet scheduled — see below), and email+SMS delivery respecting existing consent/production gates. **Not yet done**: checkout-UI code-entry/redemption wiring and a customer-portal-facing birthday edit form (admin-side edit/view is live).
+- 2D label + 3D storefront nomenclature correction (verified again this sprint: dimensions/DPI/PDF page size all still exactly correct, "+" → "/" separator, NAD+ unchanged) — carried over from 2026-08-31, re-verified programmatically.
+
+**CAN DO NOW — no entity/EIN, no engineering blocker:**
+- Schedule `/api/cron/birthday-promotions` (set `BIRTHDAY_PROMOTIONS_ENABLED=true` and add it to `vercel.json`'s crons) once you're ready for real birthday sends — same "built and safety-gated, owner flips it on" pattern as the first-order-offer reminders.
+- Twilio: purchase/port a phone number, set `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_PHONE_NUMBER` in Vercel, point the number's (or Messaging Service's) "A message comes in" webhook at `/api/webhooks/twilio`, and send one real test STOP/START from an owner-controlled phone (item #3, steps 2–4). This environment has no browser-automation tool available, so none of this could be done by Claude directly this sprint — see the Twilio/Google Voice section of the final report for the exact reason.
+- Google Voice setup as the human-facing business line — also requires a browser session; not attemptable from this environment. Sign in at voice.google.com, claim/port a number, set voicemail/greeting.
+- PayPal Dashboard enablement (item #2), legal/policy page review (item #9), RUO wording review (item #12), Clerk phone-MFA setup (item #11).
 
 **WAITING ON PEPSCORE LLC/EIN:**
 - Twilio A2P 10DLC Brand + Campaign registration itself (item #3, step 1) — requires the final legal business name/EIN/address. Explicitly must NOT be submitted under a temporary or incorrect identity to save time; wait for the real entity.
 - Any other provider verification that requires a legal business identity document (EIN letter, Articles of Organization, etc.) as part of its own review — Shippo's Trust & Safety business-registration review (item #4) falls here if/when their review asks for Articles of Organization specifically; current production shipping (Pirate Ship + manual tracking) is unaffected either way, so this is not urgent.
 - Stripe live activation (item #1) ultimately needs a real business entity behind the merchant account too, though the immediate blocker there is the compliance review, not a specific document.
+
+**WAITING ON EXTERNAL PROVIDER / TOOLING:**
+- Google Voice and Twilio console setup both require a real browser session — no browser-automation tool is connected to this environment. This is a capability gap, not a business-entity blocker; if a browser tool becomes available (or you'd rather grant specific API credentials instead), this can move.
+
+**POST-LAUNCH / OPTIONAL:**
+- Customer-portal-facing birthday month/day edit form and checkout-side birthday-code redemption UI (engine is built and tested; UI wiring wasn't reached this sprint).
 
 ---
 

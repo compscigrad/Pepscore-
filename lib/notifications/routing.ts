@@ -54,6 +54,10 @@ export type MessageCategory =
   // app/api/cron/first-order-offer-reminders/route.ts, which is not
   // registered in vercel.json -- built and safety-gated, not yet live.
   | 'FIRST_ORDER_OFFER_REMINDER'
+  // Birthday promotion (2026-09-03 customer lifecycle sprint). Sent by
+  // app/api/cron/birthday-promotions/route.ts, which -- same precedent as
+  // FIRST_ORDER_OFFER_REMINDER above -- is not registered in vercel.json.
+  | 'BIRTHDAY_PROMOTION'
   // Support — existing-customer problems, access issues
   | 'SUPPORT_REQUEST'
   | 'SUPPORT_REQUEST_RECEIVED' // customer-facing: acknowledges their submission
@@ -140,6 +144,7 @@ const ROUTING: Record<MessageCategory, RoutedSender> = {
   LEAD_CAPTURED: { fromName: 'Pepscore', replyTo: CONTACT_EMAIL },
   FIRST_ORDER_OFFER_CODE: { fromName: 'Pepscore Lab', replyTo: CONTACT_EMAIL },
   FIRST_ORDER_OFFER_REMINDER: { fromName: 'Pepscore Lab', replyTo: CONTACT_EMAIL },
+  BIRTHDAY_PROMOTION: { fromName: 'Pepscore Lab', replyTo: CONTACT_EMAIL },
   SUPPORT_REQUEST: { fromName: 'Pepscore Support', replyTo: SUPPORT_EMAIL },
   SUPPORT_REQUEST_RECEIVED: { fromName: 'Pepscore Support', replyTo: SUPPORT_EMAIL },
 
@@ -216,6 +221,7 @@ const CUSTOMER_VISIBLE_CATEGORIES: ReadonlySet<MessageCategory> = new Set<Messag
   'SUPPORT_REQUEST_RECEIVED',
   'FIRST_ORDER_OFFER_CODE',
   'FIRST_ORDER_OFFER_REMINDER',
+  'BIRTHDAY_PROMOTION',
   'PROFESSIONAL_ACCESS_APPLICATION_RECEIVED',
   'PROFESSIONAL_ACCESS_MORE_INFO_REQUESTED',
   'PROFESSIONAL_ACCESS_APPROVED',
@@ -251,7 +257,7 @@ export function isCustomerVisibleCategory(category: string): boolean {
 // send -- gating it on a pre-existing suppression flag would mean a
 // legitimately re-claiming customer never receives the one email they just
 // explicitly asked for.
-const MARKETING_CATEGORIES: ReadonlySet<MessageCategory> = new Set<MessageCategory>(['FIRST_ORDER_OFFER_REMINDER'])
+const MARKETING_CATEGORIES: ReadonlySet<MessageCategory> = new Set<MessageCategory>(['FIRST_ORDER_OFFER_REMINDER', 'BIRTHDAY_PROMOTION'])
 
 export function isMarketingCategory(category: string): boolean {
   return MARKETING_CATEGORIES.has(category as MessageCategory)

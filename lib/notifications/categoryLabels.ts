@@ -35,6 +35,7 @@ const CATEGORY_LABELS: Record<MessageCategory, string> = {
   LEAD_CAPTURED: 'Inquiry',
   FIRST_ORDER_OFFER_CODE: 'First-Order Offer',
   FIRST_ORDER_OFFER_REMINDER: 'First-Order Offer',
+  BIRTHDAY_PROMOTION: 'Birthday Promotion',
   SUPPORT_REQUEST: 'Support Request',
   SUPPORT_REQUEST_RECEIVED: 'Support Request',
   ADMIN_INTAKE_ALERT: 'Account Update',
