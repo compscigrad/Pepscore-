@@ -2,6 +2,7 @@
 // made (Phase 2B item 8) -- product/strength interest, source/attribution,
 // UTM values, consent, timestamp. Server component -- no client state.
 import { card, mutedText, sectionHeading } from '@/components/invoices/theme'
+import { formatDateTimeForViewer } from '@/lib/dateFormat'
 
 export interface LeadCaptureRow {
   id: string
@@ -34,8 +35,12 @@ const INTEREST_TYPE_LABEL: Record<string, string> = {
   FIRST_ORDER_OFFER: 'First-Order Offer',
 }
 
+// Server component -- no client-side browser timezone available here, so
+// this renders in Pepscore's business timezone (the canonical utility's
+// default) rather than Vercel's server-process UTC, which is what this
+// local helper did before (2026-09-04 timezone sprint).
 function formatDate(value: Date | string): string {
-  return new Date(value).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+  return formatDateTimeForViewer(value)
 }
 
 export function CustomerLeadCaptureHistory({ leads }: { leads: LeadCaptureRow[] }) {

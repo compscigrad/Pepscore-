@@ -1,17 +1,31 @@
 // Display formatting shared by the PDF documents and the live HTML preview.
 // Framework-agnostic (no react-pdf or DOM dependency) so both can import it
 // without pulling the other's runtime along.
+import { formatDateForViewer } from '@/lib/dateFormat'
 
 export function formatMoney(value: number): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value)
 }
 
-// Dates stored on Invoice (issuedAt, shipDate, deliveredDate, payment.paidAt)
-// represent a calendar date, not a moment in time. Formatting in the
-// viewer's local timezone can roll the displayed day back or forward from
-// what was actually stored (e.g. a UTC-midnight Date rendering as the
-// previous day in a US timezone) — forcing UTC keeps the printed date
-// stable regardless of where/when it's viewed.
+// For a genuine CALENDAR-ONLY field with no real time-of-day meaning --
+// shipDate, deliveredDate, a payment-arrangement installment's dueDate, an
+// estimated/expected delivery date. These are picked/set as a specific
+// calendar day (not captured at the exact instant something happened), so
+// forcing UTC keeps the printed date stable regardless of where/when it's
+// viewed, which is correct FOR THIS CATEGORY of field.
+//
+// 2026-09-04 timezone sprint correction: this function's original comment
+// grouped `issuedAt` and `payment.paidAt` into this same "calendar date"
+// category -- that was wrong. Both are real `DateTime @default(now())`
+// columns capturing the exact moment an invoice was issued or a payment
+// was recorded, not a picked calendar date. Displaying them via forced UTC
+// is the same defect class as the admin-alert-email bug this sprint fixed
+// (lib/dateFormat.ts's header): the real moment could fall on a different
+// LOCAL calendar day than its UTC date reads as. Those fields (and every
+// other genuine moment-in-time column: createdAt, paidAt, transferredAt,
+// appliedAt, completedAt, requestedAt, resolvedAt, reversedAt, sentAt,
+// purchasedAt, lastPriceUpdateAt, dateShipped, deliveredAt) should use
+// formatMomentDate below instead.
 export function formatDate(value: Date | string | null | undefined): string {
   if (!value) return '—'
   return new Date(value).toLocaleDateString('en-US', {
@@ -20,6 +34,17 @@ export function formatDate(value: Date | string | null | undefined): string {
     day: 'numeric',
     timeZone: 'UTC',
   })
+}
+
+// For a genuine MOMENT-IN-TIME field (see formatDate's comment above for
+// the exact distinction) -- resolves the calendar date the instant falls
+// on in Pepscore's business timezone (no per-customer timezone is tracked
+// yet), never raw UTC. Thin null-safe wrapper (matching formatDate's own
+// signature) around the canonical lib/dateFormat.ts, so every caller of
+// this file gets the fix without a second import path.
+export function formatMomentDate(value: Date | string | null | undefined): string {
+  if (!value) return '—'
+  return formatDateForViewer(value)
 }
 
 // PICKUP/HAND_DELIVERY read as internal carrier-enum jargon ("HAND

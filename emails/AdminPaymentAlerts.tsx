@@ -5,6 +5,7 @@
 // Migrated onto the shared PepScore Lab email shell (docs/Decisions.md) --
 // content and send logic unchanged, presentation only.
 import { buildEmailShell, emailCta, emailPanel, escapeHtml, EMAIL_COLORS } from '@/emails/shared/shell'
+import { formatDateTimeForViewer } from '@/lib/dateFormat'
 
 function formatMoney(amount: number): string {
   return amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
@@ -38,7 +39,7 @@ export function buildPaymentSelectionPendingHtml(props: PaymentSelectionPendingP
     <p style="margin:0;font-size:13px;line-height:1.8;color:${EMAIL_COLORS.textSecondary}"><strong style="color:${EMAIL_COLORS.textPrimary}">Invoice Total:</strong> ${formatMoney(props.invoiceTotal)}</p>
     <p style="margin:0;font-size:13px;line-height:1.8;color:${EMAIL_COLORS.textSecondary}"><strong style="color:${EMAIL_COLORS.textPrimary}">Confirmed Amount Paid:</strong> ${formatMoney(props.amountPaid)}</p>
     <p style="margin:0;font-size:13px;line-height:1.8;color:${EMAIL_COLORS.textSecondary}"><strong style="color:${EMAIL_COLORS.textPrimary}">Remaining Balance:</strong> ${formatMoney(props.balanceDue)}</p>
-    <p style="margin:0;font-size:13px;line-height:1.8;color:${EMAIL_COLORS.textSecondary}"><strong style="color:${EMAIL_COLORS.textPrimary}">Submitted:</strong> ${props.submittedAt.toLocaleString('en-US')}</p>
+    <p style="margin:0;font-size:13px;line-height:1.8;color:${EMAIL_COLORS.textSecondary}"><strong style="color:${EMAIL_COLORS.textPrimary}">Submitted:</strong> ${formatDateTimeForViewer(props.submittedAt)}</p>
   `)
 
   const bodyHtml = `
@@ -93,7 +94,7 @@ export function buildArrangementRequestPendingHtml(props: ArrangementRequestPend
     <p style="margin:0;font-size:13px;line-height:1.8;color:${EMAIL_COLORS.textSecondary}"><strong style="color:${EMAIL_COLORS.textPrimary}">Proposed Immediate Payment:</strong> ${formatMoney(props.proposedDownPayment)}</p>
     <p style="margin:0;font-size:13px;line-height:1.8;color:${EMAIL_COLORS.textSecondary}"><strong style="color:${EMAIL_COLORS.textPrimary}">Proposed Installments:</strong> ${props.installmentCount}</p>
     <p style="margin:0;font-size:13px;line-height:1.8;color:${EMAIL_COLORS.textSecondary}"><strong style="color:${EMAIL_COLORS.textPrimary}">Proposed Schedule:</strong> ${escapeHtml(props.scheduleSummary)}</p>
-    <p style="margin:0;font-size:13px;line-height:1.8;color:${EMAIL_COLORS.textSecondary}"><strong style="color:${EMAIL_COLORS.textPrimary}">Submitted:</strong> ${props.submittedAt.toLocaleString('en-US')}</p>
+    <p style="margin:0;font-size:13px;line-height:1.8;color:${EMAIL_COLORS.textSecondary}"><strong style="color:${EMAIL_COLORS.textPrimary}">Submitted:</strong> ${formatDateTimeForViewer(props.submittedAt)}</p>
   `)
 
   const bodyHtml = `

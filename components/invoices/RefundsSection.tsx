@@ -17,7 +17,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
-import { formatMoney, formatDate } from '@/lib/invoice/format'
+import { formatMoney, formatMomentDate } from '@/lib/invoice/format'
 import { allocateInvoiceDiscount, remainingRefundableForItem, quantityRefundAmount } from '@/lib/invoice/refundAllocation'
 import { StatusBadge } from './StatusBadge'
 import { card, input, label as labelClass, pillPrimary, pillOutline, sectionHeading, selectOption, mutedText } from './theme'
@@ -309,10 +309,10 @@ export function RefundsSection({ invoiceId, hasCustomer, items, invoiceDiscountT
                     {formatMoney(entry.effectivePaidValue ?? entry.grossItemValue)}
                   </p>
                 ) : null}
-                <p className={`text-xs ${mutedText}`}>{entry.reason} — requested {formatDate(entry.requestedAt)}</p>
+                <p className={`text-xs ${mutedText}`}>{entry.reason} — requested {formatMomentDate(entry.requestedAt)}</p>
                 {entry.status === 'COMPLETED' ? (
                   <p className={`text-xs ${mutedText}`}>
-                    Completed {formatDate(entry.completedAt)}
+                    Completed {formatMomentDate(entry.completedAt)}
                     {entry.method ? ` via ${entry.method}` : ''}
                     {entry.providerTransactionId ? ` — ref ${entry.providerTransactionId}` : ''}
                   </p>
@@ -395,7 +395,7 @@ export function RefundsSection({ invoiceId, hasCustomer, items, invoiceDiscountT
                     <StatusBadge status="COMPLETED" variant="refund" />
                   </div>
                 </div>
-                <p className={`text-xs ${mutedText}`}>{entry.reason} — issued {formatDate(entry.issuedAt)}</p>
+                <p className={`text-xs ${mutedText}`}>{entry.reason} — issued {formatMomentDate(entry.issuedAt)}</p>
               </div>
             )
           )}

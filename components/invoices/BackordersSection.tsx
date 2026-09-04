@@ -13,7 +13,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
-import { formatMoney, formatDate } from '@/lib/invoice/format'
+import { formatMoney, formatDate, formatMomentDate } from '@/lib/invoice/format'
 import { StatusBadge } from './StatusBadge'
 import { card, input, label as labelClass, pillPrimary, pillOutline, sectionHeading, selectOption, mutedText } from './theme'
 import type { DeliveryStatus } from '@prisma/client'
@@ -385,7 +385,7 @@ export function BackordersSection({ invoiceId, items, deliveryStatus, onBackorde
               </div>
               {compensation.refund.status === 'COMPLETED' ? (
                 <p className={mutedText}>
-                  Completed {formatDate(compensation.refund.completedAt)}
+                  Completed {formatMomentDate(compensation.refund.completedAt)}
                   {compensation.refund.method ? ` via ${compensation.refund.method}` : ''}
                   {compensation.refund.providerTransactionId ? ` — ref ${compensation.refund.providerTransactionId}` : ''}
                 </p>
@@ -448,7 +448,7 @@ export function BackordersSection({ invoiceId, items, deliveryStatus, onBackorde
             </div>
           ) : null}
 
-          <p className={mutedText}>Applied {formatDate(compensation.appliedAt)} — one compensation covers every backorder on this invoice.</p>
+          <p className={mutedText}>Applied {formatMomentDate(compensation.appliedAt)} — one compensation covers every backorder on this invoice.</p>
         </div>
       ) : null}
 
@@ -471,7 +471,7 @@ export function BackordersSection({ invoiceId, items, deliveryStatus, onBackorde
               Manual Backorder Accommodation: {formatMoney(accommodation.discretionary.totalAmount)}
             </p>
             <p>{accommodation.discretionary.reason}</p>
-            <p className={mutedText}>Applied {formatDate(accommodation.discretionary.appliedAt)}</p>
+            <p className={mutedText}>Applied {formatMomentDate(accommodation.discretionary.appliedAt)}</p>
 
             {adjustingId === accommodation.discretionary.id ? (
               <div className="flex flex-wrap items-end gap-2 pt-2 border-t border-white/10">
@@ -574,11 +574,11 @@ export function BackordersSection({ invoiceId, items, deliveryStatus, onBackorde
                 <StatusBadge status={b.status} variant="backorder" />
               </div>
               <div className="text-xs text-white/60 space-y-1">
-                <p>Applied {formatDate(b.appliedAt)}{b.expectedAvailableDate ? ` — expected available ${formatDate(b.expectedAvailableDate)}` : ''}</p>
+                <p>Applied {formatMomentDate(b.appliedAt)}{b.expectedAvailableDate ? ` — expected available ${formatDate(b.expectedAvailableDate)}` : ''}</p>
                 {b.notes ? <p className={mutedText}>Note: {b.notes}</p> : null}
                 {b.status === 'RESOLVED' ? (
                   <p className="text-gold-light">
-                    Resolved {formatDate(b.resolvedAt)}{b.resolutionNote ? ` — ${b.resolutionNote}` : ''}
+                    Resolved {formatMomentDate(b.resolvedAt)}{b.resolutionNote ? ` — ${b.resolutionNote}` : ''}
                   </p>
                 ) : null}
               </div>

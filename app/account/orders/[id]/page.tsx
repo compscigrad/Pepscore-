@@ -8,7 +8,7 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getPortalAuthState } from '@/lib/portalAuth'
 import { getPortalOrderDetail } from '@/lib/portal/orders'
-import { formatMoney, formatDate } from '@/lib/invoice/format'
+import { formatMoney, formatDate, formatMomentDate } from '@/lib/invoice/format'
 import { StatusBadge } from '@/components/invoices/StatusBadge'
 import { PortalStatusShell } from '@/components/account/PortalStatusShell'
 import { prisma } from '@/lib/prisma'
@@ -70,7 +70,7 @@ export default async function OrderDetailPage({ params }: PageProps) {
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <h1 className="font-heading text-2xl font-bold text-white">{order.orderNumber}</h1>
-            <p className="text-white/40 text-xs mt-1">{formatDate(order.createdAt)}</p>
+            <p className="text-white/40 text-xs mt-1">{formatMomentDate(order.createdAt)}</p>
           </div>
           <div className="flex items-center gap-2">
             <StatusBadge status={order.status} variant="invoice" />
@@ -135,7 +135,7 @@ export default async function OrderDetailPage({ params }: PageProps) {
               {order.payments.map((p) => (
                 <div key={p.id} className="flex justify-between text-sm bg-white/[0.03] border border-white/10 rounded-lg p-3">
                   <span className="text-white/70">
-                    {formatDate(p.createdAt)} — {p.methodType === 'ACH' ? 'Bank transfer' : 'Card'}
+                    {formatMomentDate(p.createdAt)} — {p.methodType === 'ACH' ? 'Bank transfer' : 'Card'}
                   </span>
                   <div className="flex items-center gap-2">
                     <StatusBadge status={p.status} variant="payment" />

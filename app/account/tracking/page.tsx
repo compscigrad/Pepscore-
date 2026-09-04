@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getPortalAuthState } from '@/lib/portalAuth'
 import { listPortalInvoiceTracking } from '@/lib/portal/invoices'
-import { formatDate, formatCarrierLabel } from '@/lib/invoice/format'
+import { formatMomentDate, formatCarrierLabel } from '@/lib/invoice/format'
 import { isTrackableCarrier } from '@/lib/tracking/types'
 import { StatusBadge } from '@/components/invoices/StatusBadge'
 import { PortalStatusShell } from '@/components/account/PortalStatusShell'
@@ -38,7 +38,7 @@ export default async function TrackingPage() {
                 <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
                   <p className="font-heading font-bold text-white text-sm">{invoice.invoiceNumber}</p>
                   <div className="flex items-center gap-2">
-                    <span className="text-white/40 text-xs">{formatDate(invoice.createdAt)}</span>
+                    <span className="text-white/40 text-xs">{formatMomentDate(invoice.createdAt)}</span>
                     <StatusBadge status={invoice.orderStatus} variant="invoice" />
                   </div>
                 </div>

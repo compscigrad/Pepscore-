@@ -20,6 +20,7 @@ import {
   DuplicateBirthdayIssuanceError,
   ProfessionalAccountBirthdayError,
 } from '@/lib/pricing/birthdayPromotion'
+import { dayInTimeZone, monthInTimeZone, yearInTimeZone } from '@/lib/dateFormat'
 import { sendCategorizedEmail } from '@/lib/notifications/log'
 import { attemptSms } from '@/lib/notifications/bestEffortSms'
 import { birthdayPromotionSubject, buildBirthdayPromotionHtml, buildBirthdayPromotionSms } from '@/emails/BirthdayPromotion'
@@ -43,10 +44,18 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ skipped: true, reason: 'BIRTHDAY_PROMOTIONS_ENABLED is not set' })
   }
 
+  // "Today" for issuance purposes must be Pepscore's own business-calendar
+  // day (America/New_York), never raw UTC -- this cron runs on Vercel's
+  // server clock, and getUTCMonth()/getUTCDate() would silently issue a
+  // day early or late for a customer whose birthday falls near a UTC
+  // midnight boundary (2026-09-04 timezone sprint; see lib/dateFormat.ts's
+  // header for the exact defect this class of bug produced elsewhere).
+  // No per-customer timezone is tracked, so the business fallback is the
+  // correct, documented choice (section T16), not a per-customer guess.
   const now = new Date()
-  const currentMonth = now.getUTCMonth() + 1
-  const currentYear = now.getUTCFullYear()
-  const todayDay = now.getUTCDate()
+  const currentMonth = monthInTimeZone(now)
+  const currentYear = yearInTimeZone(now)
+  const todayDay = dayInTimeZone(now)
 
   // Only ever issues on the customer's actual issuance day this cycle
   // (normally the 1st of their birthday month; Feb 29 customers resolve to

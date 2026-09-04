@@ -6,6 +6,7 @@
 // client.
 import { ADMIN_EMAIL } from '@/lib/resend'
 import { buildEmailShell, emailPanel, escapeHtml, EMAIL_COLORS } from '@/emails/shared/shell'
+import { formatDateTimeForViewer } from '@/lib/dateFormat'
 
 interface PricingDiffRow {
   name: string
@@ -60,7 +61,7 @@ export function buildAdminMasterPricingReportHtml({
 
   const bodyHtml = `
     <h2 style="font-size:19px;color:${EMAIL_COLORS.textPrimary};margin:0 0 8px;text-align:center">Master Pricing Report</h2>
-    <p style="color:${EMAIL_COLORS.textMuted};font-size:13px;text-align:center;margin:0 0 16px">Generated ${generatedAt.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })} — full detail attached as CSV</p>
+    <p style="color:${EMAIL_COLORS.textMuted};font-size:13px;text-align:center;margin:0 0 16px">Generated ${formatDateTimeForViewer(generatedAt)} — full detail attached as CSV</p>
     ${summaryPanel}
     <table style="width:100%;border-collapse:collapse;margin-top:16px">
       <thead>

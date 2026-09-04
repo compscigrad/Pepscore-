@@ -16,7 +16,7 @@ import { upsertUserByClerkId } from '@/lib/user'
 import { linkPendingRuoAcceptanceToUser, RUO_PENDING_COOKIE } from '@/lib/compliance/ruo'
 import { getPortalDashboardData } from '@/lib/portal/dashboard'
 import { shouldRedirectAdminToAdminDashboard, isAdminViewingCustomerPortal } from '@/lib/portal/accountRouting'
-import { formatMoney, formatDate } from '@/lib/invoice/format'
+import { formatMoney, formatDate, formatMomentDate } from '@/lib/invoice/format'
 import { StatusBadge } from '@/components/invoices/StatusBadge'
 import { PortalStatusShell } from '@/components/account/PortalStatusShell'
 import { getCategoryLabel } from '@/lib/notifications/categoryLabels'
@@ -234,7 +234,7 @@ export default async function AccountPage({ searchParams }: Props) {
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div>
                       <p className="font-heading font-bold text-white text-sm">{inv.invoiceNumber}</p>
-                      <p className="text-white/40 text-xs mt-0.5">{formatDate(inv.createdAt)}</p>
+                      <p className="text-white/40 text-xs mt-0.5">{formatMomentDate(inv.createdAt)}</p>
                     </div>
                     <div className="flex items-center gap-3">
                       <StatusBadge status={inv.status} variant="invoice" />
@@ -255,7 +255,7 @@ export default async function AccountPage({ searchParams }: Props) {
               {data.recentCommunications.map((c) => (
                 <div key={c.id} className="flex items-center justify-between flex-wrap gap-2 bg-white/[0.03] border border-white/10 rounded-lg p-3">
                   <p className="text-white/80 text-sm">{c.subject ?? getCategoryLabel(c.category)}</p>
-                  <p className="text-white/40 text-xs">{formatDate(c.sentAt)}</p>
+                  <p className="text-white/40 text-xs">{formatMomentDate(c.sentAt)}</p>
                 </div>
               ))}
             </div>

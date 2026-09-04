@@ -8,7 +8,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { formatMoney, formatDate } from '@/lib/invoice/format'
+import { formatMoney, formatMomentDate } from '@/lib/invoice/format'
 import { card, input, label as labelClass, pillPrimary, pillOutline, sectionHeading, mutedText } from './theme'
 import type { BalanceTransfer } from '@prisma/client'
 
@@ -231,10 +231,10 @@ export function BalanceTransferSection({ invoiceId, balanceDue, transfersOut, tr
                 </span>
               </div>
               <p className={`${mutedText} text-xs mt-1`}>
-                {formatDate(t.transferredAt)}{t.reason ? ` — ${t.reason}` : ''}
+                {formatMomentDate(t.transferredAt)}{t.reason ? ` — ${t.reason}` : ''}
               </p>
               {t.status === 'REVERSED' ? (
-                <p className={`${mutedText} text-xs`}>Reversed {formatDate(t.reversedAt)}{t.reversalReason ? ` — ${t.reversalReason}` : ''}</p>
+                <p className={`${mutedText} text-xs`}>Reversed {formatMomentDate(t.reversedAt)}{t.reversalReason ? ` — ${t.reversalReason}` : ''}</p>
               ) : (
                 <button
                   type="button"
@@ -264,7 +264,7 @@ export function BalanceTransferSection({ invoiceId, balanceDue, transfersOut, tr
                 </span>
               </div>
               <p className={`${mutedText} text-xs mt-1`}>
-                {formatDate(t.transferredAt)}{t.reason ? ` — ${t.reason}` : ''}
+                {formatMomentDate(t.transferredAt)}{t.reason ? ` — ${t.reason}` : ''}
               </p>
             </div>
           ))}

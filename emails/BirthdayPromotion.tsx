@@ -4,6 +4,7 @@
 // refuses to issue one; this template is never reached for that case).
 import { buildEmailShell, emailCta, emailPanel, escapeHtml, EMAIL_COLORS } from '@/emails/shared/shell'
 import { BIRTHDAY_DISCOUNT_PERCENT, BIRTHDAY_CODE_VALIDITY_DAYS } from '@/lib/pricing/birthdayPromotion'
+import { formatDateForViewer } from '@/lib/dateFormat'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? ''
 
@@ -28,7 +29,7 @@ export function buildBirthdayPromotionHtml(props: BirthdayPromotionProps): strin
     <h2 style="font-size:19px;color:${EMAIL_COLORS.textPrimary};margin:0 0 8px">Happy Birthday, ${escapeHtml(props.firstName)}!</h2>
     <p style="font-size:14px;line-height:1.7;color:${EMAIL_COLORS.textSecondary};margin:0 0 20px">
       As a thank-you, enjoy ${BIRTHDAY_DISCOUNT_PERCENT}% off your next order. This code is unique to you, good for one use, and valid for
-      ${BIRTHDAY_CODE_VALIDITY_DAYS} days (expires ${props.expiresAt.toLocaleDateString('en-US', { timeZone: 'UTC' })}).
+      ${BIRTHDAY_CODE_VALIDITY_DAYS} days (expires ${formatDateForViewer(props.expiresAt)}).
     </p>
     ${codePanel}
     ${emailCta(shopUrl, 'Shop Now')}

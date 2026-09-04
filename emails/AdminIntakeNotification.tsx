@@ -5,6 +5,7 @@
 // content and send logic unchanged, presentation only.
 import { ADMIN_EMAIL } from '@/lib/resend'
 import { buildEmailShell, emailPanel, escapeHtml, EMAIL_COLORS } from '@/emails/shared/shell'
+import { formatDateTimeForViewer } from '@/lib/dateFormat'
 
 interface AdminIntakeNotificationProps {
   customerName: string
@@ -35,7 +36,7 @@ export function buildAdminIntakeNotificationHtml({
   const detailsPanel = emailPanel(`
     <p style="margin:0 0 4px;font-size:15px;color:${EMAIL_COLORS.textSecondary}"><strong style="color:${EMAIL_COLORS.textPrimary}">Customer:</strong> ${escapeHtml(customerName)}</p>
     <p style="margin:0 0 4px;font-size:15px;color:${EMAIL_COLORS.textSecondary}"><strong style="color:${EMAIL_COLORS.textPrimary}">Draft Invoice:</strong> ${escapeHtml(invoiceNumber)}</p>
-    <p style="margin:0;font-size:15px;color:${EMAIL_COLORS.textSecondary}"><strong style="color:${EMAIL_COLORS.textPrimary}">Submitted:</strong> ${submittedAt.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}</p>
+    <p style="margin:0;font-size:15px;color:${EMAIL_COLORS.textSecondary}"><strong style="color:${EMAIL_COLORS.textPrimary}">Submitted:</strong> ${formatDateTimeForViewer(submittedAt)}</p>
     ${duplicateWarning}
   `)
 

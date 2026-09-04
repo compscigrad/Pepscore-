@@ -6,7 +6,7 @@
 // before seeding the draft, so a line that goes unavailable between this
 // page rendering and the admin clicking through is caught there, not here.
 import Link from 'next/link'
-import { formatMoney, formatDate } from '@/lib/invoice/format'
+import { formatMoney, formatMomentDate } from '@/lib/invoice/format'
 import { REORDER_UNAVAILABLE_MESSAGE, type ResolvedReorderLine } from '@/lib/storefront/reorder'
 import { card, mutedText, sectionHeading, pillPrimary } from '@/components/invoices/theme'
 
@@ -55,7 +55,7 @@ export function PreviouslyPurchasedSection({ customerId, lines }: { customerId: 
             <div>
               <p className="text-white">{line.productLabel}</p>
               <p className={`${mutedText} text-xs`}>
-                Last purchased {formatDate(line.purchasedAt)}
+                Last purchased {formatMomentDate(line.purchasedAt)}
                 {line.resolved.status === 'RESOLVED' ? ` — ${formatMoney(line.resolved.unitPrice)}${line.resolved.backordered ? ' (Backorder)' : ''}` : ''}
               </p>
             </div>

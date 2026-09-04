@@ -11,7 +11,7 @@ import {
   PaymentArrangementSection,
   LegalFooter,
   formatMoney,
-  formatDate,
+  formatMomentDate,
 } from './shared'
 import { formatPaymentMethodLabel } from '@/lib/invoice/format'
 import { BRAND } from './brand'
@@ -42,7 +42,7 @@ export function MasterInvoiceDocument({ invoice }: { invoice: InvoiceWithRelatio
             </View>
             {invoice.payments.map((payment) => (
               <View style={styles.tableRow} key={payment.id}>
-                <Text style={[styles.tableCell, { flex: 2 }]}>{formatDate(payment.paidAt)}</Text>
+                <Text style={[styles.tableCell, { flex: 2 }]}>{formatMomentDate(payment.paidAt)}</Text>
                 <Text style={[styles.tableCell, { flex: 2 }]}>{formatPaymentMethodLabel(payment.method)}</Text>
                 <Text style={[styles.tableCell, { flex: 2 }]}>{payment.referenceNumber || '—'}</Text>
                 <Text style={[styles.tableCell, { flex: 1, textAlign: 'right' }]}>

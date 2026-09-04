@@ -6,6 +6,7 @@
 // as "after review," matching the storefront's own careful wording.
 import { ADMIN_EMAIL } from '@/lib/resend'
 import { buildEmailShell, emailCta, emailPanel, escapeHtml, EMAIL_COLORS } from '@/emails/shared/shell'
+import { formatDateTimeForViewer } from '@/lib/dateFormat'
 
 export interface RequestReceivedProps {
   contactName: string
@@ -188,7 +189,7 @@ export function priceMatchRequestAlertSubject(props: PriceMatchRequestAlertProps
 }
 
 export function buildPriceMatchRequestAlertHtml(props: PriceMatchRequestAlertProps): string {
-  const submittedLabel = props.submittedAt.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })
+  const submittedLabel = formatDateTimeForViewer(props.submittedAt)
   const detailsPanel = emailPanel(`
     <p style="margin:0"><strong style="color:${EMAIL_COLORS.textPrimary}">Request ID:</strong> <span style="color:${EMAIL_COLORS.textSecondary}">${escapeHtml(props.requestNumber)}</span></p>
     <p style="margin:4px 0 0"><strong style="color:${EMAIL_COLORS.textPrimary}">Product:</strong> <span style="color:${EMAIL_COLORS.textSecondary}">${escapeHtml(props.productName)} (${escapeHtml(props.productSize)})</span></p>

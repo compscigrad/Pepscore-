@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getPortalAuthState } from '@/lib/portalAuth'
 import { listCustomerPriceMatchRequests } from '@/lib/priceMatch/requests'
-import { formatDate } from '@/lib/invoice/format'
+import { formatMomentDate } from '@/lib/invoice/format'
 import { SELL_UNIT_DISPLAY_LABEL } from '@/lib/pricing/sellUnits'
 import { PortalStatusShell } from '@/components/account/PortalStatusShell'
 import type { PriceMatchRequestStatus } from '@prisma/client'
@@ -68,7 +68,7 @@ export default async function PriceMatchPage() {
                 <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
                   <p className="font-heading font-bold text-white text-sm">{req.requestNumber}</p>
                   <div className="flex items-center gap-2">
-                    <span className="text-white/40 text-xs">{formatDate(req.createdAt)}</span>
+                    <span className="text-white/40 text-xs">{formatMomentDate(req.createdAt)}</span>
                     <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-bold tracking-wide ${STATUS_COLOR[req.status]}`}>
                       {STATUS_LABEL[req.status]}
                     </span>

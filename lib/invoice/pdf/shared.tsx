@@ -3,12 +3,12 @@
 // spec explicitly says to hide from the customer-facing copy.
 import { Text, View, Image, Link, StyleSheet } from '@react-pdf/renderer'
 import { BRAND } from './brand'
-import { formatMoney, formatDate, formatCarrierLabel, formatPhoneDisplay } from '@/lib/invoice/format'
+import { formatMoney, formatDate, formatMomentDate, formatCarrierLabel, formatPhoneDisplay } from '@/lib/invoice/format'
 import { INVOICE_LEGAL_SECTIONS } from '@/lib/invoice/legal'
 import type { InvoiceWithRelations } from '@/lib/invoices'
 import { getPrimaryShipment } from '@/lib/shipments/primary'
 
-export { formatMoney, formatDate }
+export { formatMoney, formatDate, formatMomentDate }
 
 const { colors, fonts } = BRAND
 
@@ -206,7 +206,7 @@ export function DocumentHeader({
       <Text style={styles.docTitle}>{title}</Text>
       <View style={styles.headerAccent} />
       <Text style={styles.invoiceNumber}>
-        {invoice.invoiceNumber} · {formatDate(invoice.issuedAt)}
+        {invoice.invoiceNumber} · {formatMomentDate(invoice.issuedAt)}
       </Text>
       {showStatus ? (
         <View style={[styles.statusBadge, { borderColor: badgeColor }]}>
@@ -286,10 +286,10 @@ export function ShipmentTrackingSection({ invoice }: { invoice: InvoiceWithRelat
           {formatEnumLabel(shipment.normalizedStatus)}
         </Text>
         {shipment.dateShipped ? (
-          <Text style={[styles.sectionText, { marginTop: 1.5 }]}>Shipped: {formatDate(shipment.dateShipped)}</Text>
+          <Text style={[styles.sectionText, { marginTop: 1.5 }]}>Shipped: {formatMomentDate(shipment.dateShipped)}</Text>
         ) : null}
         {shipment.deliveredAt ? (
-          <Text style={[styles.sectionText, { marginTop: 1.5 }]}>Delivered: {formatDate(shipment.deliveredAt)}</Text>
+          <Text style={[styles.sectionText, { marginTop: 1.5 }]}>Delivered: {formatMomentDate(shipment.deliveredAt)}</Text>
         ) : shipment.estimatedDeliveryAt ? (
           <Text style={[styles.sectionText, { marginTop: 1.5 }]}>Est. Delivery: {formatDate(shipment.estimatedDeliveryAt)}</Text>
         ) : null}

@@ -8,7 +8,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getPortalAuthState } from '@/lib/portalAuth'
 import { listPortalOrders } from '@/lib/portal/orders'
-import { formatMoney, formatDate } from '@/lib/invoice/format'
+import { formatMoney, formatMomentDate } from '@/lib/invoice/format'
 import { StatusBadge } from '@/components/invoices/StatusBadge'
 import { PortalStatusShell } from '@/components/account/PortalStatusShell'
 
@@ -45,7 +45,7 @@ export default async function OrdersPage() {
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div>
                       <p className="font-heading font-bold text-white text-sm">{order.orderNumber}</p>
-                      <p className="text-white/40 text-xs mt-0.5">{formatDate(order.createdAt)}</p>
+                      <p className="text-white/40 text-xs mt-0.5">{formatMomentDate(order.createdAt)}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <StatusBadge status={order.status} variant="invoice" />

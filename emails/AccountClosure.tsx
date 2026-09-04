@@ -5,6 +5,7 @@
 // other transactional category).
 import { ADMIN_EMAIL } from '@/lib/resend'
 import { buildEmailShell, emailPanel, escapeHtml, EMAIL_COLORS } from '@/emails/shared/shell'
+import { formatDateTimeForViewer } from '@/lib/dateFormat'
 
 export interface AccountClosedProps {
   firstName: string
@@ -49,7 +50,7 @@ export function accountClosureAlertSubject(props: { customerName: string }): str
 export function buildAccountClosureAlertHtml(props: AccountClosureAlertProps): string {
   const detailsPanel = emailPanel(`
     <p style="margin:0"><strong style="color:${EMAIL_COLORS.textPrimary}">Customer:</strong> <span style="color:${EMAIL_COLORS.textSecondary}">${escapeHtml(props.customerName)}${props.email ? ` (${escapeHtml(props.email)})` : ''}</span></p>
-    <p style="margin:4px 0 0"><strong style="color:${EMAIL_COLORS.textPrimary}">Closed:</strong> <span style="color:${EMAIL_COLORS.textSecondary}">${escapeHtml(props.closedAt.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }))}</span></p>
+    <p style="margin:4px 0 0"><strong style="color:${EMAIL_COLORS.textPrimary}">Closed:</strong> <span style="color:${EMAIL_COLORS.textSecondary}">${escapeHtml(formatDateTimeForViewer(props.closedAt))}</span></p>
     <p style="margin:4px 0 0"><strong style="color:${EMAIL_COLORS.textPrimary}">Open invoices:</strong> <span style="color:${EMAIL_COLORS.textSecondary}">${props.openInvoiceCount}</span></p>
     <p style="margin:4px 0 0"><strong style="color:${EMAIL_COLORS.textPrimary}">Active Preferred Pricing authorizations:</strong> <span style="color:${EMAIL_COLORS.textSecondary}">${props.activeAuthorizationCount}</span></p>
     <p style="margin:4px 0 0"><strong style="color:${EMAIL_COLORS.textPrimary}">Professional Access:</strong> <span style="color:${EMAIL_COLORS.textSecondary}">${props.proEligible ? 'Active' : 'Not active'}</span></p>

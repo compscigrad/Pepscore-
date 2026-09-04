@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic'
 import { redirect } from 'next/navigation'
 import { getPortalAuthState } from '@/lib/portalAuth'
 import { listPortalCorrespondence } from '@/lib/portal/correspondence'
-import { formatDate } from '@/lib/invoice/format'
+import { formatMomentDate } from '@/lib/invoice/format'
 import { PortalStatusShell } from '@/components/account/PortalStatusShell'
 import { getCategoryLabel } from '@/lib/notifications/categoryLabels'
 
@@ -37,7 +37,7 @@ export default async function CorrespondencePage() {
                       {e.invoiceNumber ? ` — Invoice ${e.invoiceNumber}` : ''}
                     </p>
                   </div>
-                  <span className="text-white/40 text-xs shrink-0">{formatDate(e.sentAt)}</span>
+                  <span className="text-white/40 text-xs shrink-0">{formatMomentDate(e.sentAt)}</span>
                 </div>
               </div>
             ))}

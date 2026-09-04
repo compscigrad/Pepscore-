@@ -12,7 +12,7 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getPortalAuthState } from '@/lib/portalAuth'
 import { getPortalInvoiceDetail } from '@/lib/portal/invoices'
-import { formatMoney, formatDate, formatCarrierLabel } from '@/lib/invoice/format'
+import { formatMoney, formatDate, formatMomentDate, formatCarrierLabel } from '@/lib/invoice/format'
 import { isTrackableCarrier } from '@/lib/tracking/types'
 import { StatusBadge } from '@/components/invoices/StatusBadge'
 import { PortalStatusShell } from '@/components/account/PortalStatusShell'
@@ -47,7 +47,7 @@ export default async function InvoiceDetailPage({ params }: PageProps) {
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <h1 className="font-heading text-2xl font-bold text-white">{invoice.invoiceNumber}</h1>
-            <p className="text-white/40 text-xs mt-1">{formatDate(invoice.createdAt)}</p>
+            <p className="text-white/40 text-xs mt-1">{formatMomentDate(invoice.createdAt)}</p>
           </div>
           <div className="flex items-center gap-2">
             <StatusBadge status={invoice.status} variant="invoice" />
@@ -137,7 +137,7 @@ export default async function InvoiceDetailPage({ params }: PageProps) {
             <div className="space-y-2">
               {invoice.payments.map((p) => (
                 <div key={p.id} className="flex justify-between text-sm bg-white/[0.03] border border-white/10 rounded-lg p-3">
-                  <span className="text-white/70">{formatDate(p.paidAt)} — {p.method}</span>
+                  <span className="text-white/70">{formatMomentDate(p.paidAt)} — {p.method}</span>
                   <span className="text-white font-medium">{formatMoney(p.amount)}</span>
                 </div>
               ))}
@@ -213,7 +213,7 @@ export default async function InvoiceDetailPage({ params }: PageProps) {
                     </p>
                     <p className="text-white/40 text-xs mt-0.5">
                       {r.status === 'COMPLETED'
-                        ? `Completed ${formatDate(r.completedAt)}`
+                        ? `Completed ${formatMomentDate(r.completedAt)}`
                         : 'Pending — nothing has been returned yet until this is marked completed'}
                     </p>
                   </div>
@@ -244,12 +244,12 @@ export default async function InvoiceDetailPage({ params }: PageProps) {
             <div className="space-y-2">
               {invoice.balanceTransfersOut.map((t) => (
                 <div key={t.id} className="text-sm bg-white/[0.03] border border-white/10 rounded-lg p-3 text-white/70">
-                  {formatMoney(t.amount)} moved to Invoice {t.destinationInvoice.invoiceNumber} — {formatDate(t.transferredAt)}
+                  {formatMoney(t.amount)} moved to Invoice {t.destinationInvoice.invoiceNumber} — {formatMomentDate(t.transferredAt)}
                 </div>
               ))}
               {invoice.balanceTransfersIn.map((t) => (
                 <div key={t.id} className="text-sm bg-white/[0.03] border border-white/10 rounded-lg p-3 text-white/70">
-                  {formatMoney(t.amount)} moved in from Invoice {t.sourceInvoice.invoiceNumber} — {formatDate(t.transferredAt)}
+                  {formatMoney(t.amount)} moved in from Invoice {t.sourceInvoice.invoiceNumber} — {formatMomentDate(t.transferredAt)}
                 </div>
               ))}
             </div>

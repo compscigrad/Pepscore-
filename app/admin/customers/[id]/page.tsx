@@ -12,7 +12,7 @@ import Link from 'next/link'
 import { getCustomerProfileData, getCustomerInvoiceHistory, findPossibleDuplicateCustomers } from '@/lib/customers'
 import { currentPeriod, getInvoiceHistoryYearRange } from '@/lib/invoice/historyPeriod'
 import { formatCurrency } from '@/lib/orders'
-import { formatDate, formatCarrierLabel, formatPaymentMethodLabel, formatPhoneDisplay, formatProductLabel } from '@/lib/invoice/format'
+import { formatMomentDate, formatCarrierLabel, formatPaymentMethodLabel, formatPhoneDisplay, formatProductLabel } from '@/lib/invoice/format'
 import { getCustomerPurchaseHistory } from '@/lib/admin/purchaseHistory'
 import { resolveReorderLine } from '@/lib/storefront/reorder'
 import type { SellUnit } from '@/lib/pricing/sellUnits'
@@ -339,7 +339,7 @@ export default async function CustomerProfilePage({ params, searchParams }: Page
                   {invoiceHistory.map((inv) => (
                     <tr key={inv.id} className="border-b border-white/5">
                       <td className="py-3 pr-4 font-medium text-white whitespace-nowrap">{inv.invoiceNumber}</td>
-                      <td className="py-3 pr-4 text-white/50 whitespace-nowrap">{formatDate(inv.createdAt)}</td>
+                      <td className="py-3 pr-4 text-white/50 whitespace-nowrap">{formatMomentDate(inv.createdAt)}</td>
                       <td className="py-3 pr-4 text-white whitespace-nowrap">{formatCurrency(inv.balanceDue)}</td>
                       <td className="py-3 pr-4">
                         <div className="flex flex-wrap gap-1.5">
@@ -386,7 +386,7 @@ export default async function CustomerProfilePage({ params, searchParams }: Page
                   {storefrontOrders.map((order) => (
                     <tr key={order.id} className="border-b border-white/5">
                       <td className="py-3 pr-4 font-medium text-white whitespace-nowrap">{order.orderNumber}</td>
-                      <td className="py-3 pr-4 text-white/50 whitespace-nowrap">{formatDate(order.createdAt)}</td>
+                      <td className="py-3 pr-4 text-white/50 whitespace-nowrap">{formatMomentDate(order.createdAt)}</td>
                       <td className="py-3 pr-4 text-white whitespace-nowrap">{formatCurrency(order.total)}</td>
                       <td className="py-3 pr-4 whitespace-nowrap">
                         <span className="text-[10px] font-heading font-bold uppercase tracking-[0.06em] px-2 py-0.5 rounded-full border border-white/15 bg-white/5 text-white/60">
@@ -425,7 +425,7 @@ export default async function CustomerProfilePage({ params, searchParams }: Page
                 <div key={credit.id} className="flex items-center justify-between text-sm border-b border-white/5 pb-2 last:border-0 last:pb-0">
                   <div>
                     <p className="text-white">{credit.reason}</p>
-                    <p className={mutedText}>{formatDate(credit.issuedAt)}</p>
+                    <p className={mutedText}>{formatMomentDate(credit.issuedAt)}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-white font-medium">{formatCurrency(credit.remainingAmount)}</p>

@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { getPortalAuthState } from '@/lib/portalAuth'
 import { listPortalInvoices } from '@/lib/portal/invoices'
 import { currentPeriod, getInvoiceHistoryYearRange } from '@/lib/invoice/historyPeriod'
-import { formatMoney, formatDate } from '@/lib/invoice/format'
+import { formatMoney, formatMomentDate } from '@/lib/invoice/format'
 import { StatusBadge } from '@/components/invoices/StatusBadge'
 import { InvoiceHistoryFilter } from '@/components/invoices/InvoiceHistoryFilter'
 import { PortalStatusShell } from '@/components/account/PortalStatusShell'
@@ -60,7 +60,7 @@ export default async function InvoicesPage({ searchParams }: PageProps) {
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div>
                     <p className="font-heading font-bold text-white text-sm">{inv.invoiceNumber}</p>
-                    <p className="text-white/40 text-xs mt-0.5">{formatDate(inv.createdAt)}</p>
+                    <p className="text-white/40 text-xs mt-0.5">{formatMomentDate(inv.createdAt)}</p>
                   </div>
                   <div className="flex items-center gap-3">
                     <StatusBadge status={inv.status} variant="invoice" />
