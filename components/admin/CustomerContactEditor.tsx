@@ -49,7 +49,11 @@ interface Props {
   company: string | null
   billingAddress: unknown
   shippingAddress: unknown
+  birthdayMonth: number | null
+  birthdayDay: number | null
 }
+
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
 export function CustomerContactEditor(props: Props) {
   const router = useRouter()
@@ -59,6 +63,8 @@ export function CustomerContactEditor(props: Props) {
   const [email, setEmail] = useState(props.email ?? '')
   const [phone, setPhone] = useState(props.phone ?? '')
   const [company, setCompany] = useState(props.company ?? '')
+  const [birthdayMonth, setBirthdayMonth] = useState(props.birthdayMonth ?? '')
+  const [birthdayDay, setBirthdayDay] = useState(props.birthdayDay ?? '')
   const [billingAddress, setBillingAddress] = useState<AddressValue>(() => toAddressValue(props.billingAddress))
   const [shippingAddress, setShippingAddress] = useState<AddressValue>(() => toAddressValue(props.shippingAddress))
   const [sameAsBilling, setSameAsBilling] = useState(
@@ -75,9 +81,18 @@ export function CustomerContactEditor(props: Props) {
 
   if (!editing) {
     return (
-      <button type="button" className={`${pillOutline} px-3 py-1.5 text-xs`} onClick={() => setEditing(true)}>
-        Edit Contact
-      </button>
+      <div className="flex items-center gap-3">
+        {props.birthdayMonth && props.birthdayDay ? (
+          <span className="text-[11px] text-white/40">
+            Birthday: {MONTH_NAMES[props.birthdayMonth - 1]} {props.birthdayDay}
+          </span>
+        ) : (
+          <span className="text-[11px] text-white/25">Birthday not on file</span>
+        )}
+        <button type="button" className={`${pillOutline} px-3 py-1.5 text-xs`} onClick={() => setEditing(true)}>
+          Edit Contact
+        </button>
+      </div>
     )
   }
 
@@ -97,6 +112,12 @@ export function CustomerContactEditor(props: Props) {
         email: email || null,
         phone: phone || null,
         company: company || null,
+        // Pepscore's own birthday-marketing profile (month/day only, never
+        // a year) -- entirely separate from Clerk age/identity
+        // verification. Both-or-neither: a half-entered birthday isn't a
+        // usable one.
+        birthdayMonth: birthdayMonth === '' ? null : Number(birthdayMonth),
+        birthdayDay: birthdayDay === '' ? null : Number(birthdayDay),
       }
       // Same pattern as the invoice builder's save(): only send an address
       // when it actually has a street -- an incomplete/never-touched
@@ -137,6 +158,29 @@ export function CustomerContactEditor(props: Props) {
       <input className={inputClass} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
       <input className={inputClass} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone" />
       <input className={inputClass} value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Company" />
+
+      <div>
+        <p className="text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 mb-1.5">
+          Birthday (month/day only — for birthday rewards, never used for age verification)
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          <select className={inputClass} value={birthdayMonth} onChange={(e) => setBirthdayMonth(e.target.value === '' ? '' : Number(e.target.value))}>
+            <option value="">Month</option>
+            {MONTH_NAMES.map((name, i) => (
+              <option key={name} value={i + 1}>{name}</option>
+            ))}
+          </select>
+          <input
+            className={inputClass}
+            type="number"
+            min={1}
+            max={31}
+            placeholder="Day"
+            value={birthdayDay}
+            onChange={(e) => setBirthdayDay(e.target.value === '' ? '' : Number(e.target.value))}
+          />
+        </div>
+      </div>
 
       <div>
         <p className="text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 mb-1.5">Billing Address</p>

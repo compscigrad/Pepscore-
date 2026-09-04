@@ -12,7 +12,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth/rbac'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
-import { findCustomerByEmailOrPhone, createCustomer } from '@/lib/customers'
+import { findCustomerByEmailOrPhone, createCustomer, syncCustomerFromInvoiceEvent } from '@/lib/customers'
 import { generateSequentialInvoiceNumber } from '@/lib/invoice/numbering'
 
 const quickIntakeSchema = z
@@ -55,6 +55,23 @@ export async function POST(req: NextRequest) {
         customerEmail: payload.customerEmail || undefined,
         customerPhone: payload.customerPhone || undefined,
       },
+    })
+
+    // This route builds the invoice directly rather than going through
+    // lib/invoices.ts's createInvoice() (see the file header -- it
+    // deliberately bypasses invoicePayloadSchema's items.min(1) for a
+    // zero-item draft), so it must also do createInvoice()'s other real
+    // side effect itself: recomputing Customer.status off the real invoice
+    // that now exists. Without this, a brand-new customer created here
+    // stays at the Prisma default (LEAD) forever, which incorrectly reads
+    // as portal-ineligible with a "no invoice issued yet" reason even
+    // though this invoice is sitting right there (2026-09-03 fix).
+    await syncCustomerFromInvoiceEvent({
+      customerId: customer.id,
+      invoiceId: invoice.id,
+      eventType: 'DRAFT_INVOICE_CREATED',
+      newValue: invoice.status,
+      source: 'MANUAL',
     })
 
     return NextResponse.json({ id: invoice.id }, { status: 201 })

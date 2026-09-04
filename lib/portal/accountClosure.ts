@@ -115,6 +115,58 @@ export async function closeCustomerAccount(customerId: string, clerkUserId: stri
   return { customer: updated }
 }
 
+// Admin-initiated closure (2026-09-03 customer lifecycle sprint) -- same
+// mechanism and same outstanding-balance gate as closeCustomerAccount
+// (never a second, disconnected closure path), but admin-appropriate
+// wording/activity event and no customer Clerk session to resolve up
+// front (an admin can close an account the customer never even logged
+// into, e.g. a Direct Sales-only customer). Still best-effort-revokes any
+// linked Clerk session, same as the self-service path.
+export async function adminCloseCustomerAccount(customerId: string, adminId: string, reason?: string | null): Promise<CloseAccountResult> {
+  const customer = await prisma.customer.findUnique({ where: { id: customerId } })
+  if (!customer) throw new Error('Customer not found')
+  if (customer.accountClosedAt) return { customer } // already closed -- idempotent, not an error
+
+  const dashboard = await getPortalDashboardData(customerId)
+  if (dashboard.outstandingBalance > 0) {
+    await recordCustomerActivity({
+      customerId,
+      eventType: 'ACCOUNT_CLOSURE_BLOCKED_OUTSTANDING_BALANCE',
+      newValue: dashboard.outstandingBalance.toFixed(2),
+      source: 'MANUAL',
+      userId: adminId,
+    })
+    throw new AccountClosureBlockedError(dashboard.outstandingBalance)
+  }
+
+  const updated = await prisma.customer.update({
+    where: { id: customerId },
+    data: {
+      portalAccessDisabled: true,
+      accountClosedAt: new Date(),
+      accountClosedReason: reason ?? 'Closed by admin',
+    },
+  })
+
+  await recordCustomerActivity({
+    customerId,
+    eventType: 'ACCOUNT_CLOSED_BY_ADMIN',
+    newValue: reason ?? undefined,
+    source: 'MANUAL',
+    userId: adminId,
+  })
+
+  if (customer.userId) {
+    // Customer.userId points at our internal User.id (cuid), never the real
+    // Clerk user id (User.clerkId) -- revokeClerkSessions needs the latter,
+    // same distinction the linking comment on Customer.userId itself draws.
+    const linkedUser = await prisma.user.findUnique({ where: { id: customer.userId }, select: { clerkId: true } })
+    if (linkedUser) await revokeClerkSessions(linkedUser.clerkId)
+  }
+
+  return { customer: updated }
+}
+
 // Admin-only, post-closure housekeeping -- never reactivates access, never
 // deletes anything. Purely a "reduce clutter in active views" marker.
 export async function archiveClosedCustomer(customerId: string, adminId: string): Promise<Customer> {

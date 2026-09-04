@@ -19,6 +19,7 @@ import type { SellUnit } from '@/lib/pricing/sellUnits'
 import { prisma } from '@/lib/prisma'
 import { PreviouslyPurchasedSection, type PreviouslyPurchasedLine } from '@/components/admin/PreviouslyPurchasedSection'
 import { MergeCustomerButton } from '@/components/admin/MergeCustomerButton'
+import { CustomerLifecycleActions } from '@/components/admin/CustomerLifecycleActions'
 import { CorrespondenceHistory } from '@/components/invoices/CorrespondenceHistory'
 import { StatusBadge } from '@/components/invoices/StatusBadge'
 import { InvoiceHistoryFilter } from '@/components/invoices/InvoiceHistoryFilter'
@@ -186,6 +187,15 @@ export default async function CustomerProfilePage({ params, searchParams }: Page
           <CustomerLeadStatusControl customerId={customer.id} leadStatus={customer.leadStatus as LeadStatusValue} />
         </div>
 
+        <div className={`${card} p-4 mb-6`}>
+          <p className="text-[11px] font-heading font-bold uppercase tracking-[0.08em] text-white/40 mb-2">Customer Lifecycle</p>
+          <CustomerLifecycleActions
+            customerId={customer.id}
+            accountClosedAt={customer.accountClosedAt}
+            accountArchivedAt={customer.accountArchivedAt}
+          />
+        </div>
+
         <div className="space-y-6">
 
         {duplicates.length > 0 ? (
@@ -248,6 +258,8 @@ export default async function CustomerProfilePage({ params, searchParams }: Page
               company={customer.company}
               billingAddress={customer.billingAddress}
               shippingAddress={customer.shippingAddress}
+              birthdayMonth={customer.birthdayMonth}
+              birthdayDay={customer.birthdayDay}
             />
           </div>
 

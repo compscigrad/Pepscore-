@@ -11,6 +11,8 @@ import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { recordCustomerActivity } from '@/lib/customers'
 import { addressSchema } from '@/lib/invoice/validation'
+import { getCustomerDeletionEligibility, CUSTOMER_BLOCK_REASON_LABEL } from '@/lib/customers/deletionEligibility'
+import { validateBirthdayMonthDay } from '@/lib/pricing/birthdayPromotion'
 
 const LEAD_STATUSES = ['NEW', 'CONTACTED', 'QUALIFIED', 'CONVERTED', 'CLOSED'] as const
 
@@ -34,6 +36,13 @@ const patchSchema = z.object({
   // CRM triage status (Phase 2B item 8) -- see Customer.leadStatus's schema
   // comment for why this is separate from the fulfillment-lifecycle `status`.
   leadStatus: z.enum(LEAD_STATUSES).optional(),
+  // Pepscore's own birthday-marketing profile -- month/day only, never a
+  // year (see Customer.birthdayMonth's schema comment). Real range
+  // validation (including the Feb 29 leap-day case) happens below via
+  // validateBirthdayMonthDay, shared with the automation that reads these
+  // fields, rather than a second copy of the same rule in a zod refine.
+  birthdayMonth: z.number().int().optional().nullable(),
+  birthdayDay: z.number().int().optional().nullable(),
 })
 
 interface RouteParams {
@@ -50,6 +59,23 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     const payload = patchSchema.parse(await req.json())
     const before = await prisma.customer.findUniqueOrThrow({ where: { id } })
 
+    // Both-or-neither on the FINAL state (this payload's value where
+    // provided, otherwise whatever the row already had), and real range/
+    // leap-day validation -- a half-entered birthday (e.g. day without
+    // month) isn't a usable one, and this is the same check the birthday-
+    // promotion automation itself relies on being pre-validated data.
+    if (payload.birthdayMonth !== undefined || payload.birthdayDay !== undefined) {
+      const finalMonth = payload.birthdayMonth !== undefined ? payload.birthdayMonth : before.birthdayMonth
+      const finalDay = payload.birthdayDay !== undefined ? payload.birthdayDay : before.birthdayDay
+      if ((finalMonth == null) !== (finalDay == null)) {
+        return NextResponse.json({ error: 'Birthday month and day must be set (or cleared) together.' }, { status: 400 })
+      }
+      if (finalMonth != null && finalDay != null) {
+        const error = validateBirthdayMonthDay(finalMonth, finalDay)
+        if (error) return NextResponse.json({ error }, { status: 400 })
+      }
+    }
+
     const updated = await prisma.customer.update({
       where: { id },
       data: {
@@ -60,6 +86,8 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
         phone: payload.phone,
         notes: payload.notes,
         leadStatus: payload.leadStatus,
+        birthdayMonth: payload.birthdayMonth,
+        birthdayDay: payload.birthdayDay,
         // Prisma's JSON columns need an explicit Prisma.JsonNull to clear a
         // value -- a plain `null` is only valid for genuinely nullable
         // scalar columns. `undefined` (the field simply wasn't in the
@@ -111,5 +139,66 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     }
     console.error('[admin/customers/:id PATCH]', err)
     return NextResponse.json({ error: 'Failed to update customer' }, { status: 400 })
+  }
+}
+
+// GET /api/admin/customers/[id] -- deletion-eligibility preview (2026-09-03
+// customer lifecycle sprint), same "check first, render the exact reason
+// disabled" pattern as the merge preview (/api/admin/customers/[id]/merge).
+// Only a genuinely test/duplicate/abandoned-lead record with zero business/
+// financial history is eligible -- anything else must go through Close/
+// Archive instead (POST .../close, .../archive), which preserves the row.
+export async function GET(req: NextRequest, { params }: RouteParams) {
+  const userId = await requireAdmin()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+
+  const { id } = await params
+  try {
+    const eligibility = await getCustomerDeletionEligibility(id)
+    return NextResponse.json({
+      ...eligibility,
+      blockedReasonLabels: eligibility.blockedReasons.map((r) => CUSTOMER_BLOCK_REASON_LABEL[r]),
+    })
+  } catch (err: unknown) {
+    console.error('[admin/customers/:id GET]', err)
+    return NextResponse.json({ error: 'Failed to check deletion eligibility' }, { status: 400 })
+  }
+}
+
+// DELETE /api/admin/customers/[id] -- true, permanent delete. Only ever
+// safe for a record with zero business/financial history (test customer,
+// accidental duplicate, abandoned lead) -- re-checks eligibility itself
+// rather than trusting a client-side preview that could be stale by the
+// time the button is actually clicked.
+export async function DELETE(req: NextRequest, { params }: RouteParams) {
+  const userId = await requireAdmin()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+
+  const { id } = await params
+  try {
+    const eligibility = await getCustomerDeletionEligibility(id)
+    if (!eligibility.eligible) {
+      const reasons = eligibility.blockedReasons.map((r) => CUSTOMER_BLOCK_REASON_LABEL[r]).join('; ')
+      return NextResponse.json({ error: `Cannot permanently delete this customer: ${reasons}. Close/Archive instead.` }, { status: 409 })
+    }
+
+    const customer = await prisma.customer.findUniqueOrThrow({ where: { id }, select: { firstName: true, lastName: true, email: true } })
+    await prisma.customer.delete({ where: { id } })
+
+    await prisma.adminAuditLog.create({
+      data: {
+        action: 'DELETE_CUSTOMER',
+        entity: 'Customer',
+        entityId: id,
+        adminId: userId!,
+        details: { firstName: customer.firstName, lastName: customer.lastName, email: customer.email },
+      },
+    })
+
+    return NextResponse.json({ ok: true })
+  } catch (err: unknown) {
+    console.error('[admin/customers/:id DELETE]', err)
+    const msg = err instanceof Error ? err.message : 'Failed to delete customer'
+    return NextResponse.json({ error: msg }, { status: 400 })
   }
 }
