@@ -37,10 +37,18 @@ export async function attemptSms(phone: string | null | undefined, body: string)
     // environments (tests, build) that never actually send SMS.
     const twilio = (await import('twilio')).default
     const client = twilio(process.env.TWILIO_ACCOUNT_SID!, process.env.TWILIO_AUTH_TOKEN!)
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL
     await client.messages.create({
       to: normalizePhoneToE164(phone),
       from: process.env.TWILIO_PHONE_NUMBER!,
       body,
+      // 2026-09-04 Twilio sprint -- registers app/api/webhooks/twilio/
+      // status/route.ts to receive this message's queued/sent/delivered/
+      // failed/undelivered lifecycle. Only set when a real absolute app URL
+      // is known (never localhost) -- Twilio rejects a callback URL it
+      // can't reach, and a missing/local NEXT_PUBLIC_APP_URL should degrade
+      // to "no delivery-status tracking" rather than break the send itself.
+      ...(appUrl && appUrl.startsWith('https://') ? { statusCallback: `${appUrl}/api/webhooks/twilio/status` } : {}),
     })
     return { outcome: 'SENT' }
   } catch (err) {

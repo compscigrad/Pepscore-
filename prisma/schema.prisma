@@ -3880,6 +3880,18 @@ model Communication {
   failureReason     String?
   retryOfId         String? // points at the original Communication this retry is for
 
+  // 2026-09-04 Twilio sprint -- Twilio's own outbound delivery lifecycle
+  // (queued -> sent -> delivered, or failed/undelivered), distinct from
+  // `status` above which only ever records whether the initial API call to
+  // Twilio succeeded. Populated asynchronously by Twilio's statusCallback
+  // webhook (app/api/webhooks/twilio/status/route.ts), looked up by
+  // providerMessageId (already indexed below for exactly this purpose).
+  // Null until the first callback arrives -- most email Communication rows
+  // never populate this at all (Resend delivery status isn't wired to this
+  // field), so it's meaningless to default it to anything but unset.
+  providerStatus   String?
+  providerStatusAt DateTime?
+
   actorType   TrackingEventSource // reuse: MANUAL (an admin action triggered the send) or SYSTEM
   actorUserId String?
 

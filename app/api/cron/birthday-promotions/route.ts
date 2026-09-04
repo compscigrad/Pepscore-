@@ -27,8 +27,7 @@ import {
   ProfessionalAccountBirthdayError,
 } from '@/lib/pricing/birthdayPromotion'
 import { dayInTimeZone, monthInTimeZone, yearInTimeZone } from '@/lib/dateFormat'
-import { sendCategorizedEmail } from '@/lib/notifications/log'
-import { attemptSms } from '@/lib/notifications/bestEffortSms'
+import { sendCategorizedEmail, sendCategorizedSms } from '@/lib/notifications/log'
 import { birthdayPromotionSubject, buildBirthdayPromotionHtml, buildBirthdayPromotionSms } from '@/emails/BirthdayPromotion'
 
 function isAuthorizedCronRequest(req: NextRequest): boolean {
@@ -76,7 +75,7 @@ export async function GET(req: NextRequest) {
       birthdayDay: { not: null },
       birthdayPromotionCodes: { none: { cycleYear: currentYear } },
     },
-    select: { id: true, firstName: true, email: true, phone: true, smsOptedOut: true, birthdayMonth: true, birthdayDay: true },
+    select: { id: true, firstName: true, email: true, phone: true, birthdayMonth: true, birthdayDay: true },
   })
 
   const dueToday = candidates.filter((c) => resolveBirthdayIssuanceDay(c.birthdayMonth!, c.birthdayDay!, currentYear) === todayDay)
@@ -106,14 +105,22 @@ export async function GET(req: NextRequest) {
         if (result.sent) emailSent++
       }
 
-      // SMS respects consent (smsOptedOut) same as every other customer-
-      // facing SMS in this codebase, AND the production-readiness gate
-      // (isSmsConfigured, checked inside attemptSms) -- if Twilio isn't
-      // live yet, this records SKIPPED_NOT_CONFIGURED rather than silently
-      // losing the intent to send: the code is still generated and the
-      // email still goes out either way.
-      if (customer.phone && !customer.smsOptedOut) {
-        const smsResult = await attemptSms(customer.phone, buildBirthdayPromotionSms({ firstName: customer.firstName, code, expiresAt }))
+      // 2026-09-04 Twilio sprint fix: previously called attemptSms()
+      // directly, which respects smsOptedOut/production-readiness but
+      // skips recordCommunication() -- every other SMS call site in this
+      // codebase (portal invites, payment workflow, intake delivery) goes
+      // through sendCategorizedSms() instead, so birthday sends were the
+      // only ones missing a Communication audit row. sendCategorizedSms
+      // already performs the exact same smsOptedOut check internally, so
+      // the manual `!customer.smsOptedOut` guard here is no longer needed
+      // -- it's still checked, just inside the canonical wrapper now.
+      if (customer.phone) {
+        const smsResult = await sendCategorizedSms(
+          'BIRTHDAY_PROMOTION',
+          customer.phone,
+          buildBirthdayPromotionSms({ firstName: customer.firstName, code, expiresAt }),
+          { customerId: customer.id, actorType: 'SYSTEM' }
+        )
         if (smsResult.outcome === 'SENT') smsSent++
         else smsBlocked++
       }
